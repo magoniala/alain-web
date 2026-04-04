@@ -41,6 +41,7 @@ export default function EguzkilorePage() {
           lineHeight: 1.9,
           color: "rgba(242,242,240,0.72)",
         }}
+        className="[&>p]:mb-8"
       >
         <p style={{ color: "rgba(242,242,240,0.45)", fontStyle: "italic", marginBottom: "2rem" }}>
           "Alain hace magia, ¿lo sabíais?"
@@ -94,7 +95,7 @@ export default function EguzkilorePage() {
         <p>Y sin que nadie entienda cómo…<br />Las cartas se ordenan sin que yo las toque.</p>
 
         {/* Boom */}
-        <div style={{ margin: "3.5rem 0" }}>
+        <div style={{ margin: "5rem 0" }}>
           <p
             style={{
               fontSize: "clamp(1.6rem, 2.5vw, 2.2rem)",
@@ -123,7 +124,7 @@ export default function EguzkilorePage() {
         <p>Pero hay un secreto.<br />No tiene nada que ver con talento.</p>
 
         {/* Divider */}
-        <div style={{ height: "1px", background: "rgba(242,242,240,0.08)", margin: "4rem 0" }} />
+        <div style={{ height: "1px", background: "rgba(242,242,240,0.08)", margin: "5.5rem 0" }} />
 
         <p>Mucha gente intenta hacer un truco con la baraja roñosa de casa y fracasa.<br />No es su culpa.<br />Las cartas pegadas, las esquinas dobladas…<br />Imposible hacer algo decente con eso.</p>
 
@@ -139,7 +140,7 @@ export default function EguzkilorePage() {
         <p>De calidad profesional, con equilibrio perfecto entre robustez y flexibilidad.<br />Las sacas de la caja y ya notas la diferencia: desliza perfecta, no se engancha, parece que las cartas se colocan solas.</p>
 
         {/* Divider */}
-        <div style={{ height: "1px", background: "rgba(242,242,240,0.08)", margin: "4rem 0" }} />
+        <div style={{ height: "1px", background: "rgba(242,242,240,0.08)", margin: "5.5rem 0" }} />
 
         <p
           style={{
@@ -159,7 +160,7 @@ export default function EguzkilorePage() {
         <p>Una llave de acceso a los primeros dos módulos del primer curso de cartomagia en euskera.<br />En minutos, estarás haciendo tu primer truco (te lo enseño en vídeo y audio).<br />En menos de un mes, dominarás 13 juegos listos para dejar con la boca abierta a cualquiera.</p>
 
         {/* Divider */}
-        <div style={{ height: "1px", background: "rgba(242,242,240,0.08)", margin: "4rem 0" }} />
+        <div style={{ height: "1px", background: "rgba(242,242,240,0.08)", margin: "5.5rem 0" }} />
 
         <p>Ahora, piénsalo un segundo.</p>
 
@@ -180,7 +181,7 @@ export default function EguzkilorePage() {
         {/* Price */}
         <div
           style={{
-            margin: "3.5rem 0",
+            margin: "5rem 0",
             padding: "2.5rem 2rem",
             border: "1px solid rgba(242,242,240,0.12)",
             background: "rgba(242,242,240,0.02)",
