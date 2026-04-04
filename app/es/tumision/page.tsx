@@ -42,6 +42,9 @@ export default function MisionPage() {
         <p style={{ fontSize: "1.1rem", color: "rgba(242,242,240,0.60)", maxWidth: "440px", lineHeight: 1.75 }}>
           Revisa tu correo. El primer secreto ya está en camino.
         </p>
+        <p style={{ fontSize: "0.9rem", color: "rgba(242,242,240,0.35)", maxWidth: "380px", lineHeight: 1.7, marginTop: "1.25rem" }}>
+          Si no aparece en unos minutos, revisa la carpeta de spam.
+        </p>
       </main>
     );
   }
@@ -117,19 +120,8 @@ export default function MisionPage() {
             <button
               type="submit"
               disabled={status === "sending"}
-              style={{
-                width: "100%",
-                background: "#2ED3E6",
-                color: "#0B0B0C",
-                border: "none",
-                padding: "0.9rem",
-                fontSize: "0.95rem",
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                cursor: "pointer",
-                transition: "opacity 0.2s",
-                opacity: status === "sending" ? 0.6 : 1,
-              }}
+              className="w-full border border-white/20 px-10 py-4 text-[0.95rem] tracking-[0.06em] text-[#F2F2F0] transition-all duration-300 hover:border-[#2ED3E6]/60 hover:text-[#2ED3E6] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: "transparent", cursor: "pointer" }}
             >
               {status === "sending" ? "Enviando..." : "Acepto mi misión"}
             </button>

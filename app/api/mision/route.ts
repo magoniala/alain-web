@@ -29,11 +29,23 @@ export async function POST(req: Request) {
   const euskeraUrl = `${BASE_URL}/api/mision/idioma?email=${encodeURIComponent(email)}&idioma=eu`;
   const contactoUrl = `${BASE_URL}/contacto`;
   const eguzkiloreUrl = `${BASE_URL}/eguzkilore`;
+  const bajaUrl = `${BASE_URL}/api/mision/baja?email=${encodeURIComponent(email)}`;
 
-  const emailBase = `font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:2rem 2rem 1rem;color:#1a1a1a;background:#ffffff;line-height:1.85;font-size:1rem;`;
-  const pdStyle = `color:#999;font-size:0.88rem;line-height:1.75;`;
+  const wrap = (content: string) => `
+    <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
+      <div style="font-size:1.05rem;line-height:2;color:#1a1a1a;">
+        ${content}
+      </div>
+      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.82rem;color:#aaa;line-height:1.8;">
+        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#aaa;">contacto@niala.es</a></p>
+        <p style="margin:0;"><a href="${bajaUrl}" style="color:#aaa;">Dejar de recibir estos emails</a></p>
+      </div>
+    </div>
+  `;
+
+  const pdStyle = `font-size:0.9rem;color:#999;line-height:1.9;margin-top:0.5rem;`;
   const linkStyle = `color:#2a9d8f;`;
-  const hrStyle = `border:none;border-top:1px solid #eee;margin:2rem 0;`;
+  const pStyle = `margin:0 0 1.4rem 0;`;
 
   // Mail 1 — inmediato
   await resend.emails.send({
@@ -41,52 +53,48 @@ export async function POST(req: Request) {
     to: email,
     replyTo: "contacto@niala.es",
     subject: "Tu misión como madre (o padre)",
-    html: `
-      <div style="${emailBase}">
-        <p>Esa tarjeta que tu hijo se llevó…<br>ya ha hecho su primer truco (gracias a tu ayuda).</p>
-        <p>Pero la misión no acaba ahí.<br>La magia que vivisteis en el espectáculo puede continuar esta misma semana…<br>en el salón de vuestra casa (o en la cocina).</p>
-        <p>Tengo una prima que se llama Lur.<br>Tiene solo dos años.<br>Y ya ha vivido sus primeras desapariciones mágicas.</p>
-        <p>Un vaso.<br>Papel de aluminio.<br>Una pelota de tenis (o cualquier objeto).<br>Pase mágico...<br>¡puff!<br>Desaparece.</p>
-        <p>Vi cómo sus madres lo intentaban también.<br>Primero se reían, luego se picaban…<br>y cuando por fin lo consiguieron, la reacción de Lur fue brutal.</p>
-        <p>Esos ojos azules brillando no se olvidan.<br>Y ese tipo de recuerdos… tampoco.</p>
-        <p>Por eso te he preparado un tutorial muy corto:<br>Un truco de magia que puedes hacer tú mismo a tu hijo,<br>aunque no tengas ninguna experiencia.</p>
-        <p>Solo necesitas un vaso, un poco de papel de aluminio… y tres minutos.</p>
-        <p><a href="${tutorialUrl}" style="${linkStyle}font-weight:bold;">Haz clic aquí para aprender el secreto de la desaparición inesperada.</a></p>
-        <p><strong>LA CONTRASEÑA: Ander</strong><br>Es el nombre de quien me introdujo en el tenis (a mis 4 años).</p>
-        <p>Hazlo.<br>Disfrútalo.<br>Y si te animas, grábalo y me envías el vídeo o me cuentas qué pasó.</p>
-        <p>Te prometo que si lo haces, tengo otro truco aún más mágico para ti.<br>Por cierto, ¿qué edad tiene tu peque?<br>Respóndeme con un número.<br>Así te puedo enviar trucos acordes a su edad.</p>
-        <hr style="${hrStyle}">
-        <p style="${pdStyle}"><strong>Pd:</strong> ¿Prefieres recibir los próximos mails en euskera?<br><a href="${euskeraUrl}" style="${linkStyle}">Clic aquí</a></p>
-        <p style="${pdStyle}"><strong>Pd2:</strong> Si no te quieres perder mis emails, mueve este ahora a tu bandeja principal.</p>
-        <p style="${pdStyle}"><strong>Pd3:</strong> Si un día te aburres de recibir mis mails, no pasa nada.<br>Al final de todos hay un botón para hacerme desaparecer.</p>
-        <p style="${pdStyle}"><strong>Pd4:</strong> ¿Tienes un cumpleaños que celebrar?<br><a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a><br>Si quieres que hablen y recuerden ese día especial durante años, es lo mejor que te puedo recomendar.<br>Tanto para tu hijo de 8 años, como para tu padre de 65.</p>
-        <p style="${pdStyle}"><strong>Pd5:</strong> pd, pd, pd…</p>
-      </div>
-    `,
+    html: wrap(`
+      <p style="${pStyle}">Esa tarjeta que tu hijo se llevó…<br>ya ha hecho su primer truco (gracias a tu ayuda).</p>
+      <p style="${pStyle}">Pero la misión no acaba ahí.<br>La magia que vivisteis en el espectáculo puede continuar esta misma semana…<br>en el salón de vuestra casa (o en la cocina).</p>
+      <p style="${pStyle}">Tengo una prima que se llama Lur.<br>Tiene solo dos años.<br>Y ya ha vivido sus primeras desapariciones mágicas.</p>
+      <p style="${pStyle}">Un vaso.<br>Papel de aluminio.<br>Una pelota de tenis (o cualquier objeto).<br>Pase mágico...<br>¡puff!<br>Desaparece.</p>
+      <p style="${pStyle}">Vi cómo sus madres lo intentaban también.<br>Primero se reían, luego se picaban…<br>y cuando por fin lo consiguieron, la reacción de Lur fue brutal.</p>
+      <p style="${pStyle}">Esos ojos azules brillando no se olvidan.<br>Y ese tipo de recuerdos… tampoco.</p>
+      <p style="${pStyle}">Por eso te he preparado un tutorial muy corto:<br>Un truco de magia que puedes hacer tú mismo a tu hijo,<br>aunque no tengas ninguna experiencia.</p>
+      <p style="${pStyle}">Solo necesitas un vaso, un poco de papel de aluminio… y tres minutos.</p>
+      <p style="${pStyle}"><a href="${tutorialUrl}" style="${linkStyle}font-weight:bold;">Haz clic aquí para aprender el secreto de la desaparición inesperada.</a></p>
+      <p style="${pStyle}"><strong>LA CONTRASEÑA: Ander</strong><br>Es el nombre de quien me introdujo en el tenis (a mis 4 años).</p>
+      <p style="${pStyle}">Hazlo.<br>Disfrútalo.<br>Y si te animas, grábalo y me envías el vídeo o me cuentas qué pasó.</p>
+      <p style="margin:0 0 2rem 0;">Te prometo que si lo haces, tengo otro truco aún más mágico para ti.<br>Por cierto, ¿qué edad tiene tu peque?<br>Respóndeme con un número.<br>Así te puedo enviar trucos acordes a su edad.</p>
+      <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
+      <p style="${pdStyle}"><strong>Pd:</strong> ¿Prefieres recibir los próximos mails en euskera?<br><a href="${euskeraUrl}" style="${linkStyle}">Clic aquí</a></p>
+      <p style="${pdStyle}"><strong>Pd2:</strong> Si no te quieres perder mis emails, mueve este ahora a tu bandeja principal.</p>
+      <p style="${pdStyle}"><strong>Pd3:</strong> Si un día te aburres de recibir mis mails, no pasa nada.<br>Al final de todos hay un botón para hacerme desaparecer.</p>
+      <p style="${pdStyle}"><strong>Pd4:</strong> ¿Tienes un cumpleaños que celebrar?<br><a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a><br>Si quieres que hablen y recuerden ese día especial durante años, es lo mejor que te puedo recomendar.<br>Tanto para tu hijo de 8 años, como para tu padre de 65.</p>
+      <p style="${pdStyle}"><strong>Pd5:</strong> pd, pd, pd…</p>
+    `),
   });
 
   // Mail 2 — +2 días
   const twoDays = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-  await resend.emails.send({
+  const mail2 = await resend.emails.send({
     from: "Alain Zulaika <contacto@niala.es>",
     to: email,
     replyTo: "contacto@niala.es",
     subject: "Lo mejor no fue el truco… es vuestra anécdota.",
     scheduledAt: twoDays.toISOString(),
-    html: `
-      <div style="${emailBase}">
-        <p>Oye,<br>O bueno, lee.</p>
-        <p>¿Le hiciste el truco del vaso a tu peque?<br>Quiero saberlo.</p>
-        <p>Te lo digo porque me han llegado historias geniales.<br>Como una madre que intentó hacer desaparecer el objeto…<br>se le cayó el vaso y su hija lo vio.</p>
-        <p>Toda la familia riéndose.<br>La hija también.<br>Al final, no salió como esperaba, pero el recuerdo se creó igual.</p>
-        <p>Ahora te pregunto a ti:<br>– ¿Cuándo se lo hiciste?<br>– ¿Qué dijo tu hijo?<br>– ¿Se rió? ¿Alucinó? ¿Gritó el secreto?<br>– ¿Tenéis vídeo?</p>
-        <p>Respóndeme a este email contándome lo que pasó… y te mandaré un segundo truco.<br>Más visual.<br>Más directo.</p>
-        <p>Uno que puedes hacer tú…<br>o incluso enseñárselo a tu hijo si tiene más de 4 años.</p>
-        <p>Pero solo si me cuentas cómo fue el primero.<br>Te leo.<br>Y mañana mismo, si me has escrito, te lo mando.</p>
-        <hr style="${hrStyle}">
-        <p style="${pdStyle}"><strong>Pd:</strong> Y al igual que a este mail, siéntete libre de responderme cuando quieras.<br>Ya sea para opinar, conversar, invitarme a cenar, preguntar…<br>Me leo todo.<br>Y respondo a casi todo.</p>
-      </div>
-    `,
+    html: wrap(`
+      <p style="${pStyle}">Oye,<br>O bueno, lee.</p>
+      <p style="${pStyle}">¿Le hiciste el truco del vaso a tu peque?<br>Quiero saberlo.</p>
+      <p style="${pStyle}">Te lo digo porque me han llegado historias geniales.<br>Como una madre que intentó hacer desaparecer el objeto…<br>se le cayó el vaso y su hija lo vio.</p>
+      <p style="${pStyle}">Toda la familia riéndose.<br>La hija también.<br>Al final, no salió como esperaba, pero el recuerdo se creó igual.</p>
+      <p style="${pStyle}">Ahora te pregunto a ti:<br>– ¿Cuándo se lo hiciste?<br>– ¿Qué dijo tu hijo?<br>– ¿Se rió? ¿Alucinó? ¿Gritó el secreto?<br>– ¿Tenéis vídeo?</p>
+      <p style="${pStyle}">Respóndeme a este email contándome lo que pasó… y te mandaré un segundo truco.<br>Más visual.<br>Más directo.</p>
+      <p style="${pStyle}">Uno que puedes hacer tú…<br>o incluso enseñárselo a tu hijo si tiene más de 4 años.</p>
+      <p style="margin:0 0 2rem 0;">Pero solo si me cuentas cómo fue el primero.<br>Te leo.<br>Y mañana mismo, si me has escrito, te lo mando.</p>
+      <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
+      <p style="${pdStyle}"><strong>Pd:</strong> Y al igual que a este mail, siéntete libre de responderme cuando quieras.<br>Ya sea para opinar, conversar, invitarme a cenar, preguntar…<br>Me leo todo.<br>Y respondo a casi todo.</p>
+    `),
   });
 
   // Mail 3 — +4 días
@@ -124,25 +132,28 @@ export async function POST(req: Request) {
   ];
 
   const faqHtml = faqs
-    .map(
-      (q) =>
-        `<p style="margin:0 0 0.25rem;color:#333;font-style:italic;">${q}</p><p style="margin:0 0 1.25rem;"><a href="${eguzkiloreUrl}" style="${linkStyle}">Lee esta página</a></p>`
-    )
+    .map((q) => `<p style="margin:0 0 0.2rem;font-style:italic;color:#555;">${q}</p><p style="margin:0 0 1.4rem;"><a href="${eguzkiloreUrl}" style="${linkStyle}">Lee esta página</a></p>`)
     .join("");
 
-  await resend.emails.send({
+  const mail3 = await resend.emails.send({
     from: "Alain Zulaika <contacto@niala.es>",
     to: email,
     replyTo: "contacto@niala.es",
     subject: "Preguntas normales (y otras que me hacen reír)",
     scheduledAt: fourDays.toISOString(),
-    html: `
-      <div style="${emailBase}">
-        ${faqHtml}
-        <hr style="${hrStyle}">
-      </div>
-    `,
+    html: wrap(faqHtml),
   });
+
+  // Guardar IDs de emails programados para poder cancelarlos si se da de baja
+  const mail2Id = (mail2 as { data?: { id?: string } }).data?.id;
+  const mail3Id = (mail3 as { data?: { id?: string } }).data?.id;
+
+  if (mail2Id || mail3Id) {
+    await supabase
+      .from("mision_contactos")
+      .update({ mail2_id: mail2Id ?? null, mail3_id: mail3Id ?? null })
+      .eq("email", email);
+  }
 
   return NextResponse.json({ ok: true });
 }
