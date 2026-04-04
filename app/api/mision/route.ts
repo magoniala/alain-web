@@ -33,19 +33,19 @@ export async function POST(req: Request) {
 
   const wrap = (content: string) => `
     <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
-      <div style="font-size:1.05rem;line-height:2;color:#1a1a1a;">
+      <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">
         ${content}
       </div>
-      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.82rem;color:#aaa;line-height:1.8;">
-        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#aaa;">contacto@niala.es</a></p>
-        <p style="margin:0;"><a href="${bajaUrl}" style="color:#aaa;">Dejar de recibir estos emails</a></p>
+      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
+        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+        <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">Dejar de recibir estos emails</a></p>
       </div>
     </div>
   `;
 
-  const pdStyle = `font-size:0.9rem;color:#999;line-height:1.9;margin-top:0.5rem;`;
+  const pdStyle = `font-size:1.15rem;color:#1a1a1a;line-height:2.1;margin-top:0.5rem;`;
   const linkStyle = `color:#2a9d8f;`;
-  const pStyle = `margin:0 0 1.4rem 0;`;
+  const pStyle = `margin:0 0 1.6rem 0;`;
 
   // Mail 1 — inmediato
   await resend.emails.send({
