@@ -30,8 +30,9 @@ const contexts = {
       "Móviles, conversaciones paralelas, gente esperando el siguiente descanso.",
       "Actuamos como maestro de ceremonias con magia integrada en las transiciones. No entre actos: dentro de ellos.",
       "Mientras el director explica la visión, los valores que nombra se unen delante del público. Mientras se presenta el nuevo producto, el logo aparece.",
-      "Los invitados no pueden mirar hacia otro lado. Y no saben muy bien por qué.",
-      "La gente no sale con una opinión sobre el evento. Sale con una escena que puede contar. Y al contarla, arrastra consigo el mensaje que la empresa quería transmitir.",
+      "En el 50º aniversario de BIELE ocurrió algo curioso: la gente no salió del evento con una opinión.",
+      "Salió con una escena que podía contar.",
+      "Y al contarla, arrastraba consigo el mensaje que la empresa quería transmitir.",
     ],
     similar:
       "Aniversarios de empresa · eventos con clientes · puertas abiertas · presentaciones de marca",
