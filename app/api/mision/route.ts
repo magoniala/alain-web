@@ -8,10 +8,11 @@ const supabase = createClient(
 );
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-const BASE_URL = "https://alainzulaika.com";
-
 export async function POST(req: Request) {
   const { email } = await req.json();
+  const host = req.headers.get("host") || "alainzulaika.com";
+  const protocol = host.includes("localhost") ? "http" : "https";
+  const BASE_URL = `${protocol}://${host}`;
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "Email inválido." }, { status: 400 });
