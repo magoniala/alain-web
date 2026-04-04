@@ -35,7 +35,7 @@ const contexts = {
       "Y al contarla, arrastraba consigo el mensaje que la empresa quería transmitir.",
     ],
     similar:
-      "Aniversarios de empresa · eventos con clientes · puertas abiertas · presentaciones de marca",
+      "Aniversarios de empresa · eventos con clientes · hospitality · puertas abiertas · presentaciones de marca",
   },
   internos: {
     eyebrow: "equipo y celebraciones",
