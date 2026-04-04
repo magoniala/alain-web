@@ -308,7 +308,10 @@ export default function EmpresaPage() {
       {/* CTA FINAL */}
       <section className="fade-in mx-auto max-w-[900px] px-8 pt-40 pb-40 text-center">
         <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-[1.3] tracking-[-0.02em] text-[#F2F2F0]/90">
-          Si tu evento, como el del final de temporada del San Mamés VIP Area, se merece algo más que un "estuvo bien":
+          Si tu evento se merece algo más que un "estuvo bien":
+        </p>
+        <p className="mt-5 text-[clamp(1rem,1.2vw,1.2rem)] leading-relaxed text-[#F2F2F0]/45">
+          —como el del final de temporada del San Mamés VIP Area—
         </p>
 
         <p className="mt-14 text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/70">
