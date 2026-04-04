@@ -49,6 +49,9 @@ const contexts = {
       "Porque cuando no sabes que te están observando, muestras cómo eres de verdad.",
       "El lunes, el CEO sabe cosas que no sabía el viernes.",
       "Y hay personas que se saludan de otra forma.",
+      "En las comidas de fin de año de Geminys ocurrió exactamente eso.",
+      "Durante unos minutos, el evento dejó de ser una celebración…",
+      "y empezó a comportarse como un equipo.",
     ],
     similar:
       "Cenas de empresa · celebraciones internas · kick-offs · encuentros de equipo · jornadas internas",
