@@ -30,7 +30,7 @@ export default function TutorialPage() {
           {/* Reemplaza YOUTUBE_VIDEO_ID con el ID real del vídeo */}
           <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", background: "rgba(242,242,240,0.04)", border: "1px solid rgba(242,242,240,0.10)" }}>
             <iframe
-              src="https://www.youtube.com/embed/YOUTUBE_VIDEO_ID"
+              src="https://www.youtube.com/embed/YeVxIkatxlw"
               title="El secreto de la desaparición inesperada"
               style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

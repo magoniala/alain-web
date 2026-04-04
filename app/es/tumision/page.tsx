@@ -64,11 +64,14 @@ export default function MisionPage() {
           Tu misión no acaba aquí.
         </h1>
 
-        <p style={{ fontSize: "clamp(1.05rem, 1.5vw, 1.2rem)", lineHeight: 1.75, color: "rgba(242,242,240,0.65)", marginBottom: "3rem" }}>
-          Una moneda puede ilusionar a tu hij@,<br />
-          pero crear uno de esos recuerdos de padre/madre e hijo<br />
-          que duran toda la vida no tiene precio.
-        </p>
+        <div style={{ marginBottom: "3rem" }}>
+          <p style={{ fontSize: "clamp(1.05rem, 1.5vw, 1.2rem)", lineHeight: 1.75, color: "rgba(242,242,240,0.65)", marginBottom: "0.6rem" }}>
+            Una moneda puede ilusionar a tu hij@.
+          </p>
+          <p style={{ fontSize: "clamp(1.05rem, 1.5vw, 1.2rem)", lineHeight: 1.75, color: "rgba(242,242,240,0.65)" }}>
+            Pero crear uno de esos recuerdos de padre/madre e hijo que duran toda la vida no tiene precio.
+          </p>
+        </div>
 
         {/* Card */}
         <div style={{ border: "1px solid rgba(242,242,240,0.16)", background: "rgba(242,242,240,0.025)", padding: "2.5rem 2rem", textAlign: "left" }}>
