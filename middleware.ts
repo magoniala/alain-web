@@ -8,11 +8,11 @@ export function middleware(request: NextRequest) {
 
   const acceptLang = request.headers.get("accept-language") ?? "";
   const primary = acceptLang.split(",")[0].split("-")[0].toLowerCase();
-  const isSpanish = primary === "es";
+  const isBasque = primary === "eu";
   const isOnEsPage = pathname.startsWith("/es");
 
-  if (isSpanish && !isOnEsPage) {
-    // Redirect Spanish browser to /es/ equivalent
+  if (!isBasque && !isOnEsPage) {
+    // Redirect non-Basque browser to /es/ equivalent
     const url = request.nextUrl.clone();
     url.pathname = "/es" + (pathname === "/" ? "/" : pathname);
     const res = NextResponse.redirect(url);
