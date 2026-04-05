@@ -8,15 +8,41 @@ export default function ComodinShowPage() {
   const VIDEO_ID = "3JJe0WcmTE8";
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0B0B0C", color: "#F2F2F0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-      <div style={{ width: "100%", maxWidth: "900px" }}>
-        <p style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.35em", color: "#2ED3E6", textAlign: "center", marginBottom: "0.75rem" }}>
+    <main style={{ minHeight: "100vh", background: "#0B0B0C", color: "#F2F2F0", padding: "3rem 1.5rem 5rem" }}>
+      <div style={{ width: "100%", maxWidth: "760px", margin: "0 auto" }}>
+
+        {/* Header */}
+        <p style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.35em", color: "#2ED3E6", textAlign: "center", marginBottom: "3.5rem" }}>
           Alain Zulaika
         </p>
-        <p style={{ fontSize: "1rem", color: "rgba(242,242,240,0.45)", textAlign: "center", marginBottom: "2rem" }}>
+
+        {/* Ritual copy */}
+        <div style={{ marginBottom: "3.5rem" }}>
+          <p style={{ fontSize: "clamp(1.5rem, 2.5vw, 2rem)", fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: "2.5rem" }}>
+            Antes de dar play.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem", fontSize: "1.05rem", lineHeight: 1.85, color: "rgba(242,242,240,0.70)" }}>
+            <p>Conecta el móvil o el portátil a la tele.</p>
+            <p>Prepara unas palomitas.</p>
+            <p>Reúne a quien viva contigo.</p>
+            <p style={{ color: "rgba(242,242,240,0.40)", fontStyle: "italic" }}>
+              Si te motivas: imprime unas entradas y pídelas en la puerta.
+            </p>
+          </div>
+
+          <div style={{ borderTop: "1px solid rgba(242,242,240,0.08)", margin: "2.5rem 0" }} />
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem", fontSize: "1.05rem", lineHeight: 1.85, color: "rgba(242,242,240,0.55)" }}>
+            <p>El teatro no es solo lo que ocurre en el escenario.</p>
+            <p>Son los nervios antes de entrar.<br />El silencio cuando se apagan las luces.<br />Haber reservado ese rato.<br />Haberlo vivido junto a alguien.</p>
+            <p>Ese ritual cuesta cero euros.<br />Y hace que todo lo que viene después valga el doble.</p>
+          </div>
+        </div>
+
+        {/* Video */}
+        <p style={{ fontSize: "0.9rem", color: "rgba(242,242,240,0.35)", textAlign: "center", marginBottom: "1.25rem", letterSpacing: "0.02em" }}>
           Convierte tu salón en un microteatro · 18 min
         </p>
-
         <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden" }}>
           {playing ? (
             <iframe
@@ -60,6 +86,7 @@ export default function ComodinShowPage() {
             </div>
           )}
         </div>
+
       </div>
     </main>
   );
