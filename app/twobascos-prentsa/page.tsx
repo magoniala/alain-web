@@ -81,7 +81,7 @@ export default function TwobascosPage() {
         <div style={{ position: "absolute", right: "2rem", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
           <span style={{ padding: "0.3rem 0.65rem", color: "#2ED3E6", background: "rgba(46,211,230,0.06)" }}>EU</span>
           <span style={{ width: "1px", alignSelf: "stretch", background: "rgba(242,242,240,0.12)" }} />
-          <Link href="/es/twobascos-prentsa" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.38)", textDecoration: "none", transition: "color 0.2s" }} className="hover:text-[#F2F2F0]/65">ES</Link>
+          <Link href="/es/twobascos-prentsa" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} className="hover:text-[#F2F2F0]/65">ES</Link>
         </div>
       </header>
 
