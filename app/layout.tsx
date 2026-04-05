@@ -14,13 +14,15 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://alainzulaika.com"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://alain-web-six.vercel.app"
+  ),
   title: {
     default: "Alain Zulaika",
     template: "%s | Alain Zulaika",
   },
   description:
-    "Magia eszenikoa enpresa, ostalaritza eta kulturarentzako ekitaldietan. Euskal Herria.",
+    "Magia eszenikoa enpresa, ostalaritza eta kulturarentzako ekitaldietan. Gertaera bakoitzean publika gogoan geratzen den unea sortzen dugu. Euskal Herria.",
   openGraph: {
     siteName: "Alain Zulaika",
     images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Alain Zulaika" }],
