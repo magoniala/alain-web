@@ -7,54 +7,54 @@ type ContextKey = "comerciales" | "marca" | "internos";
 
 const contexts = {
   comerciales: {
-    eyebrow: "Azokak eta aurkezpenak",
-    title: "Ekitaldi komertzialak",
+    eyebrow: "Ferias y lanzamientos",
+    title: "Eventos comerciales",
     preview:
-      "Azoka batean milaka pertsona pasatzen dira stand guztien aurretik. Baina batzuen aurrean bakarrik gelditzen dira.",
+      "En una feria miles de personas pasan por delante de todos los stands. Pero se detienen en unos pocos.",
     content: [
-      "Jendea batzeko eta alboko postuetatik zer gertatzen den ikusteko burua biratzen has daitezen, mikro-interbentzio magikoak erabiltzen ditugu.",
-      "Ez ikuskizun gisa. Imán gisa.",
-      "Interbentzio bakoitza hurbiltzeko gonbidapen zehatz batekin amaitzen da.",
-      "Horrela, bisitari gehiagok benetako elkarrizketak izaten dituzte talde komertzialarekin.",
-      "Anekdota batekin joaten dira. Asko itzulli egiten dira. Eta beste pertsona batzuk erakartzen dituzte.",
+      "Para crear corros y que los stands de al lado empiecen a girarse a ver qué está pasando, usamos microintervenciones con magia.",
+      "No como show. Como imán.",
+      "Cada intervención termina con una invitación concreta a acercarse.",
+      "Así más visitantes acaban teniendo conversaciones reales con el equipo.",
+      "Se van con una anécdota. Muchos vuelven. Y atraen a otros.",
     ],
     similar:
-      "Sektore azokak · erakusketak · produktu aurkezpenak · marka aktibaketak · kongresuak",
+      "Ferias sectoriales · exposiciones · lanzamientos de producto · activaciones de marca · congresos",
   },
   marca: {
-    eyebrow: "urteurrenak eta aurkezpenak",
-    title: "Marka ekitaldiak",
+    eyebrow: "aniversarios y presentaciones",
+    title: "Eventos de marca",
     preview:
-      "Aurkezpenaren erdialdean, areto osoa dagoeneko beste leku batean dago.",
+      "A mitad de presentación, la sala ya está en otro sitio.",
     content: [
-      "Mugikorrak, elkarrizketa paraleloak, hurrengo atsedenaldia itxaroten duen jendea.",
-      "Zeremonia-maisu gisa jarduten dugu, trantsizioetan integratutako magiarekin. Ez jarduera artean: hauen barruan.",
-      "Zuzendariak enpresa bisioa azaltzen duen bitartean, aipatzen dituen balioak ikusleen aurrean magikoki elkartzen dira. Produktu berria aurkezten den bitartean, logotipoa agertzen da.",
-      "BIELEren 50. urteurrenean zerbait bitxia gertatu zen: jendea ez zen iritzi batekin irten ekitalditik.",
-      "Kontatu zezaketen eszena batekin irten ziren.",
-      "Eta kontatzerakoan, enpresak helarazi nahi zuen mezua sakabanatu zuten.",
+      "Móviles, conversaciones paralelas, gente esperando el siguiente descanso.",
+      "Actuamos como maestro de ceremonias con magia integrada en las transiciones. No entre actos: dentro de ellos.",
+      "Mientras el director explica la visión, los valores que nombra se unen delante del público. Mientras se presenta el nuevo producto, el logo aparece.",
+      "En el 50º aniversario de BIELE ocurrió algo curioso: la gente no salió del evento con una opinión.",
+      "Salió con una escena que podía contar.",
+      "Y al contarla, arrastraba consigo el mensaje que la empresa quería transmitir.",
     ],
     similar:
-      "Enpresa urteurrenak · bezero ekitaldiak · hospitality · ate irekiak · marka aurkezpenak",
+      "Aniversarios de empresa · eventos con clientes · hospitality · puertas abiertas · presentaciones de marca",
   },
   internos: {
-    eyebrow: "taldea eta ospakizunak",
-    title: "Barne ekitaldiak",
+    eyebrow: "equipo y celebraciones",
+    title: "Eventos internos",
     preview:
-      "Hamabi hilabete elkarrekin lanean. Eta enpresako afarian, elkarrizketa gutxitan joaten da dagoeneko dakizuena baino haratago.",
+      "Doce meses trabajando juntos. Y en la cena de empresa, la conversación rara vez va más allá de lo que ya se sabía.",
     content: [
-      "Bakoitza nolakoa den agerrarazteko, itxurak egitea ezinezko bihurtzen duten egoerak behar dira.",
-      "Magia trikimailu mozorroz jantzitako dinamikak diseinatzen ditugu.",
-      "Hain sinpleak diren erronkatan ezin da nortasuna disimulatu, eta segituan ikusten da nor ausartzen den, nor animatzen den, akatsetan nor haserretzen den, nork proposatzen dituen irtenbideak...",
-      "Zure burua behatzen ari direla ez dakizunean, benetan nolakoa zaren erakusten duzu.",
-      "Astelehenean, CEOak ostiralean ez zekizkien gauzak dakizki.",
-      "Eta lankide batzuk desberdin agurtzen dira beraien artean.",
-      "Geminyseko urte amaierako bazkarietan hori gertatu zen.",
-      "Minutu batzuetan, ekitaldiak ospakizun izateari utzi zion…",
-      "eta talde gisa jokatzen hasi zen.",
+      "Para revelar cómo es cada uno, hacen falta situaciones donde no sea posible fingir.",
+      "Diseñamos dinámicas disfrazadas de juegos de magia.",
+      "Los retos así de simples son imposibles de fingir, y en diez minutos se ve quién tira a la piscina, quién anima, quién se molesta con los fallos, quién propone soluciones.",
+      "Porque cuando no sabes que te están observando, muestras cómo eres de verdad.",
+      "El lunes, el CEO sabe cosas que no sabía el viernes.",
+      "Y hay personas que se saludan de otra forma.",
+      "En las comidas de fin de año de Geminys ocurrió exactamente eso.",
+      "Durante unos minutos, el evento dejó de ser una celebración…",
+      "y empezó a comportarse como un equipo.",
     ],
     similar:
-      "Enpresa afariak · barne ospakizunak · kick-off · talde topaketak · barne jardunaldiak",
+      "Cenas de empresa · celebraciones internas · kick-offs · encuentros de equipo · jornadas internas",
   },
 } satisfies Record<
   ContextKey,
@@ -93,18 +93,18 @@ export default function EmpresaPage() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
           <Link
-            href="/"
+            href="/es/"
             className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]"
           >
             Alain Zulaika
           </Link>
           <nav className="flex items-center gap-6 md:gap-8">
-            <Link href="/#como-trabajo" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Nola egiten dut lan</Link>
-            <Link href="/contacto" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kontaktua</Link>
+            <Link href="/es/#como-trabajo" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cómo trabajo</Link>
+            <Link href="/es/contacto" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Contacto</Link>
             <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-              <span style={{ color: "rgba(242,242,240,0.85)" }}>EU</span>
+              <a href="/empresa" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">EU</a>
               <span style={{ color: "rgba(242,242,240,0.22)" }}>·</span>
-              <Link href="/es/empresa" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">ES</Link>
+              <span style={{ color: "rgba(242,242,240,0.85)" }}>ES</span>
             </div>
           </nav>
         </div>
@@ -117,16 +117,16 @@ export default function EmpresaPage() {
 
           <div className="pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
-              <span className="uppercase">Enpresa</span> ekitaldiak
+              Eventos de <span className="uppercase">empresa</span>
             </p>
 
             <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
-              "Ondo egon zen."
+              "Estuvo bien."
             </h1>
 
             <div className="hero-fade-3 mt-8 max-w-[600px]">
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
-                Hori da arazoa.
+                Ese es el problema.
               </p>
             </div>
           </div>
@@ -137,31 +137,32 @@ export default function EmpresaPage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-6 pb-24 md:px-16 md:pb-28">
         <div className="max-w-[760px]">
           <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }} className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/68">
-            <p>Aurrekontua onartuta,</p>
-            <p>ekoizpena, kontrolatuta,</p>
-            <p>eta programa, bi aste lehenago bidalita...</p>
+            <p>Que el presupuesto esté aprobado,</p>
+            <p>la producción, controlada,</p>
+            <p>y el programa, enviado con dos semanas de antelación...</p>
           </div>
 
           <ul className="mt-16 space-y-3 text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] text-[#F2F2F0]">
-            <li>Beharrezkoa da.</li>
-            <li>Baina ez da nahikoa.</li>
+            <li>Es necesario.</li>
+            <li>Pero no suficiente.</li>
           </ul>
 
           <div className="mt-16 max-w-[700px] space-y-5 text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/85">
-            <p>Norbaitek hartu behar du ekitaldiaren ardura eszeniko eta emozionala.</p>
-            <p>Ez animatzaile gisa.</p>
-            <p>Ez betegarri gisa.</p>
-            <p>Gainerako guztiak pisua izateko elementu gisa.</p>
+            <p>Alguien tiene que asumir la responsabilidad escénico-emocional del evento.</p>
+            <p>No como animador.</p>
+            <p>No como relleno.</p>
+            <p>Como el elemento que hace que todo lo demás tenga peso.</p>
           </div>
 
           <p style={{ marginTop: "9rem" }} className="max-w-[700px] text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
-            Ekitaldiaren arabera: saltzeko, komunikatzeko edo kohesionatzeko.
+            Según el evento: para vender, para comunicar o para cohesionar.
           </p>
         </div>
       </section>
 
       {/* SELECTOR + CONTENIDO */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-16 pb-32 md:px-16 md:pt-20 md:pb-40">
+        {/* Flex row en desktop — dos columnas */}
         <div style={{ display: "flex", gap: "0", alignItems: "flex-start", flexWrap: "wrap" }}>
 
           {/* Sidebar */}
@@ -264,7 +265,7 @@ export default function EmpresaPage() {
 
             <div style={{ marginTop: "52px" }}>
               <Link
-                href="/contacto"
+                href="/es/contacto"
                 style={{
                   fontSize: "0.9rem",
                   letterSpacing: "0.04em",
@@ -273,7 +274,7 @@ export default function EmpresaPage() {
                 }}
                 className="hover:text-[#2ED3E6]"
               >
-                Zure kasua da? Hitz egin dezagun →
+                ¿Es tu caso? Hablemos →
               </Link>
             </div>
 
@@ -293,7 +294,7 @@ export default function EmpresaPage() {
                   marginBottom: "12px",
                 }}
               >
-                Antzeko ekitaldiak
+                Eventos similares
               </p>
               <p
                 style={{
@@ -312,52 +313,53 @@ export default function EmpresaPage() {
       {/* CTA FINAL */}
       <section className="fade-in mx-auto max-w-[900px] px-8 pt-40 pb-40 text-center">
         <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-[1.3] tracking-[-0.02em] text-[#F2F2F0]/90">
-          Zure ekitaldiak &ldquo;ondo egon zen&rdquo; baino gehiago merezi badu:
+          Si tu evento se merece algo más que un "estuvo bien":
         </p>
         <p className="mt-5 text-[clamp(1rem,1.2vw,1.2rem)] leading-relaxed text-[#F2F2F0]/45">
-          —San Mamés VIP Areako denboraldi amaierako ekitaldiak bezala—
+          —como el del final de temporada del San Mamés VIP Area—
         </p>
 
         <p className="mt-14 text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/70">
-          Batzuetan hau da falta dena.
+          A veces lo que falta es esto.
         </p>
         <div className="mt-12">
           <Link
-            href="/contacto"
+            href="/es/contacto"
             className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
           >
-            Hitz egin dezagun
+            Hablemos
           </Link>
         </div>
-        <p className="mt-5 text-[1rem] text-[#F2F2F0]/38">eta zalantzak argitzen dituzu.</p>
+        <p className="mt-5 text-[1rem] text-[#F2F2F0]/38">y sales de dudas.</p>
+
       </section>
 
       {/* FOOTER */}
       <footer className="border-t border-white/6 px-8 py-14 md:px-16 md:py-18">
         <div className="mx-auto grid max-w-[1400px] gap-16 md:grid-cols-[320px_1fr]">
           <div>
-            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Nabigazioa</p>
+            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Navegación</p>
             <div className="grid gap-y-3">
-              <Link href="/" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Hasiera<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/empresa" className="group relative w-fit text-[#2ED3E6]">Enpresa<span className="absolute -bottom-0.5 left-0 h-px w-full bg-[#2ED3E6]" /></Link>
-              <Link href="/cultura" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kultura<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Ostalaritza<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kontaktua<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Inicio<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/empresa" className="group relative w-fit text-[#2ED3E6]">Empresa<span className="absolute -bottom-0.5 left-0 h-px w-full bg-[#2ED3E6]" /></Link>
+              <Link href="/es/cultura" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cultura<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Hostelería<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Contacto<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
             </div>
           </div>
           <div className="max-w-[520px]">
-            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Identitatea</p>
+            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Identidad</p>
             <p className="text-[1.1rem] font-medium text-[#F2F2F0]">Alain Zulaika</p>
-            <p className="mt-4 max-w-[420px] leading-relaxed text-[#F2F2F0]/66">Ekitaldi korporatibo eta kulturaletarako interbentzio eszenikoak magiarekin.</p>
+            <p className="mt-4 max-w-[420px] leading-relaxed text-[#F2F2F0]/66">Intervenciones escénicas con magia para eventos corporativos y culturales.</p>
           </div>
         </div>
         <div className="mx-auto mt-16 max-w-[1400px] border-t border-white/6 pt-6">
           <div className="flex flex-col gap-4 text-[0.9rem] text-[#F2F2F0]/38 md:flex-row md:items-center md:justify-between">
             <p>© Alain Zulaika</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
-              <Link href="/aviso-legal" className="transition-colors hover:text-[#F2F2F0]/62">Lege oharra</Link>
-              <Link href="/privacidad" className="transition-colors hover:text-[#F2F2F0]/62">Pribatutasuna</Link>
-              <Link href="/cookies" className="transition-colors hover:text-[#F2F2F0]/62">Cookieak</Link>
+              <Link href="/aviso-legal" className="transition-colors hover:text-[#F2F2F0]/62">Aviso legal</Link>
+              <Link href="/privacidad" className="transition-colors hover:text-[#F2F2F0]/62">Privacidad</Link>
+              <Link href="/cookies" className="transition-colors hover:text-[#F2F2F0]/62">Cookies</Link>
             </div>
           </div>
         </div>

@@ -9,20 +9,20 @@ export default function Home() {
 
   const contextContent = {
     cultura: {
-      href: "/cultura",
-      label: "Kultura / Euskara",
+      href: "/es/cultura",
+      label: "Cultura",
       preview:
-        "Sinbolikoa historia liburuetan gera ez dadin.",
+        "Cuando lo simbólico no puede quedarse en los libros de historia.",
     },
     empresa: {
-      href: "/empresa",
-      label: "Enpresa",
-      preview: "Egokia izan behar dena hutsik geratzeko arriskua duenean.",
+      href: "/es/empresa",
+      label: "Empresa",
+      preview: "Cuando lo impecable corre el riesgo de quedarse vacío.",
     },
     hosteleria: {
-      href: "/hosteleria",
-      label: "Ostalaritza",
-      preview: "Espazioak identitatea eskatzen duenean.",
+      href: "/es/hosteleria",
+      label: "Hostelería",
+      preview: "Donde el espacio pide carácter.",
     },
   };
 
@@ -77,18 +77,19 @@ export default function Home() {
               href="#contextos"
               className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]"
             >
-              Testuinguruak
+              Contextos
             </a>
+
             <a
-              href="/contacto"
+              href="/es/contacto"
               className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]"
             >
-              Kontaktua
+              Contacto
             </a>
             <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-              <span style={{ color: "rgba(242,242,240,0.85)" }}>EU</span>
+              <a href="/" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">EU</a>
               <span style={{ color: "rgba(242,242,240,0.22)" }}>·</span>
-              <a href="/es/" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">ES</a>
+              <span style={{ color: "rgba(242,242,240,0.85)" }}>ES</span>
             </div>
           </nav>
         </div>
@@ -97,27 +98,26 @@ export default function Home() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-6 md:-translate-y-8">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "520px" }} />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "435px" }} />
 
           <div className="pl-10">
             <p className="hero-fade-1 mb-8 text-s uppercase tracking-[0.35em] text-[#2ED3E6]">
               Alain Zulaika
             </p>
 
-            <h1 className="hero-fade-2 text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.05] tracking-[-0.02em]">
-              Molestatzeko beldurrez
+            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.05] tracking-[-0.02em]">
+              Un evento diseñado
               <br />
-              diseinatutako ekitaldi batek
+              para no molestar
               <br />
-              Mr.&nbsp;Bean gela batean
+              se&nbsp;comporta&nbsp;como&nbsp;Mr.&nbsp;Bean
               <br />
-              sartzen denean bezala
-              <br />
-              jokatzen du
+              entrando en una sala
             </h1>
 
             <p className="hero-fade-3 mt-6 text-[clamp(1rem,1.2vw,1.2rem)] leading-relaxed text-[#F2F2F0]/75">
-              Ekitaldi korporatibo eta kulturaletarako interbentzio eszenikoak magiarekin.
+              Intervenciones escénicas con magia para eventos corporativos y
+              culturales.
             </p>
           </div>
         </div>
@@ -127,21 +127,21 @@ export default function Home() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 py-4 md:px-16 md:py-6">
         <div className="max-w-[760px]">
           <p className="mb-5 text-[1.05rem] uppercase tracking-[0.18em] text-[#F2F2F0]/90 md:text-[1.1rem]">
-            Mr. Bean horrela sartzen da:
+            Mr. Bean entra así:
           </p>
 
           <ul className="space-y-5 text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] text-[#F2F2F0]">
-            <li>Kontu handiz.</li>
-            <li>Gustukoa izaten saiatuz.</li>
-            <li>Leku gutxi hartuz.</li>
-            <li>Hasi aurretik barkamena eskatuz.</li>
-            <li>Isiluneak kudeatzen jakin gabe.</li>
+            <li>Con cuidado.</li>
+            <li>Intentando caer bien.</li>
+            <li>Ocupando poco espacio.</li>
+            <li>Pidiendo perdón antes de empezar.</li>
+            <li>Sin saber gestionar silencios ni pausas.</li>
           </ul>
 
           <p className="mt-14 max-w-[560px] text-[clamp(1.2rem,1.8vw,1.5rem)] leading-relaxed text-[#F2F2F0]/85">
-            Horrela funtzionatzen dute ekitaldi askok:
+            Así funcionan muchos eventos:
             <br />
-            antsietate sozialetik.
+            desde la ansiedad social.
           </p>
         </div>
       </section>
@@ -150,18 +150,21 @@ export default function Home() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-20 pb-24 md:px-16 md:pt-28 md:pb-28">
         <div className="max-w-[760px]">
           <p className="mb-10 text-[clamp(2rem,2.7vw,2.5rem)] font-medium tracking-[-0.02em] text-[#F2F2F0]">
-            Eta hori nabaritu egiten da.
+            Y eso se nota.
           </p>
 
           <div className="space-y-6 text-[clamp(1.35rem,1.8vw,1.7rem)] leading-relaxed text-[#F2F2F0]/84">
-            <p>Txalo adeitsuetan.</p>
-            <p>WhatsApp bidezko &ldquo;oraintxe noa&rdquo; mezuetan.</p>
-            <p>Ahozabalkada disimulatuetan.</p>
+            <p>En los aplausos educados.</p>
+            <p>En los &ldquo;salgo en nada&rdquo; por WhatsApp.</p>
+            <p>En los bostezos nasales disimulados.</p>
           </div>
 
           <div className="mt-12 max-w-[760px] space-y-4 text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/70">
-            <p>Antolatzaileak eskaletatari, denborei eta dena &ldquo;dagokion bezala&rdquo; ateratzeari begira.</p>
-            <p>Aretoa irakurtzeari baino hutsik ez egiteari arreta gehiago jarriz.</p>
+            <p>
+              Y en el equipo organizador pendiente de la escaleta, de los
+              tiempos, de que todo salga &ldquo;como toca&rdquo;.
+            </p>
+            <p>Más atento a no equivocarse que a leer la sala.</p>
           </div>
         </div>
       </section>
@@ -170,25 +173,33 @@ export default function Home() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-24 pb-24 md:px-16 md:pt-28 md:pb-28">
         <div className="max-w-[760px]">
           <div className="space-y-4 text-[clamp(1.85rem,2.4vw,2.2rem)] font-medium tracking-[-0.02em] text-[#F2F2F0]">
-            <p>Arazoa ez da ekoizpena.</p>
-            <p>Ez da edukia.</p>
-            <p>Are gutxiago jendea.</p>
+            <p>El problema no es la producción.</p>
+            <p>No es el contenido.</p>
+            <p>Ni mucho menos la gente.</p>
           </div>
 
           <div className="mt-12 max-w-[760px] space-y-5 text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/78">
-            <p>Arazoa diseinuaren abiapuntua da: oztopatzeari, deserosotasunari eta gidoitik irtetzeari beldurra.</p>
-
             <p>
-              Ekitaldi bat hortik sortzen denean, zuzena eta aproposa bihurtzen da.
-            </p>
-
-            <p>
-              Baina prezio handia ordaintzen du:
+              El problema es el punto desde el que se diseña todo:
               <br />
-              presentzi izateari uko egiten dio.
+              miedo a molestar, a incomodar, a salirse del guion.
             </p>
 
-            <p>Eta badakizu horrela bizi den norbaiten itxura.</p>
+            <p>
+              Cuando un evento nace desde ahí, se vuelve correcto y educado.
+            </p>
+
+            <p>
+              Pero paga un precio alto:
+              <br />
+              renuncia a tener presencia.
+            </p>
+
+            <p>
+              Y ya sabes
+              <br />
+              la cara que tiene alguien que vive así.
+            </p>
           </div>
         </div>
       </section>
@@ -198,48 +209,48 @@ export default function Home() {
         <div className="max-w-[760px]">
           <div className="space-y-6 text-[clamp(1.4rem,1.9vw,1.75rem)] leading-relaxed text-[#F2F2F0]/90">
             <p>
-              Ekitaldi batek Mr.&nbsp;Bean bezala jokatzeari uzteko
+              Un evento deja de comportarse como Mr. Bean
               <br />
-              norbaitek aretoa emozionalki gidatzeko ausardia izan behar du.
+              cuando alguien se atreve a guiar emocionalmente la sala.
             </p>
           </div>
 
           <div className="mt-12 space-y-5 text-[clamp(1.25rem,1.6vw,1.5rem)] leading-relaxed text-[#F2F2F0]/82">
-            <p>Ez show bat egiten duelako.</p>
-            <p>Ez entretenimenduz mozorrotutako zarata sartzen duelako.</p>
-            <p>Ez isiluneak urduritasun hutsarengatik betetzen dituelako.</p>
+            <p>No porque haga un show.</p>
+            <p>No porque meta ruido disfrazado de entretenimiento.</p>
+            <p>Ni porque rellene silencios por puro nervio.</p>
           </div>
 
           <div className="mt-14 text-[clamp(1.5rem,2vw,1.9rem)] font-medium tracking-[-0.02em] text-[#F2F2F0]">
-            <p>Baizik eta ia inork hartu nahi ez duen lekua</p>
-            <p>hartzen duelako:</p>
+            <p>Sino porque asume un lugar</p>
+            <p>que casi nadie quiere asumir:</p>
 
             <p className="mt-8 text-[clamp(1.9rem,2.4vw,2.3rem)] font-semibold tracking-[-0.025em] text-[#F2F2F0]">
-              osotasunaren erantzukizun eszenikoa.
+              la responsabilidad escénica del conjunto.
             </p>
           </div>
 
           <div className="mt-20 space-y-4 text-[clamp(1.45rem,1.9vw,1.7rem)] leading-relaxed text-[#F2F2F0]/85 md:mt-24">
-            <p>Ekitaldiak noiz arnastuko duen erabakitzea.</p>
-            <p>Noiz estutu.</p>
-            <p>Noiz erlaxatu.</p>
-            <p>Noiz jolas dezakeen.</p>
+            <p>Decidir cuándo el evento respira.</p>
+            <p>Cuándo aprieta.</p>
+            <p>Cuándo se relaja.</p>
+            <p>Cuándo puede permitirse jugar.</p>
           </div>
 
           <div className="mt-24 max-w-[720px] space-y-5 text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/75">
-            <p>Hori da diseinu eszenikoa.</p>
-            <p>Hori da kudeaketa emozionala.</p>
+            <p>Eso es diseño escénico.</p>
+            <p>Eso es gestión emocional.</p>
 
             <p className="mt-8">
-              Eta hori gertatzen denean,
+              Y cuando ocurre,
               <br />
-              gainerako guztia ordenatzen hasten da:
+              todo lo demás empieza a ordenarse:
             </p>
 
             <p>
-              gertatzen den bitartean sentitzen dena
+              lo que se siente mientras pasa
               <br />
-              eta bukatzen denean gogoratzen dena.
+              y lo que se recuerda cuando termina.
             </p>
           </div>
         </div>
@@ -249,32 +260,31 @@ export default function Home() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-36 pb-32 md:px-16 md:pt-44 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.35rem,1.8vw,1.6rem)] leading-relaxed text-[#F2F2F0]/85">
-            Ekitaldiak justifikatzeari uzten dio.
+            El evento deja de justificarse.
           </p>
 
           <div className="mt-12 space-y-6 text-[clamp(1.5rem,1.9vw,1.75rem)] leading-relaxed text-[#F2F2F0]/90">
-            <p>Eta orduan gainerakoa agertzen da:</p>
+            <p>Y entonces aparece lo demás:</p>
 
-            <p>arreta eusten da,</p>
-            <p>presentzia kolektiboa aktibatzen da,</p>
+            <p>la atención se sostiene,</p>
+            <p>la presencia colectiva se activa,</p>
             <p>
-              eta ekitaldiak{" "}
-              <span className="font-bold">nortasuna</span>{" "}
-              izatera baimentzen da.
+              y el evento se permite tener{" "}
+              <span className="font-bold">personalidad</span>
             </p>
           </div>
 
           <div className="mt-28 space-y-6 text-[clamp(2rem,2.7vw,2.7rem)] font-medium tracking-[-0.02em] text-[#F2F2F0]/85">
-            <p>Ez Mr. Bean-ena.</p>
+            <p>No de Mr. Bean.</p>
 
             <p className="text-[clamp(2.5rem,3.5vw,3.4rem)] font-semibold tracking-[-0.03em] text-[#F2F2F0]">
-              Jack Sparrow-rena.
+              De Jack Sparrow.
             </p>
           </div>
         </div>
       </section>
 
-      {/* BLOQUE 7 — TESTUINGURUAK */}
+      {/* BLOQUE 7 — CONTEXTOS */}
       <section
         id="contextos"
         className="fade-in mx-auto max-w-[1400px] bg-[#101012] px-8 pt-44 pb-28 md:px-16 md:pt-52 md:pb-32"
@@ -283,13 +293,13 @@ export default function Home() {
           <div className="mb-12 h-px w-32 bg-white/15" />
 
           <p className="text-[clamp(1.9rem,2.6vw,2.5rem)] font-medium tracking-[-0.02em] text-[#F2F2F0]">
-            Eta hor sartzen da magia.
+            Y ahí es donde entra la magia.
           </p>
 
           <p className="mt-8 max-w-[620px] text-[clamp(1.15rem,1.45vw,1.28rem)] leading-relaxed text-[#F2F2F0]/90">
-            Aukeratu zure kasura gehien hurbiltzen den <span className="font-bold">testuingurua</span>.
+            Elige el <span className="font-bold">contexto</span> que más se parece al tuyo.
             <br />
-            Bakoitzak esku-hartzeko modu ezberdin bat eskatzen du.
+            Cada uno pide una forma distinta de intervenir.
           </p>
 
           <nav className="mt-25 flex flex-wrap gap-x-8 gap-y-4">
@@ -361,7 +371,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* BLOQUE 8 — NOLA LAN EGITEN DUDAN */}
+      {/* BLOQUE 8 — FASES DE TRABAJO */}
       <section
         id="como-trabajo"
         className="fade-in mx-auto max-w-[1400px] px-8 pt-36 pb-28 md:px-16 md:pt-44 md:pb-32"
@@ -369,11 +379,11 @@ export default function Home() {
         <div className="max-w-[860px]">
           <div className="max-w-[720px]">
             <p className="text-[clamp(2rem,2.8vw,2.8rem)] font-medium tracking-[-0.025em] text-[#F2F2F0]">
-              Nire lana ez da antzeztuz hasten.
+              Mi trabajo no empieza actuando.
             </p>
 
             <p className="mt-8 text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/84">
-              Ulertuz hasten da.
+              Empieza entendiendo.
             </p>
           </div>
 
@@ -381,55 +391,51 @@ export default function Home() {
             <div className="absolute left-[11px] top-[0px] bottom-[0px] w-px bg-gradient-to-b from-white/1 via-white/14 to-white/1" />
 
             <div className="space-y-20">
-              {/* Fase 1 */}
               <div className="relative max-w-[760px]">
                 <div className="absolute left-[-39px] top-[12px] h-[5px] w-[5px] rounded-full bg-[#2ED3E6]" />
                 <p className="text-[clamp(1.22rem,1.45vw,1.32rem)] font-medium uppercase tracking-[0.12em] text-[#F2F2F0]/92">
-                  1. FASEA — Testuinguruaren irakurketa
+                  FASE 1 — Lectura del contexto
                 </p>
                 <p className="mt-5 text-[clamp(1.22rem,1.45vw,1.4rem)] leading-relaxed tracking-[-0.02em] text-[#F2F2F0]/86">
-                  Esan nahi dena, saihesten dena
+                  Lo que se quiere decir, lo que se evita
                   <br />
-                  eta benetan jokoan dagoena kontuan izateko.
+                  y lo que realmente está en juego.
                 </p>
               </div>
 
-              {/* Fase 2 */}
               <div className="relative max-w-[760px]">
                 <div className="absolute left-[-39px] top-[12px] h-[5px] w-[5px] rounded-full bg-[#2ED3E6]" />
                 <p className="text-[clamp(1.22rem,1.45vw,1.32rem)] font-medium uppercase tracking-[0.12em] text-[#F2F2F0]/92">
-                  2. FASEA — Ekitaldiaren arkitektura emozionala
+                  FASE 2 — Arquitectura emocional del evento
                 </p>
                 <p className="mt-5 text-[clamp(1.22rem,1.45vw,1.4rem)] leading-relaxed tracking-[-0.02em] text-[#F2F2F0]/86">
-                  Erritmoa, tentsionak, isiluneak
+                  Ritmo, tensiones, silencios
                   <br />
-                  eta mezuaren zerbitzuko baliabideen diseinua.
+                  y recursos al servicio del mensaje.
                 </p>
               </div>
 
-              {/* Fase 3 */}
               <div className="relative max-w-[760px]">
                 <div className="absolute left-[-39px] top-[12px] h-[5px] w-[5px] rounded-full bg-[#2ED3E6]" />
                 <p className="text-[clamp(1.22rem,1.45vw,1.32rem)] font-medium uppercase tracking-[0.12em] text-[#F2F2F0]/92">
-                  3. FASEA — Sorkuntza lerrokatzea
+                  FASE 3 — Alineación creativa
                 </p>
                 <p className="mt-5 text-[clamp(1.22rem,1.45vw,1.4rem)] leading-relaxed tracking-[-0.02em] text-[#F2F2F0]/86">
-                  Ideia ez da inposatzen:
+                  La idea no se impone:
                   <br />
-                  partekatua bihurtu arte fintzen da.
+                  se afina hasta que se vuelve compartida.
                 </p>
               </div>
 
-              {/* Fase 4 */}
               <div className="relative max-w-[760px]">
                 <div className="absolute left-[-39px] top-[12px] h-[5px] w-[5px] rounded-full bg-[#2ED3E6]" />
                 <p className="text-[clamp(1.22rem,1.45vw,1.32rem)] font-medium uppercase tracking-[0.12em] text-[#F2F2F0]/92">
-                  4. FASEA — Exekuzio eszenikoa
+                  FASE 4 — Ejecución escénica
                 </p>
                 <p className="mt-5 text-[clamp(1.22rem,1.45vw,1.4rem)] leading-relaxed tracking-[-0.02em] text-[#F2F2F0]/86">
-                  Magiak, gorputzak eta eszenak diseinua eusten dute.
+                  Magia, cuerpo y escena sostienen el diseño.
                   <br />
-                  Beti zuzenekoak eskatzen duen malgutasunarekin.
+                  Siempre con la flexibilidad que exige el directo.
                 </p>
               </div>
             </div>
@@ -440,26 +446,26 @@ export default function Home() {
       {/* BLOQUE 9 — CTA FINAL */}
       <section className="fade-in mx-auto max-w-[900px] px-8 pt-40 pb-40 text-center">
         <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-tight text-[#F2F2F0]">
-          Onaino iritsi bazara,
+          Si has llegado hasta aquí,
           <br />
-          ez da kasualitatea izan.
+          no ha sido casualidad.
         </p>
 
         <p className="mt-6 text-[clamp(1.6rem,2vw,2rem)] text-[#F2F2F0]/80">
-          Diseinua izan da.
+          Ha sido diseño.
         </p>
 
         <div className="mt-12">
           <a
-            href="/contacto"
+            href="/es/contacto"
             className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/3 hover:text-[#2ED3E6]"
           >
-            Hitz egin dezagun
+            Hablemos
           </a>
         </div>
 
         <p className="mt-6 text-[1rem] text-[#F2F2F0]/55">
-          Jack Sparrow ekitaldi bat nahi baduzu bakarrik.
+          Solo si quieres un evento Jack Sparrow.
         </p>
       </section>
 
@@ -467,28 +473,28 @@ export default function Home() {
         <div className="mx-auto grid max-w-[1400px] gap-16 md:grid-cols-[320px_1fr]">
           <div>
             <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">
-              Nabigazioa
+              Navegación
             </p>
 
             <div className="grid gap-y-3">
               <a href="#top" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
-                Hasiera
+                Inicio
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" />
               </a>
-              <a href="/empresa" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
-                Enpresa
+              <a href="/es/empresa" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
+                Empresa
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" />
               </a>
-              <a href="/cultura" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
-                Kultura
+              <a href="/es/cultura" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
+                Cultura
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" />
               </a>
-              <a href="/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
-                Ostalaritza
+              <a href="/es/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
+                Hostelería
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" />
               </a>
-              <a href="/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
-                Kontaktua
+              <a href="/es/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
+                Contacto
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" />
               </a>
             </div>
@@ -496,7 +502,7 @@ export default function Home() {
 
           <div className="max-w-[520px]">
             <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">
-              Identitatea
+              Identidad
             </p>
 
             <p className="text-[1.1rem] font-medium text-[#F2F2F0]">
@@ -504,7 +510,7 @@ export default function Home() {
             </p>
 
             <p className="mt-4 max-w-[420px] leading-relaxed text-[#F2F2F0]/66">
-              Ekitaldi korporatibo eta kulturaletarako interbentzio eszenikoak magiarekin.
+              Intervenciones escénicas con magia para eventos corporativos y culturales.
             </p>
           </div>
         </div>
@@ -515,13 +521,13 @@ export default function Home() {
 
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <a href="/aviso-legal" className="transition-colors hover:text-[#F2F2F0]/62">
-                Lege oharra
+                Aviso legal
               </a>
               <a href="/privacidad" className="transition-colors hover:text-[#F2F2F0]/62">
-                Pribatutasuna
+                Privacidad
               </a>
               <a href="/cookies" className="transition-colors hover:text-[#F2F2F0]/62">
-                Cookieak
+                Cookies
               </a>
             </div>
           </div>

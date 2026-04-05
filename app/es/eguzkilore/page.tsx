@@ -24,13 +24,13 @@ export default function EguzkilorePage() {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
-          <Link href="/" className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
+          <Link href="/es/" className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
             Alain Zulaika
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-            <span style={{ color: "rgba(242,242,240,0.85)" }}>EU</span>
+            <a href="/eguzkilore" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">EU</a>
             <span style={{ color: "rgba(242,242,240,0.22)" }}>·</span>
-            <Link href="/es/eguzkilore" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">ES</Link>
+            <span style={{ color: "rgba(242,242,240,0.85)" }}>ES</span>
           </div>
         </div>
       </header>
@@ -38,17 +38,17 @@ export default function EguzkilorePage() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "470px" }} />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "280px" }} />
           <div className="pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6] uppercase">
               Eguzkilore
             </p>
             <h1 className="hero-fade-2 max-w-[860px] text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
-              Baraja boltsikotik ateratzean barre egin zuten.
+              Se rieron cuando saqué una baraja del bolsillo.
             </h1>
             <div className="hero-fade-3 mt-8 max-w-[680px]">
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
-                lehen trukoa amaitu nuen harte.
+                Hasta que terminé el primer truco.
               </p>
             </div>
           </div>
@@ -59,16 +59,16 @@ export default function EguzkilorePage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-6 pb-28 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] text-[#F2F2F0]/50 mb-10">
-            &ldquo;Alainek magia itxen du, ba al zenekiten?&rdquo;
+            "Alain hace magia, ¿lo sabíais?"
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Nire lagun taldeak edozein gizarte unetan erabiltzen du esaldi hori botatzeko.</p>
-            <p>Norbaitek jakin-minarekin begiratzen dit.<br />Beste batek bekaina altxatzen du, eszeptikoa.<br />Beti dago norbait beti esan ohi dena esaten duena:</p>
-            <p className="text-[#F2F2F0]/50 italic">"Ea, egin zerbait."</p>
-            <p>Sorta atera eta, ireki aurretik, hamaika aldiz entzun dudan esaldia entzuten dut:</p>
-            <p className="text-[#F2F2F0]/50 italic">"Beti daramazu karta sortarekin gainean?"</p>
-            <p>Tonuak dena esaten du: pixka bat iseka, pixka bat sinesgaiztasun.</p>
+            <p>Mi grupo de amigos aprovecha cualquier momento social para soltar esa frase.</p>
+            <p>Alguien me mira con curiosidad.<br />Otro levanta una ceja, escéptico.<br />Siempre hay alguno que dice lo de siempre:</p>
+            <p className="text-[#F2F2F0]/50 italic">"A ver, haz algo."</p>
+            <p>Saco la baraja y, justo antes de abrirla, escucho la frase que he oído decenas de veces:</p>
+            <p className="text-[#F2F2F0]/50 italic">"¿Siempre llevas una baraja encima?"</p>
+            <p>El tono lo dice todo: un poco de burla, un poco de incredulidad.</p>
           </div>
         </div>
       </section>
@@ -77,17 +77,17 @@ export default function EguzkilorePage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] mb-10">
-            "Bai. Friki bat naiz."
+            "Sí. Soy un friki."
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Samurai batek katana ateratzen duen segurtasun berarekin esaten dut.<br />Badakit zer gertatzekotan dagoen.</p>
-            <p>Adrenalinak jo egiten nau, nire taupadak nabari det, esukuak dardarka det.<br />Haietako batek barre egiten du.</p>
-            <p className="text-[#F2F2F0]/50 italic">&ldquo;Esukuak dardarka dituzula, jajaja.&rdquo;</p>
-            <p>Ez du huts egiten. Beti dago norbait goian jartzen saiatzen dena.</p>
-            <p className="text-[#F2F2F0]/50 italic">"Zu zarenak urduri jartzen naizela da."</p>
-            <p>Erdi irribarrearekin uzten dut.</p>
-            <p>Baina egia dakikit.<br />Badakit zer datorren.<br />Hamar segundotan, bere barrea harriduran bihurtuko da.</p>
+            <p>Lo digo con la misma seguridad con la que un samurái desenfunda su katana.<br />Sé lo que está a punto de pasar.</p>
+            <p>La adrenalina me golpea, noto mis pulsaciones, me tiemblan las manos.<br />Uno de ellos se ríe.</p>
+            <p className="text-[#F2F2F0]/50 italic">"Te tiemblan las manos, jajaja."</p>
+            <p>No falla. Siempre hay alguien que intenta ponerse por encima.</p>
+            <p className="text-[#F2F2F0]/50 italic">"Es que me pones nervioso."</p>
+            <p>Suelto con media sonrisa.</p>
+            <p>Pero sé la verdad.<br />Sé lo que viene.<br />En diez segundos, su risa se va a convertir en asombro.</p>
           </div>
         </div>
       </section>
@@ -97,20 +97,20 @@ export default function EguzkilorePage() {
         <div className="max-w-[760px]">
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Nahastatzen hasten naiz.<br />Lehenik, begi zokoz begirada batzuk.<br />Gero, &ldquo;ostia&rdquo; bat ahoz behera.</p>
-            <p>Eta konturatu nahi dutenean, eszeptikoenak ere ahoa zabalik du eta ez daki zer esan.</p>
-            <p>Bururatzen zaion zentzudunena da:</p>
-            <p className="text-[#F2F2F0]/50 italic">"Nola egin duzu?"</p>
-            <p>Baina berandu da dagoeneko.<br />Azalduko banu bezala, beste joko bat hasten dut.<br />Konturatu gabe, berriro harrapatuta daude.</p>
+            <p>Empiezo a mezclar.<br />Primero, alguna mirada de reojo.<br />Luego, un "ostias" en voz baja.</p>
+            <p>Y cuando se quieren dar cuenta, hasta el más escéptico está con la boca abierta y sin saber qué decir.</p>
+            <p>Lo más ingenioso que se le ocurre es un:</p>
+            <p className="text-[#F2F2F0]/50 italic">"¿Cómo lo has hecho?"</p>
+            <p>Pero ya es tarde.<br />Como si fuese a explicarlo, empiezo otro juego.<br />Sin darse cuenta, vuelven a estar atrapados.</p>
           </div>
 
           <div style={{ marginTop: "3rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Amaierara noa.</p>
-            <p>Nire eskuei begiratzen diet. Hatzak zabaldu. Mangarrak berrikusten ditut.</p>
-            <p>Ezer ez, nahastutako sorta bat bakarrik.</p>
-            <p>Hatzak kraskatzen ditut.</p>
-            <p>Eta inork ulertzen ez duen moduan…<br />Kartak ordenatzen dira nik ukitu gabe.</p>
+            <p>Voy a por el final.</p>
+            <p>Miro mis manos. Abro los dedos. Reviso mis mangas.</p>
+            <p>Nada, solo una baraja mezclada.</p>
+            <p>Chasqueo los dedos.</p>
+            <p>Y sin que nadie entienda cómo…<br />Las cartas se ordenan sin que yo las toque.</p>
           </div>
         </div>
       </section>
@@ -121,23 +121,16 @@ export default function EguzkilorePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
             className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em]">
             <p>Boom.</p>
-            <p>Oihuak.</p>
-            <p>Sinesgaiztasuna.</p>
-            <p className="text-[#F2F2F0]/72">Lehen zalantzatuek orain txalo egiten dute.</p>
+            <p>Gritos.</p>
+            <p>Incredulidad.</p>
+            <p className="text-[#F2F2F0]/72">Los que antes dudaban, ahora aplauden.</p>
           </div>
 
           <div style={{ marginTop: "3rem", display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Hasieran nitaz barre egiten hari zena, orain gehien gozatzen hari dena bihurtu da.</p>
-            <p className="text-[#F2F2F0]/50 italic">&ldquo;In beste bat! Itxoin, itxoin... lagun bateri deitxuko diot hau ikusteko.&rdquo;</p>
-            <p>Bapatian, jenda biltzen bat.<br />Jendea hurbiltzen da.<br />Isiltasuna egiten da.</p>
-            <p>Eta bitxia dena da erreakzio bera edozeinek lor dezakeela.</p>
-          </div>
-
-          <div style={{ marginTop: "3rem", display: "flex", flexDirection: "column", gap: "1.4rem" }}
-            className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p className="text-[#F2F2F0]/50 italic">&ldquo;Baina... nola ostias iten dezu hori?&rdquo;</p>
-            <p className="text-[#F2F2F0]/50 italic">&ldquo;Ezer berezirik ez. Praktika besterik ez.&rdquo;</p>
+            <p className="text-[#F2F2F0]/50 italic">"¡Tío, hazte otro! Espera, espera… que llamo a un colega para que vea esto."</p>
+            <p>De repente, hay un corro.<br />La gente se acerca.<br />Se hace el silencio.</p>
+            <p>Y lo curioso es que esa misma reacción, la puede conseguir cualquiera.</p>
           </div>
         </div>
       </section>
@@ -146,14 +139,14 @@ export default function EguzkilorePage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] mb-10">
-            Baina sekretu bat dago.<br />
-            <span className="text-[#F2F2F0]/55">Ez du zerikusirik talentuarekin.</span>
+            Pero hay un secreto.<br />
+            <span className="text-[#F2F2F0]/55">No tiene nada que ver con talento.</span>
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Jende askok etxeko baraja zaharkituarekin truko bat egiten saiatzen da eta porrot egiten du.<br />Ez da beren errua.<br />Itsatsi-itsatsi diren kartak, tolestutako ertzak… ezinezkoa da zerbaitetxo deko egitea horrekin.</p>
-            <p>Baina baraja on bat baduzu eta teknika egokiak ezagutzen badituzu, minutu gutxiren buruan hamaika pertsona liluratu ditzakezu.<br />Ez duzu nahasten ikasi beharrik ere.</p>
-            <p>Horregatik diseinatu nuen <strong className="text-[#F2F2F0]">EGUZKILORE</strong> baraja.</p>
+            <p>Mucha gente intenta hacer un truco con la baraja roñosa de casa y fracasa.<br />No es su culpa.<br />Las cartas pegadas, las esquinas dobladas… imposible hacer algo decente con eso.</p>
+            <p>Pero si tienes una buena baraja y conoces las técnicas adecuadas, en cuestión de minutos puedes estar fascinando a decenas de personas.<br />Ni siquiera necesitas aprender a mezclar.</p>
+            <p>Por eso diseñé la baraja <strong className="text-[#F2F2F0]">EGUZKILORE</strong>.</p>
           </div>
         </div>
       </section>
@@ -163,9 +156,9 @@ export default function EguzkilorePage() {
         <div className="max-w-[760px]">
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Euskal kulturan inspiratua, dortsoan eguzkiloreak segurtasun sinbolotzat eta figuretan euskal kultura omenaldia ematen duten xehetasunekin.</p>
-            <p>Kalitate profesionalekoa, sondotasun eta malgutasunaren arteko oreka perfektua duela.</p>
-            <p><span className="text-[#F2F2F0]/90">Kaxatik ateratzen dituzu eta dagoeneko aldea nabari duzu:</span> perfektu irristatzen du, ez da engantxatzen, kartak bakarrik kokatzen diren ematen du.</p>
+            <p>Inspirada en la cultura vasca, con los eguzkilores en el dorso como símbolo de seguridad y detalles en las figuras que homenajean la cultura vasca.</p>
+            <p>De calidad profesional, con equilibrio perfecto entre robustez y flexibilidad.</p>
+            <p><span className="text-[#F2F2F0]/90">Las sacas de la caja y ya notas la diferencia:</span> desliza perfecta, no se engancha, parece que las cartas se colocan solas.</p>
           </div>
         </div>
       </section>
@@ -174,16 +167,16 @@ export default function EguzkilorePage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] mb-10">
-            Baina EZ da sorta bat bakarrik.<br />
-            <span className="text-[#F2F2F0]/55">Tresna bat da.</span>
+            Pero NO es solo una baraja.<br />
+            <span className="text-[#F2F2F0]/55">Es una herramienta.</span>
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>Izotz apurtzeko aitzakia gisa erabili dezakezu.</p>
-            <p>Zure Fidget Toy berri gisa pelikula bat ikusten edo ikasten ari zaren bitartean entretenu zaitekezu.</p>
-            <p>Edo soilik edozein arratsalde normal mahai jokoetako saio bihurtzeko.</p>
-            <p>Baina hemen dator onena:<br />Baraja bakoitzaren barruan karta berezi bat dago.</p>
-            <p>Euskarazko lehen kartomago ikastaroko lehenengo bi moduluetarako sarbide giltza.<br />Minutu gutxiren buruan, zure lehen trukua egiten egongo zara.<br />Hilabete bat baino gutxiagoan, edozeini ahoa zabalik uzteko prest 13 joko menderatuko dituzu.</p>
+            <p>Puedes usarla como excusa para romper el hielo.</p>
+            <p>Como tu nuevo Fidget Toy para entretenerte mientras ves una peli o estudias.</p>
+            <p>O simplemente para convertir cualquier tarde normal en una sesión de juegos de mesa.</p>
+            <p>Pero aquí viene lo mejor:<br />Dentro de cada baraja hay una carta especial.</p>
+            <p>Una llave de acceso a los primeros dos módulos del primer curso de cartomagia en euskera.<br />En minutos, estarás haciendo tu primer truco.<br />En menos de un mes, dominarás 13 juegos listos para dejar con la boca abierta a cualquiera.</p>
           </div>
         </div>
       </section>
@@ -192,21 +185,21 @@ export default function EguzkilorePage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72 mb-8">
-            Orain, pentsatu segundo batez.
+            Ahora, piénsalo un segundo.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}
             className="text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/50 mb-12">
-            <p>Mahai joko sinple batek 13,75 € balio du</p>
-            <p>Magia kurtso profesional batek, gutxienez 50 € (eta euskaraz, ez dira existitzen)</p>
-            <p>Diseinuko barajak 12 €-tik hasten dira eta batzuk 500 € baino gehiagora balioa irabazten dute</p>
-            <p>Oinarrizko magia kit batek (tiradera batean ahaztua geratzen dena), 27,90 €</p>
-            <p>Merezi duten trukoekin duinagoa den bat, 90 €-tan lor zenezake</p>
+            <p>Un juego de mesa sencillo cuesta 13,75 €</p>
+            <p>Un curso de magia profesional, mínimo 50 € (y en euskera, ni existen)</p>
+            <p>Las barajas de diseño empiezan en 12 € y algunas se revalorizan hasta más de 500 €</p>
+            <p>Un kit de magia básico (que acaba olvidado en un cajón), 27,90 €</p>
+            <p>Uno más decente, con trucos que valen la pena, lo podrías conseguir por 90 €</p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
             className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em]">
-            <p>Baina <strong>EGUZKILORE</strong>-k ez dizu 90 € kostako.</p>
-            <p className="text-[#F2F2F0]/55">Ezta 40 € ere.</p>
-            <p className="text-[#F2F2F0]/55">Ezta 20 € ere.</p>
+            <p>Pero <strong>EGUZKILORE</strong> no te va a costar 90 €.</p>
+            <p className="text-[#F2F2F0]/55">Tampoco 40 €.</p>
+            <p className="text-[#F2F2F0]/55">Ni siquiera 20 €.</p>
           </div>
         </div>
       </section>
@@ -215,19 +208,19 @@ export default function EguzkilorePage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-40 md:px-16 md:pb-52">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-[1.3] tracking-[-0.02em] text-[#F2F2F0]/90 mb-8">
-            Abiarazte-prezioa: 12€.
+            El precio de lanzamiento es de tan solo 12 €.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
             className="text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/58 mb-12">
-            <p>Bai, mahai joko merke batek baino gutxiago.</p>
-            <p>Eta onena: ikastaro hori opari gisa barne hartuta dago.</p>
+            <p>Sí, menos de lo que cuesta un juego de mesa barato.</p>
+            <p>Y lo mejor: el curso viene incluido de regalo.</p>
           </div>
           <a
-            href="mailto:contacto@niala.es?subject=Eguzkilore%20baraja%20nahi%20dut"
+            href="mailto:contacto@niala.es?subject=Quiero%20una%20baraja%20Eguzkilore"
             className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
             style={{ textDecoration: "none" }}
           >
-            Egin klik hemen eta eskatu zure EGUZKILOREa orain.
+            Haz clic aquí y consigue la baraja ahora
           </a>
         </div>
       </section>

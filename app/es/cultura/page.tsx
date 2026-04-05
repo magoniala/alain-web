@@ -19,68 +19,65 @@ const contexts: Record<
     title: string;
     preview: string;
     content: string[];
-    cta?: string;
     note?: string;
     shows?: Show[];
     similar: string;
   }
 > = {
   publicos: {
-    eyebrow: "plazak · jaiak · herri antzokiak",
-    title: "Publiko zabalak",
+    eyebrow: "plazas · fiestas · teatros populares",
+    title: "Públicos amplios",
     preview:
-      "Helburua jende asko biltzea denean, magiak topaketa puntu gisa funtzionatzen du.",
+      "Cuando el objetivo es reunir a mucha gente, la magia funciona como un punto de encuentro.",
     content: [
-      "Arreta ez da sakabanatuta geratzen: jendea hurbildu, gelditu, erreakzionatu eta aldi berean barre egiten dute.",
-      "Garrantzitsuena hortik aurrera hasten da: une bakoitzean ikusleek nola erantzuten duen irakurtzea eta interbentzioa zuzenean egokitzea.",
-      "Denbora batez, denak, aldi berean, gauza bera bizitzen ari dira.",
-      "Formatu hau programazioko testuinguruaren arabera adin ezberdinetara egokitu daiteke.",
+      "La atención deja de estar dispersa: la gente se acerca, se queda, reacciona y se ríe al mismo tiempo.",
+      "A partir de ahí empieza lo importante: leer cómo responde el público en cada momento y ajustar la intervención en directo.",
+      "Durante un rato, todos están viviendo lo mismo al mismo tiempo.",
     ],
-    cta: "Zure programaziorako zentzua du? Hitz egin dezagun →",
+    note: "Este formato puede adaptarse a diferentes edades según el contexto de la programación.",
     similar:
-      "auzoko jaiak · udako programazioak · jaialdi familiarrak · programazio irekiak",
+      "fiestas de barrio · programaciones de verano · festivales familiares · programaciones abiertas",
   },
   intervenciones: {
-    eyebrow: "galak · ekitaldiak · hezkuntza zentroak",
-    title: "Egokitutako interbentzioak",
+    eyebrow: "galas · actos · centros educativos",
+    title: "Intervenciones adaptadas",
     preview:
-      "Magia tresna eszeniko gisa: ekitaldiari erritmoa emateko, partekatutako arreta uneak sortzeko edo mezu bat indartzeko.",
+      "La magia como herramienta escénica: dar ritmo al evento, crear momentos de atención compartida o reforzar un mensaje.",
     content: [
-      "Batzuetan, Eusko Jaurlaritzaren Urruzuno sari banaketan bezala, interbentzioak ekitaldia barrenetik artikulatzen du, aitorpenen, hitzaldien eta banaketen artean.",
-      "Besteetan, STEM Emakumeak galan bezala, blokeen arteko eszena txikietan publikoa aktibatzeko eta ekitaldiaren atal ezberdinak lotzeko.",
-      "Eta baita ere —adibidez Gasteizko instituto batean teknologien arazoei buruzko— hitzaldi edo tailer formatuetan, eszenak ideia bat barneratzeko laguntzen du.",
-      "Ez dira proposamen isolatuak: zu programatzen ari zarenaren zerbitzura daude.",
+      "A veces, como en la entrega de premios Urruzuno del Gobierno Vasco, la intervención articula el acto desde dentro, entre reconocimientos, charlas y entregas.",
+      "Otras veces, como en la gala STEM Emakumeak, aparece en pequeñas escenas entre bloques para reactivar al público y conectar las distintas partes del evento.",
+      "Y también —por ejemplo en un instituto de Vitoria— en formatos de charla o taller donde la escena ayuda a que una idea cale.",
+      "No son números aislados: están al servicio de lo que tú estás programando.",
     ],
-    cta: "Zure programazioan zentzua du? Hitz egin dezagun →",
     similar:
-      "sari banaketak · kultura asteak",
+      "entregas de premios · semanas culturales",
   },
   propuestas: {
-    eyebrow: "aretoak · antzokiak · festibalak · kultura programazioa",
-    title: "Nortasunezko proposamenak",
+    eyebrow: "salas · teatros · festivales · programación cultural",
+    title: "Propuestas con identidad",
     preview:
-      "Zenbait programazioetan magia ikuskizun klasiko bat ez da nahikoa. Gaur egun bi sormen aurkezten ditut hildo honetan.",
+      "En algunas programaciones un show de magia clásico no es suficiente. Actualmente presento dos creaciones dentro de esta línea.",
     content: [],
     shows: [
       {
-        title: "Hil ala ez hil",
-        meta: "+16 urte · areto txikiak · bakarkako ikuskizuna",
+        title: "Morir o no morir",
+        meta: "+16 años · salas pequeñas · unipersonal",
         description: [
-          "Kristalak oinpean, orratz bat eskua gurutzatzen, mundu materiala eraldatzen duten presentziak.",
-          "Donostiako areto batean aurkeztuako lehen saioetara etorri ziren ikusleek heriotzari ihes egiteari utzi eta aurrez aurre begiratzen hasten garenean zer gertatzen den ikusi zuten.",
-          "Oraingo honetan harridura ez da soilik bisuala, emozionala ere bada.",
-          "Horregatik funtzionatu du Dimagia edo Mirariak bezalako jaialdietan.",
+          "Cristales bajo los pies, una aguja atravesando la mano, presencias que alteran lo visible.",
+          "Los espectadores que vinieron a las primeras sesiones —presentadas en una sala de Donostia— ya vieron lo que ocurre cuando dejamos de evitar la muerte y empezamos a mirarla de frente.",
+          "Esta vez el asombro no es solo visual, también emocional.",
+          "Por eso ha funcionado en festivales como Dimagia o Mirariak.",
         ],
       },
       {
         title: "Twobascos",
-        meta: "+10 urte · areto handiak eta antzokiak · bikotean",
+        meta: "+10 años · salas grandes y teatros · a dúo",
         description: [
-          "Sorgin batek bi baserritar aukeratzen ditu ahaztutako herri baten memoria berreskuratzeko.",
-          "Publikoa herritar bihurtzen da, lekua berreraikitzen laguntzen duten proba eta aholkuen bitartez.",
-          "Umorea, abentura eta emozio kolektiboa.",
-          "Katapulta 2025 saria, 150 proposamen eszeniko baino gehiagoren artean.",
+          "Una bruja escoge a dos campesinos para recuperar la memoria de un pueblo olvidado.",
+          "El público se convierte en ciudadanos que, a través de pruebas y pistas, ayudan a reconstruir ese lugar.",
+          "Humor, aventura y emoción colectiva.",
         ],
+        note: "Reconocido con el premio Katapulta 2025 entre más de 150 propuestas escénicas.",
       },
     ],
     similar:
@@ -88,7 +85,7 @@ const contexts: Record<
   },
 };
 
-export default function CulturaPage() {
+export default function CulturaEuskeraPage() {
   const [activeContext, setActiveContext] = useState<ContextKey>("publicos");
   const [hoveredNav, setHoveredNav] = useState<ContextKey | null>(null);
   const [expandedShows, setExpandedShows] = useState<Set<string>>(new Set());
@@ -123,16 +120,16 @@ export default function CulturaPage() {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
-          <Link href="/" className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
+          <Link href="/es/" className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
             Alain Zulaika
           </Link>
           <nav className="flex items-center gap-6 md:gap-8">
-            <Link href="/#como-trabajo" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Nola egiten dut lan</Link>
-            <Link href="/contacto" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kontaktua</Link>
+            <Link href="/es/#como-trabajo" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cómo trabajo</Link>
+            <Link href="/es/contacto" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Contacto</Link>
             <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-              <span style={{ color: "rgba(242,242,240,0.85)" }}>EU</span>
+              <a href="/cultura" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">EU</a>
               <span style={{ color: "rgba(242,242,240,0.22)" }}>·</span>
-              <Link href="/es/cultura" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">ES</Link>
+              <span style={{ color: "rgba(242,242,240,0.85)" }}>ES</span>
             </div>
           </nav>
         </div>
@@ -141,17 +138,17 @@ export default function CulturaPage() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "470px" }} />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "360px" }} />
           <div className="pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
-              <span className="uppercase">Kultura / Euskara</span>
+              <span className="uppercase">Cultura</span>
             </p>
             <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
-              Berriro norbaitek<br />"magia ikuskizun bat" eskatzen du.
+              Otra vez alguien pide<br />"un show de magia."
             </h1>
             <div className="hero-fade-3 mt-8 max-w-[680px]">
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
-                Eta askotan magia da falta dena.
+                Y muchas veces la magia es lo que hace falta.
               </p>
             </div>
           </div>
@@ -162,18 +159,18 @@ export default function CulturaPage() {
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-6 pb-24 md:px-16 md:pb-28">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
-            Baina ikuskizun bat eskatu aurretik, galdera garrantzitsuago bat dago:
+            Pero antes de pedir un espectáculo, hay una pregunta más importante:
           </p>
 
           <p style={{ marginTop: "3rem" }} className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] text-[#F2F2F0]">
-            Zer behar duzu gertatzea?
+            ¿Qué necesitas que ocurra delante del público?
           </p>
 
           <ul style={{ marginTop: "2.5rem", display: "flex", flexDirection: "column", gap: "1.4rem" }} className="text-[clamp(1.35rem,1.8vw,1.65rem)] font-medium leading-[1.08] tracking-[-0.02em] text-[#F2F2F0]/70">
             {([
-              { label: "Jende asko bildu?", key: "publicos" },
-              { label: "Mezu bat transmititu?", key: "intervenciones" },
-              { label: "Kultura zabaldu?", key: "propuestas" },
+              { label: "¿Reunir a mucha gente?", key: "publicos" },
+              { label: "¿Transmitir un mensaje?", key: "intervenciones" },
+              { label: "¿Ampliar la cultura?", key: "propuestas" },
             ] as { label: string; key: ContextKey }[]).map(({ label, key }) => (
               <li key={key}>
                 <button
@@ -301,7 +298,7 @@ export default function CulturaPage() {
               </div>
             )}
 
-            {/* Shows — solo para Nortasuneko proposamenak */}
+            {/* Shows — solo para Propuestas con identidad */}
             {active.shows && (
               <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
                 {active.shows.map((show, i) => {
@@ -349,7 +346,7 @@ export default function CulturaPage() {
                         padding: 0,
                       }}
                     >
-                      {isExpanded ? "↑ itxi" : "↓ zabaldu"}
+                      {isExpanded ? "↑ cerrar" : "↓ ampliar"}
                     </button>
 
                     {isExpanded && (
@@ -404,10 +401,10 @@ export default function CulturaPage() {
               {activeContext === "propuestas" ? (
                 <>
                   <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", lineHeight: 1.7, color: "rgba(242,242,240,0.70)", marginBottom: "16px" }}>
-                    Bietako bat interesatzen zaizu?
+                    ¿Te interesa alguna de las dos?
                   </p>
                   <a
-                    href="mailto:contacto@niala.es?subject=Dossier&body=Kaixo%20Alain%2C%0A%0A%5Bproposamen%20izenburua%5D%20dosier%20osoa%20jaso%20nahi%20nuke.%0A%0AAgur%20bero%20bat%2C"
+                    href="mailto:contacto@niala.es?subject=Dossier&body=Hola%20Alain%2C%0A%0AMe%20gustar%C3%ADa%20recibir%20el%20dossier%20completo%20de%20%5Bnombre%20de%20la%20propuesta%5D.%0A%0AUn%20saludo%2C"
                     style={{
                       fontSize: "0.9rem",
                       letterSpacing: "0.04em",
@@ -416,12 +413,12 @@ export default function CulturaPage() {
                     }}
                     className="hover:text-[#2ED3E6]"
                   >
-                    Dosier osoa eskuragarri →
+                    Dossier completo disponible bajo petición →
                   </a>
                 </>
               ) : (
                 <Link
-                  href="/contacto"
+                  href="/es/contacto"
                   style={{
                     fontSize: "0.9rem",
                     letterSpacing: "0.04em",
@@ -430,7 +427,7 @@ export default function CulturaPage() {
                   }}
                   className="hover:text-[#2ED3E6]"
                 >
-                  {active.cta ?? "Zure programazioan sartzen da? Hitz egin dezagun →"}
+                  ¿Encaja en tu programación? Hablemos →
                 </Link>
               )}
             </div>
@@ -453,7 +450,7 @@ export default function CulturaPage() {
                     marginBottom: "12px",
                   }}
                 >
-                  Antzeko ekitaldiak
+                  Eventos similares
                 </p>
                 <p
                   style={{
@@ -473,17 +470,17 @@ export default function CulturaPage() {
       {/* CTA FINAL */}
       <section className="fade-in mx-auto max-w-[900px] px-8 pt-40 pb-40 text-center">
         <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-[1.3] tracking-[-0.02em] text-[#F2F2F0]/90">
-          &ldquo;Magia ikuskizun bat&rdquo; eska dezakezu.
+          Puedes pedir "un show de magia".
         </p>
         <p style={{ marginTop: "1.5rem" }} className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/70">
-          Edo zer gertatzea behar duzun esan iezadakezu.
+          O puedes decirme qué necesitas que ocurra.
         </p>
         <div className="mt-12">
           <Link
-            href="/contacto"
+            href="/es/contacto"
             className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
           >
-            Hitz egin dezagun
+            Hablemos
           </Link>
         </div>
       </section>
@@ -492,28 +489,28 @@ export default function CulturaPage() {
       <footer className="border-t border-white/6 px-8 py-14 md:px-16 md:py-18">
         <div className="mx-auto grid max-w-[1400px] gap-16 md:grid-cols-[320px_1fr]">
           <div>
-            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Nabigazioa</p>
+            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Navegación</p>
             <div className="grid gap-y-3">
-              <Link href="/" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Hasiera<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/empresa" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Enpresa<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/cultura" className="group relative w-fit text-[#2ED3E6]">Kultura<span className="absolute -bottom-0.5 left-0 h-px w-full bg-[#2ED3E6]" /></Link>
-              <Link href="/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Ostalaritza<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kontaktua<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Inicio<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/empresa" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Empresa<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/cultura" className="group relative w-fit text-[#2ED3E6]">Cultura<span className="absolute -bottom-0.5 left-0 h-px w-full bg-[#2ED3E6]" /></Link>
+              <Link href="/es/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Hostelería<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
+              <Link href="/es/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Contacto<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
             </div>
           </div>
           <div className="max-w-[520px]">
-            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Identitatea</p>
+            <p className="mb-6 text-[0.82rem] uppercase tracking-[0.16em] text-[#F2F2F0]/42">Identidad</p>
             <p className="text-[1.1rem] font-medium text-[#F2F2F0]">Alain Zulaika</p>
-            <p className="mt-4 max-w-[420px] leading-relaxed text-[#F2F2F0]/66">Ekitaldi korporatiboetarako eta kulturaletarako interbentzio eszenikoak magiarekin.</p>
+            <p className="mt-4 max-w-[420px] leading-relaxed text-[#F2F2F0]/66">Intervenciones escénicas con magia para eventos corporativos y culturales.</p>
           </div>
         </div>
         <div className="mx-auto mt-16 max-w-[1400px] border-t border-white/6 pt-6">
           <div className="flex flex-col gap-4 text-[0.9rem] text-[#F2F2F0]/38 md:flex-row md:items-center md:justify-between">
             <p>© Alain Zulaika</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
-              <Link href="/aviso-legal" className="transition-colors hover:text-[#F2F2F0]/62">Lege oharra</Link>
-              <Link href="/privacidad" className="transition-colors hover:text-[#F2F2F0]/62">Pribatutasuna</Link>
-              <Link href="/cookies" className="transition-colors hover:text-[#F2F2F0]/62">Cookieak</Link>
+              <Link href="/aviso-legal" className="transition-colors hover:text-[#F2F2F0]/62">Aviso legal</Link>
+              <Link href="/privacidad" className="transition-colors hover:text-[#F2F2F0]/62">Privacidad</Link>
+              <Link href="/cookies" className="transition-colors hover:text-[#F2F2F0]/62">Cookies</Link>
             </div>
           </div>
         </div>

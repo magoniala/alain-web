@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 
 const FOTOS = [
   "1.jpg", "2.JPG", "3.JPG", "4.jpg", "5.jpg", "6.jpg",
@@ -10,37 +9,37 @@ const FOTOS = [
 ];
 
 const SHOWS: { fecha: string; texto: string }[] = [
-  { fecha: "otsail 21",  texto: "Estreinaldia Arrigorriagan izan zen." },
-  { fecha: "martxo 23",  texto: "Ondoren Irungo Amaia antzokian egon ginen Magia Gala batean parte hartzen." },
-  { fecha: "maiatz 1",   texto: "Zarautz izan zen Twobascos bizi zuen hurrengoa, Modelo aretoan." },
-  { fecha: "maiatz 16",  texto: "Donostiak Kutxa Fundazioa Aretoako ateak zabaldu zizkigun." },
-  { fecha: "ekain 14",   texto: "Eta gogoz geratu ginenez... berriz buelta ginen Donostiara, oraingoan Imanol Larzabal antzokira. Beste Magia Gala batean." },
-  { fecha: "urri 2",     texto: "Azpeitiako San Agustin kafe-antzokian ere sortu zen herri berri bat." },
-  { fecha: "azaro 5",    texto: "Azkena Hondarribiko Itsas Etxea Auditoriumean bizi genuen." },
-  { fecha: "abend 27",   texto: "Eta urtea amaitzeko berriz ere Irungo, Amaia antzokian egongo gara." },
+  { fecha: "21 feb",  texto: "El estreno fue en Arrigorriaga." },
+  { fecha: "23 mar",  texto: "Después estuvimos en el teatro Amaia de Irun participando en una Gala de Magia." },
+  { fecha: "1 may",   texto: "Zarautz fue el siguiente hogar de Twobascos, en el Modelo." },
+  { fecha: "16 may",  texto: "La Kutxa Fundazioa de Donostia nos abrió sus puertas." },
+  { fecha: "14 jun",  texto: "Y con ganas de más... volvimos a Donostia, al teatro Imanol Larzabal. Otra Gala de Magia." },
+  { fecha: "2 oct",   texto: "En el café-teatro San Agustín de Azpeitia también nació un nuevo pueblo." },
+  { fecha: "5 nov",   texto: "El último fue en el Auditorium Itsas Etxea de Hondarribia." },
+  { fecha: "27 dic",  texto: "Y para cerrar el año, de vuelta al teatro Amaia de Irun." },
 ];
 
 const PRENSA = [
   {
-    texto: "Twobascos Herri Irratian.",
+    texto: "Twobascos en Herri Irratia",
     href: "https://radiopopular.com/podcast/twobascos-un-espectaculo-bilingue-que-reinventa-la-magia-en-euskal-herria",
     meta: null,
     sub: null,
   },
   {
-    texto: "Twobascos Distrito Euskadin. EITB",
+    texto: "Twobascos en Distrito Euskadi, EITB",
     href: "https://www.eitb.eus/es/nahieran/radio/radio-euskadi/distrito-euskadi/detalle/9926832/",
     meta: "1:28:45",
-    sub: { texto: "Magia jolasaren bideoa.", href: "https://x.com/DistritoEuskadi/status/1902388472180052378" },
+    sub: { texto: "Vídeo de la magia", href: "https://x.com/DistritoEuskadi/status/1902388472180052378" },
   },
   {
-    texto: "Twobascos Katapulta Tour Gipuzkoan hautatuak.",
+    texto: "Twobascos seleccionados en el Katapulta Tour Gipuzkoa",
     href: "https://katapulta.org/portfolio/twobascos/",
-    meta: "+150 artistaren artean",
+    meta: "+150 artistas",
     sub: null,
   },
   {
-    texto: "Twobascos Tele 7n.",
+    texto: "Twobascos en Tele 7",
     href: "https://www.youtube.com/watch?v=U3bSEXWUAl4&t=2692s",
     meta: "42:55",
     sub: null,
@@ -74,14 +73,14 @@ export default function TwobascosPage() {
     <main style={{ minHeight: "100vh", background: "#0B0B0C", color: "#F2F2F0" }}>
 
       {/* Header */}
-      <header style={{ padding: "1.75rem 2rem", textAlign: "center", position: "relative" }}>
+      <header style={{ padding: "1.75rem 2rem", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
         <p style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.35em", color: RED }}>
           Twobascos
         </p>
-        <div style={{ position: "absolute", right: "2rem", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-          <span style={{ color: "rgba(242,242,240,0.85)" }}>EU</span>
+        <div style={{ position: "absolute", right: "2rem", display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
+          <a href="/twobascos-prentsa" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }} className="transition-colors hover:text-[#F2F2F0]/65">EU</a>
           <span style={{ color: "rgba(242,242,240,0.22)" }}>·</span>
-          <Link href="/es/twobascos-prentsa" style={{ color: "rgba(242,242,240,0.42)", textDecoration: "none", transition: "color 0.2s" }}>ES</Link>
+          <span style={{ color: "rgba(242,242,240,0.85)" }}>ES</span>
         </div>
       </header>
 
@@ -90,17 +89,14 @@ export default function TwobascosPage() {
         {/* Hero */}
         <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
           <h1 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.08, marginBottom: "1rem" }}>
-            Alain Zulaika eta Sergio Martínez.
+            Alain Zulaika y Sergio Martínez.
           </h1>
           <p style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)", color: "rgba(242,242,240,0.42)", letterSpacing: "0.04em" }}>
-            Bi mundutik, herri bat sortzen da.
+            De dos mundos, nace un pueblo.
           </p>
         </div>
 
         {/* Galería */}
-        <p style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.35em", color: RED, marginBottom: "2rem", textAlign: "center" }}>
-          Ikuskizunetan ateratako argazkiak
-        </p>
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
@@ -120,7 +116,7 @@ export default function TwobascosPage() {
             >
               <img
                 src={`/twobascos/${foto}`}
-                alt={`Twobascos argazkia ${i + 1}`}
+                alt={`Twobascos foto ${i + 1}`}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -135,10 +131,10 @@ export default function TwobascosPage() {
           ))}
         </div>
 
-        {/* 2025eko ikuskizunak */}
+        {/* Espectáculos 2025 */}
         <div style={{ maxWidth: "680px", margin: "0 auto 6rem" }}>
           <p style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.35em", color: RED, marginBottom: "2.5rem" }}>
-            2025 Ikuskizunak
+            Espectáculos 2025
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}>
             {SHOWS.map((show, i) => (
@@ -162,20 +158,19 @@ export default function TwobascosPage() {
           </div>
           <div style={{ borderTop: "1px solid rgba(242,242,240,0.07)", marginTop: "2.5rem", paddingTop: "2rem" }}>
             <p style={{ fontSize: "1.05rem", color: "rgba(242,242,240,0.55)", lineHeight: 1.75, marginBottom: "0.5rem" }}>
-              Hau hasiera besterik ez da izan.
+              Esto solo ha sido el principio.
             </p>
             <p style={{ fontSize: "0.9rem", color: "rgba(242,242,240,0.28)", fontStyle: "italic" }}>
-              2026-2027rako aizkorak zorrozten gabiz...
+              Afilando hachas para 2026-2027...
             </p>
           </div>
         </div>
 
-        {/* Prentsa */}
+        {/* Prensa */}
         <div style={{ maxWidth: "680px", margin: "0 auto 6rem" }}>
           <p style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.35em", color: RED, marginBottom: "2.5rem" }}>
-            Prentsa
+            Prensa
           </p>
-
           <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
             {PRENSA.map((item, i) => (
               <div key={i}>
@@ -230,10 +225,10 @@ export default function TwobascosPage() {
         {/* CTA */}
         <div style={{ textAlign: "center" }}>
           <p style={{ fontSize: "clamp(1.4rem, 2.2vw, 1.8rem)", fontWeight: 500, letterSpacing: "-0.02em", marginBottom: "0.75rem" }}>
-            Elkarrekin herri bat sortzeko prest.
+            Preparados para crear un pueblo juntos.
           </p>
           <p style={{ fontSize: "0.95rem", color: "rgba(242,242,240,0.40)", marginBottom: "2rem" }}>
-            Informazio gehiago nahi ez gero:
+            Para más información:
           </p>
           <a
             href="mailto:contacto@niala.es?subject=Twobascos%20ikuskizunari%20buruz"
@@ -250,7 +245,7 @@ export default function TwobascosPage() {
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = RED_HOVER; e.currentTarget.style.color = RED; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(242,242,240,0.2)"; e.currentTarget.style.color = "#F2F2F0"; }}
           >
-            HEMEN
+            Aquí
           </a>
         </div>
 
@@ -284,7 +279,7 @@ export default function TwobascosPage() {
 
           <img
             src={`/twobascos/${FOTOS[lightbox]}`}
-            alt={`Twobascos argazkia ${lightbox + 1}`}
+            alt={`Twobascos foto ${lightbox + 1}`}
             onClick={(e) => e.stopPropagation()}
             style={{
               maxHeight: "90vh", maxWidth: "88vw",
