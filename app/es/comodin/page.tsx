@@ -219,7 +219,7 @@ export default function ComodinPage() {
           ) : (
             <div style={{ border: "1px solid rgba(242,242,240,0.12)", background: "rgba(242,242,240,0.02)", padding: "2rem 1.75rem", textAlign: "left" }}>
               <p style={{ fontSize: "1.05rem", lineHeight: 1.8, color: "rgba(242,242,240,0.82)", marginBottom: "2rem" }}>
-                18 min que convierten cualquier salón en un microteatro.
+                18 min que convertirán el salón de tu casa en un microteatro.
               </p>
               <form onSubmit={handleVerSubmit}>
                 <input
