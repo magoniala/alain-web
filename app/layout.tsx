@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
+import type { Metadata } from "next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,9 +13,23 @@ const dmSans = DM_Sans({
   variable: "--font-display",
 });
 
-export const metadata = {
-  title: "Alain Zulaika",
-  description: "Intervenciones escénicas con magia para eventos",
+export const metadata: Metadata = {
+  metadataBase: new URL("https://alainzulaika.com"),
+  title: {
+    default: "Alain Zulaika",
+    template: "%s | Alain Zulaika",
+  },
+  description:
+    "Magia eszenikoa enpresa, ostalaritza eta kulturarentzako ekitaldietan. Euskal Herria.",
+  openGraph: {
+    siteName: "Alain Zulaika",
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Alain Zulaika" }],
+    locale: "eu_EU",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({
@@ -23,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={dmSans.variable}>
+    <html lang="eu" className={dmSans.variable}>
       <body className={inter.className}>{children}</body>
     </html>
   );
