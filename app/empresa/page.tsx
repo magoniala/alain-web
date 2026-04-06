@@ -68,7 +68,7 @@ const contexts = {
 >;
 
 export default function EmpresaPage() {
-  const [activeContext, setActiveContext] = useState<ContextKey>("comerciales");
+  const [activeContext, setActiveContext] = useState<ContextKey | null>(null);
   const [hoveredNav, setHoveredNav] = useState<ContextKey | null>(null);
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function EmpresaPage() {
     return () => observer.disconnect();
   }, []);
 
-  const active = contexts[activeContext];
+  const active = contexts[activeContext ?? "comerciales"];
 
   return (
     <main className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0]">
@@ -170,7 +170,7 @@ export default function EmpresaPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => setActiveContext(key)}
+                onClick={() => setActiveContext(activeContext === key ? null : key)}
                 className={`w-full text-left px-4 py-4 border transition-colors ${
                   isActive
                     ? "border-[#2ED3E6]/40 bg-white/[0.05]"
@@ -201,7 +201,7 @@ export default function EmpresaPage() {
           <div className="sidebar-nav hidden md:block md:w-[280px] md:shrink-0 md:mr-20">
             {(Object.entries(contexts) as [ContextKey, (typeof contexts)[ContextKey]][]).map(
               ([key, item]) => {
-                const isActive = activeContext === key;
+                const isActive = (activeContext ?? "comerciales") === key;
                 return (
                   <button
                     key={key}
@@ -264,7 +264,7 @@ export default function EmpresaPage() {
           {/* Contenido activo */}
           <div
             key={activeContext}
-            className="context-fade-in flex-1 min-w-0"
+            className={`context-fade-in flex-1 min-w-0${activeContext === null ? " hidden md:block" : ""}`}
           >
             <p
               style={{

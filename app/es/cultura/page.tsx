@@ -86,7 +86,7 @@ const contexts: Record<
 };
 
 export default function CulturaEuskeraPage() {
-  const [activeContext, setActiveContext] = useState<ContextKey>("publicos");
+  const [activeContext, setActiveContext] = useState<ContextKey | null>(null);
   const [hoveredNav, setHoveredNav] = useState<ContextKey | null>(null);
   const [expandedShows, setExpandedShows] = useState<Set<string>>(new Set());
 
@@ -113,7 +113,7 @@ export default function CulturaEuskeraPage() {
     return () => observer.disconnect();
   }, []);
 
-  const active = contexts[activeContext];
+  const active = contexts[activeContext ?? "publicos"];
 
   return (
     <main className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0]">
@@ -197,13 +197,48 @@ export default function CulturaEuskeraPage() {
 
       {/* SELECTOR + CONTENIDO */}
       <section id="selector" className="fade-in mx-auto max-w-[1400px] px-8 pt-16 pb-32 md:px-16 md:pt-20 md:pb-40">
+
+        {/* Mobile selector */}
+        <div className="md:hidden mb-8 space-y-2">
+          {(Object.keys(contexts) as ContextKey[]).map((key) => {
+            const item = contexts[key];
+            const isActive = activeContext === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveContext(activeContext === key ? null : key)}
+                className={`w-full text-left px-4 py-4 border transition-colors ${
+                  isActive
+                    ? "border-[#2ED3E6]/40 bg-white/[0.05]"
+                    : "border-white/[0.10] active:border-white/25 active:bg-white/[0.03]"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className={`text-[1.05rem] font-medium tracking-[-0.01em] ${isActive ? "text-[#F2F2F0]" : "text-[#F2F2F0]/55"}`}>
+                      {item.title}
+                    </p>
+                    <p className={`text-[0.82rem] mt-0.5 ${isActive ? "text-[#2ED3E6]/70" : "text-[#F2F2F0]/28"}`}>
+                      {item.eyebrow}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 text-[1rem] ${isActive ? "text-[#2ED3E6]" : "text-[#F2F2F0]/20"}`}>
+                    {isActive ? "→" : "·"}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex flex-col md:flex-row md:items-start">
 
           {/* Sidebar */}
-          <div className="w-full mb-10 md:w-[280px] md:shrink-0 md:mr-20 md:mb-0">
+          <div className="hidden md:block md:w-[280px] md:shrink-0 md:mr-20">
             {(Object.keys(contexts) as ContextKey[]).map((key) => {
               const item = contexts[key];
-              const isActive = activeContext === key;
+              const isActive = (activeContext ?? "publicos") === key;
               return (
                 <button
                   key={key}
@@ -265,7 +300,7 @@ export default function CulturaEuskeraPage() {
           {/* Contenido activo */}
           <div
             key={activeContext}
-            className="context-fade-in flex-1 min-w-0"
+            className={`context-fade-in flex-1 min-w-0${activeContext === null ? " hidden md:block" : ""}`}
           >
             <p
               style={{
