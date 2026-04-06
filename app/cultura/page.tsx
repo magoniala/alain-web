@@ -141,7 +141,7 @@ export default function CulturaPage() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[245px] md:h-[470px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[245px] md:h-[212px] xl:h-[470px]" />
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
               <span className="uppercase">Kultura / Euskara</span>
