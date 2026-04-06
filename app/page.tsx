@@ -9,7 +9,7 @@ export default function Home() {
 
   const contextContent = {
     cultura: {
-      href: "/cultura",
+      href: "/cultura",si 
       label: "Kultura / Euskara",
       preview:
         "Sinbolikoa historia liburuetan gera ez dadin.",
@@ -97,7 +97,7 @@ export default function Home() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-6 md:-translate-y-8">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[255px] md:h-[520px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[255px] md:h-[416px] lg:h-[520px]" />
 
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-s uppercase tracking-[0.35em] text-[#2ED3E6]">
@@ -292,7 +292,7 @@ export default function Home() {
             Bakoitzak esku-hartzeko modu ezberdin bat eskatzen du.
           </p>
 
-          <nav className="mt-25 hidden md:flex flex-wrap gap-x-8 gap-y-4">
+          <nav className="mt-25 hidden lg:flex flex-wrap gap-x-8 gap-y-4">
             <a
               href={contextContent.empresa.href}
               onMouseEnter={() => setHoveredContext("empresa")}
@@ -347,7 +347,7 @@ export default function Home() {
             </a>
           </nav>
 
-          <div className="hidden md:block mt-20 max-w-[640px] min-h-[8.5rem]">
+          <div className="hidden lg:block mt-20 max-w-[640px] min-h-[8.5rem]">
             <div key={hoveredContext} className="context-fade-in">
               <p className="text-[clamp(2rem,2.6vw,2.4rem)] leading-[1.35] tracking-[-0.025em] text-[#F2F2F0]/94">
                 {
@@ -360,7 +360,7 @@ export default function Home() {
           </div>
 
           {/* Mobile: stacked context links with preview */}
-          <div className="md:hidden mt-10 space-y-3">
+          <div className="lg:hidden mt-10 space-y-3">
             {(["empresa", "cultura", "hosteleria"] as const).map((key) => (
               <a
                 key={key}
