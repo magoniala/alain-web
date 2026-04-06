@@ -59,10 +59,10 @@ export default function Home() {
         }`}
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
-          <div className="pl-[42px] md:pl-[42px]">
+          <div className="pl-0 md:pl-[42px]">
             <a
               href="#top"
-              className={`inline-block text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6] transition-all duration-300 ${
+              className={`inline-block text-[0.72rem] md:text-[0.96rem] uppercase tracking-[0.05em] md:tracking-[0.35em] text-[#2ED3E6] transition-all duration-300 ${
                 showHeaderName
                   ? "translate-y-0 opacity-100"
                   : "pointer-events-none -translate-y-1 opacity-0"
@@ -75,7 +75,7 @@ export default function Home() {
           <nav className="flex items-center gap-6 md:gap-8">
             <a
               href="#contextos"
-              className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]"
+              className="hidden md:block text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]"
             >
               Contextos
             </a>
@@ -105,7 +105,7 @@ export default function Home() {
               Alain Zulaika
             </p>
 
-            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.05] tracking-[-0.02em]">
+            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.55rem,5vw,4.8rem)] font-medium leading-[1.05] tracking-[-0.02em]">
               Un evento diseñado
               <br />
               para no molestar
@@ -302,7 +302,7 @@ export default function Home() {
             Cada uno pide una forma distinta de intervenir.
           </p>
 
-          <nav className="mt-25 flex flex-wrap gap-x-8 gap-y-4">
+          <nav className="mt-25 hidden md:flex flex-wrap gap-x-8 gap-y-4">
             <a
               href={contextContent.empresa.href}
               onMouseEnter={() => setHoveredContext("empresa")}
@@ -357,7 +357,7 @@ export default function Home() {
             </a>
           </nav>
 
-          <div className="mt-20 max-w-[640px] min-h-[7.5rem] md:min-h-[8.5rem]">
+          <div className="hidden md:block mt-20 max-w-[640px] min-h-[8.5rem]">
             <div key={hoveredContext} className="context-fade-in">
               <p className="text-[clamp(2rem,2.6vw,2.4rem)] leading-[1.35] tracking-[-0.025em] text-[#F2F2F0]/94">
                 {
@@ -367,6 +367,24 @@ export default function Home() {
                 }
               </p>
             </div>
+          </div>
+
+          {/* Mobile: stacked context links with preview */}
+          <div className="md:hidden mt-10 divide-y divide-white/8">
+            {(["empresa", "cultura", "hosteleria"] as const).map((key) => (
+              <a
+                key={key}
+                href={contextContent[key].href}
+                className="block py-5 group"
+              >
+                <p className="text-[1.15rem] tracking-[-0.02em] text-[#F2F2F0]/78 transition-colors group-hover:text-white">
+                  → {contextContent[key].label}
+                </p>
+                <p className="mt-1.5 text-[1rem] leading-relaxed text-[#F2F2F0]/50">
+                  {contextContent[key].preview}
+                </p>
+              </a>
+            ))}
           </div>
         </div>
       </section>

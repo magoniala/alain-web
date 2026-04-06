@@ -24,7 +24,7 @@ export default function EguzkilorePage() {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
-          <Link href="/" className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
+          <Link href="/" className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]">
             Alain Zulaika
           </Link>
           <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>

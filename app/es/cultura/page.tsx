@@ -120,11 +120,11 @@ export default function CulturaEuskeraPage() {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
-          <Link href="/es/" className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
+          <Link href="/es/" className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]">
             Alain Zulaika
           </Link>
           <nav className="flex items-center gap-6 md:gap-8">
-            <Link href="/es/#como-trabajo" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cómo trabajo</Link>
+            <Link href="/es/#como-trabajo" className="hidden md:block text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cómo trabajo</Link>
             <Link href="/es/contacto" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Contacto</Link>
             <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
               <a href="/cultura" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>EU</a>
@@ -197,10 +197,10 @@ export default function CulturaEuskeraPage() {
 
       {/* SELECTOR + CONTENIDO */}
       <section id="selector" className="fade-in mx-auto max-w-[1400px] px-8 pt-16 pb-32 md:px-16 md:pt-20 md:pb-40">
-        <div style={{ display: "flex", gap: "0", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div className="flex flex-col md:flex-row md:items-start">
 
           {/* Sidebar */}
-          <div style={{ width: "280px", flexShrink: 0, marginRight: "80px", marginBottom: "48px" }}>
+          <div className="w-full mb-10 md:w-[280px] md:shrink-0 md:mr-20 md:mb-0">
             {(Object.keys(contexts) as ContextKey[]).map((key) => {
               const item = contexts[key];
               const isActive = activeContext === key;
@@ -265,8 +265,7 @@ export default function CulturaEuskeraPage() {
           {/* Contenido activo */}
           <div
             key={activeContext}
-            className="context-fade-in"
-            style={{ flex: 1, minWidth: "280px" }}
+            className="context-fade-in flex-1 min-w-0"
           >
             <p
               style={{

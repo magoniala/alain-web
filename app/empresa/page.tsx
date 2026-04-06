@@ -94,12 +94,12 @@ export default function EmpresaPage() {
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
           <Link
             href="/"
-            className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]"
+            className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]"
           >
             Alain Zulaika
           </Link>
           <nav className="flex items-center gap-6 md:gap-8">
-            <Link href="/#como-trabajo" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Nola egiten dut lan</Link>
+            <Link href="/#como-trabajo" className="hidden md:block text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Nola egiten dut lan</Link>
             <Link href="/contacto" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kontaktua</Link>
             <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
               <span style={{ padding: "0.3rem 0.65rem", color: "#2ED3E6", background: "rgba(46,211,230,0.06)" }}>EU</span>
@@ -162,11 +162,10 @@ export default function EmpresaPage() {
 
       {/* SELECTOR + CONTENIDO */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pt-16 pb-32 md:px-16 md:pt-20 md:pb-40">
-        <div style={{ display: "flex", gap: "0", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div className="flex flex-col md:flex-row md:items-start">
 
           {/* Sidebar */}
-          <div style={{ width: "280px", flexShrink: 0, marginRight: "80px", marginBottom: "48px" }}
-               className="sidebar-nav">
+          <div className="sidebar-nav w-full mb-10 md:w-[280px] md:shrink-0 md:mr-20 md:mb-0">
             {(Object.entries(contexts) as [ContextKey, (typeof contexts)[ContextKey]][]).map(
               ([key, item]) => {
                 const isActive = activeContext === key;
@@ -232,8 +231,7 @@ export default function EmpresaPage() {
           {/* Contenido activo */}
           <div
             key={activeContext}
-            className="context-fade-in"
-            style={{ flex: 1, minWidth: "280px" }}
+            className="context-fade-in flex-1 min-w-0"
           >
             <p
               style={{

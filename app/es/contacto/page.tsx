@@ -382,11 +382,11 @@ export default function ContactoPage() {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
-          <Link href="/es/" className="text-[0.96rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
+          <Link href="/es/" className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]">
             Alain Zulaika
           </Link>
           <nav className="flex items-center gap-6 md:gap-8">
-            <Link href="/es/#como-trabajo" className="text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cómo trabajo</Link>
+            <Link href="/es/#como-trabajo" className="hidden md:block text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cómo trabajo</Link>
             <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
               <a href="/contacto" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>EU</a>
               <span style={{ width: "1px", alignSelf: "stretch", background: "rgba(242,242,240,0.12)" }} />
@@ -426,10 +426,10 @@ export default function ContactoPage() {
             </div>
           )}
           <div
+            className="p-6 md:p-10"
             style={{
               border: "1px solid rgba(242,242,240,0.16)",
               background: "rgba(242,242,240,0.025)",
-              padding: "2.5rem",
             }}
           >
             {screen > 0 && screen < 6 && renderProgress()}
