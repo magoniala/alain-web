@@ -325,12 +325,15 @@ export default function Home() {
           <div className="hidden xl:block mt-20 max-w-[640px] min-h-[8.5rem]">
             <div key={hoveredContext} className="context-fade-in">
               <p className="text-[clamp(2rem,2.6vw,2.4rem)] leading-[1.35] tracking-[-0.025em] text-[#F2F2F0]/94">
-                {
-                  contextContent[
-                    hoveredContext as keyof typeof contextContent
-                  ].preview
-                }
+                {contextContent[hoveredContext as keyof typeof contextContent].preview}
               </p>
+              <a
+                href={contextContent[hoveredContext as keyof typeof contextContent].href}
+                className="mt-6 inline-flex items-center gap-2 text-[0.78rem] uppercase tracking-[0.18em] text-[#2ED3E6]/60 hover:text-[#2ED3E6] transition-colors duration-200"
+              >
+                <span>→</span>
+                <span>{contextContent[hoveredContext as keyof typeof contextContent].label}</span>
+              </a>
             </div>
           </div>
 
