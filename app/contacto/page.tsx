@@ -408,7 +408,7 @@ export default function ContactoPage() {
               Hasteko modu onena
             </h1>
             <div className="hero-fade-3 mt-8 max-w-[680px]">
-              <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
+              <p className="text-[clamp(1.2rem,1.6vw,1.5rem)] leading-relaxed text-[#F2F2F0]/75">
                 testuingurua ondo ulertzea da.
               </p>
             </div>
