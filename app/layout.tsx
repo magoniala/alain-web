@@ -14,9 +14,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://alain-web-six.vercel.app"
-  ),
+  metadataBase: new URL("https://alainzulaika.com"),
   title: {
     default: "Alain Zulaika",
     template: "%s | Alain Zulaika",
