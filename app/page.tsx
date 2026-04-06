@@ -97,9 +97,9 @@ export default function Home() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-6 md:-translate-y-8">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "520px" }} />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[312px] md:h-[520px]" />
 
-          <div className="pl-10">
+          <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-s uppercase tracking-[0.35em] text-[#2ED3E6]">
               Alain Zulaika
             </p>
@@ -360,19 +360,22 @@ export default function Home() {
           </div>
 
           {/* Mobile: stacked context links with preview */}
-          <div className="md:hidden mt-10 divide-y divide-white/8">
+          <div className="md:hidden mt-10 space-y-3">
             {(["empresa", "cultura", "hosteleria"] as const).map((key) => (
               <a
                 key={key}
                 href={contextContent[key].href}
-                className="block py-5 group"
+                className="flex items-start justify-between gap-4 py-4 px-4 border border-white/12 active:border-[#2ED3E6]/50 active:bg-white/[0.03] transition-colors"
               >
-                <p className="text-[1.15rem] tracking-[-0.02em] text-[#F2F2F0]/78 transition-colors group-hover:text-white">
-                  → {contextContent[key].label}
-                </p>
-                <p className="mt-1.5 text-[1rem] leading-relaxed text-[#F2F2F0]/50">
-                  {contextContent[key].preview}
-                </p>
+                <div>
+                  <p className="text-[1.1rem] tracking-[-0.02em] text-[#F2F2F0]/85">
+                    {contextContent[key].label}
+                  </p>
+                  <p className="mt-1.5 text-[0.92rem] leading-relaxed text-[#F2F2F0]/48">
+                    {contextContent[key].preview}
+                  </p>
+                </div>
+                <span className="shrink-0 mt-0.5 text-[#2ED3E6]/55 text-[1.1rem]">→</span>
               </a>
             ))}
           </div>
