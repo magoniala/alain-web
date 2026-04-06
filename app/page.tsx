@@ -97,14 +97,14 @@ export default function Home() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-6 md:-translate-y-8">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[312px] md:h-[520px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[296px] md:h-[520px]" />
 
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-s uppercase tracking-[0.35em] text-[#2ED3E6]">
               Alain Zulaika
             </p>
 
-            <h1 className="hero-fade-2 text-[clamp(1.55rem,5vw,4.8rem)] font-medium leading-[1.05] tracking-[-0.02em]">
+            <h1 className="hero-fade-2 text-[clamp(1.38rem,5vw,4.8rem)] font-medium leading-[1.05] tracking-[-0.02em]">
               Molestatzeko beldurrez
               <br />
               diseinatutako ekitaldi batek

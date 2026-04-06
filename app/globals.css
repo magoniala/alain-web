@@ -87,3 +87,12 @@ body {
     filter: blur(0);
   }
 }
+
+/* Touch feedback on mobile */
+@media (hover: none) {
+  a:active,
+  button:active {
+    color: #2ED3E6;
+    transition: none;
+  }
+}

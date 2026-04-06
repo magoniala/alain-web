@@ -98,7 +98,7 @@ export default function Home() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-6 md:-translate-y-8">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[261px] md:h-[435px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[248px] md:h-[435px]" />
 
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-s uppercase tracking-[0.35em] text-[#2ED3E6]">
