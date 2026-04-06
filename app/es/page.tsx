@@ -386,9 +386,9 @@ export default function Home() {
                   FASE 1 — Lectura del contexto
                 </p>
                 <p className="mt-5 text-[clamp(1.22rem,1.45vw,1.4rem)] leading-relaxed tracking-[-0.02em] text-[#F2F2F0]/86">
-                  Lo que se quiere decir, lo que se evita
+                  Para tener en cuenta lo que se quiere decir,
                   <br />
-                  y lo que realmente está en juego.
+                  lo que se evita y lo que realmente está en juego.
                 </p>
               </div>
 
@@ -398,7 +398,7 @@ export default function Home() {
                   FASE 2 — Arquitectura emocional del evento
                 </p>
                 <p className="mt-5 text-[clamp(1.22rem,1.45vw,1.4rem)] leading-relaxed tracking-[-0.02em] text-[#F2F2F0]/86">
-                  Ritmo, tensiones, silencios
+                  Diseño de ritmo, tensiones, silencios
                   <br />
                   y recursos al servicio del mensaje.
                 </p>
