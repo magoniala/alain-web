@@ -303,6 +303,7 @@ export default function Home() {
               }`}
             >
               {contextContent.empresa.label}
+              <span className={`ml-2 inline-block transition-all duration-300 text-[#2ED3E6] ${hoveredContext === "empresa" ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}>→</span>
               <span
                 className={`absolute -bottom-1 left-0 h-px bg-[#2ED3E6] transition-all duration-300 ${
                   hoveredContext === "empresa" ? "w-full" : "w-0 group-hover:w-full"
@@ -320,6 +321,7 @@ export default function Home() {
               }`}
             >
               {contextContent.cultura.label}
+              <span className={`ml-2 inline-block transition-all duration-300 text-[#2ED3E6] ${hoveredContext === "cultura" ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}>→</span>
               <span
                 className={`absolute -bottom-1 left-0 h-px bg-[#2ED3E6] transition-all duration-300 ${
                   hoveredContext === "cultura" ? "w-full" : "w-0 group-hover:w-full"
@@ -337,6 +339,7 @@ export default function Home() {
               }`}
             >
               {contextContent.hosteleria.label}
+              <span className={`ml-2 inline-block transition-all duration-300 text-[#2ED3E6] ${hoveredContext === "hosteleria" ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}>→</span>
               <span
                 className={`absolute -bottom-1 left-0 h-px bg-[#2ED3E6] transition-all duration-300 ${
                   hoveredContext === "hosteleria"
