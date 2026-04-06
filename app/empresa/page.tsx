@@ -209,6 +209,8 @@ export default function EmpresaPage() {
                     onClick={() => setActiveContext(key)}
                     onMouseEnter={() => setHoveredNav(key)}
                     onMouseLeave={() => setHoveredNav(null)}
+                    onTouchStart={() => setHoveredNav(key)}
+                    onTouchEnd={() => setHoveredNav(null)}
                     style={{
                       display: "block",
                       width: "100%",
