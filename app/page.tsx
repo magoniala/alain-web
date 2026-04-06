@@ -292,62 +292,24 @@ export default function Home() {
             Bakoitzak esku-hartzeko modu ezberdin bat eskatzen du.
           </p>
 
-          <nav className="mt-25 hidden xl:flex flex-wrap gap-x-8 gap-y-4">
-            <a
-              href={contextContent.empresa.href}
-              onMouseEnter={() => setHoveredContext("empresa")}
-              className={`group relative text-[clamp(1.35rem,1.65vw,1.55rem)] tracking-[-0.02em] transition-all duration-300 ease-out ${
-                hoveredContext === "empresa"
-                  ? "text-white"
-                  : "text-[#F2F2F0]/58 hover:text-[#F2F2F0]"
-              }`}
-            >
-              {contextContent.empresa.label}
-              <span className={`ml-2 inline-block transition-all duration-300 text-[#2ED3E6] ${hoveredContext === "empresa" ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}>→</span>
-              <span
-                className={`absolute -bottom-1 left-0 h-px bg-[#2ED3E6] transition-all duration-300 ${
-                  hoveredContext === "empresa" ? "w-full" : "w-0 group-hover:w-full"
+          <nav className="mt-25 hidden xl:flex gap-3">
+            {(["empresa", "cultura", "hosteleria"] as const).map((key) => (
+              <a
+                key={key}
+                href={contextContent[key].href}
+                onMouseEnter={() => setHoveredContext(key)}
+                className={`flex-1 flex items-center justify-between gap-4 px-5 py-4 border transition-all duration-300 ${
+                  hoveredContext === key
+                    ? "border-[#2ED3E6]/50 bg-white/[0.03] text-[#F2F2F0]"
+                    : "border-white/[0.10] text-[#F2F2F0]/60 hover:border-white/22 hover:text-[#F2F2F0]/85"
                 }`}
-              />
-            </a>
-
-            <a
-              href={contextContent.cultura.href}
-              onMouseEnter={() => setHoveredContext("cultura")}
-              className={`group relative text-[clamp(1.35rem,1.65vw,1.55rem)] tracking-[-0.02em] transition-all duration-300 ease-out ${
-                hoveredContext === "cultura"
-                  ? "text-white"
-                  : "text-[#F2F2F0]/58 hover:text-[#F2F2F0]"
-              }`}
-            >
-              {contextContent.cultura.label}
-              <span className={`ml-2 inline-block transition-all duration-300 text-[#2ED3E6] ${hoveredContext === "cultura" ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}>→</span>
-              <span
-                className={`absolute -bottom-1 left-0 h-px bg-[#2ED3E6] transition-all duration-300 ${
-                  hoveredContext === "cultura" ? "w-full" : "w-0 group-hover:w-full"
-                }`}
-              />
-            </a>
-
-            <a
-              href={contextContent.hosteleria.href}
-              onMouseEnter={() => setHoveredContext("hosteleria")}
-              className={`group relative text-[clamp(1.35rem,1.65vw,1.55rem)] tracking-[-0.02em] transition-all duration-300 ease-out ${
-                hoveredContext === "hosteleria"
-                  ? "text-white"
-                  : "text-[#F2F2F0]/58 hover:text-[#F2F2F0]"
-              }`}
-            >
-              {contextContent.hosteleria.label}
-              <span className={`ml-2 inline-block transition-all duration-300 text-[#2ED3E6] ${hoveredContext === "hosteleria" ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}>→</span>
-              <span
-                className={`absolute -bottom-1 left-0 h-px bg-[#2ED3E6] transition-all duration-300 ${
-                  hoveredContext === "hosteleria"
-                    ? "w-full"
-                    : "w-0 group-hover:w-full"
-                }`}
-              />
-            </a>
+              >
+                <span className="text-[clamp(1.05rem,1.3vw,1.25rem)] tracking-[-0.02em]">
+                  {contextContent[key].label}
+                </span>
+                <span className={`shrink-0 transition-colors duration-300 ${hoveredContext === key ? "text-[#2ED3E6]" : "text-[#2ED3E6]/35"}`}>→</span>
+              </a>
+            ))}
           </nav>
 
           <div className="hidden xl:block mt-20 max-w-[640px] min-h-[8.5rem]">
