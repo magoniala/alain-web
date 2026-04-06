@@ -214,20 +214,20 @@ export default function CulturaPage() {
                 className={`w-full text-left px-4 py-4 border transition-colors ${
                   isActive
                     ? "border-[#2ED3E6]/40 bg-white/[0.05]"
-                    : "border-white/[0.10] active:border-white/25 active:bg-white/[0.03]"
+                    : "border-white/[0.10] active:border-[#2ED3E6]/50 active:bg-white/[0.03]"
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className={`text-[1.05rem] font-medium tracking-[-0.01em] ${isActive ? "text-[#F2F2F0]" : "text-[#F2F2F0]/55"}`}>
+                    <p className={`text-[1.05rem] font-medium tracking-[-0.01em] ${isActive ? "text-[#F2F2F0]" : "text-[#F2F2F0]/85"}`}>
                       {item.title}
                     </p>
-                    <p className={`text-[0.82rem] mt-0.5 ${isActive ? "text-[#2ED3E6]/70" : "text-[#F2F2F0]/28"}`}>
+                    <p className={`text-[0.82rem] mt-0.5 ${isActive ? "text-[#2ED3E6]/70" : "text-[#F2F2F0]/48"}`}>
                       {item.eyebrow}
                     </p>
                   </div>
-                  <span className={`shrink-0 text-[1rem] ${isActive ? "text-[#2ED3E6]" : "text-[#F2F2F0]/20"}`}>
-                    {isActive ? "→" : "·"}
+                  <span className={`shrink-0 text-[1.1rem] ${isActive ? "text-[#2ED3E6]" : "text-[#2ED3E6]/55"}`}>
+                    →
                   </span>
                 </div>
               </button>
