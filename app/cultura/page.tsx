@@ -146,7 +146,7 @@ export default function CulturaPage() {
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
               <span className="uppercase">Kultura / Euskara</span>
             </p>
-            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.65rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
+            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.2rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
               Berriro norbaitek<br />"magia ikuskizun bat" eskatzen du.
             </h1>
             <div className="hero-fade-3 mt-8 max-w-[680px]">
@@ -530,7 +530,7 @@ export default function CulturaPage() {
             <div className="grid gap-y-3">
               <Link href="/" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Hasiera<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
               <Link href="/empresa" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Enpresa<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/cultura" className="group relative w-fit text-[#2ED3E6]">Kultura<span className="absolute -bottom-0.5 left-0 h-px w-full bg-[#2ED3E6]" /></Link>
+              <Link href="/cultura" className="group relative w-fit text-[#2ED3E6]">Kultura / Euskara<span className="absolute -bottom-0.5 left-0 h-px w-full bg-[#2ED3E6]" /></Link>
               <Link href="/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Ostalaritza<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
               <Link href="/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kontaktua<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
             </div>

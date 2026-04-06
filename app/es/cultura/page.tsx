@@ -143,7 +143,7 @@ export default function CulturaEuskeraPage() {
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
               <span className="uppercase">Cultura</span>
             </p>
-            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.55rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
+            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.2rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
               Otra vez alguien pide<br />"un show de magia."
             </h1>
             <div className="hero-fade-3 mt-8 max-w-[680px]">
