@@ -218,11 +218,11 @@ export default function EmpresaPage() {
                       borderLeft: isActive
                         ? "2px solid #2ED3E6"
                         : hoveredNav === key
-                        ? "2px solid rgba(242,242,240,0.30)"
+                        ? "2px solid rgba(46,211,230,0.40)"
                         : "2px solid rgba(242,242,240,0.10)",
                       padding: "20px 0 20px 20px",
-                      transition: "border-color 0.2s",
-                      background: "none",
+                      transition: "border-color 0.2s, background 0.2s",
+                      background: hoveredNav === key && !isActive ? "rgba(46,211,230,0.02)" : "none",
                       cursor: "pointer",
                     }}
                   >
@@ -236,7 +236,7 @@ export default function EmpresaPage() {
                         color: isActive
                           ? "rgba(242,242,240,1)"
                           : hoveredNav === key
-                          ? "rgba(242,242,240,0.72)"
+                          ? "rgba(242,242,240,0.92)"
                           : "rgba(242,242,240,0.52)",
                         fontWeight: isActive ? 500 : 400,
                         transition: "color 0.2s",
@@ -251,6 +251,8 @@ export default function EmpresaPage() {
                         letterSpacing: "0.01em",
                         color: isActive
                           ? "rgba(242,242,240,0.45)"
+                          : hoveredNav === key
+                          ? "rgba(242,242,240,0.40)"
                           : "rgba(242,242,240,0.25)",
                         transition: "color 0.2s",
                       }}
