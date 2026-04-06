@@ -219,7 +219,7 @@ export default function EmpresaPage() {
                       borderLeft: isActive
                         ? "2px solid #2ED3E6"
                         : hoveredNav === key
-                        ? "2px solid rgba(46,211,230,0.40)"
+                        ? "2px solid rgba(242,242,240,0.65)"
                         : "2px solid rgba(242,242,240,0.10)",
                       padding: "20px 0 20px 20px",
                       transition: "border-color 0.2s, background 0.2s",
