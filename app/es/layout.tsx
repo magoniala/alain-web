@@ -5,7 +5,7 @@ export const metadata: Metadata = {
     "Magia escénica para eventos de empresa, hostelería y cultura en el País Vasco.",
   openGraph: {
     siteName: "Alain Zulaika",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Alain Zulaika" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 600, alt: "Alain Zulaika" }],
     locale: "es_ES",
     type: "website",
   },

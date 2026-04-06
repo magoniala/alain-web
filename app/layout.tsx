@@ -14,7 +14,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://alainzulaika.com"),
+  metadataBase: new URL("https://www.alainzulaika.com"),
   title: {
     default: "Alain Zulaika",
     template: "%s | Alain Zulaika",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     "Magia eszenikoa enpresa, ostalaritza eta kulturarentzako ekitaldietan. Gertaera bakoitzean publika gogoan geratzen den unea sortzen dugu. Euskal Herria.",
   openGraph: {
     siteName: "Alain Zulaika",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Alain Zulaika" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 600, alt: "Alain Zulaika" }],
     locale: "eu_EU",
     type: "website",
   },
