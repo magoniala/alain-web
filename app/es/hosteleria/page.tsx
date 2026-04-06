@@ -48,11 +48,11 @@ export default function HosteleriaPage() {
               <span className="uppercase">Hostelería</span>
             </p>
             <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
-              La mayoría de bares intenta llenar noches.
+              Muchos bares intentan llenar un día.
             </h1>
             <div className="hero-fade-3 mt-8 max-w-[680px]">
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
-                Los que funcionan crean un día que la gente espera.
+                Los que destacan crean un día que la gente espera.
               </p>
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function HosteleriaPage() {
             className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] text-[#F2F2F0]/50"
           >
             <p>Pintxo-pote.</p>
-            <p>Miércoles a 1€.</p>
+            <p>Miércoles a un euro.</p>
             <p>Martes loco.</p>
           </div>
 
@@ -75,9 +75,11 @@ export default function HosteleriaPage() {
             style={{ marginTop: "3rem", display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72"
           >
-            <p>Muchos bares intentan crear ese día<br />en el que el local se llena casi solo.</p>
-            <p>El día que aparece cuando alguien dice:<br /><span style={{ color: "rgba(242,242,240,0.95)" }}>"¿Dónde quedamos hoy?"</span></p>
-            <p>Pero casi siempre se intenta igual:<br />bajando precios.</p>
+            <p>Muchos bares buscan crear ese día en el que el local se llena casi solo.</p>
+            <p>El día en el que, cuando alguien dice:</p>
+            <p style={{ color: "rgba(242,242,240,0.95)" }}>¿Dónde quedamos hoy?</p>
+            <p>Tu bar es la respuesta.</p>
+            <p>Pero casi siempre se intenta igual: bajando precios.</p>
           </div>
         </div>
       </section>

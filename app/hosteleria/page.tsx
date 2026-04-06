@@ -48,11 +48,11 @@ export default function HosteleriaPage() {
               <span className="uppercase">Ostalaritza</span>
             </p>
             <h1 className="hero-fade-2 max-w-[900px] text-[clamp(2.8rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
-              Taberna gehienak gau bat betetzen saiatzen dira.
+              Taberna asko egun bat betetzen saiatzen dira.
             </h1>
             <div className="hero-fade-3 mt-8 max-w-[680px]">
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
-                Funtzionatzen dutenek jendeak itxaroten duen egun bat sortzen dute.
+                Nabarmentzen direnek jendeak itxaroten duen egun bat sortzen dute.
               </p>
             </div>
           </div>
@@ -67,17 +67,18 @@ export default function HosteleriaPage() {
             className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] text-[#F2F2F0]/50"
           >
             <p>Pintxo-potea.</p>
-            <p>Asteazkena 1€-era.</p>
-            <p>Astearte zoroak.</p>
+            <p>Asteazkena €1-era.</p>
+            <p>Martes loco.</p>
           </div>
 
           <div
             style={{ marginTop: "3rem", display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72"
           >
-            <p>Taberna askok egun hori sortzen saiatzen dira<br />lokala ia bakarrik betetzen den eguna.</p>
-            <p><span style={{ color: "rgba(242,242,240,0.95)" }}>Norbaitek &ldquo;Nun geratzen gera gaur?&rdquo;</span><br />galdetzen duenean agertzen den eguna.</p>
-            <p>Baina ia beti modu berean saiatzen da:<br />prezioak jaitsiz.</p>
+            <p>Taberna askok egun berezi hori sortu nahi dute: lokala ia bakarrik betetzen den eguna.</p>
+            <p>Norbaitek &ldquo;Non geratuko gara gaur?&rdquo; esaten duen eguna agertzean:</p>
+            <p style={{ color: "rgba(242,242,240,0.95)" }}>Erantzuna zure taberna izatea.</p>
+            <p>Baina gehienetan modu berean saiatzen dira: prezioak jaisten.</p>
           </div>
         </div>
       </section>
