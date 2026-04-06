@@ -262,7 +262,7 @@ export default function ContactoPage() {
               <label style={labelStyle}>Teléfono</label>
               <input type="tel" placeholder="+34 600 000 000" value={formData.telefono} onChange={e => setFormData({ ...formData, telefono: e.target.value })} style={inputStyle} className="placeholder:text-[#F2F2F0]/30" />
             </div>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.45)", marginBottom: "0.5rem" }}>{error}</p>}
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginBottom: "0.5rem" }}>{error}</p>}
             {nextBtn()}
           </div>
         );
@@ -291,7 +291,7 @@ export default function ContactoPage() {
                 />
               </div>
             )}
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.45)", marginTop: "1rem" }}>{error}</p>}
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn()}
           </div>
         );
@@ -308,7 +308,7 @@ export default function ContactoPage() {
                 optionButton(opt, formData.tipoEvento, (v) => setFormData({ ...formData, tipoEvento: v }), opt)
               )}
             </div>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.45)", marginTop: "1rem" }}>{error}</p>}
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn()}
           </div>
         );
@@ -331,7 +331,7 @@ export default function ContactoPage() {
                 autoFocus
               />
             </div>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.45)", marginTop: "1rem" }}>{error}</p>}
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn()}
           </div>
         );
@@ -351,7 +351,7 @@ export default function ContactoPage() {
               Suele ser una llamada breve.<br />
               Si no consigo localizarte al primer intento, te escribiré para concretarlo mejor.
             </p>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.45)", marginTop: "1rem" }}>{error}</p>}
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn(sending ? "Enviando..." : "Enviar y hablarlo")}
           </div>
         );
@@ -388,7 +388,7 @@ export default function ContactoPage() {
           <nav className="flex items-center gap-6 md:gap-8">
             <Link href="/es/#como-trabajo" className="hidden md:block text-[0.82rem] uppercase tracking-[0.12em] text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Cómo trabajo</Link>
             <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-              <a href="/contacto" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>EU</a>
+              <a href="/contacto" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>EUS</a>
               <span style={{ width: "1px", alignSelf: "stretch", background: "rgba(242,242,240,0.12)" }} />
               <span style={{ padding: "0.3rem 0.65rem", color: "#2ED3E6", background: "rgba(46,211,230,0.06)" }}>ES</span>
             </div>
@@ -442,7 +442,7 @@ export default function ContactoPage() {
                   marginTop: "1.2rem",
                   fontSize: "0.82rem",
                   letterSpacing: "0.08em",
-                  color: "rgba(242,242,240,0.32)",
+                  color: "rgba(242,242,240,0.50)",
                   background: "none",
                   cursor: "pointer",
                   display: "block",
