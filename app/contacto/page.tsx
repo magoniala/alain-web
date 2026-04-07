@@ -61,6 +61,7 @@ export default function ContactoPage() {
     tipoEvento: "",
     descripcion: "",
     preferencia: "",
+    lang: "eu",
   });
   const [error, setError] = useState("");
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
