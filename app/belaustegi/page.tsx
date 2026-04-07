@@ -237,8 +237,11 @@ export default function BelaustegiPage() {
       case 0:
         return (
           <div key={0}>
+            <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.2rem)", color: "rgba(242,242,240,0.65)", marginBottom: "0.6rem", lineHeight: 1.7 }}>
+              Magia-zerbitzu aukera baloratzeko beharrezko informazioa.
+            </p>
             <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.2rem)", color: "rgba(242,242,240,0.65)", marginBottom: "1.2rem", lineHeight: 1.7 }}>
-              Ezkontza, jaunartzea, enpresa-bazkari…-tarako magia-zerbitzu aukera baloratzeko beharrezko informazioa.
+              Ezkontzak, jaunartzeak, enpresa-bazkariak…
             </p>
             <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.2rem)", color: "rgba(242,242,240,0.45)", marginBottom: "2rem", lineHeight: 1.7 }}>
               Formularioa betetzeak ez du inolako konpromisorik sortzen. Informazio honekin, ekitaldiaren ezaugarrietara egokitutako proposamen bat prestatuko dizuet.
