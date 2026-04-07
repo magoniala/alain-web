@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export default function MisionPage() {
@@ -52,10 +53,15 @@ export default function MisionPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#0B0B0C", color: "#F2F2F0" }}>
       {/* Header */}
-      <header style={{ padding: "1.75rem 2rem", textAlign: "center" }}>
+      <header style={{ padding: "1.75rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <p style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.35em", color: "#2ED3E6" }}>
           Alain Zulaika
         </p>
+        <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
+          <Link href="/tumision" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>EUS</Link>
+          <span style={{ width: "1px", alignSelf: "stretch", background: "rgba(242,242,240,0.12)" }} />
+          <span style={{ padding: "0.3rem 0.65rem", color: "#2ED3E6", background: "rgba(46,211,230,0.06)" }}>ES</span>
+        </div>
       </header>
 
       {/* Content */}
