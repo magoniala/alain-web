@@ -54,6 +54,7 @@ export default function BelaustegiEsPage() {
   const [screen, setScreen] = useState(0);
   const [formData, setFormData] = useState({
     tipoEvento: "",
+    tipoEventoOtro: "",
     fechaAproximada: "",
     personas: "",
     momentos: [] as string[],
@@ -109,10 +110,16 @@ export default function BelaustegiEsPage() {
       }
       setSending(true);
       try {
+        const payload = {
+          ...formData,
+          tipoEvento: formData.tipoEvento === "Otro" && formData.tipoEventoOtro
+            ? `Otro — ${formData.tipoEventoOtro}`
+            : formData.tipoEvento,
+        };
         const res = await fetch("/api/belaustegi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error();
         setScreen(7);
@@ -255,9 +262,22 @@ export default function BelaustegiEsPage() {
             </p>
             <div>
               {TIPO_OPTIONS.map((opt) =>
-                optionButton(opt, formData.tipoEvento, (v) => setFormData({ ...formData, tipoEvento: v }), opt)
+                optionButton(opt, formData.tipoEvento, (v) => setFormData({ ...formData, tipoEvento: v, tipoEventoOtro: "" }), opt)
               )}
             </div>
+            {formData.tipoEvento === "Otro" && (
+              <div style={{ borderBottom: "1px solid rgba(242,242,240,0.12)", marginTop: "1.2rem" }}>
+                <input
+                  type="text"
+                  maxLength={80}
+                  placeholder="¿Puedes especificar?"
+                  value={formData.tipoEventoOtro}
+                  onChange={e => setFormData({ ...formData, tipoEventoOtro: e.target.value })}
+                  style={{ ...inputStyle, color: "rgba(242,242,240,0.72)" }}
+                  autoFocus
+                />
+              </div>
+            )}
             {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn()}
           </div>
