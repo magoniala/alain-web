@@ -4,24 +4,24 @@ import Link from "next/link";
 import { useState } from "react";
 
 const MEJOR_OPTIONS = [
-  "La actuación en sí",
-  "La conexión con el público",
-  "La adaptación al contexto del evento",
-  "Los momentos de sorpresa",
-  "El humor y la presencia escénica",
-  "La preparación y profesionalidad",
+  "Emanaldia bera",
+  "Ikusleekin konexioa",
+  "Ekitaldiko testuingurura egokitzea",
+  "Sorpresazko uneak",
+  "Umorea eta eszenatoki presentzia",
+  "Prestaketa eta profesionaltasuna",
 ];
 
 const INTERES_OPTIONS = [
-  "Prefiero que no",
-  "Si encaja, genial",
-  "Sí, por favor",
+  "Nahiago dut ez",
+  "Badator bat, ederki",
+  "Bai, mesedez",
 ];
 
 const FIRMA_OPTIONS = [
-  "Solo mi nombre",
-  "Nombre + empresa o cargo",
-  "Prefiero que sea anónima",
+  "Nire izena bakarrik",
+  "Izena + enpresa edo kargua",
+  "Anonimoa izatea nahiago dut",
 ];
 
 const inputStyle: React.CSSProperties = {
@@ -49,10 +49,9 @@ const fieldStyle: React.CSSProperties = {
   marginBottom: "2rem",
 };
 
-// Screens: 0=welcome, 1=datos, 2=evento, 3=valoracion, 4=mejor, 5=publico, 6=mejora, 7=cita, 8=permiso(condicional), 9=futuro, 10=gracias
-const TOTAL_STEPS = 8; // sin contar welcome y gracias, y sin la pantalla condicional
+const TOTAL_STEPS = 8;
 
-export default function ValoracionPage() {
+export default function BalorazioaPage() {
   const [screen, setScreen] = useState(0);
   const [formData, setFormData] = useState({
     nombre: "",
@@ -66,7 +65,7 @@ export default function ValoracionPage() {
     permisoCita: "",
     firmaCita: "",
     interesFuturo: "",
-    lang: "es",
+    lang: "eu",
   });
   const [error, setError] = useState("");
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
@@ -74,10 +73,8 @@ export default function ValoracionPage() {
 
   const hasCita = formData.cita.trim().length > 0;
 
-  // Mapping screen → step number for progress bar
   const screenToStep = (s: number): number => {
-    // Screens 1-9 are steps 1-8 (screen 8 is conditional, doesn't add a step)
-    if (s === 8) return 7; // same position as screen 7
+    if (s === 8) return 7;
     if (s >= 9) return s - 1;
     return s;
   };
@@ -89,58 +86,51 @@ export default function ValoracionPage() {
 
     if (screen === 1) {
       if (!formData.nombre.trim() || !formData.email.trim()) {
-        setError("Por favor, rellena tu nombre y email.");
+        setError("Mesedez, bete zure izena eta emaila.");
         return;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email.trim())) {
-        setError("Introduce un email válido.");
+        setError("Sartu baliozko email bat.");
         return;
       }
     }
 
     if (screen === 2 && !formData.nombreEvento.trim()) {
-      setError("Por favor, indica el nombre del evento.");
+      setError("Mesedez, adierazi ekitaldiaren izena.");
       return;
     }
 
     if (screen === 3 && formData.valoracion < 0) {
-      setError("Por favor, selecciona una valoración.");
+      setError("Mesedez, hautatu balorazioa.");
       return;
     }
 
     if (screen === 4 && formData.mejor.length === 0) {
-      setError("Selecciona al menos una opción.");
+      setError("Hautatu gutxienez aukera bat.");
       return;
     }
 
     if (screen === 7) {
-      // Si hay cita, ir a pantalla de permiso
-      if (hasCita) {
-        setScreen(8);
-        return;
-      }
-      // Si no hay cita, saltar directamente a futuro
-      setScreen(9);
-      return;
+      if (hasCita) { setScreen(8); return; }
+      setScreen(9); return;
     }
 
     if (screen === 8) {
       if (!formData.permisoCita) {
-        setError("Por favor, indica si podemos usar tu testimonio.");
+        setError("Mesedez, adierazi zure testigantza erabil dezakegun.");
         return;
       }
-      if (formData.permisoCita === "Sí" && !formData.firmaCita) {
-        setError("Indica cómo quieres que aparezca tu nombre.");
+      if (formData.permisoCita === "Bai" && !formData.firmaCita) {
+        setError("Adierazi nola nahi duzun zure izena agertzea.");
         return;
       }
-      setScreen(9);
-      return;
+      setScreen(9); return;
     }
 
     if (screen === 9) {
       if (!formData.interesFuturo) {
-        setError("Por favor, selecciona una opción.");
+        setError("Mesedez, hautatu aukera bat.");
         return;
       }
       setSending(true);
@@ -153,7 +143,7 @@ export default function ValoracionPage() {
         if (!res.ok) throw new Error();
         setScreen(10);
       } catch {
-        setError("Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
+        setError("Zerbait gaizki joan da. Saiatu berriro edo idatzi niri zuzenean.");
       } finally {
         setSending(false);
       }
@@ -217,7 +207,7 @@ export default function ValoracionPage() {
     </button>
   );
 
-  const nextBtn = (label = "Siguiente →") => (
+  const nextBtn = (label = "Hurrengoa →") => (
     <button
       type="button"
       onClick={goNext}
@@ -260,7 +250,7 @@ export default function ValoracionPage() {
         return (
           <div key={0} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.2rem)", color: "rgba(242,242,240,0.65)", marginBottom: "2rem", lineHeight: 1.7 }}>
-              Son solo unos minutos. Tu opinión me ayuda a mejorar y a saber qué funciona de verdad.
+              Minutu batzuk baino ez da. Zure iritzia laguntzen dit hobetzen eta zer funtzionatzen duen jakiten.
             </p>
             <button
               type="button"
@@ -268,7 +258,7 @@ export default function ValoracionPage() {
               className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
               style={{ background: "none", cursor: "pointer" }}
             >
-              Empezar
+              Hasi
             </button>
           </div>
         );
@@ -277,10 +267,10 @@ export default function ValoracionPage() {
         return (
           <div key={1} className="context-fade-in">
             <div style={fieldStyle}>
-              <label style={labelStyle}>Tu nombre</label>
+              <label style={labelStyle}>Zure izena</label>
               <input
                 type="text"
-                placeholder="Nombre y apellido"
+                placeholder="Izena eta abizena"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 style={inputStyle}
@@ -289,10 +279,10 @@ export default function ValoracionPage() {
               />
             </div>
             <div style={fieldStyle}>
-              <label style={labelStyle}>Tu email</label>
+              <label style={labelStyle}>Zure emaila</label>
               <input
                 type="email"
-                placeholder="tu@email.com"
+                placeholder="zu@email.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 style={inputStyle}
@@ -308,12 +298,12 @@ export default function ValoracionPage() {
         return (
           <div key={2} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
-              ¿En qué evento o acto fue?
+              Zein ekitaldi edo ekintzatan izan zen?
             </p>
             <div style={fieldStyle}>
               <input
                 type="text"
-                placeholder="Nombre del evento, empresa, ocasión..."
+                placeholder="Ekitaldi izena, enpresa, eguna..."
                 value={formData.nombreEvento}
                 onChange={(e) => setFormData({ ...formData, nombreEvento: e.target.value })}
                 style={inputStyle}
@@ -330,7 +320,7 @@ export default function ValoracionPage() {
         return (
           <div key={3} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
-              Del 0 al 5, ¿cómo valorarías la actuación en conjunto?
+              0tik 5era, nola baloratuko zenuke emanaldi osoa?
             </p>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -357,7 +347,7 @@ export default function ValoracionPage() {
               ))}
             </div>
             <p style={{ marginTop: "1rem", fontSize: "0.82rem", color: "rgba(242,242,240,0.35)", letterSpacing: "0.08em" }}>
-              0 = No cumplió expectativas &nbsp;·&nbsp; 5 = Superó todas las expectativas
+              0 = Ez zituen itxaropenak bete &nbsp;·&nbsp; 5 = Itxaropen guztiak gainditu zituen
             </p>
             {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn()}
@@ -368,10 +358,10 @@ export default function ValoracionPage() {
         return (
           <div key={4} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
-              ¿Qué es lo que más te gustó?
+              Zer gustatu zitzaizun gehien?
             </p>
             <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
-              Elige hasta 2 opciones
+              Hautatu gehienez 2 aukera
             </p>
             <div>
               {MEJOR_OPTIONS.map((opt) => {
@@ -417,14 +407,14 @@ export default function ValoracionPage() {
         return (
           <div key={5} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
-              ¿Cómo reaccionó el público?
+              Nola erreakzionatu zuen publikoak?
             </p>
             <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
-              Opcional — cuéntame lo que observaste
+              Aukerakoa — kontatu ikusitakoa
             </p>
             <div style={{ borderBottom: "1px solid rgba(242,242,240,0.12)" }}>
               <textarea
-                placeholder="Hubo sorpresa, se rieron, se quedaron enganchados..."
+                placeholder="Harritu egin ziren, barre egin zuten, engantxatuta geratu ziren..."
                 value={formData.comentariosPublico}
                 onChange={(e) => setFormData({ ...formData, comentariosPublico: e.target.value })}
                 rows={5}
@@ -441,14 +431,14 @@ export default function ValoracionPage() {
         return (
           <div key={6} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
-              ¿Hay algo que mejorarías?
+              Ba al dago hobetu beharrekorik?
             </p>
             <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
-              Opcional — cualquier detalle es bienvenido
+              Aukerakoa — edozein xehetasun ongi etorria da
             </p>
             <div style={{ borderBottom: "1px solid rgba(242,242,240,0.12)" }}>
               <textarea
-                placeholder="El ritmo, la duración, algún momento concreto..."
+                placeholder="Erritmoa, iraupena, une zehatz bat..."
                 value={formData.mejora}
                 onChange={(e) => setFormData({ ...formData, mejora: e.target.value })}
                 rows={5}
@@ -465,14 +455,14 @@ export default function ValoracionPage() {
         return (
           <div key={7} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
-              ¿Quieres dejar un testimonio?
+              Testigantza bat utzi nahi al duzu?
             </p>
             <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
-              Opcional — si te apetece, una frase que resuma tu experiencia
+              Aukerakoa — nahi baduzu, zure esperientzia laburbiltzen duen esaldi bat
             </p>
             <div style={{ borderBottom: "1px solid rgba(242,242,240,0.12)" }}>
               <textarea
-                placeholder="«Fue uno de los momentos más especiales de la noche...»"
+                placeholder="«Gaueko une berezienetako bat izan zen...»"
                 value={formData.cita}
                 onChange={(e) => setFormData({ ...formData, cita: e.target.value, permisoCita: "", firmaCita: "" })}
                 rows={4}
@@ -481,7 +471,7 @@ export default function ValoracionPage() {
                 autoFocus
               />
             </div>
-            {nextBtn("Siguiente →")}
+            {nextBtn()}
           </div>
         );
 
@@ -489,18 +479,18 @@ export default function ValoracionPage() {
         return (
           <div key={8} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
-              ¿Puedo usar tu testimonio en la web o en redes?
+              Zure testigantza web orrian edo sare sozialetan erabil al dezaket?
             </p>
             <div>
-              {["Sí", "No"].map((opt) =>
+              {["Bai", "Ez"].map((opt) =>
                 optionButton(opt, formData.permisoCita, (v) => setFormData({ ...formData, permisoCita: v, firmaCita: "" }), opt)
               )}
             </div>
 
-            {formData.permisoCita === "Sí" && (
+            {formData.permisoCita === "Bai" && (
               <div style={{ marginTop: "2rem" }}>
                 <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.15rem)", color: "rgba(242,242,240,0.75)", marginBottom: "1.2rem", lineHeight: 1.5 }}>
-                  ¿Cómo quieres que aparezca tu nombre?
+                  Nola nahi duzu zure izena agertzea?
                 </p>
                 <div>
                   {FIRMA_OPTIONS.map((opt) =>
@@ -519,7 +509,7 @@ export default function ValoracionPage() {
         return (
           <div key={9} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
-              ¿Te interesaría saber de futuros espectáculos o novedades?
+              Etorkizuneko ikuskizunen edo nobedadeen berri izatea interesatuko al litzaizuke?
             </p>
             <div>
               {INTERES_OPTIONS.map((opt) =>
@@ -527,7 +517,7 @@ export default function ValoracionPage() {
               )}
             </div>
             {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
-            {nextBtn(sending ? "Enviando..." : "Enviar →")}
+            {nextBtn(sending ? "Bidaltzen..." : "Bidali →")}
           </div>
         );
 
@@ -535,14 +525,14 @@ export default function ValoracionPage() {
         return (
           <div key={10} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.85rem,3.1vw,2.8rem)", fontWeight: 500, letterSpacing: "-0.04em", lineHeight: 1.08, marginBottom: "2.5rem" }}>
-              Gracias, {formData.nombre.split(" ")[0]}.
+              Eskerrik asko, {formData.nombre.split(" ")[0]}.
             </p>
             <div
               style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
               className="text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/72"
             >
-              <p>Tu valoración me llega directamente.</p>
-              <p>Ayuda a que cada actuación sea mejor que la anterior.</p>
+              <p>Zure balorazioa zuzenean jasotzen dut.</p>
+              <p>Emanaldia baino hobea izaten laguntzen du.</p>
             </div>
           </div>
         );
@@ -562,9 +552,9 @@ export default function ValoracionPage() {
             Alain Zulaika
           </Link>
           <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-            <Link href="/balorazioa" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>EUS</Link>
+            <span style={{ padding: "0.3rem 0.65rem", color: "#2ED3E6", background: "rgba(46,211,230,0.06)" }}>EUS</span>
             <span style={{ width: "1px", alignSelf: "stretch", background: "rgba(242,242,240,0.12)" }} />
-            <span style={{ padding: "0.3rem 0.65rem", color: "#2ED3E6", background: "rgba(46,211,230,0.06)" }}>ES</span>
+            <Link href="/valoracion" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>ES</Link>
           </div>
         </div>
       </header>
@@ -573,10 +563,10 @@ export default function ValoracionPage() {
       <section className="mx-auto flex min-h-[38vh] max-w-[1400px] flex-col justify-end px-8 pb-16 md:px-16 md:pb-20">
         <div>
           <p className="mb-6 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6] uppercase">
-            Valoración
+            Balorazioa
           </p>
           <h1 className="max-w-[820px] text-[clamp(2.4rem,4.5vw,4.2rem)] font-medium leading-[1.06] tracking-[-0.03em]">
-            ¿Qué tal fue la actuación?
+            Nola joan zen emanaldia?
           </h1>
         </div>
       </section>
@@ -609,7 +599,7 @@ export default function ValoracionPage() {
                 }}
                 className="transition-colors duration-200 hover:text-[#F2F2F0]/60"
               >
-                ← volver
+                ← itzuli
               </button>
             )}
           </div>

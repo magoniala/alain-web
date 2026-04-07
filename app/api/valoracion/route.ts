@@ -23,7 +23,9 @@ export async function POST(req: Request) {
     permisoCita,
     firmaCita,
     interesFuturo,
+    lang,
   } = body;
+  const isEu = lang === "eu";
 
   // 1. Guardar en Supabase
   const { error: dbError } = await supabase.from("valoraciones").insert({
@@ -49,11 +51,15 @@ export async function POST(req: Request) {
   await resend.emails.send({
     from: "Alain Zulaika <contacto@niala.es>",
     to: email,
-    subject: "Gracias por tu valoración",
-    html: `
+    subject: isEu ? "Eskerrik asko zure balorazioagatik" : "Gracias por tu valoración",
+    html: isEu ? `
+      <p>Kaixo ${nombre},</p>
+      <p>Zure balorazioa jaso dut. Eskerrik asko denbora hartzeagatik — laguntza handia da.</p>
+      <br />
+      <p>Alain Zulaika</p>
+    ` : `
       <p>Hola ${nombre},</p>
       <p>Gracias por tomarte el tiempo de compartir tu experiencia. Tu opinión me ayuda a seguir mejorando.</p>
-      ${cita && permisoCita === "Sí" ? `<p>Si utilizamos tu testimonio, aparecerá tal y como lo escribiste${firmaCita === "Prefiero que sea anónima" ? ", de forma anónima" : firmaCita === "Nombre + empresa o cargo" ? `, firmado por ${nombre}` : `, firmado por ${nombre}`}.</p>` : ""}
       <br />
       <p>Alain Zulaika</p>
     `,
