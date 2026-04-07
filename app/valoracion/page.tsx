@@ -1,0 +1,622 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+
+const MEJOR_OPTIONS = [
+  "La actuación en sí",
+  "La conexión con el público",
+  "La adaptación al contexto del evento",
+  "Los momentos de sorpresa",
+  "El humor y la presencia escénica",
+  "La preparación y profesionalidad",
+];
+
+const INTERES_OPTIONS = [
+  "Prefiero que no",
+  "Si encaja, genial",
+  "Sí, por favor",
+];
+
+const FIRMA_OPTIONS = [
+  "Solo mi nombre",
+  "Nombre + empresa o cargo",
+  "Prefiero que sea anónima",
+];
+
+const inputStyle: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  outline: "none",
+  width: "100%",
+  fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
+  lineHeight: 1.6,
+  color: "rgba(242,242,240,0.88)",
+  paddingBottom: "0.6rem",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: "0.75rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.16em",
+  color: "rgba(242,242,240,0.58)",
+  display: "block",
+  marginBottom: "0.4rem",
+};
+
+const fieldStyle: React.CSSProperties = {
+  borderBottom: "1px solid rgba(242,242,240,0.12)",
+  marginBottom: "2rem",
+};
+
+// Screens: 0=welcome, 1=datos, 2=evento, 3=valoracion, 4=mejor, 5=publico, 6=mejora, 7=cita, 8=permiso(condicional), 9=futuro, 10=gracias
+const TOTAL_STEPS = 8; // sin contar welcome y gracias, y sin la pantalla condicional
+
+export default function ValoracionPage() {
+  const [screen, setScreen] = useState(0);
+  const [formData, setFormData] = useState({
+    nombre: "",
+    email: "",
+    nombreEvento: "",
+    valoracion: -1,
+    mejor: [] as string[],
+    comentariosPublico: "",
+    mejora: "",
+    cita: "",
+    permisoCita: "",
+    firmaCita: "",
+    interesFuturo: "",
+  });
+  const [error, setError] = useState("");
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
+  const hasCita = formData.cita.trim().length > 0;
+
+  // Mapping screen → step number for progress bar
+  const screenToStep = (s: number): number => {
+    // Screens 1-9 are steps 1-8 (screen 8 is conditional, doesn't add a step)
+    if (s === 8) return 7; // same position as screen 7
+    if (s >= 9) return s - 1;
+    return s;
+  };
+  const currentStep = screenToStep(screen);
+  const totalSteps = hasCita && screen >= 7 ? 9 : TOTAL_STEPS;
+
+  const goNext = async () => {
+    setError("");
+
+    if (screen === 1) {
+      if (!formData.nombre.trim() || !formData.email.trim()) {
+        setError("Por favor, rellena tu nombre y email.");
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        setError("Introduce un email válido.");
+        return;
+      }
+    }
+
+    if (screen === 2 && !formData.nombreEvento.trim()) {
+      setError("Por favor, indica el nombre del evento.");
+      return;
+    }
+
+    if (screen === 3 && formData.valoracion < 0) {
+      setError("Por favor, selecciona una valoración.");
+      return;
+    }
+
+    if (screen === 4 && formData.mejor.length === 0) {
+      setError("Selecciona al menos una opción.");
+      return;
+    }
+
+    if (screen === 7) {
+      // Si hay cita, ir a pantalla de permiso
+      if (hasCita) {
+        setScreen(8);
+        return;
+      }
+      // Si no hay cita, saltar directamente a futuro
+      setScreen(9);
+      return;
+    }
+
+    if (screen === 8) {
+      if (!formData.permisoCita) {
+        setError("Por favor, indica si podemos usar tu testimonio.");
+        return;
+      }
+      if (formData.permisoCita === "Sí" && !formData.firmaCita) {
+        setError("Indica cómo quieres que aparezca tu nombre.");
+        return;
+      }
+      setScreen(9);
+      return;
+    }
+
+    if (screen === 9) {
+      if (!formData.interesFuturo) {
+        setError("Por favor, selecciona una opción.");
+        return;
+      }
+      setSending(true);
+      try {
+        const res = await fetch("/api/valoracion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+        if (!res.ok) throw new Error();
+        setScreen(10);
+      } catch {
+        setError("Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    setScreen(screen + 1);
+  };
+
+  const goBack = () => {
+    setError("");
+    if (screen === 8) { setScreen(7); return; }
+    if (screen === 9) {
+      if (hasCita) { setScreen(8); return; }
+      setScreen(7); return;
+    }
+    setScreen(screen - 1);
+  };
+
+  const toggleMejor = (opt: string) => {
+    setError("");
+    const current = formData.mejor;
+    if (current.includes(opt)) {
+      setFormData({ ...formData, mejor: current.filter((o) => o !== opt) });
+    } else if (current.length < 2) {
+      setFormData({ ...formData, mejor: [...current, opt] });
+    }
+  };
+
+  const optionButton = (
+    value: string,
+    selected: string,
+    onSelect: (v: string) => void,
+    label: string
+  ) => (
+    <button
+      key={value}
+      type="button"
+      onClick={() => { onSelect(value); setError(""); }}
+      onMouseEnter={() => setHoveredOption(value)}
+      onMouseLeave={() => setHoveredOption(null)}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        padding: "1rem 0",
+        borderBottom: "1px solid rgba(242,242,240,0.08)",
+        color:
+          selected === value
+            ? "#2ED3E6"
+            : hoveredOption === value
+            ? "rgba(242,242,240,0.90)"
+            : "rgba(242,242,240,0.62)",
+        background: "none",
+        cursor: "pointer",
+        fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
+        transition: "color 0.2s",
+      }}
+    >
+      {selected === value ? "→ " : ""}{label}
+    </button>
+  );
+
+  const nextBtn = (label = "Siguiente →") => (
+    <button
+      type="button"
+      onClick={goNext}
+      style={{
+        marginTop: "2.5rem",
+        border: "1px solid rgba(242,242,240,0.20)",
+        padding: "0.9rem 2.5rem",
+        fontSize: "0.98rem",
+        letterSpacing: "0.08em",
+        color: "rgba(242,242,240,1)",
+        background: "none",
+        cursor: "pointer",
+        display: "block",
+      }}
+      className="transition-colors duration-300 hover:border-white/40 hover:text-[#2ED3E6]"
+    >
+      {label}
+    </button>
+  );
+
+  const renderProgress = () => (
+    <div style={{ display: "flex", gap: "6px", marginBottom: "2.5rem" }}>
+      {Array.from({ length: totalSteps }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width: "24px",
+            height: "2px",
+            background: i < currentStep ? "#2ED3E6" : "rgba(242,242,240,0.12)",
+            transition: "background 0.3s",
+          }}
+        />
+      ))}
+    </div>
+  );
+
+  const renderForm = () => {
+    switch (screen) {
+      case 0:
+        return (
+          <div key={0} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.2rem)", color: "rgba(242,242,240,0.65)", marginBottom: "2rem", lineHeight: 1.7 }}>
+              Son solo unos minutos. Tu opinión me ayuda a mejorar y a saber qué funciona de verdad.
+            </p>
+            <button
+              type="button"
+              onClick={() => setScreen(1)}
+              className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
+              style={{ background: "none", cursor: "pointer" }}
+            >
+              Empezar
+            </button>
+          </div>
+        );
+
+      case 1:
+        return (
+          <div key={1} className="context-fade-in">
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Tu nombre</label>
+              <input
+                type="text"
+                placeholder="Nombre y apellido"
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                style={inputStyle}
+                className="placeholder:text-[#F2F2F0]/30"
+                autoFocus
+              />
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Tu email</label>
+              <input
+                type="email"
+                placeholder="tu@email.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                style={inputStyle}
+                className="placeholder:text-[#F2F2F0]/30"
+              />
+            </div>
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginBottom: "0.5rem" }}>{error}</p>}
+            {nextBtn()}
+          </div>
+        );
+
+      case 2:
+        return (
+          <div key={2} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
+              ¿En qué evento o acto fue?
+            </p>
+            <div style={fieldStyle}>
+              <input
+                type="text"
+                placeholder="Nombre del evento, empresa, ocasión..."
+                value={formData.nombreEvento}
+                onChange={(e) => setFormData({ ...formData, nombreEvento: e.target.value })}
+                style={inputStyle}
+                className="placeholder:text-[#F2F2F0]/30"
+                autoFocus
+              />
+            </div>
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginBottom: "0.5rem" }}>{error}</p>}
+            {nextBtn()}
+          </div>
+        );
+
+      case 3:
+        return (
+          <div key={3} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
+              Del 0 al 5, ¿cómo valorarías la actuación en conjunto?
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              {[0, 1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => { setFormData({ ...formData, valoracion: n }); setError(""); }}
+                  style={{
+                    width: "3.2rem",
+                    height: "3.2rem",
+                    border: formData.valoracion === n
+                      ? "1px solid rgba(46,211,230,0.60)"
+                      : "1px solid rgba(242,242,240,0.18)",
+                    color: formData.valoracion === n ? "#2ED3E6" : "rgba(242,242,240,0.70)",
+                    background: formData.valoracion === n ? "rgba(46,211,230,0.05)" : "none",
+                    fontSize: "1.15rem",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  className="hover:border-white/40 hover:text-[#F2F2F0]"
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <p style={{ marginTop: "1rem", fontSize: "0.82rem", color: "rgba(242,242,240,0.35)", letterSpacing: "0.08em" }}>
+              0 = No cumplió expectativas &nbsp;·&nbsp; 5 = Superó todas las expectativas
+            </p>
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
+            {nextBtn()}
+          </div>
+        );
+
+      case 4:
+        return (
+          <div key={4} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
+              ¿Qué es lo que más te gustó?
+            </p>
+            <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
+              Elige hasta 2 opciones
+            </p>
+            <div>
+              {MEJOR_OPTIONS.map((opt) => {
+                const selected = formData.mejor.includes(opt);
+                const disabled = !selected && formData.mejor.length >= 2;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => !disabled && toggleMejor(opt)}
+                    onMouseEnter={() => !disabled && setHoveredOption(opt)}
+                    onMouseLeave={() => setHoveredOption(null)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "1rem 0",
+                      borderBottom: "1px solid rgba(242,242,240,0.08)",
+                      color: selected
+                        ? "#2ED3E6"
+                        : disabled
+                        ? "rgba(242,242,240,0.28)"
+                        : hoveredOption === opt
+                        ? "rgba(242,242,240,0.90)"
+                        : "rgba(242,242,240,0.62)",
+                      background: "none",
+                      cursor: disabled ? "default" : "pointer",
+                      fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
+                      transition: "color 0.2s",
+                    }}
+                  >
+                    {selected ? "→ " : ""}{opt}
+                  </button>
+                );
+              })}
+            </div>
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
+            {nextBtn()}
+          </div>
+        );
+
+      case 5:
+        return (
+          <div key={5} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
+              ¿Cómo reaccionó el público?
+            </p>
+            <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
+              Opcional — cuéntame lo que observaste
+            </p>
+            <div style={{ borderBottom: "1px solid rgba(242,242,240,0.12)" }}>
+              <textarea
+                placeholder="Hubo sorpresa, se rieron, se quedaron enganchados..."
+                value={formData.comentariosPublico}
+                onChange={(e) => setFormData({ ...formData, comentariosPublico: e.target.value })}
+                rows={5}
+                style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
+                className="placeholder:text-[#F2F2F0]/30"
+                autoFocus
+              />
+            </div>
+            {nextBtn()}
+          </div>
+        );
+
+      case 6:
+        return (
+          <div key={6} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
+              ¿Hay algo que mejorarías?
+            </p>
+            <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
+              Opcional — cualquier detalle es bienvenido
+            </p>
+            <div style={{ borderBottom: "1px solid rgba(242,242,240,0.12)" }}>
+              <textarea
+                placeholder="El ritmo, la duración, algún momento concreto..."
+                value={formData.mejora}
+                onChange={(e) => setFormData({ ...formData, mejora: e.target.value })}
+                rows={5}
+                style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
+                className="placeholder:text-[#F2F2F0]/30"
+                autoFocus
+              />
+            </div>
+            {nextBtn()}
+          </div>
+        );
+
+      case 7:
+        return (
+          <div key={7} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
+              ¿Quieres dejar un testimonio?
+            </p>
+            <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
+              Opcional — si te apetece, una frase que resuma tu experiencia
+            </p>
+            <div style={{ borderBottom: "1px solid rgba(242,242,240,0.12)" }}>
+              <textarea
+                placeholder="«Fue uno de los momentos más especiales de la noche...»"
+                value={formData.cita}
+                onChange={(e) => setFormData({ ...formData, cita: e.target.value, permisoCita: "", firmaCita: "" })}
+                rows={4}
+                style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
+                className="placeholder:text-[#F2F2F0]/30"
+                autoFocus
+              />
+            </div>
+            {nextBtn("Siguiente →")}
+          </div>
+        );
+
+      case 8:
+        return (
+          <div key={8} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
+              ¿Puedo usar tu testimonio en la web o en redes?
+            </p>
+            <div>
+              {["Sí", "No"].map((opt) =>
+                optionButton(opt, formData.permisoCita, (v) => setFormData({ ...formData, permisoCita: v, firmaCita: "" }), opt)
+              )}
+            </div>
+
+            {formData.permisoCita === "Sí" && (
+              <div style={{ marginTop: "2rem" }}>
+                <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.15rem)", color: "rgba(242,242,240,0.75)", marginBottom: "1.2rem", lineHeight: 1.5 }}>
+                  ¿Cómo quieres que aparezca tu nombre?
+                </p>
+                <div>
+                  {FIRMA_OPTIONS.map((opt) =>
+                    optionButton(opt, formData.firmaCita, (v) => setFormData({ ...formData, firmaCita: v }), opt)
+                  )}
+                </div>
+              </div>
+            )}
+
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
+            {nextBtn()}
+          </div>
+        );
+
+      case 9:
+        return (
+          <div key={9} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
+              ¿Te interesaría saber de futuros espectáculos o novedades?
+            </p>
+            <div>
+              {INTERES_OPTIONS.map((opt) =>
+                optionButton(opt, formData.interesFuturo, (v) => setFormData({ ...formData, interesFuturo: v }), opt)
+              )}
+            </div>
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
+            {nextBtn(sending ? "Enviando..." : "Enviar →")}
+          </div>
+        );
+
+      case 10:
+        return (
+          <div key={10} className="context-fade-in">
+            <p style={{ fontSize: "clamp(1.85rem,3.1vw,2.8rem)", fontWeight: 500, letterSpacing: "-0.04em", lineHeight: 1.08, marginBottom: "2.5rem" }}>
+              Gracias, {formData.nombre.split(" ")[0]}.
+            </p>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
+              className="text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/72"
+            >
+              <p>Tu valoración me llega directamente.</p>
+              <p>Ayuda a que cada actuación sea mejor que la anterior.</p>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0]">
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
+          <Link href="/" className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]">
+            Alain Zulaika
+          </Link>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section className="mx-auto flex min-h-[38vh] max-w-[1400px] flex-col justify-end px-8 pb-16 md:px-16 md:pb-20">
+        <div>
+          <p className="mb-6 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6] uppercase">
+            Valoración
+          </p>
+          <h1 className="max-w-[820px] text-[clamp(2.4rem,4.5vw,4.2rem)] font-medium leading-[1.06] tracking-[-0.03em]">
+            ¿Qué tal fue la actuación?
+          </h1>
+        </div>
+      </section>
+
+      {/* FORMULARIO */}
+      <section className="mx-auto max-w-[1400px] px-8 pb-32 md:px-16 md:pb-40">
+        <div className="max-w-[600px]">
+          <div
+            className="p-6 md:p-10"
+            style={{
+              border: "1px solid rgba(242,242,240,0.16)",
+              background: "rgba(242,242,240,0.025)",
+            }}
+          >
+            {screen > 0 && screen < 10 && renderProgress()}
+            {renderForm()}
+            {screen > 0 && screen < 10 && (
+              <button
+                type="button"
+                onClick={goBack}
+                style={{
+                  marginTop: "1.2rem",
+                  fontSize: "0.82rem",
+                  letterSpacing: "0.08em",
+                  color: "rgba(242,242,240,0.50)",
+                  background: "none",
+                  cursor: "pointer",
+                  display: "block",
+                  padding: 0,
+                }}
+                className="transition-colors duration-200 hover:text-[#F2F2F0]/60"
+              >
+                ← volver
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="border-t border-white/6 px-8 py-10 md:px-16">
+        <div className="mx-auto max-w-[1400px]">
+          <p className="text-[0.88rem] text-[#F2F2F0]/28">© Alain Zulaika</p>
+        </div>
+      </footer>
+
+    </main>
+  );
+}
