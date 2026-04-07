@@ -250,7 +250,7 @@ export default function BalorazioaPage() {
         return (
           <div key={0} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.05rem,1.3vw,1.2rem)", color: "rgba(242,242,240,0.65)", marginBottom: "2rem", lineHeight: 1.7 }}>
-              Minutu batzuk baino ez da. Zure iritzia laguntzen dit hobetzen eta zer funtzionatzen duen jakiten.
+              Pare bat minutu bakarrik. Zure iritziak zerk funtzionatzen duen eta zer hobetu behar dudan jakiteko laguntzen dit.
             </p>
             <button
               type="button"
@@ -347,7 +347,7 @@ export default function BalorazioaPage() {
               ))}
             </div>
             <p style={{ marginTop: "1rem", fontSize: "0.82rem", color: "rgba(242,242,240,0.35)", letterSpacing: "0.08em" }}>
-              0 = Ez zituen itxaropenak bete &nbsp;·&nbsp; 5 = Itxaropen guztiak gainditu zituen
+              0 = Ez zituen espektatibak bete &nbsp;·&nbsp; 5 = Espektatiba guztiak gainditu zituen
             </p>
             {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn()}
@@ -531,8 +531,8 @@ export default function BalorazioaPage() {
               style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
               className="text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/72"
             >
-              <p>Zure balorazioa zuzenean jasotzen dut.</p>
-              <p>Emanaldia baino hobea izaten laguntzen du.</p>
+              <p>Zure balorazioa jaso dut.</p>
+              <p>Hurrengo emanaldiak hobetzen laguntzen dit.</p>
             </div>
           </div>
         );

@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     subject: isEu ? "Eskerrik asko zure balorazioagatik" : "Gracias por tu valoración",
     html: isEu ? `
       <p>Kaixo ${nombre},</p>
-      <p>Zure balorazioa jaso dut. Eskerrik asko denbora hartzeagatik — laguntza handia da.</p>
+      <p>Zure balorazioa jaso dut. Eskerrik asko denbora hartzeagatik.</p>
       <br />
       <p>Alain Zulaika</p>
     ` : `
