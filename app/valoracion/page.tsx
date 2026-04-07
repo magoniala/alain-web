@@ -3,21 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const MEJOR_OPTIONS = [
-  "La actuación en sí",
-  "La conexión con el público",
-  "La adaptación al contexto del evento",
-  "Los momentos de sorpresa",
-  "El humor y la presencia escénica",
-  "La preparación y profesionalidad",
-];
-
-const INTERES_OPTIONS = [
-  "Prefiero que no",
-  "Si encaja, genial",
-  "Sí, por favor",
-];
-
 const FIRMA_OPTIONS = [
   "Solo mi nombre",
   "Nombre + empresa o cargo",
@@ -49,8 +34,8 @@ const fieldStyle: React.CSSProperties = {
   marginBottom: "2rem",
 };
 
-// Screens: 0=welcome, 1=datos, 2=evento, 3=valoracion, 4=mejor, 5=publico, 6=mejora, 7=cita, 8=permiso(condicional), 9=futuro, 10=gracias
-const TOTAL_STEPS = 8; // sin contar welcome y gracias, y sin la pantalla condicional
+// Screens: 0=welcome, 1=datos, 2=evento, 3=valoracion, 4=publico, 5=mejora, 6=cita, 7=permiso(condicional), 8=gracias
+const TOTAL_STEPS = 6;
 
 export default function ValoracionPage() {
   const [screen, setScreen] = useState(0);
@@ -59,13 +44,11 @@ export default function ValoracionPage() {
     email: "",
     nombreEvento: "",
     valoracion: -1,
-    mejor: [] as string[],
     comentariosPublico: "",
     mejora: "",
     cita: "",
     permisoCita: "",
     firmaCita: "",
-    interesFuturo: "",
     lang: "es",
   });
   const [error, setError] = useState("");
@@ -74,15 +57,28 @@ export default function ValoracionPage() {
 
   const hasCita = formData.cita.trim().length > 0;
 
-  // Mapping screen → step number for progress bar
   const screenToStep = (s: number): number => {
-    // Screens 1-9 are steps 1-8 (screen 8 is conditional, doesn't add a step)
-    if (s === 8) return 7; // same position as screen 7
-    if (s >= 9) return s - 1;
+    if (s === 7) return 6;
     return s;
   };
   const currentStep = screenToStep(screen);
-  const totalSteps = hasCita && screen >= 7 ? 9 : TOTAL_STEPS;
+
+  const submit = async () => {
+    setSending(true);
+    try {
+      const res = await fetch("/api/valoracion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) throw new Error();
+      setScreen(8);
+    } catch {
+      setError("Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   const goNext = async () => {
     setError("");
@@ -109,23 +105,12 @@ export default function ValoracionPage() {
       return;
     }
 
-    if (screen === 4 && formData.mejor.length === 0) {
-      setError("Selecciona al menos una opción.");
-      return;
+    if (screen === 6) {
+      if (hasCita) { setScreen(7); return; }
+      await submit(); return;
     }
 
     if (screen === 7) {
-      // Si hay cita, ir a pantalla de permiso
-      if (hasCita) {
-        setScreen(8);
-        return;
-      }
-      // Si no hay cita, saltar directamente a futuro
-      setScreen(9);
-      return;
-    }
-
-    if (screen === 8) {
       if (!formData.permisoCita) {
         setError("Por favor, indica si podemos usar tu testimonio.");
         return;
@@ -134,30 +119,7 @@ export default function ValoracionPage() {
         setError("Indica cómo quieres que aparezca tu nombre.");
         return;
       }
-      setScreen(9);
-      return;
-    }
-
-    if (screen === 9) {
-      if (!formData.interesFuturo) {
-        setError("Por favor, selecciona una opción.");
-        return;
-      }
-      setSending(true);
-      try {
-        const res = await fetch("/api/valoracion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        if (!res.ok) throw new Error();
-        setScreen(10);
-      } catch {
-        setError("Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
-      } finally {
-        setSending(false);
-      }
-      return;
+      await submit(); return;
     }
 
     setScreen(screen + 1);
@@ -165,22 +127,8 @@ export default function ValoracionPage() {
 
   const goBack = () => {
     setError("");
-    if (screen === 8) { setScreen(7); return; }
-    if (screen === 9) {
-      if (hasCita) { setScreen(8); return; }
-      setScreen(7); return;
-    }
+    if (screen === 7) { setScreen(6); return; }
     setScreen(screen - 1);
-  };
-
-  const toggleMejor = (opt: string) => {
-    setError("");
-    const current = formData.mejor;
-    if (current.includes(opt)) {
-      setFormData({ ...formData, mejor: current.filter((o) => o !== opt) });
-    } else if (current.length < 2) {
-      setFormData({ ...formData, mejor: [...current, opt] });
-    }
   };
 
   const optionButton = (
@@ -240,7 +188,7 @@ export default function ValoracionPage() {
 
   const renderProgress = () => (
     <div style={{ display: "flex", gap: "6px", marginBottom: "2.5rem" }}>
-      {Array.from({ length: totalSteps }).map((_, i) => (
+      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
         <div
           key={i}
           style={{
@@ -368,55 +316,6 @@ export default function ValoracionPage() {
         return (
           <div key={4} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
-              ¿Qué es lo que más te gustó?
-            </p>
-            <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
-              Elige hasta 2 opciones
-            </p>
-            <div>
-              {MEJOR_OPTIONS.map((opt) => {
-                const selected = formData.mejor.includes(opt);
-                const disabled = !selected && formData.mejor.length >= 2;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => !disabled && toggleMejor(opt)}
-                    onMouseEnter={() => !disabled && setHoveredOption(opt)}
-                    onMouseLeave={() => setHoveredOption(null)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "1rem 0",
-                      borderBottom: "1px solid rgba(242,242,240,0.08)",
-                      color: selected
-                        ? "#2ED3E6"
-                        : disabled
-                        ? "rgba(242,242,240,0.28)"
-                        : hoveredOption === opt
-                        ? "rgba(242,242,240,0.90)"
-                        : "rgba(242,242,240,0.62)",
-                      background: "none",
-                      cursor: disabled ? "default" : "pointer",
-                      fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
-                      transition: "color 0.2s",
-                    }}
-                  >
-                    {selected ? "→ " : ""}{opt}
-                  </button>
-                );
-              })}
-            </div>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
-            {nextBtn()}
-          </div>
-        );
-
-      case 5:
-        return (
-          <div key={5} className="context-fade-in">
-            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
               ¿Cómo reaccionó el público?
             </p>
             <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
@@ -437,9 +336,9 @@ export default function ValoracionPage() {
           </div>
         );
 
-      case 6:
+      case 5:
         return (
-          <div key={6} className="context-fade-in">
+          <div key={5} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
               ¿Hay algo que mejorarías?
             </p>
@@ -461,9 +360,9 @@ export default function ValoracionPage() {
           </div>
         );
 
-      case 7:
+      case 6:
         return (
-          <div key={7} className="context-fade-in">
+          <div key={6} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
               ¿Quieres dejar un testimonio?
             </p>
@@ -481,13 +380,14 @@ export default function ValoracionPage() {
                 autoFocus
               />
             </div>
-            {nextBtn("Siguiente →")}
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
+            {nextBtn(sending ? "Enviando..." : hasCita ? "Siguiente →" : "Enviar →")}
           </div>
         );
 
-      case 8:
+      case 7:
         return (
-          <div key={8} className="context-fade-in">
+          <div key={7} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
               ¿Puedo usar tu testimonio en la web o en redes?
             </p>
@@ -511,29 +411,13 @@ export default function ValoracionPage() {
             )}
 
             {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
-            {nextBtn()}
-          </div>
-        );
-
-      case 9:
-        return (
-          <div key={9} className="context-fade-in">
-            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
-              ¿Te interesaría saber de futuros espectáculos o novedades?
-            </p>
-            <div>
-              {INTERES_OPTIONS.map((opt) =>
-                optionButton(opt, formData.interesFuturo, (v) => setFormData({ ...formData, interesFuturo: v }), opt)
-              )}
-            </div>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn(sending ? "Enviando..." : "Enviar →")}
           </div>
         );
 
-      case 10:
+      case 8:
         return (
-          <div key={10} className="context-fade-in">
+          <div key={8} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.85rem,3.1vw,2.8rem)", fontWeight: 500, letterSpacing: "-0.04em", lineHeight: 1.08, marginBottom: "2.5rem" }}>
               Gracias, {formData.nombre.split(" ")[0]}.
             </p>
@@ -591,9 +475,9 @@ export default function ValoracionPage() {
               background: "rgba(242,242,240,0.025)",
             }}
           >
-            {screen > 0 && screen < 10 && renderProgress()}
+            {screen > 0 && screen < 8 && renderProgress()}
             {renderForm()}
-            {screen > 0 && screen < 10 && (
+            {screen > 0 && screen < 8 && (
               <button
                 type="button"
                 onClick={goBack}

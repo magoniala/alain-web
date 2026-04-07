@@ -3,21 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const MEJOR_OPTIONS = [
-  "Emanaldia bera",
-  "Ikusleekin konexioa",
-  "Ekitaldiko testuingurura egokitzea",
-  "Sorpresazko uneak",
-  "Umorea eta eszenatoki presentzia",
-  "Prestaketa eta profesionaltasuna",
-];
-
-const INTERES_OPTIONS = [
-  "Nahiago dut ez",
-  "Badator bat, ederki",
-  "Bai, mesedez",
-];
-
 const FIRMA_OPTIONS = [
   "Nire izena bakarrik",
   "Izena + enpresa edo kargua",
@@ -49,7 +34,8 @@ const fieldStyle: React.CSSProperties = {
   marginBottom: "2rem",
 };
 
-const TOTAL_STEPS = 8;
+// Screens: 0=ongi etorri, 1=datuak, 2=ekitaldia, 3=balorazioa, 4=publikoa, 5=hobetzea, 6=testigantza, 7=baimena(baldintzapean), 8=eskerrak
+const TOTAL_STEPS = 6;
 
 export default function BalorazioaPage() {
   const [screen, setScreen] = useState(0);
@@ -58,13 +44,11 @@ export default function BalorazioaPage() {
     email: "",
     nombreEvento: "",
     valoracion: -1,
-    mejor: [] as string[],
     comentariosPublico: "",
     mejora: "",
     cita: "",
     permisoCita: "",
     firmaCita: "",
-    interesFuturo: "",
     lang: "eu",
   });
   const [error, setError] = useState("");
@@ -74,12 +58,27 @@ export default function BalorazioaPage() {
   const hasCita = formData.cita.trim().length > 0;
 
   const screenToStep = (s: number): number => {
-    if (s === 8) return 7;
-    if (s >= 9) return s - 1;
+    if (s === 7) return 6;
     return s;
   };
   const currentStep = screenToStep(screen);
-  const totalSteps = hasCita && screen >= 7 ? 9 : TOTAL_STEPS;
+
+  const submit = async () => {
+    setSending(true);
+    try {
+      const res = await fetch("/api/valoracion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) throw new Error();
+      setScreen(8);
+    } catch {
+      setError("Zerbait gaizki joan da. Saiatu berriro edo idatzi niri zuzenean.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   const goNext = async () => {
     setError("");
@@ -106,17 +105,12 @@ export default function BalorazioaPage() {
       return;
     }
 
-    if (screen === 4 && formData.mejor.length === 0) {
-      setError("Hautatu gutxienez aukera bat.");
-      return;
+    if (screen === 6) {
+      if (hasCita) { setScreen(7); return; }
+      await submit(); return;
     }
 
     if (screen === 7) {
-      if (hasCita) { setScreen(8); return; }
-      setScreen(9); return;
-    }
-
-    if (screen === 8) {
       if (!formData.permisoCita) {
         setError("Mesedez, adierazi zure testigantza erabil dezakegun.");
         return;
@@ -125,29 +119,7 @@ export default function BalorazioaPage() {
         setError("Adierazi nola nahi duzun zure izena agertzea.");
         return;
       }
-      setScreen(9); return;
-    }
-
-    if (screen === 9) {
-      if (!formData.interesFuturo) {
-        setError("Mesedez, hautatu aukera bat.");
-        return;
-      }
-      setSending(true);
-      try {
-        const res = await fetch("/api/valoracion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        if (!res.ok) throw new Error();
-        setScreen(10);
-      } catch {
-        setError("Zerbait gaizki joan da. Saiatu berriro edo idatzi niri zuzenean.");
-      } finally {
-        setSending(false);
-      }
-      return;
+      await submit(); return;
     }
 
     setScreen(screen + 1);
@@ -155,22 +127,8 @@ export default function BalorazioaPage() {
 
   const goBack = () => {
     setError("");
-    if (screen === 8) { setScreen(7); return; }
-    if (screen === 9) {
-      if (hasCita) { setScreen(8); return; }
-      setScreen(7); return;
-    }
+    if (screen === 7) { setScreen(6); return; }
     setScreen(screen - 1);
-  };
-
-  const toggleMejor = (opt: string) => {
-    setError("");
-    const current = formData.mejor;
-    if (current.includes(opt)) {
-      setFormData({ ...formData, mejor: current.filter((o) => o !== opt) });
-    } else if (current.length < 2) {
-      setFormData({ ...formData, mejor: [...current, opt] });
-    }
   };
 
   const optionButton = (
@@ -230,7 +188,7 @@ export default function BalorazioaPage() {
 
   const renderProgress = () => (
     <div style={{ display: "flex", gap: "6px", marginBottom: "2.5rem" }}>
-      {Array.from({ length: totalSteps }).map((_, i) => (
+      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
         <div
           key={i}
           style={{
@@ -358,55 +316,6 @@ export default function BalorazioaPage() {
         return (
           <div key={4} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
-              Zer gustatu zitzaizun gehien?
-            </p>
-            <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
-              Hautatu gehienez 2 aukera
-            </p>
-            <div>
-              {MEJOR_OPTIONS.map((opt) => {
-                const selected = formData.mejor.includes(opt);
-                const disabled = !selected && formData.mejor.length >= 2;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => !disabled && toggleMejor(opt)}
-                    onMouseEnter={() => !disabled && setHoveredOption(opt)}
-                    onMouseLeave={() => setHoveredOption(null)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "1rem 0",
-                      borderBottom: "1px solid rgba(242,242,240,0.08)",
-                      color: selected
-                        ? "#2ED3E6"
-                        : disabled
-                        ? "rgba(242,242,240,0.28)"
-                        : hoveredOption === opt
-                        ? "rgba(242,242,240,0.90)"
-                        : "rgba(242,242,240,0.62)",
-                      background: "none",
-                      cursor: disabled ? "default" : "pointer",
-                      fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
-                      transition: "color 0.2s",
-                    }}
-                  >
-                    {selected ? "→ " : ""}{opt}
-                  </button>
-                );
-              })}
-            </div>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
-            {nextBtn()}
-          </div>
-        );
-
-      case 5:
-        return (
-          <div key={5} className="context-fade-in">
-            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
               Nola erreakzionatu zuen publikoak?
             </p>
             <p style={{ fontSize: "0.82rem", color: "rgba(242,242,240,0.40)", letterSpacing: "0.08em", marginBottom: "1.6rem" }}>
@@ -427,9 +336,9 @@ export default function BalorazioaPage() {
           </div>
         );
 
-      case 6:
+      case 5:
         return (
-          <div key={6} className="context-fade-in">
+          <div key={5} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
               Ba al dago hobetu beharrekorik?
             </p>
@@ -451,9 +360,9 @@ export default function BalorazioaPage() {
           </div>
         );
 
-      case 7:
+      case 6:
         return (
-          <div key={7} className="context-fade-in">
+          <div key={6} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
               Testigantza bat utzi nahi al duzu?
             </p>
@@ -471,13 +380,14 @@ export default function BalorazioaPage() {
                 autoFocus
               />
             </div>
-            {nextBtn()}
+            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
+            {nextBtn(sending ? "Bidaltzen..." : hasCita ? "Hurrengoa →" : "Bidali →")}
           </div>
         );
 
-      case 8:
+      case 7:
         return (
-          <div key={8} className="context-fade-in">
+          <div key={7} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
               Zure testigantza web orrian edo sare sozialetan erabil al dezaket?
             </p>
@@ -501,29 +411,13 @@ export default function BalorazioaPage() {
             )}
 
             {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
-            {nextBtn()}
-          </div>
-        );
-
-      case 9:
-        return (
-          <div key={9} className="context-fade-in">
-            <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "2rem", lineHeight: 1.5 }}>
-              Etorkizuneko ikuskizunen edo nobedadeen berri izatea interesatuko al litzaizuke?
-            </p>
-            <div>
-              {INTERES_OPTIONS.map((opt) =>
-                optionButton(opt, formData.interesFuturo, (v) => setFormData({ ...formData, interesFuturo: v }), opt)
-              )}
-            </div>
-            {error && <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn(sending ? "Bidaltzen..." : "Bidali →")}
           </div>
         );
 
-      case 10:
+      case 8:
         return (
-          <div key={10} className="context-fade-in">
+          <div key={8} className="context-fade-in">
             <p style={{ fontSize: "clamp(1.85rem,3.1vw,2.8rem)", fontWeight: 500, letterSpacing: "-0.04em", lineHeight: 1.08, marginBottom: "2.5rem" }}>
               Eskerrik asko, {formData.nombre.split(" ")[0]}.
             </p>
@@ -581,9 +475,9 @@ export default function BalorazioaPage() {
               background: "rgba(242,242,240,0.025)",
             }}
           >
-            {screen > 0 && screen < 10 && renderProgress()}
+            {screen > 0 && screen < 8 && renderProgress()}
             {renderForm()}
-            {screen > 0 && screen < 10 && (
+            {screen > 0 && screen < 8 && (
               <button
                 type="button"
                 onClick={goBack}

@@ -16,13 +16,11 @@ export async function POST(req: Request) {
     email,
     nombreEvento,
     valoracion,
-    mejor,
     comentariosPublico,
     mejora,
     cita,
     permisoCita,
     firmaCita,
-    interesFuturo,
     lang,
   } = body;
   const isEu = lang === "eu";
@@ -33,13 +31,11 @@ export async function POST(req: Request) {
     email,
     nombre_evento: nombreEvento,
     valoracion,
-    mejor,
     comentarios_publico: comentariosPublico || null,
     mejora: mejora || null,
     cita: cita || null,
     permiso_cita: permisoCita || null,
     firma_cita: firmaCita || null,
-    interes_futuro: interesFuturo,
   });
 
   if (dbError) {
@@ -77,13 +73,11 @@ export async function POST(req: Request) {
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Evento:</strong> ${nombreEvento}</p>
       <p><strong>Valoración:</strong> ${valoracion}/5 ${estrellas}</p>
-      <p><strong>Qué gustó más:</strong> ${Array.isArray(mejor) ? mejor.join(", ") : mejor}</p>
-      ${comentariosPublico ? `<p><strong>Comentarios del público:</strong> ${comentariosPublico}</p>` : ""}
+      ${comentariosPublico ? `<p><strong>Reacción del público:</strong> ${comentariosPublico}</p>` : ""}
       ${mejora ? `<p><strong>Qué mejorar:</strong> ${mejora}</p>` : ""}
-      ${cita ? `<p><strong>Cita:</strong> "${cita}"</p>` : ""}
-      ${permisoCita ? `<p><strong>Permiso para usar cita:</strong> ${permisoCita}</p>` : ""}
+      ${cita ? `<p><strong>Testimonio:</strong> "${cita}"</p>` : ""}
+      ${permisoCita ? `<p><strong>Permiso para usar testimonio:</strong> ${permisoCita}</p>` : ""}
       ${firmaCita ? `<p><strong>Firma:</strong> ${firmaCita}</p>` : ""}
-      <p><strong>Interés en futuros eventos:</strong> ${interesFuturo}</p>
     `,
   });
 
