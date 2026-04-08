@@ -31,7 +31,7 @@ export default function ComodinPage() {
     const res = await fetch("/api/comodin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim() }),
+      body: JSON.stringify({ email: email.trim(), lang: "eu" }),
     });
 
     if (res.ok) {

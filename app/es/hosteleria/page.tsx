@@ -60,7 +60,7 @@ export default function HosteleriaPage() {
       </section>
 
       {/* BLOQUE 1 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-6 pb-28 md:px-16 md:pb-36">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-6 pb-14 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <div
             style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
@@ -85,7 +85,7 @@ export default function HosteleriaPage() {
       </section>
 
       {/* BLOQUE 2 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-14 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.12] tracking-[-0.04em]">
             Los descuentos funcionan.<br />
@@ -104,7 +104,7 @@ export default function HosteleriaPage() {
       </section>
 
       {/* BLOQUE 3 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-14 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <div
             style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
@@ -132,7 +132,7 @@ export default function HosteleriaPage() {
       </section>
 
       {/* BLOQUE 4 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-14 md:px-16 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
             Cuando eso ocurre de forma recurrente:
@@ -158,7 +158,7 @@ export default function HosteleriaPage() {
       </section>
 
       {/* BLOQUE 5 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-40 md:px-16 md:pb-52">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16 md:pb-52">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em]">
             Lo conseguimos con magia de cerca.
@@ -199,7 +199,7 @@ export default function HosteleriaPage() {
       </section>
 
       {/* CIERRE */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-40 md:px-16 md:pb-52">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16 md:pb-52">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-[1.3] tracking-[-0.02em] text-[#F2F2F0]/90">
             Si crees que tu bar podría tener un día así, lo vemos.

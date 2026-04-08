@@ -20,5 +20,6 @@ export async function GET(req: Request) {
     .update({ idioma })
     .eq("email", email);
 
-  return NextResponse.redirect(new URL("/es/tumision/euskera", req.url));
+  const dest = idioma === "es" ? "/es/tumision/castellano" : "/es/tumision/euskera";
+  return NextResponse.redirect(new URL(dest, req.url));
 }

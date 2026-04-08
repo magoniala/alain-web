@@ -107,13 +107,13 @@ export default function Home() {
             <h1 className="hero-fade-2 text-[clamp(1.38rem,5vw,4.8rem)] font-medium leading-[1.05] tracking-[-0.02em]">
               Molestatzeko beldurrez
               <br />
-              diseinatutako ekitaldi batek
+              diseinatutako ekitaldiek
               <br />
               Mr.&nbsp;Bean gela batean
               <br />
               sartzen denean bezala
               <br />
-              jokatzen du
+              jokatzen dute
             </h1>
 
             <p className="hero-fade-3 mt-6 text-[clamp(1rem,1.2vw,1.2rem)] leading-relaxed text-[#F2F2F0]/75">
@@ -147,7 +147,7 @@ export default function Home() {
       </section>
 
       {/* BLOQUE 3 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-20 pb-24 md:px-16 md:pt-28 md:pb-28">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-10 pb-12 md:px-16 md:pt-28 md:pb-28">
         <div className="max-w-[760px]">
           <p className="mb-10 text-[clamp(2rem,2.7vw,2.5rem)] font-medium tracking-[-0.02em] text-[#F2F2F0]">
             Eta hori nabaritu egiten da.
@@ -167,7 +167,7 @@ export default function Home() {
       </section>
 
       {/* BLOQUE 4 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-24 pb-24 md:px-16 md:pt-28 md:pb-28">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-12 pb-12 md:px-16 md:pt-28 md:pb-28">
         <div className="max-w-[760px]">
           <div className="space-y-4 text-[clamp(1.85rem,2.4vw,2.2rem)] font-medium tracking-[-0.02em] text-[#F2F2F0]">
             <p>Arazoa ez da ekoizpena.</p>
@@ -194,7 +194,7 @@ export default function Home() {
       </section>
 
       {/* BLOQUE 5 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-28 pb-24 md:px-16 md:pt-36 md:pb-28">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-14 pb-12 md:px-16 md:pt-36 md:pb-28">
         <div className="max-w-[760px]">
           <div className="space-y-6 text-[clamp(1.4rem,1.9vw,1.75rem)] leading-relaxed text-[#F2F2F0]/90">
             <p>
@@ -219,14 +219,14 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mt-20 space-y-4 text-[clamp(1.45rem,1.9vw,1.7rem)] leading-relaxed text-[#F2F2F0]/85 md:mt-24">
+          <div className="mt-10 space-y-4 text-[clamp(1.45rem,1.9vw,1.7rem)] leading-relaxed text-[#F2F2F0]/85 md:mt-24">
             <p>Ekitaldiak noiz arnastuko duen erabakitzea.</p>
             <p>Noiz estutu.</p>
             <p>Noiz erlaxatu.</p>
             <p>Noiz jolas dezakeen.</p>
           </div>
 
-          <div className="mt-24 max-w-[720px] space-y-5 text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/75">
+          <div className="mt-12 max-w-[720px] space-y-5 text-[clamp(1.15rem,1.45vw,1.35rem)] leading-relaxed text-[#F2F2F0]/75 md:mt-24">
             <p>Hori da diseinu eszenikoa.</p>
             <p>Hori da kudeaketa emozionala.</p>
 
@@ -246,7 +246,7 @@ export default function Home() {
       </section>
 
       {/* BLOQUE 6 */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-36 pb-32 md:px-16 md:pt-44 md:pb-36">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pt-16 pb-14 md:px-16 md:pt-44 md:pb-36">
         <div className="max-w-[760px]">
           <p className="text-[clamp(1.35rem,1.8vw,1.6rem)] leading-relaxed text-[#F2F2F0]/85">
             Ekitaldiak justifikatzeari uzten dio.
@@ -277,7 +277,7 @@ export default function Home() {
       {/* BLOQUE 7 — TESTUINGURUAK */}
       <section
         id="contextos"
-        className="fade-in mx-auto max-w-[1400px] bg-[#101012] px-8 pt-44 pb-28 md:px-16 md:pt-52 md:pb-32"
+        className="fade-in mx-auto max-w-[1400px] bg-[#101012] px-8 pt-16 pb-14 md:px-16 md:pt-52 md:pb-32"
       >
         <div className="max-w-[820px]">
           <div className="mb-12 h-px w-32 bg-white/15" />
@@ -353,7 +353,7 @@ export default function Home() {
       {/* BLOQUE 8 — NOLA LAN EGITEN DUDAN */}
       <section
         id="como-trabajo"
-        className="fade-in mx-auto max-w-[1400px] px-8 pt-36 pb-28 md:px-16 md:pt-44 md:pb-32"
+        className="fade-in mx-auto max-w-[1400px] px-8 pt-16 pb-14 md:px-16 md:pt-44 md:pb-32"
       >
         <div className="max-w-[860px]">
           <div className="max-w-[720px]">
@@ -427,7 +427,7 @@ export default function Home() {
       </section>
 
       {/* BLOQUE 9 — CTA FINAL */}
-      <section className="fade-in mx-auto max-w-[900px] px-8 pt-40 pb-40 text-center">
+      <section className="fade-in mx-auto max-w-[900px] px-8 pt-16 pb-16 md:pt-40 md:pb-40 text-center">
         <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-tight text-[#F2F2F0]">
           Onaino iritsi bazara,
           <br />
