@@ -83,19 +83,14 @@ export default function ArrogantePage() {
       <section className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0] flex flex-col justify-center px-6 py-20 md:px-16">
         <div className="max-w-[680px]">
           <p className="text-[0.68rem] uppercase tracking-[0.35em] text-[#DC2626] mb-10">
-            Experimento social — Madrid
+            Un experimento incómodo — Madrid
           </p>
           <h1 className="text-[clamp(2.4rem,8vw,5.2rem)] font-medium leading-[1.03] tracking-[-0.02em] mb-8">
-            Tu resultado<br />no es definitivo.
+            Todos creemos conocer<br />a algún gilipollas.<br />Pero casi nadie<br />cree serlo.
           </h1>
           <div className="space-y-5 text-[clamp(1rem,2vw,1.2rem)] leading-relaxed text-[#F2F2F0]/70 max-w-[520px]">
-            <p>El test que acabas de hacer en la calle es solo una parte del experimento.</p>
-            <p>Estamos intentando entender algo bastante curioso:</p>
-            <p className="text-[#F2F2F0] font-medium">
-              Todos creemos conocer a algún gilipollas.<br />
-              Pero casi nadie cree serlo.
-            </p>
-            <p>Tu respuesta todavía puede cambiar el resultado.</p>
+            <p>Llevamos días haciendo esta pregunta en la calle.</p>
+            <p>Aquí puedes ver cómo está respondiendo la gente. Y participar.</p>
           </div>
           <p className="mt-16 text-[#F2F2F0]/25 text-lg select-none">↓</p>
         </div>
@@ -108,12 +103,12 @@ export default function ArrogantePage() {
             Resultados del experimento
           </p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-10">
-            <div>
+            <div className="col-span-2">
               <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#1a1a1a]">
                 {stats?.personas_testadas ?? "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
-                Personas<br />testadas
+                Personas que han participado
               </p>
             </div>
             <div>
@@ -130,14 +125,6 @@ export default function ArrogantePage() {
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
                 Creen que alguien<br />diría su nombre
-              </p>
-            </div>
-            <div>
-              <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#1a1a1a]">
-                {stats?.tests_aceptados ?? "—"}
-              </p>
-              <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
-                Aceptaron<br />hacer el test
               </p>
             </div>
           </div>
@@ -186,8 +173,7 @@ export default function ArrogantePage() {
           ) : (
             <>
               <div className="mb-10 space-y-3 text-[0.95rem] text-gray-500 leading-relaxed border-l-2 border-gray-200 pl-4">
-                <p>Si hiciste el test en la calle, esto es la segunda parte del experimento. Si no, puedes responder igualmente.</p>
-                <p>El test de la calle es rápido. Aquí puedes responder con un poco más de calma.</p>
+                <p>Si hiciste el test en la calle, esta es la segunda parte del experimento. Si no, puedes responder igualmente.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-10">
