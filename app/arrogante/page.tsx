@@ -170,7 +170,8 @@ export default function ArrogantePage() {
           ) : (
             <>
               <div className="mb-10 space-y-3 text-[0.95rem] text-gray-500 leading-relaxed border-l-2 border-gray-200 pl-4">
-                <p>Si hiciste el test en la calle, esta es la segunda parte del experimento. Si no, puedes responder igualmente.</p>
+                <p>Si hiciste el test en la calle, esta es la segunda parte del experimento.</p>
+                <p>Si no, puedes responder igualmente.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-10">
@@ -186,8 +187,8 @@ export default function ArrogantePage() {
 
                 {/* Q2 */}
                 <div>
-                  <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">¿Quién es la persona más gilipollas que conoces?</p>
-                  <p className="text-[0.78rem] text-gray-400 mb-3">Puedes escribir un nombre, una relación o una descripción. Ejemplos: mi jefe, un ex compañero, un vecino…</p>
+                  <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">¿Quién es la persona más gilipollas que conoces? <span className="normal-case">(Desahógate)</span></p>
+                  <p className="text-[0.78rem] text-gray-400 mb-3">Puedes escribir un nombre, una relación, una descripción o hasta una historia.<br />Ejemplos: mi jefe, un ex compañero, un vecino…</p>
                   <div style={{ borderBottom: "1px solid #e5e7eb" }}>
                     <textarea
                       value={quien}
