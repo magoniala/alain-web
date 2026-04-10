@@ -350,8 +350,7 @@ export default function ArrogantePage() {
             <p className="text-[#F2F2F0] font-medium italic border-l-2 border-[#DC2626] pl-5 py-1">
               &ldquo;Es imposible no triunfar en esta vida…<br />con la cantidad de gilipollas que te rodean.&rdquo;
             </p>
-            <p>La frase es provocadora.</p>
-            <p>Pero también plantea varias preguntas.</p>
+            <p>La frase abre varias preguntas.</p>
             <p className="text-[#F2F2F0]">
               ¿Es realmente cierto?<br />
               ¿Son tantos los gilipollas que nos rodean?<br />
