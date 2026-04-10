@@ -336,6 +336,7 @@ export default function AdminPage() {
                     <span className={`text-[0.65rem] uppercase tracking-wider px-2 py-0.5 ${
                       entry.origen === "tiktok" ? "bg-pink-50 text-pink-500" :
                       entry.origen === "qr" ? "bg-gray-100 text-gray-500" :
+                      entry.origen === "newsletter" ? "bg-amber-50 text-amber-600" :
                       "bg-blue-50 text-blue-500"
                     }`}>
                       {entry.origen}
