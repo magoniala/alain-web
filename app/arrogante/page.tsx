@@ -30,14 +30,19 @@ export default function ArrogantePage() {
   const [privacy, setPrivacy] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
 
+  const loadStats = () => fetch("/api/arrogante/stats").then(r => r.json()).then(setStats).catch(() => {});
+
   useEffect(() => {
-    fetch("/api/arrogante/stats").then(r => r.json()).then(setStats).catch(() => {});
+    loadStats();
     fetch("/api/arrogante/frases").then(r => r.json()).then(setFrases).catch(() => {});
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
     if (ref === "tiktok") setOrigen("tiktok");
     else if (ref === "web") setOrigen("web");
     else if (ref === "newsletter") setOrigen("newsletter");
+
+    const interval = setInterval(loadStats, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const pct = (n: number) => {
@@ -59,7 +64,7 @@ export default function ArrogantePage() {
         origen,
       }),
     });
-    if (res.ok) setStatus("done");
+    if (res.ok) { setStatus("done"); loadStats(); }
     else setStatus("error");
   }
 
@@ -237,6 +242,9 @@ export default function ArrogantePage() {
       {/* HERO */}
       <section className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0] flex flex-col justify-center px-6 py-20 md:px-16">
         <div className="max-w-[680px]">
+          <p className="text-[0.68rem] uppercase tracking-[0.35em] text-[#DC2626] mb-8">
+            Un experimento incómodo — Madrid
+          </p>
           <h1 className="text-[clamp(2.4rem,8vw,5.2rem)] font-medium leading-[1.03] tracking-[-0.02em] mb-10">
             El experimento<br />de Alcalá 77
           </h1>
@@ -244,12 +252,18 @@ export default function ArrogantePage() {
             <p>Aquí puedes ver cómo está respondiendo la gente.</p>
             <p>Y, si quieres, aportar nueva información.</p>
           </div>
-          <p className="mt-16 text-[#F2F2F0]/25 text-lg select-none">↓</p>
+          <button
+            onClick={() => document.getElementById("stats")?.scrollIntoView({ behavior: "smooth" })}
+            className="mt-16 text-[#F2F2F0]/50 hover:text-[#F2F2F0]/90 transition-colors text-2xl select-none cursor-pointer"
+            style={{ background: "none", border: "none", display: "block" }}
+          >
+            ↓
+          </button>
         </div>
       </section>
 
       {/* STATS */}
-      <section className="bg-white text-[#1a1a1a] px-6 py-14 md:px-16 md:py-20">
+      <section id="stats" className="bg-white text-[#1a1a1a] px-6 py-14 md:px-16 md:py-20">
         <div className="max-w-[680px]">
           <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[#DC2626] mb-10">
             Resultados del experimento
@@ -260,7 +274,7 @@ export default function ArrogantePage() {
                 {stats?.personas_testadas ?? "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
-                Personas que han participado
+                Sujetos han participado
               </p>
             </div>
             <div>
@@ -268,7 +282,7 @@ export default function ArrogantePage() {
                 {stats?.media_gilipollas != null ? stats.media_gilipollas : "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
-                De media,<br />cada persona conoce
+                Gilipollas de media<br />por persona
               </p>
             </div>
             <div>
@@ -359,7 +373,7 @@ export default function ArrogantePage() {
               ¿Y qué ocurre cuando haces esta pregunta cara a cara?
             </p>
             <p>Durante estos días estamos saliendo a la calle para comprobarlo.</p>
-            <p>El resultado será un pequeño documental.</p>
+            <p>El resultado será un documental.</p>
           </div>
         </div>
       </section>
