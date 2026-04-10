@@ -61,19 +61,16 @@ export default function ArrogantePage() {
     else setStatus("error");
   }
 
-  const RadioBtn = ({
+  const OptionBtn = ({
     value, label, selected, onSelect,
   }: { value: string; label: string; selected: string; onSelect: (v: string) => void }) => (
     <button
       type="button"
       onClick={() => onSelect(value)}
-      className={`px-5 py-3 text-[0.9rem] border transition-all ${
-        selected === value
-          ? "border-[#DC2626] bg-[#DC2626] text-white"
-          : "border-gray-300 text-gray-700 hover:border-gray-500"
-      }`}
+      className="block w-full text-left py-4 border-b border-gray-100 text-[clamp(1rem,1.3vw,1.1rem)] transition-colors duration-150 hover:text-[#1a1a1a]"
+      style={{ color: selected === value ? "#DC2626" : "#888", background: "none" }}
     >
-      {label}
+      {selected === value ? "→ " : ""}{label}
     </button>
   );
 
@@ -179,48 +176,54 @@ export default function ArrogantePage() {
               <form onSubmit={handleSubmit} className="space-y-10">
                 {/* Q1 */}
                 <div>
-                  <p className="text-[0.95rem] font-medium mb-4">¿Conoces a algún gilipollas?</p>
-                  <div className="flex flex-wrap gap-3">
-                    <RadioBtn value="si" label="Sí" selected={conoce} onSelect={setConoce} />
-                    <RadioBtn value="no" label="No" selected={conoce} onSelect={setConoce} />
-                    <RadioBtn value="prefiero_no" label="Prefiero no decirlo" selected={conoce} onSelect={setConoce} />
+                  <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">¿Conoces a algún gilipollas?</p>
+                  <div>
+                    <OptionBtn value="si" label="Sí" selected={conoce} onSelect={setConoce} />
+                    <OptionBtn value="no" label="No" selected={conoce} onSelect={setConoce} />
+                    <OptionBtn value="prefiero_no" label="Prefiero no decirlo" selected={conoce} onSelect={setConoce} />
                   </div>
                 </div>
 
                 {/* Q2 */}
                 <div>
-                  <p className="text-[0.95rem] font-medium mb-1">¿Quién es la persona más gilipollas que conoces?</p>
+                  <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">¿Quién es la persona más gilipollas que conoces?</p>
                   <p className="text-[0.78rem] text-gray-400 mb-3">Puedes escribir un nombre, una relación o una descripción. Ejemplos: mi jefe, un ex compañero, un vecino…</p>
-                  <textarea
-                    value={quien}
-                    onChange={e => setQuien(e.target.value)}
-                    rows={3}
-                    placeholder="Opcional"
-                    className="w-full border border-gray-200 px-4 py-3 text-[0.95rem] resize-none outline-none focus:border-gray-400 transition-colors"
-                  />
+                  <div style={{ borderBottom: "1px solid #e5e7eb" }}>
+                    <textarea
+                      value={quien}
+                      onChange={e => setQuien(e.target.value)}
+                      rows={3}
+                      placeholder="Opcional"
+                      className="w-full px-0 py-3 text-[clamp(1rem,1.3vw,1.1rem)] resize-none outline-none text-[#1a1a1a] placeholder:text-gray-300"
+                      style={{ background: "none", border: "none" }}
+                    />
+                  </div>
                 </div>
 
                 {/* Q3 */}
                 <div>
-                  <p className="text-[0.95rem] font-medium mb-4">¿Crees que alguien escribiría tu nombre?</p>
-                  <div className="flex flex-wrap gap-3">
-                    <RadioBtn value="si" label="Sí" selected={cree} onSelect={setCree} />
-                    <RadioBtn value="no" label="No" selected={cree} onSelect={setCree} />
-                    <RadioBtn value="probablemente" label="Probablemente" selected={cree} onSelect={setCree} />
+                  <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">¿Crees que alguien escribiría tu nombre?</p>
+                  <div>
+                    <OptionBtn value="si" label="Sí" selected={cree} onSelect={setCree} />
+                    <OptionBtn value="no" label="No" selected={cree} onSelect={setCree} />
+                    <OptionBtn value="probablemente" label="Probablemente" selected={cree} onSelect={setCree} />
                   </div>
                 </div>
 
                 {/* Q4 */}
                 <div>
-                  <p className="text-[0.95rem] font-medium mb-1">¿Quieres saber cómo termina el experimento?</p>
+                  <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">¿Quieres saber cómo termina el experimento?</p>
                   <p className="text-[0.78rem] text-gray-400 mb-3">Te enviaré el documental cuando publiquemos el resultado.</p>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="tu@email.com (opcional)"
-                    className="w-full border border-gray-200 px-4 py-3 text-[0.95rem] outline-none focus:border-gray-400 transition-colors"
-                  />
+                  <div style={{ borderBottom: "1px solid #e5e7eb" }}>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="tu@email.com (opcional)"
+                      className="w-full px-0 py-3 text-[clamp(1rem,1.3vw,1.1rem)] outline-none text-[#1a1a1a] placeholder:text-gray-300"
+                      style={{ background: "none", border: "none" }}
+                    />
+                  </div>
                 </div>
 
                 {/* Privacy */}

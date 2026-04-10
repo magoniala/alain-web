@@ -6,7 +6,6 @@ interface Stats {
   personas_testadas: number;
   conocen_gilipollas: number;
   creen_que_diran_su_nombre: number;
-  tests_aceptados: number;
 }
 
 interface Frase {
@@ -22,11 +21,10 @@ interface EmailEntry {
   origen: string;
 }
 
-const STAT_LABELS: Record<keyof Omit<Stats, "id">, string> = {
-  personas_testadas: "Personas testadas",
+const STAT_LABELS: Record<keyof Stats, string> = {
+  personas_testadas: "Personas que han participado",
   conocen_gilipollas: "Conocen a algún gilipollas",
-  creen_que_diran_su_nombre: "Creen que dirían su nombre",
-  tests_aceptados: "Tests aceptados",
+  creen_que_diran_su_nombre: "Creen que alguien diría su nombre",
 };
 
 export default function AdminPage() {
@@ -174,9 +172,9 @@ export default function AdminPage() {
           {/* Preview */}
           {stats && (
             <div className="grid grid-cols-2 gap-4 mb-8 p-4 bg-[#f9f9f9] border border-gray-100">
-              <div>
+              <div className="col-span-2">
                 <p className="text-2xl font-bold">{stats.personas_testadas}</p>
-                <p className="text-[0.7rem] text-gray-400 uppercase tracking-wider mt-1">Testadas</p>
+                <p className="text-[0.7rem] text-gray-400 uppercase tracking-wider mt-1">Han participado</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#DC2626]">{pct(stats.conocen_gilipollas)}</p>
@@ -185,10 +183,6 @@ export default function AdminPage() {
               <div>
                 <p className="text-2xl font-bold text-[#DC2626]">{pct(stats.creen_que_diran_su_nombre)}</p>
                 <p className="text-[0.7rem] text-gray-400 uppercase tracking-wider mt-1">Creen su nombre</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.tests_aceptados}</p>
-                <p className="text-[0.7rem] text-gray-400 uppercase tracking-wider mt-1">Aceptados</p>
               </div>
             </div>
           )}
