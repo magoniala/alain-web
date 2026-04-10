@@ -21,6 +21,7 @@ export default function ArrogantePage() {
   const [frases, setFrases] = useState<Frase[]>([]);
   const [origen, setOrigen] = useState("qr");
 
+  const [formStarted, setFormStarted] = useState(false);
   const [formScreen, setFormScreen] = useState(1);
   const [cuantos, setCuantos] = useState("");
   const [quien, setQuien] = useState("");
@@ -68,10 +69,10 @@ export default function ArrogantePage() {
     <button
       type="button"
       onClick={() => onSelect(value)}
-      className="block w-full text-left py-4 border-b border-gray-100 text-[clamp(1rem,1.3vw,1.1rem)] transition-colors duration-150 hover:text-[#1a1a1a]"
-      style={{ color: selected === value ? "#DC2626" : "#888", background: "none" }}
+      className="block w-full text-left py-4 border-b border-gray-200 text-[clamp(1rem,1.3vw,1.1rem)] transition-colors duration-150"
+      style={{ color: selected === value ? "#DC2626" : "#1a1a1a", background: "none", fontWeight: selected === value ? 500 : 400 }}
     >
-      {selected === value ? "→ " : ""}{label}
+      <span style={{ display: "inline-block", width: "1.5rem", color: "#DC2626" }}>{selected === value ? "→" : ""}</span>{label}
     </button>
   );
 
@@ -101,8 +102,7 @@ export default function ArrogantePage() {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="mt-8 border border-gray-300 px-8 py-3 text-[0.95rem] tracking-[0.05em] text-[#1a1a1a] transition-colors hover:border-gray-500 disabled:opacity-30"
-      style={{ background: "none" }}
+      className="mt-8 bg-[#1a1a1a] text-white px-8 py-3.5 text-[0.9rem] tracking-[0.06em] transition-opacity hover:opacity-80 disabled:opacity-25"
     >
       {label}
     </button>
@@ -124,7 +124,7 @@ export default function ArrogantePage() {
       case 1:
         return (
           <div>
-            <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">
+            <p className="text-[1rem] font-medium text-[#1a1a1a] mb-4">
               ¿Cuántos gilipollas dirías que conoces?
             </p>
             <div>
@@ -140,7 +140,7 @@ export default function ArrogantePage() {
       case 2:
         return (
           <div>
-            <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">
+            <p className="text-[1rem] font-medium text-[#1a1a1a] mb-4">
               ¿Quién es la persona más gilipollas que conoces? <span className="normal-case">(Desahógate)</span>
             </p>
             <p className="text-[0.78rem] text-gray-400 mb-3">
@@ -165,7 +165,7 @@ export default function ArrogantePage() {
       case 3:
         return (
           <div>
-            <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">
+            <p className="text-[1rem] font-medium text-[#1a1a1a] mb-4">
               Si preguntara a la gente que te conoce…<br />¿alguien diría tu nombre?
             </p>
             <div>
@@ -181,7 +181,7 @@ export default function ArrogantePage() {
       case 4:
         return (
           <div>
-            <p className="text-[0.78rem] uppercase tracking-[0.16em] text-gray-400 mb-1">
+            <p className="text-[1rem] font-medium text-[#1a1a1a] mb-4">
               ¿Quieres saber cómo termina el experimento?
             </p>
             <p className="text-[0.78rem] text-gray-400 mb-3">
@@ -307,10 +307,6 @@ export default function ArrogantePage() {
       {/* FORM */}
       <section className="bg-white text-[#1a1a1a] px-6 py-14 md:px-16 md:py-20">
         <div className="max-w-[600px]">
-          <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[#DC2626] mb-8">
-            Participa en el experimento
-          </p>
-
           {status === "done" ? (
             <div className="py-6">
               <p className="text-[clamp(1.6rem,5vw,2.4rem)] font-medium leading-tight mb-5 tracking-[-0.02em]">
@@ -320,12 +316,22 @@ export default function ArrogantePage() {
                 Cuando publiquemos el resultado final te enviaré el documental.
               </p>
             </div>
-          ) : (
-            <>
-              <div className="mb-10 space-y-3 text-[0.95rem] text-gray-500 leading-relaxed border-l-2 border-gray-200 pl-4">
+          ) : !formStarted ? (
+            <div>
+              <div className="mb-8 space-y-3 text-[1rem] text-gray-500 leading-relaxed border-l-2 border-gray-200 pl-4">
                 <p>Si hiciste el test en la calle, esta es la segunda parte del experimento.</p>
                 <p>Si no, puedes responder igualmente.</p>
               </div>
+              <button
+                type="button"
+                onClick={() => setFormStarted(true)}
+                className="bg-[#DC2626] text-white px-8 py-4 text-[0.85rem] uppercase tracking-[0.18em] transition-opacity hover:opacity-90"
+              >
+                Participa en el experimento
+              </button>
+            </div>
+          ) : (
+            <>
               <Progress />
               {renderFormScreen()}
             </>
