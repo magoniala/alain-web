@@ -237,15 +237,10 @@ export default function ArrogantePage() {
       {/* HERO */}
       <section className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0] flex flex-col justify-center px-6 py-20 md:px-16">
         <div className="max-w-[680px]">
-          <p className="text-[0.68rem] uppercase tracking-[0.35em] text-[#DC2626] mb-10">
-            Un experimento incómodo — Madrid
-          </p>
-          <h1 className="text-[clamp(2.4rem,8vw,5.2rem)] font-medium leading-[1.03] tracking-[-0.02em] mb-8">
-            Todos creemos conocer<br />a algún gilipollas.<br />Pero casi nadie<br />cree serlo.
-          </h1>
-          <div className="space-y-5 text-[clamp(1rem,2vw,1.2rem)] leading-relaxed text-[#F2F2F0]/70 max-w-[520px]">
-            <p>Llevamos días haciendo esta pregunta en la calle.</p>
-            <p>Aquí puedes ver cómo está respondiendo la gente. Y participar.</p>
+          <div className="space-y-6 text-[clamp(1.2rem,2.5vw,1.6rem)] leading-relaxed max-w-[520px]">
+            <p className="text-[#F2F2F0]">Un experimento incómodo.</p>
+            <p className="text-[#F2F2F0]/70">Aquí puedes ver cómo está respondiendo la gente.</p>
+            <p className="text-[#F2F2F0]/70">Y si quieres, aportar nueva información.</p>
           </div>
           <p className="mt-16 text-[#F2F2F0]/25 text-lg select-none">↓</p>
         </div>
