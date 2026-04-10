@@ -242,11 +242,8 @@ export default function ArrogantePage() {
       {/* HERO */}
       <section className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0] flex flex-col justify-center px-6 py-20 md:px-16">
         <div className="max-w-[680px]">
-          <p className="text-[0.68rem] uppercase tracking-[0.35em] text-[#DC2626] mb-8">
-            Un experimento incómodo — Madrid
-          </p>
           <h1 className="text-[clamp(2.4rem,8vw,5.2rem)] font-medium leading-[1.03] tracking-[-0.02em] mb-10">
-            El experimento<br />de Alcalá 77
+            El experimento<br />de <span className="text-[#DC2626]">Alcalá 77</span>
           </h1>
           <div className="space-y-5 text-[clamp(1rem,2vw,1.2rem)] leading-relaxed text-[#F2F2F0]/70 max-w-[520px]">
             <p>Aquí puedes ver cómo está respondiendo la gente.</p>
