@@ -342,7 +342,7 @@ export default function ArrogantePage() {
           <div className="space-y-5 text-[clamp(1rem,2vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
             <p>La hipótesis del experimento nace de una frase de un libro.</p>
             <p className="text-[#F2F2F0] font-medium italic border-l-2 border-[#DC2626] pl-5 py-1">
-              &ldquo;Es imposible no triunfar en esta vida<br />con la cantidad de gilipollas que te rodean.&rdquo;
+              &ldquo;Es imposible no triunfar en esta vida…<br />con la cantidad de gilipollas que te rodean.&rdquo;
             </p>
             <p>La frase es provocadora.</p>
             <p>Pero también plantea varias preguntas.</p>
