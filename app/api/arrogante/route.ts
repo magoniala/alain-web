@@ -6,6 +6,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 const TIKTOK_URL = "https://www.tiktok.com/@proyecto_2026";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
 export async function POST(req: Request) {
   const { conoce_gilipollas, cree_que_diran_su_nombre, respuesta_texto_libre, email, origen } = await req.json();
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
           </div>
           <div style="margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid #eee;font-size:0.88rem;color:#999;">
             <p style="margin:0 0 0.5rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#999;">contacto@niala.es</a></p>
-            <p style="margin:0;"><a href="mailto:contacto@niala.es?subject=Baja%20experimento%20arrogante" style="color:#bbb;">Dejar de recibir estos emails</a></p>
+            <p style="margin:0;"><a href="${BASE_URL}/api/arrogante/baja?email=${encodeURIComponent(email.trim())}" style="color:#bbb;">Dejar de recibir estos emails</a></p>
           </div>
         </div>
       `,
