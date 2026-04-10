@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 
 interface Stats {
   personas_testadas: number;
-  conocen_gilipollas: number;
+  media_gilipollas: number;
   creen_que_diran_su_nombre: number;
 }
 
@@ -23,7 +23,7 @@ interface EmailEntry {
 
 const STAT_LABELS: Record<keyof Stats, string> = {
   personas_testadas: "Personas que han participado",
-  conocen_gilipollas: "Conocen a algún gilipollas",
+  media_gilipollas: "Media de gilipollas por persona",
   creen_que_diran_su_nombre: "Creen que alguien diría su nombre",
 };
 
@@ -177,8 +177,8 @@ export default function AdminPage() {
                 <p className="text-[0.7rem] text-gray-400 uppercase tracking-wider mt-1">Han participado</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#DC2626]">{pct(stats.conocen_gilipollas)}</p>
-                <p className="text-[0.7rem] text-gray-400 uppercase tracking-wider mt-1">Conocen</p>
+                <p className="text-2xl font-bold text-[#DC2626]">{stats.media_gilipollas ?? "—"}</p>
+                <p className="text-[0.7rem] text-gray-400 uppercase tracking-wider mt-1">Media gilipollas</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#DC2626]">{pct(stats.creen_que_diran_su_nombre)}</p>

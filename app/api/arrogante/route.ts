@@ -8,15 +8,24 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 const TIKTOK_URL = "https://www.tiktok.com/@proyecto_2026";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
-export async function POST(req: Request) {
-  const { conoce_gilipollas, cree_que_diran_su_nombre, respuesta_texto_libre, email, origen } = await req.json();
+// Midpoint values for average calculation
+const CUANTOS_VALOR: Record<string, number> = {
+  "ninguno": 0,
+  "1-2": 1.5,
+  "3-5": 4,
+  "6-10": 8,
+  "mas-de-10": 15,
+};
 
-  if (!conoce_gilipollas || !cree_que_diran_su_nombre) {
+export async function POST(req: Request) {
+  const { cuantos_gilipollas, cree_que_diran_su_nombre, respuesta_texto_libre, email, origen } = await req.json();
+
+  if (!cuantos_gilipollas || !cree_que_diran_su_nombre) {
     return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
   }
 
   const { error: dbError } = await supabase.from("arrogante_respuestas").insert({
-    conoce_gilipollas,
+    cuantos_gilipollas,
     cree_que_diran_su_nombre,
     respuesta_texto_libre: respuesta_texto_libre || null,
     email: email?.trim() || null,
@@ -29,16 +38,24 @@ export async function POST(req: Request) {
 
   // Auto-update stats
   const { data: current } = await supabase.from("arrogante_stats").select("*").eq("id", 1).single();
-  const base = current ?? { personas_testadas: 0, conocen_gilipollas: 0, creen_que_diran_su_nombre: 0, tests_aceptados: 0 };
+  const base = current ?? { personas_testadas: 0, creen_que_diran_su_nombre: 0, suma_gilipollas: 0 };
+
+  const creeDirian = cree_que_diran_su_nombre === "si" || cree_que_diran_su_nombre === "probablemente-si";
+  const valorCuantos = CUANTOS_VALOR[cuantos_gilipollas] ?? 0;
+  const nuevaPersonas = (base.personas_testadas ?? 0) + 1;
+  const nuevaSuma = (base.suma_gilipollas ?? 0) + valorCuantos;
+
   const statsUpdate: Record<string, number> = {
-    personas_testadas: (base.personas_testadas ?? 0) + 1,
-    conocen_gilipollas: (base.conocen_gilipollas ?? 0) + (conoce_gilipollas === "si" ? 1 : 0),
-    creen_que_diran_su_nombre: (base.creen_que_diran_su_nombre ?? 0) + ((cree_que_diran_su_nombre === "si" || cree_que_diran_su_nombre === "probablemente") ? 1 : 0),
+    personas_testadas: nuevaPersonas,
+    creen_que_diran_su_nombre: (base.creen_que_diran_su_nombre ?? 0) + (creeDirian ? 1 : 0),
+    suma_gilipollas: nuevaSuma,
+    media_gilipollas: Math.round((nuevaSuma / nuevaPersonas) * 10) / 10,
   };
+
   if (current) {
     await supabase.from("arrogante_stats").update(statsUpdate).eq("id", 1);
   } else {
-    await supabase.from("arrogante_stats").insert({ id: 1, ...statsUpdate, tests_aceptados: 0 });
+    await supabase.from("arrogante_stats").insert({ id: 1, ...statsUpdate });
   }
 
   if (email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
