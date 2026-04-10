@@ -26,6 +26,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
   }
 
+  // Auto-update stats
+  const { data: current } = await supabase.from("arrogante_stats").select("*").eq("id", 1).single();
+  if (current) {
+    const update: Record<string, number> = {
+      personas_testadas: (current.personas_testadas ?? 0) + 1,
+    };
+    if (conoce_gilipollas === "si") {
+      update.conocen_gilipollas = (current.conocen_gilipollas ?? 0) + 1;
+    }
+    if (cree_que_diran_su_nombre === "si" || cree_que_diran_su_nombre === "probablemente") {
+      update.creen_que_diran_su_nombre = (current.creen_que_diran_su_nombre ?? 0) + 1;
+    }
+    await supabase.from("arrogante_stats").update(update).eq("id", 1);
+  }
+
   if (email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     await resend.emails.send({
       from: "Alain Zulaika <contacto@niala.es>",

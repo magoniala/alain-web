@@ -190,7 +190,7 @@ export default function ArrogantePage() {
                 {/* Q2 */}
                 <div>
                   <p className="text-[0.95rem] font-medium mb-1">¿Quién es la persona más gilipollas que conoces?</p>
-                  <p className="text-[0.78rem] text-gray-400 mb-3">Puedes escribir un nombre, una relación o una descripción.</p>
+                  <p className="text-[0.78rem] text-gray-400 mb-3">Puedes escribir un nombre, una relación o una descripción. Ejemplos: mi jefe, un ex compañero, un vecino…</p>
                   <textarea
                     value={quien}
                     onChange={e => setQuien(e.target.value)}
