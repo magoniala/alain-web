@@ -275,7 +275,7 @@ export default function ArrogantePage() {
           <div className="grid grid-cols-2 gap-x-6 gap-y-10">
             <div className="col-span-2">
               <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#1a1a1a]">
-                {stats?.personas_testadas ?? "—"}
+                {stats && stats.personas_testadas > 0 ? stats.personas_testadas : "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
                 Sujetos han participado
@@ -283,7 +283,7 @@ export default function ArrogantePage() {
             </div>
             <div>
               <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#DC2626]">
-                {stats?.media_gilipollas != null ? stats.media_gilipollas : "—"}
+                {stats && stats.personas_testadas > 0 ? stats.media_gilipollas : "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
                 Gilipollas de media<br />por persona
@@ -291,7 +291,7 @@ export default function ArrogantePage() {
             </div>
             <div>
               <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#DC2626]">
-                {stats ? pct(stats.creen_que_diran_su_nombre) : "—"}
+                {stats && stats.personas_testadas > 0 ? pct(stats.creen_que_diran_su_nombre) : "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
                 Creen que alguien<br />les toma por gilipollas
@@ -326,15 +326,15 @@ export default function ArrogantePage() {
 
       {/* NOMINADOS */}
       {nominados.length > 0 && (
-        <section className="bg-white text-[#1a1a1a] px-6 py-14 md:px-16 md:py-20">
+        <section className="bg-[#0B0B0C] text-[#F2F2F0] px-6 py-14 md:px-16 md:py-20">
           <div className="max-w-[680px]">
             <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[#DC2626] mb-12">
               Los nominados
             </p>
             <div className="space-y-8">
               {nominados.map((n) => (
-                <div key={n.id} className="border-l-2 border-gray-200 pl-6">
-                  <p className="text-[clamp(1rem,2vw,1.15rem)] leading-relaxed text-[#1a1a1a]/80 italic">
+                <div key={n.id} className="border-l-2 border-[#DC2626] pl-6">
+                  <p className="text-[clamp(1.05rem,2.5vw,1.3rem)] leading-relaxed text-[#F2F2F0]/85 italic">
                     &ldquo;{n.respuesta_texto_libre}&rdquo;
                   </p>
                 </div>
@@ -345,7 +345,7 @@ export default function ArrogantePage() {
       )}
 
       {/* FORM */}
-      <section className="bg-white text-[#1a1a1a] px-6 py-14 md:px-16 md:py-20">
+      <section className="bg-white text-[#1a1a1a] px-6 py-12 md:px-16 md:py-16">
         <div className="max-w-[600px]">
           {status === "done" ? (
             <div className="py-6">
@@ -358,7 +358,7 @@ export default function ArrogantePage() {
             </div>
           ) : !formStarted ? (
             <div>
-              <div className="mb-8 space-y-3 text-[1rem] text-gray-500 leading-relaxed border-l-2 border-gray-200 pl-4">
+              <div className="mb-8 space-y-3 text-[1rem] text-gray-500 leading-relaxed">
                 <p>Si hiciste el test en la calle, esta es la segunda parte del experimento.</p>
                 <p>Si no, puedes responder igualmente.</p>
               </div>
