@@ -21,6 +21,14 @@ interface EmailEntry {
   origen: string;
 }
 
+interface Nominado {
+  id: string;
+  respuesta_texto_libre: string;
+  publicado: boolean;
+  fecha: string;
+  origen: string;
+}
+
 const STAT_LABELS: Record<keyof Stats, string> = {
   personas_testadas: "Personas que han participado",
   media_gilipollas: "Media de gilipollas por persona",
@@ -31,6 +39,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [frases, setFrases] = useState<Frase[]>([]);
   const [emails, setEmails] = useState<EmailEntry[]>([]);
+  const [nominados, setNominados] = useState<Nominado[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -52,15 +61,26 @@ export default function AdminPage() {
   }, []);
 
   async function loadAll() {
-    const [s, f, e] = await Promise.all([
+    const [s, f, e, n] = await Promise.all([
       fetch("/api/arrogante/stats").then(r => r.json()),
       fetch("/api/arrogante/frases").then(r => r.json()),
       fetch("/api/arrogante/emails").then(r => r.json()),
+      fetch("/api/arrogante/nominados").then(r => r.json()),
     ]);
     setStats(s);
     setEditStats(s);
     setFrases(f);
     setEmails(e);
+    setNominados(n);
+  }
+
+  async function toggleNominado(id: string, publicado: boolean) {
+    setNominados(prev => prev.map(n => n.id === id ? { ...n, publicado } : n));
+    await fetch("/api/arrogante/nominados", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, publicado }),
+    });
   }
 
   async function increment(field: keyof Stats) {
@@ -299,6 +319,47 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* NOMINADOS */}
+        <section className="bg-white border border-gray-200 p-5 md:p-6">
+          <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#DC2626] mb-6">
+            Nominados — respuestas del formulario ({nominados.length})
+          </p>
+          {nominados.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">Sin respuestas todavía.</p>
+          ) : (
+            <div className="space-y-4">
+              {nominados.map((n) => (
+                <div key={n.id} className={`border p-4 ${n.publicado ? "border-green-200 bg-green-50/40" : "border-gray-100"}`}>
+                  <p className="text-sm text-gray-700 italic leading-relaxed mb-3">&ldquo;{n.respuesta_texto_libre}&rdquo;</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[0.65rem] uppercase tracking-wider px-2 py-0.5 ${
+                        n.origen === "tiktok" ? "bg-pink-50 text-pink-500" :
+                        n.origen === "qr" ? "bg-gray-100 text-gray-500" :
+                        n.origen === "newsletter" ? "bg-amber-50 text-amber-600" :
+                        "bg-blue-50 text-blue-500"
+                      }`}>{n.origen}</span>
+                      <span className="text-[0.72rem] text-gray-400">
+                        {new Date(n.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => toggleNominado(n.id, !n.publicado)}
+                      className={`px-3 py-1.5 text-xs border transition-colors ${
+                        n.publicado
+                          ? "border-green-400 text-green-700 hover:bg-green-50"
+                          : "border-gray-300 text-gray-600 hover:border-gray-500"
+                      }`}
+                    >
+                      {n.publicado ? "✓ Publicado" : "Publicar"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* EMAILS */}

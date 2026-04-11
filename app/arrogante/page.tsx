@@ -16,9 +16,15 @@ interface Frase {
   sujeto_num: number;
 }
 
+interface Nominado {
+  id: string;
+  respuesta_texto_libre: string;
+}
+
 export default function ArrogantePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [frases, setFrases] = useState<Frase[]>([]);
+  const [nominados, setNominados] = useState<Nominado[]>([]);
   const [origen, setOrigen] = useState("qr");
 
   const [formStarted, setFormStarted] = useState(false);
@@ -35,6 +41,7 @@ export default function ArrogantePage() {
   useEffect(() => {
     loadStats();
     fetch("/api/arrogante/frases").then(r => r.json()).then(setFrases).catch(() => {});
+    fetch("/api/arrogante/nominados?publicadas=true").then(r => r.json()).then(setNominados).catch(() => {});
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
     if (ref === "tiktok") setOrigen("tiktok");
@@ -309,6 +316,26 @@ export default function ArrogantePage() {
                   </p>
                   <p className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-[#F2F2F0]/35">
                     — sujeto {frase.sujeto_num}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* NOMINADOS */}
+      {nominados.length > 0 && (
+        <section className="bg-white text-[#1a1a1a] px-6 py-14 md:px-16 md:py-20">
+          <div className="max-w-[680px]">
+            <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[#DC2626] mb-12">
+              Los nominados
+            </p>
+            <div className="space-y-8">
+              {nominados.map((n) => (
+                <div key={n.id} className="border-l-2 border-gray-200 pl-6">
+                  <p className="text-[clamp(1rem,2vw,1.15rem)] leading-relaxed text-[#1a1a1a]/80 italic">
+                    &ldquo;{n.respuesta_texto_libre}&rdquo;
                   </p>
                 </div>
               ))}
