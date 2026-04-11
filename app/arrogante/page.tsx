@@ -294,7 +294,7 @@ export default function ArrogantePage() {
                 {stats ? pct(stats.creen_que_diran_su_nombre) : "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
-                Creen que alguien<br />diría su nombre
+                Creen que alguien<br />les toma por gilipollas
               </p>
             </div>
           </div>
