@@ -343,13 +343,13 @@ export default function NewsletterPage() {
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEu || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
                           {bodyEu.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }}>{line}</p>
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#1a1a1a;text-decoration:underline;">$1</a>') }} />
                             : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
                           )}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                           <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
-                          <p style={{ margin: 0, color: "#ccc" }}>Dejar de recibir estos emails</p>
+                          <p style={{ margin: 0, color: "#ccc" }}>Cambiar idioma · Dejar de recibir estos emails</p>
                         </div>
                       </div>
                     )}
@@ -359,13 +359,13 @@ export default function NewsletterPage() {
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEs || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
                           {bodyEs.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }}>{line}</p>
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#1a1a1a;text-decoration:underline;">$1</a>') }} />
                             : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
                           )}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                           <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
-                          <p style={{ margin: 0, color: "#ccc" }}>Dejar de recibir estos emails</p>
+                          <p style={{ margin: 0, color: "#ccc" }}>Cambiar idioma · Dejar de recibir estos emails</p>
                         </div>
                       </div>
                     )}
