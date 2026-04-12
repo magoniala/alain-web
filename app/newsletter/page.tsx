@@ -343,7 +343,7 @@ export default function NewsletterPage() {
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEu || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
                           {bodyEu.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#1a1a1a;text-decoration:underline;">$1</a>') }} />
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>') }} />
                             : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
                           )}
                         </div>
@@ -359,7 +359,7 @@ export default function NewsletterPage() {
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEs || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
                           {bodyEs.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#1a1a1a;text-decoration:underline;">$1</a>') }} />
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>') }} />
                             : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
                           )}
                         </div>

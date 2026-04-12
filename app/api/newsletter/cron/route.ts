@@ -9,7 +9,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 function processText(text: string): string {
   return text.replace(
     /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-    '<a href="$2" style="color:#1a1a1a;text-decoration:underline;">$1</a>'
+    '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>'
   );
 }
 

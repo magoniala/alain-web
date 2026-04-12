@@ -10,7 +10,7 @@ function processText(text: string): string {
   // Convert [text](url) markdown links to <a> tags
   return text.replace(
     /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-    '<a href="$2" style="color:#1a1a1a;text-decoration:underline;">$1</a>'
+    '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>'
   );
 }
 

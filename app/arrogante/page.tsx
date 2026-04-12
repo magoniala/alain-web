@@ -25,6 +25,7 @@ export default function ArrogantePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [frases, setFrases] = useState<Frase[]>([]);
   const [nominados, setNominados] = useState<Nominado[]>([]);
+  const [nominadoIdx, setNominadoIdx] = useState(0);
   const [origen, setOrigen] = useState("qr");
 
   const [formStarted, setFormStarted] = useState(false);
@@ -328,17 +329,34 @@ export default function ArrogantePage() {
       {nominados.length > 0 && (
         <section className="bg-[#0B0B0C] text-[#F2F2F0] px-6 py-14 md:px-16 md:py-20">
           <div className="max-w-[680px]">
-            <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[#DC2626] mb-12">
-              Los nominados
-            </p>
-            <div className="space-y-8">
-              {nominados.map((n) => (
-                <div key={n.id} className="border-l-2 border-[#DC2626] pl-6">
-                  <p className="text-[clamp(1.05rem,2.5vw,1.3rem)] leading-relaxed text-[#F2F2F0]/85 italic">
-                    &ldquo;{n.respuesta_texto_libre}&rdquo;
-                  </p>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-12">
+              <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[#DC2626]">
+                Los nominados
+              </p>
+              <p className="text-[0.68rem] text-[#F2F2F0]/30 uppercase tracking-[0.15em]">
+                {nominadoIdx + 1} / {nominados.length}
+              </p>
+            </div>
+            <div className="border-l-2 border-[#DC2626] pl-6 min-h-[6rem]">
+              <p className="text-[clamp(1.05rem,2.5vw,1.3rem)] leading-relaxed text-[#F2F2F0]/85 italic">
+                &ldquo;{nominados[nominadoIdx].respuesta_texto_libre}&rdquo;
+              </p>
+            </div>
+            <div className="flex gap-4 mt-10">
+              <button
+                onClick={() => setNominadoIdx(i => (i - 1 + nominados.length) % nominados.length)}
+                className="w-11 h-11 flex items-center justify-center border border-[#F2F2F0]/20 text-[#F2F2F0]/50 hover:border-[#F2F2F0]/50 hover:text-[#F2F2F0]/90 transition-colors text-lg select-none"
+                style={{ background: "none" }}
+              >
+                ←
+              </button>
+              <button
+                onClick={() => setNominadoIdx(i => (i + 1) % nominados.length)}
+                className="w-11 h-11 flex items-center justify-center border border-[#F2F2F0]/20 text-[#F2F2F0]/50 hover:border-[#F2F2F0]/50 hover:text-[#F2F2F0]/90 transition-colors text-lg select-none"
+                style={{ background: "none" }}
+              >
+                →
+              </button>
             </div>
           </div>
         </section>
