@@ -21,11 +21,14 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const { id, publicado } = await req.json();
+  const { id, publicado, respuesta_texto_libre } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
+  const update: Record<string, unknown> = {};
+  if (publicado !== undefined) update.publicado = publicado;
+  if (respuesta_texto_libre !== undefined) update.respuesta_texto_libre = respuesta_texto_libre;
   const { error } = await supabase
     .from("arrogante_respuestas")
-    .update({ publicado })
+    .update(update)
     .eq("id", id);
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
   return NextResponse.json({ ok: true });

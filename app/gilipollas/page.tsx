@@ -56,6 +56,10 @@ export default function AdminPage() {
   const [editTexto, setEditTexto] = useState("");
   const [editSujeto, setEditSujeto] = useState("");
 
+  // Edit nominado
+  const [editingNominadoId, setEditingNominadoId] = useState<string | null>(null);
+  const [editNominadoTexto, setEditNominadoTexto] = useState("");
+
   useEffect(() => {
     loadAll();
   }, []);
@@ -81,6 +85,18 @@ export default function AdminPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, publicado }),
     });
+  }
+
+  async function saveEditNominado(id: string) {
+    const texto = editNominadoTexto.trim();
+    if (!texto) return;
+    await fetch("/api/arrogante/nominados", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, respuesta_texto_libre: texto }),
+    });
+    setNominados(prev => prev.map(n => n.id === id ? { ...n, respuesta_texto_libre: texto } : n));
+    setEditingNominadoId(null);
   }
 
   async function increment(field: keyof Stats) {
@@ -332,30 +348,55 @@ export default function AdminPage() {
             <div className="space-y-4">
               {nominados.map((n) => (
                 <div key={n.id} className={`border p-4 ${n.publicado ? "border-green-200 bg-green-50/40" : "border-gray-100"}`}>
-                  <p className="text-sm text-gray-700 italic leading-relaxed mb-3">&ldquo;{n.respuesta_texto_libre}&rdquo;</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className={`text-[0.65rem] uppercase tracking-wider px-2 py-0.5 ${
-                        n.origen === "tiktok" ? "bg-pink-50 text-pink-500" :
-                        n.origen === "qr" ? "bg-gray-100 text-gray-500" :
-                        n.origen === "newsletter" ? "bg-amber-50 text-amber-600" :
-                        "bg-blue-50 text-blue-500"
-                      }`}>{n.origen}</span>
-                      <span className="text-[0.72rem] text-gray-400">
-                        {new Date(n.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
-                      </span>
+                  {editingNominadoId === n.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={editNominadoTexto}
+                        onChange={e => setEditNominadoTexto(e.target.value)}
+                        rows={3}
+                        className={`${inputClass} resize-none`}
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => saveEditNominado(n.id)} className={`${btnClass} bg-[#1a1a1a] text-white border-[#1a1a1a] text-xs`}>Guardar</button>
+                        <button onClick={() => setEditingNominadoId(null)} className={`${btnClass} border-gray-300 text-xs`}>Cancelar</button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => toggleNominado(n.id, !n.publicado)}
-                      className={`px-3 py-1.5 text-xs border transition-colors ${
-                        n.publicado
-                          ? "border-green-400 text-green-700 hover:bg-green-50"
-                          : "border-gray-300 text-gray-600 hover:border-gray-500"
-                      }`}
-                    >
-                      {n.publicado ? "✓ Publicado" : "Publicar"}
-                    </button>
-                  </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-700 italic leading-relaxed mb-3">&ldquo;{n.respuesta_texto_libre}&rdquo;</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[0.65rem] uppercase tracking-wider px-2 py-0.5 ${
+                            n.origen === "tiktok" ? "bg-pink-50 text-pink-500" :
+                            n.origen === "qr" ? "bg-gray-100 text-gray-500" :
+                            n.origen === "newsletter" ? "bg-amber-50 text-amber-600" :
+                            "bg-blue-50 text-blue-500"
+                          }`}>{n.origen}</span>
+                          <span className="text-[0.72rem] text-gray-400">
+                            {new Date(n.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setEditingNominadoId(n.id); setEditNominadoTexto(n.respuesta_texto_libre); }}
+                            className={`${btnClass} border-gray-300 text-gray-600 hover:border-gray-500 text-xs`}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => toggleNominado(n.id, !n.publicado)}
+                            className={`px-3 py-1.5 text-xs border transition-colors ${
+                              n.publicado
+                                ? "border-green-400 text-green-700 hover:bg-green-50"
+                                : "border-gray-300 text-gray-600 hover:border-gray-500"
+                            }`}
+                          >
+                            {n.publicado ? "✓ Publicado" : "Publicar"}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
