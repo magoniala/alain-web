@@ -6,7 +6,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 export async function GET() {
   const { data, error } = await supabase
     .from("newsletter_contactos")
-    .select("id, email, fecha_alta, origen, unsubscribed")
+    .select("id, email, nombre, idioma, fecha_alta, origen, unsubscribed")
     .order("fecha_alta", { ascending: false });
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
   return NextResponse.json(data ?? []);

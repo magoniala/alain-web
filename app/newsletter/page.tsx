@@ -1,34 +1,91 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Contacto {
   id: string;
   email: string;
+  nombre: string | null;
+  idioma: string;
   fecha_alta: string;
   origen: string;
   unsubscribed: boolean;
 }
+
+interface Campana {
+  id: string;
+  subject_eu: string | null;
+  body_eu: string | null;
+  subject_es: string | null;
+  body_es: string | null;
+  programado_para: string;
+  estado: string;
+  enviado_en: string | null;
+  enviados_eu: number | null;
+  enviados_es: number | null;
+}
+
+interface SendResult {
+  ok?: boolean;
+  enviados?: number;
+  eu?: number;
+  es?: number;
+  error?: string;
+}
+
+const TABS = ["Nuevo email", "Programadas", "Suscriptores"] as const;
+type Tab = (typeof TABS)[number];
 
 export default function NewsletterPage() {
   const [password, setPassword] = useState("");
   const [auth, setAuth] = useState(false);
   const [authError, setAuthError] = useState("");
   const [checking, setChecking] = useState(false);
+  const [tab, setTab] = useState<Tab>("Nuevo email");
 
   const [contactos, setContactos] = useState<Contacto[]>([]);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [campanas, setCampanas] = useState<Campana[]>([]);
+
+  // Compose state
+  const [subjectEu, setSubjectEu] = useState("");
+  const [bodyEu, setBodyEu] = useState("");
+  const [subjectEs, setSubjectEs] = useState("");
+  const [bodyEs, setBodyEs] = useState("");
+  const [sendResult, setSendResult] = useState<SendResult | null>(null);
   const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{ ok?: boolean; enviados?: number; error?: string } | null>(null);
   const [confirm, setConfirm] = useState(false);
 
+  // Schedule state
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleResult, setScheduleResult] = useState<{ ok?: boolean; error?: string } | null>(null);
+
+  // Edit campaign state
+  const [editing, setEditing] = useState<Campana | null>(null);
+  const [editSubjectEu, setEditSubjectEu] = useState("");
+  const [editBodyEu, setEditBodyEu] = useState("");
+  const [editSubjectEs, setEditSubjectEs] = useState("");
+  const [editBodyEs, setEditBodyEs] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const pw = useCallback(() => sessionStorage.getItem("nl_pw") || "", []);
+
+  const authHeaders = useCallback(() => ({
+    "Content-Type": "application/json",
+    "x-nl-password": pw(),
+  }), [pw]);
+
   useEffect(() => {
-    const saved = sessionStorage.getItem("nl_auth");
-    if (saved === "1") { setAuth(true); loadContactos(); }
+    if (sessionStorage.getItem("nl_auth") === "1") {
+      setAuth(true);
+      loadAll();
+    }
   }, []);
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setChecking(true);
     setAuthError("");
@@ -39,17 +96,22 @@ export default function NewsletterPage() {
     });
     if (res.ok) {
       sessionStorage.setItem("nl_auth", "1");
+      sessionStorage.setItem("nl_pw", password);
       setAuth(true);
-      loadContactos();
+      loadAll();
     } else {
       setAuthError("Contraseña incorrecta.");
     }
     setChecking(false);
   }
 
-  async function loadContactos() {
-    const data = await fetch("/api/newsletter").then(r => r.json());
-    setContactos(data);
+  async function loadAll() {
+    const [c, camp] = await Promise.all([
+      fetch("/api/newsletter", { headers: { "x-nl-password": sessionStorage.getItem("nl_pw") || "" } }).then(r => r.json()),
+      fetch("/api/newsletter/campanas", { headers: { "x-nl-password": sessionStorage.getItem("nl_pw") || "" } }).then(r => r.json()),
+    ]);
+    if (Array.isArray(c)) setContactos(c);
+    if (Array.isArray(camp)) setCampanas(camp);
   }
 
   async function handleSend() {
@@ -58,19 +120,91 @@ export default function NewsletterPage() {
     const res = await fetch("/api/newsletter/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: sessionStorage.getItem("nl_auth") === "1" ? password || sessionStorage.getItem("nl_pw") : password, subject, body }),
+      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, subject_es: subjectEs, body_es: bodyEs }),
     });
     const data = await res.json();
     setSendResult(data);
     setSending(false);
     setConfirm(false);
-    if (data.ok) { setSubject(""); setBody(""); }
+    if (data.ok) { setSubjectEu(""); setBodyEu(""); setSubjectEs(""); setBodyEs(""); }
+  }
+
+  async function handleSchedule() {
+    if (!scheduleDate || !scheduleTime) return;
+    setScheduling(true);
+    setScheduleResult(null);
+    const programado_para = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
+    const res = await fetch("/api/newsletter/campanas", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ subject_eu: subjectEu, body_eu: bodyEu, subject_es: subjectEs, body_es: bodyEs, programado_para }),
+    });
+    const data = await res.json();
+    if (data.id) {
+      setScheduleResult({ ok: true });
+      setSubjectEu(""); setBodyEu(""); setSubjectEs(""); setBodyEs("");
+      setScheduleDate(""); setScheduleTime("");
+      setCampanas(prev => [...prev, data].sort((a, b) => a.programado_para.localeCompare(b.programado_para)));
+    } else {
+      setScheduleResult({ error: data.error || "Error al programar." });
+    }
+    setScheduling(false);
+  }
+
+  async function handleCancel(id: string) {
+    if (!confirm) {
+      await fetch("/api/newsletter/campanas", {
+        method: "DELETE",
+        headers: authHeaders(),
+        body: JSON.stringify({ id }),
+      });
+      setCampanas(prev => prev.map(c => c.id === id ? { ...c, estado: "cancelado" } : c));
+    }
+  }
+
+  function startEdit(c: Campana) {
+    setEditing(c);
+    setEditSubjectEu(c.subject_eu ?? "");
+    setEditBodyEu(c.body_eu ?? "");
+    setEditSubjectEs(c.subject_es ?? "");
+    setEditBodyEs(c.body_es ?? "");
+    const d = new Date(c.programado_para);
+    setEditDate(d.toISOString().slice(0, 10));
+    setEditTime(d.toISOString().slice(11, 16));
+  }
+
+  async function handleSaveEdit() {
+    if (!editing) return;
+    setSaving(true);
+    const programado_para = new Date(`${editDate}T${editTime}`).toISOString();
+    await fetch("/api/newsletter/campanas", {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ id: editing.id, subject_eu: editSubjectEu, body_eu: editBodyEu, subject_es: editSubjectEs, body_es: editBodyEs, programado_para }),
+    });
+    setCampanas(prev => prev.map(c => c.id === editing.id
+      ? { ...c, subject_eu: editSubjectEu, body_eu: editBodyEu, subject_es: editSubjectEs, body_es: editBodyEs, programado_para }
+      : c
+    ));
+    setEditing(null);
+    setSaving(false);
   }
 
   const activos = contactos.filter(c => !c.unsubscribed);
   const bajas = contactos.filter(c => c.unsubscribed);
+  const activosEu = activos.filter(c => c.idioma === "eu");
+  const activosEs = activos.filter(c => c.idioma !== "eu");
+  const hasEu = !!(subjectEu.trim() && bodyEu.trim());
+  const hasEs = !!(subjectEs.trim() && bodyEs.trim());
+  const canSend = hasEu || hasEs;
+  const pendientes = campanas.filter(c => c.estado === "programado");
+  const enviadas = campanas.filter(c => c.estado === "enviado");
 
   const inputClass = "w-full border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 transition-colors";
+
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleString("es-ES", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
 
   if (!auth) {
     return (
@@ -78,20 +212,9 @@ export default function NewsletterPage() {
         <div className="bg-white border border-gray-200 p-8 w-full max-w-[360px]">
           <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-6">Newsletter — Acceso</p>
           <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="password"
-              placeholder="Contraseña"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className={inputClass}
-              autoFocus
-            />
+            <input type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} className={inputClass} autoFocus />
             {authError && <p className="text-[#DC2626] text-sm">{authError}</p>}
-            <button
-              type="submit"
-              disabled={checking || !password}
-              className="w-full bg-[#1a1a1a] text-white py-2.5 text-sm disabled:opacity-40"
-            >
+            <button type="submit" disabled={checking || !password} className="w-full bg-[#1a1a1a] text-white py-2.5 text-sm disabled:opacity-40">
               {checking ? "Verificando..." : "Entrar"}
             </button>
           </form>
@@ -103,143 +226,308 @@ export default function NewsletterPage() {
   return (
     <main className="min-h-screen bg-[#f5f5f5] text-[#1a1a1a]">
       <header className="bg-white border-b border-gray-200 px-5 py-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-[720px] mx-auto">
-          <p className="text-[0.72rem] uppercase tracking-[0.2em] text-gray-400">Panel — Newsletter</p>
+        <div className="flex items-center justify-between max-w-[960px] mx-auto">
+          <p className="text-[0.72rem] uppercase tracking-[0.2em] text-gray-400">Newsletter</p>
           <div className="flex items-center gap-4">
-            <span className="text-[0.75rem] text-gray-500">{activos.length} activos · {bajas.length} bajas</span>
-            <button
-              onClick={() => { sessionStorage.removeItem("nl_auth"); setAuth(false); }}
-              className="text-[0.75rem] text-gray-400 hover:text-gray-600"
-            >
+            <span className="text-[0.75rem] text-gray-500">
+              {activos.length} activos ({activosEu.length} eu · {activosEs.length} es) · {bajas.length} bajas
+              {pendientes.length > 0 && <> · <span className="text-amber-600">{pendientes.length} programada{pendientes.length > 1 ? "s" : ""}</span></>}
+            </span>
+            <button onClick={() => { sessionStorage.removeItem("nl_auth"); sessionStorage.removeItem("nl_pw"); setAuth(false); }} className="text-[0.75rem] text-gray-400 hover:text-gray-600">
               Salir
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-[720px] mx-auto px-5 py-8 space-y-10">
+      {/* Tabs */}
+      <div className="max-w-[960px] mx-auto px-5 pt-6">
+        <div className="flex gap-0 border-b border-gray-200">
+          {TABS.map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-2 text-[0.78rem] border-b-2 transition-colors ${tab === t ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"}`}
+            >
+              {t}
+              {t === "Programadas" && pendientes.length > 0 && (
+                <span className="ml-1.5 bg-amber-100 text-amber-700 text-[0.65rem] px-1.5 py-0.5 rounded-full">{pendientes.length}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* COMPOSE */}
-        <section className="bg-white border border-gray-200 p-5 md:p-6">
-          <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a] mb-6">Nuevo email</p>
+      <div className="max-w-[960px] mx-auto px-5 py-8 space-y-8">
 
-          {sendResult?.ok && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-sm text-green-700">
-              ✓ Enviado a {sendResult.enviados} suscriptores.
-            </div>
-          )}
-          {sendResult?.error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">
-              Error: {sendResult.error}
-            </div>
-          )}
+        {/* ── TAB: NUEVO EMAIL ── */}
+        {tab === "Nuevo email" && (
+          <>
+            <section className="bg-white border border-gray-200 p-5 md:p-6">
+              <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a] mb-6">Redactar</p>
 
-          <div className="space-y-4">
-            <div>
-              <p className="text-[0.78rem] font-medium text-gray-500 mb-1">Asunto</p>
-              <input
-                type="text"
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                placeholder="Asunto del email..."
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <p className="text-[0.78rem] font-medium text-gray-500 mb-1">Cuerpo</p>
-              <p className="text-[0.72rem] text-gray-400 mb-2">Separa párrafos con una línea en blanco.</p>
-              <textarea
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                rows={14}
-                placeholder="Escribe aquí el contenido del email..."
-                className={`${inputClass} resize-none`}
-              />
-            </div>
+              {sendResult?.ok && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 text-sm text-green-700">
+                  ✓ Enviado a {sendResult.enviados} suscriptores ({sendResult.eu} eu · {sendResult.es} es).
+                </div>
+              )}
+              {sendResult?.error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">Error: {sendResult.error}</div>
+              )}
+              {scheduleResult?.ok && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-sm text-blue-700">
+                  ✓ Campaña programada. Aparece en la pestaña "Programadas".
+                </div>
+              )}
+              {scheduleResult?.error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{scheduleResult.error}</div>
+              )}
 
-            {!confirm ? (
-              <button
-                onClick={() => setConfirm(true)}
-                disabled={!subject.trim() || !body.trim()}
-                className="w-full bg-[#1a1a1a] text-white py-3 text-sm disabled:opacity-40 hover:bg-[#333] transition-colors"
-              >
-                Enviar a {activos.length} suscriptores →
-              </button>
-            ) : (
-              <div className="border border-[#DC2626] p-4 space-y-3">
-                <p className="text-sm font-medium text-[#DC2626]">¿Confirmas el envío a {activos.length} personas?</p>
-                <div className="flex gap-2">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Euskera */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[0.75rem] font-semibold uppercase tracking-wider">Euskera</p>
+                    <span className="text-[0.7rem] text-gray-400">{activosEu.length} sub.</span>
+                  </div>
+                  <div>
+                    <p className="text-[0.75rem] text-gray-500 mb-1">Asunto</p>
+                    <input type="text" value={subjectEu} onChange={e => setSubjectEu(e.target.value)} placeholder="Gaia..." className={inputClass} />
+                  </div>
+                  <div>
+                    <p className="text-[0.75rem] text-gray-500 mb-1">Mezua</p>
+                    <textarea value={bodyEu} onChange={e => setBodyEu(e.target.value)} rows={12} placeholder="Idatzi hemen..." className={`${inputClass} resize-none`} />
+                  </div>
+                </div>
+                {/* Castellano */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[0.75rem] font-semibold uppercase tracking-wider">Castellano</p>
+                    <span className="text-[0.7rem] text-gray-400">{activosEs.length} sub.</span>
+                  </div>
+                  <div>
+                    <p className="text-[0.75rem] text-gray-500 mb-1">Asunto</p>
+                    <input type="text" value={subjectEs} onChange={e => setSubjectEs(e.target.value)} placeholder="Asunto..." className={inputClass} />
+                  </div>
+                  <div>
+                    <p className="text-[0.75rem] text-gray-500 mb-1">Cuerpo</p>
+                    <textarea value={bodyEs} onChange={e => setBodyEs(e.target.value)} rows={12} placeholder="Escribe aquí..." className={`${inputClass} resize-none`} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview */}
+              {(subjectEu || bodyEu || subjectEs || bodyEs) && (
+                <div className="mt-6 border-t border-gray-100 pt-5">
+                  <p className="text-[0.7rem] uppercase tracking-wider text-gray-400 mb-4">Preview</p>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {(subjectEu || bodyEu) && (
+                      <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a" }}>
+                        <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.4rem" }}>{subjectEu || "—"}</p>
+                        <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
+                          {bodyEu.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p}</p>)}
+                        </div>
+                      </div>
+                    )}
+                    {(subjectEs || bodyEs) && (
+                      <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a" }}>
+                        <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.4rem" }}>{subjectEs || "—"}</p>
+                        <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
+                          {bodyEs.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p}</p>)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="mt-6 space-y-3">
+                {/* Schedule */}
+                <div className="flex gap-2 items-end">
+                  <div>
+                    <p className="text-[0.72rem] text-gray-500 mb-1">Fecha</p>
+                    <input type="date" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)} className="border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-[0.72rem] text-gray-500 mb-1">Hora</p>
+                    <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500" />
+                  </div>
                   <button
-                    onClick={handleSend}
-                    disabled={sending}
-                    className="px-5 py-2 bg-[#DC2626] text-white text-sm disabled:opacity-50"
+                    onClick={handleSchedule}
+                    disabled={!canSend || !scheduleDate || !scheduleTime || scheduling}
+                    className="px-5 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-sm disabled:opacity-40 hover:bg-gray-50 transition-colors"
                   >
-                    {sending ? "Enviando..." : "Sí, enviar"}
+                    {scheduling ? "Programando..." : "Programar envío"}
                   </button>
-                  <button
-                    onClick={() => setConfirm(false)}
-                    className="px-5 py-2 border border-gray-300 text-sm hover:border-gray-500"
-                  >
-                    Cancelar
+                </div>
+
+                {/* Send now */}
+                {!confirm ? (
+                  <button onClick={() => setConfirm(true)} disabled={!canSend} className="w-full bg-[#1a1a1a] text-white py-3 text-sm disabled:opacity-40 hover:bg-[#333] transition-colors">
+                    Enviar ahora{hasEu && hasEs ? ` (${activos.length} total)` : hasEu ? ` a ${activosEu.length} (eu)` : ` a ${activosEs.length} (es)`} →
                   </button>
+                ) : (
+                  <div className="border border-[#DC2626] p-4 space-y-3">
+                    <p className="text-sm font-medium text-[#DC2626]">
+                      ¿Confirmas el envío inmediato?{hasEu ? ` ${activosEu.length} en euskera` : ""}{hasEu && hasEs ? " ·" : ""}{hasEs ? ` ${activosEs.length} en castellano` : ""}
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={handleSend} disabled={sending} className="px-5 py-2 bg-[#DC2626] text-white text-sm disabled:opacity-50">
+                        {sending ? "Enviando..." : "Sí, enviar"}
+                      </button>
+                      <button onClick={() => setConfirm(false)} className="px-5 py-2 border border-gray-300 text-sm hover:border-gray-500">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* ── TAB: PROGRAMADAS ── */}
+        {tab === "Programadas" && (
+          <section className="bg-white border border-gray-200 p-5 md:p-6 space-y-8">
+            {/* Pending */}
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a] mb-5">
+                Pendientes ({pendientes.length})
+              </p>
+              {pendientes.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">Sin campañas programadas.</p>
+              ) : (
+                <div className="space-y-4">
+                  {pendientes.map(c => (
+                    <div key={c.id}>
+                      {editing?.id === c.id ? (
+                        <div className="border border-gray-300 p-4 space-y-4">
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Euskera</p>
+                              <input type="text" value={editSubjectEu} onChange={e => setEditSubjectEu(e.target.value)} placeholder="Gaia" className={inputClass} />
+                              <textarea value={editBodyEu} onChange={e => setEditBodyEu(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Castellano</p>
+                              <input type="text" value={editSubjectEs} onChange={e => setEditSubjectEs(e.target.value)} placeholder="Asunto" className={inputClass} />
+                              <textarea value={editBodyEs} onChange={e => setEditBodyEs(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 items-end">
+                            <div>
+                              <p className="text-[0.72rem] text-gray-500 mb-1">Fecha</p>
+                              <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="border border-gray-300 px-3 py-2 text-sm outline-none" />
+                            </div>
+                            <div>
+                              <p className="text-[0.72rem] text-gray-500 mb-1">Hora</p>
+                              <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} className="border border-gray-300 px-3 py-2 text-sm outline-none" />
+                            </div>
+                            <button onClick={handleSaveEdit} disabled={saving} className="px-4 py-2 bg-[#1a1a1a] text-white text-sm disabled:opacity-50">
+                              {saving ? "Guardando..." : "Guardar"}
+                            </button>
+                            <button onClick={() => setEditing(null)} className="px-4 py-2 border border-gray-300 text-sm">
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border border-gray-200 p-4 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">
+                              {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "Sin asunto"}
+                            </p>
+                            <p className="text-[0.75rem] text-gray-400 mt-0.5">{fmtDate(c.programado_para)}</p>
+                            <p className="text-[0.7rem] text-gray-400 mt-0.5">
+                              {[c.subject_eu && "eu", c.subject_es && "es"].filter(Boolean).join(" + ")}
+                            </p>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button onClick={() => startEdit(c)} className="text-[0.75rem] text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5">
+                              Editar
+                            </button>
+                            <button onClick={() => handleCancel(c.id)} className="text-[0.75rem] text-[#DC2626] hover:text-red-700 border border-red-200 px-3 py-1.5">
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sent history */}
+            {enviadas.length > 0 && (
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-4">
+                  Enviadas ({enviadas.length})
+                </p>
+                <div className="space-y-2">
+                  {enviadas.map(c => (
+                    <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "—"}
+                        </p>
+                        <p className="text-[0.72rem] text-gray-400">
+                          {c.enviado_en ? fmtDate(c.enviado_en) : "—"}
+                        </p>
+                      </div>
+                      <p className="text-[0.72rem] text-gray-400 shrink-0 ml-4">
+                        {(c.enviados_eu ?? 0) + (c.enviados_es ?? 0)} enviados
+                        {c.enviados_eu ? ` · ${c.enviados_eu} eu` : ""}
+                        {c.enviados_es ? ` · ${c.enviados_es} es` : ""}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
-        </section>
-
-        {/* PREVIEW */}
-        {(subject || body) && (
-          <section className="bg-white border border-gray-200 p-5 md:p-6">
-            <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-4">Preview</p>
-            <div style={{ fontFamily: "Georgia, serif", maxWidth: 560, color: "#1a1a1a" }}>
-              <p style={{ fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.5rem" }}>
-                Asunto: {subject || "—"}
-              </p>
-              <div style={{ fontSize: "1.05rem", lineHeight: 2 }}>
-                {body.split(/\n\n+/).map((p, i) => (
-                  <p key={i} style={{ margin: "0 0 1.4rem" }}>{p}</p>
-                ))}
-              </div>
-              <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.85rem", color: "#999" }}>
-                <p style={{ margin: 0 }}>Alain Zulaika · contacto@niala.es</p>
-                <p style={{ margin: 0 }}>Dejar de recibir estos emails</p>
-              </div>
-            </div>
           </section>
         )}
 
-        {/* CONTACTOS */}
-        <section className="bg-white border border-gray-200 p-5 md:p-6">
-          <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-6">
-            Suscriptores activos ({activos.length})
-          </p>
-          {activos.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">Sin suscriptores todavía.</p>
-          ) : (
-            <div className="space-y-2">
-              {activos.map(c => (
-                <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <p className="text-sm text-gray-700">{c.email}</p>
-                  <div className="flex items-center gap-3 shrink-0 ml-4">
-                    <span className={`text-[0.65rem] uppercase tracking-wider px-2 py-0.5 ${
-                      c.origen === "comodin" ? "bg-teal-50 text-teal-600" :
-                      c.origen === "tumision" ? "bg-purple-50 text-purple-500" :
-                      c.origen === "arrogante" ? "bg-red-50 text-red-500" :
-                      c.origen === "importado" ? "bg-gray-100 text-gray-500" :
-                      "bg-blue-50 text-blue-500"
-                    }`}>
-                      {c.origen}
-                    </span>
-                    <p className="text-[0.72rem] text-gray-400">
-                      {new Date(c.fecha_alta).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "2-digit" })}
-                    </p>
+        {/* ── TAB: SUSCRIPTORES ── */}
+        {tab === "Suscriptores" && (
+          <section className="bg-white border border-gray-200 p-5 md:p-6">
+            <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-6">
+              Activos ({activos.length})
+            </p>
+            {activos.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Sin suscriptores todavía.</p>
+            ) : (
+              <div className="space-y-1">
+                {activos.map(c => (
+                  <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div>
+                      <p className="text-sm text-gray-700">{c.email}</p>
+                      {c.nombre && <p className="text-[0.7rem] text-gray-400">{c.nombre}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      <span className="text-[0.62rem] uppercase tracking-wider px-1.5 py-0.5 bg-gray-100 text-gray-500">
+                        {c.idioma ?? "es"}
+                      </span>
+                      <span className={`text-[0.65rem] uppercase tracking-wider px-2 py-0.5 ${
+                        c.origen === "comodin" ? "bg-teal-50 text-teal-600" :
+                        c.origen === "tumision" ? "bg-purple-50 text-purple-500" :
+                        c.origen === "arrogante" ? "bg-red-50 text-red-500" :
+                        c.origen === "importado" ? "bg-gray-100 text-gray-500" :
+                        "bg-blue-50 text-blue-500"
+                      }`}>
+                        {c.origen}
+                      </span>
+                      <p className="text-[0.72rem] text-gray-400">
+                        {new Date(c.fecha_alta).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "2-digit" })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
       </div>
     </main>

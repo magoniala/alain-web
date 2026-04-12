@@ -6,55 +6,75 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
+function buildHtml(body: string, email: string) {
+  const htmlBody = body
+    .trim()
+    .split(/\n\n+/)
+    .map((p: string) => `<p style="margin:0 0 1.6rem 0;">${p.replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+  return `
+    <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
+      <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">
+        ${htmlBody}
+      </div>
+      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
+        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+        <p style="margin:0;"><a href="${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}" style="color:#bbb;">Dejar de recibir estos emails</a></p>
+      </div>
+    </div>
+  `;
+}
+
 export async function POST(req: Request) {
-  const { password, subject, body } = await req.json();
+  const { password, subject_eu, body_eu, subject_es, body_es } = await req.json();
 
   if (password !== process.env.NEWSLETTER_PASSWORD) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  if (!subject?.trim() || !body?.trim()) {
+  const hasEu = subject_eu?.trim() && body_eu?.trim();
+  const hasEs = subject_es?.trim() && body_es?.trim();
+
+  if (!hasEu && !hasEs) {
     return NextResponse.json({ error: "Faltan campos." }, { status: 400 });
   }
 
   const { data: contactos, error } = await supabase
     .from("newsletter_contactos")
-    .select("email")
+    .select("email, nombre, idioma")
     .eq("unsubscribed", false);
 
   if (error || !contactos) {
     return NextResponse.json({ error: "Error al obtener contactos." }, { status: 500 });
   }
 
-  const htmlBody = body
-    .trim()
-    .split(/\n\n+/)
-    .map((p: string) => `<p style="margin:0 0 1.6rem 0;">${p.replace(/\n/g, "<br/>")}</p>`)
-    .join("");
+  const euContactos = hasEu ? contactos.filter(c => c.idioma === "eu") : [];
+  const esContactos = hasEs ? contactos.filter(c => c.idioma !== "eu") : [];
 
-  const emails = contactos.map(({ email }) => ({
+  const toField = (email: string, nombre: string | null) =>
+    nombre ? `${nombre} <${email}>` : email;
+
+  const euEmails = euContactos.map(({ email, nombre }) => ({
     from: "Alain Zulaika <contacto@niala.es>",
-    to: email,
+    to: toField(email, nombre),
     replyTo: "contacto@niala.es",
-    subject,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
-        <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">
-          ${htmlBody}
-        </div>
-        <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
-          <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
-          <p style="margin:0;"><a href="${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}" style="color:#bbb;">Dejar de recibir estos emails</a></p>
-        </div>
-      </div>
-    `,
+    subject: subject_eu,
+    html: buildHtml(body_eu, email),
   }));
 
-  // Send in batches of 100
+  const esEmails = esContactos.map(({ email, nombre }) => ({
+    from: "Alain Zulaika <contacto@niala.es>",
+    to: toField(email, nombre),
+    replyTo: "contacto@niala.es",
+    subject: subject_es,
+    html: buildHtml(body_es, email),
+  }));
+
+  const allEmails = [...euEmails, ...esEmails];
   const BATCH = 100;
-  for (let i = 0; i < emails.length; i += BATCH) {
-    await resend.batch.send(emails.slice(i, i + BATCH));
+  for (let i = 0; i < allEmails.length; i += BATCH) {
+    await resend.batch.send(allEmails.slice(i, i + BATCH));
   }
 
-  return NextResponse.json({ ok: true, enviados: emails.length });
+  return NextResponse.json({ ok: true, enviados: allEmails.length, eu: euEmails.length, es: esEmails.length });
 }
