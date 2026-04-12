@@ -338,18 +338,28 @@ export default function NewsletterPage() {
                   <p className="text-[0.7rem] uppercase tracking-wider text-gray-400 mb-4">Preview</p>
                   <div className="grid md:grid-cols-2 gap-6">
                     {(subjectEu || bodyEu) && (
-                      <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a" }}>
-                        <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.4rem" }}>{subjectEu || "—"}</p>
+                      <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a", background: "#fff", padding: "1.5rem", border: "1px solid #eee" }}>
+                        {preheaderEu && <p style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.75rem", fontStyle: "italic" }}>↳ {preheaderEu}</p>}
+                        <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEu || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
-                          {bodyEu.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p}</p>)}
+                          {bodyEu.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p.split(/\n/).map((line, j) => <span key={j}>{line}{j < p.split(/\n/).length - 1 && <br />}</span>)}</p>)}
+                        </div>
+                        <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
+                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
+                          <p style={{ margin: 0, color: "#ccc" }}>Dejar de recibir estos emails</p>
                         </div>
                       </div>
                     )}
                     {(subjectEs || bodyEs) && (
-                      <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a" }}>
-                        <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.4rem" }}>{subjectEs || "—"}</p>
+                      <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a", background: "#fff", padding: "1.5rem", border: "1px solid #eee" }}>
+                        {preheaderEs && <p style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.75rem", fontStyle: "italic" }}>↳ {preheaderEs}</p>}
+                        <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEs || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
-                          {bodyEs.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p}</p>)}
+                          {bodyEs.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p.split(/\n/).map((line, j) => <span key={j}>{line}{j < p.split(/\n/).length - 1 && <br />}</span>)}</p>)}
+                        </div>
+                        <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
+                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
+                          <p style={{ margin: 0, color: "#ccc" }}>Dejar de recibir estos emails</p>
                         </div>
                       </div>
                     )}
@@ -381,12 +391,12 @@ export default function NewsletterPage() {
                 {/* Send now */}
                 {!confirm ? (
                   <button onClick={() => setConfirm(true)} disabled={!canSend} className="w-full bg-[#1a1a1a] text-white py-3 text-sm disabled:opacity-40 hover:bg-[#333] transition-colors">
-                    Enviar ahora{hasEu && hasEs ? ` (${activos.length} total)` : hasEu ? ` a ${activosEu.length} (eu)` : ` a ${activosEs.length} (es)`} →
+                    Enviar ahora a {activos.length}{hasEu && hasEs ? ` (${activosEu.length} eu · ${activosEs.length} es)` : hasEu ? " (versión euskera)" : " (versión castellano)"} →
                   </button>
                 ) : (
                   <div className="border border-[#DC2626] p-4 space-y-3">
                     <p className="text-sm font-medium text-[#DC2626]">
-                      ¿Confirmas el envío inmediato?{hasEu ? ` ${activosEu.length} en euskera` : ""}{hasEu && hasEs ? " ·" : ""}{hasEs ? ` ${activosEs.length} en castellano` : ""}
+                      ¿Confirmas el envío a {activos.length} suscriptores?{hasEu && hasEs ? ` (${activosEu.length} eu · ${activosEs.length} es)` : hasEu ? " (versión euskera a todos)" : " (versión castellano a todos)"}
                     </p>
                     <div className="flex gap-2">
                       <button onClick={handleSend} disabled={sending} className="px-5 py-2 bg-[#DC2626] text-white text-sm disabled:opacity-50">

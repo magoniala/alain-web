@@ -6,11 +6,18 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
+function processText(text: string): string {
+  return text.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    '<a href="$2" style="color:#1a1a1a;text-decoration:underline;">$1</a>'
+  );
+}
+
 function buildHtml(body: string, email: string, preheader?: string) {
   const htmlBody = body
     .trim()
     .split(/\n\n+/)
-    .map((p: string) => `<p style="margin:0 0 1.6rem 0;">${p.replace(/\n/g, "<br/>")}</p>`)
+    .map((p: string) => `<p style="margin:0 0 1.6rem 0;">${processText(p.replace(/\n/g, "<br/>"))}</p>`)
     .join("");
   const preheaderHtml = preheader?.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`
@@ -61,8 +68,9 @@ export async function GET(req: Request) {
     const hasEu = campana.subject_eu && campana.body_eu;
     const hasEs = campana.subject_es && campana.body_es;
 
-    const euContactos = hasEu ? contactos.filter(c => c.idioma === "eu") : [];
-    const esContactos = hasEs ? contactos.filter(c => c.idioma !== "eu") : [];
+    // If both languages provided: route by idioma. If only one: send to everyone.
+    const euContactos = hasEu ? (hasEs ? contactos.filter(c => c.idioma === "eu") : contactos) : [];
+    const esContactos = hasEs ? (hasEu ? contactos.filter(c => c.idioma !== "eu") : contactos) : [];
 
     const emails = [
       ...euContactos.map(({ email, nombre }) => ({
