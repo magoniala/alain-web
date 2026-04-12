@@ -6,13 +6,17 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
-function buildHtml(body: string, email: string) {
+function buildHtml(body: string, email: string, preheader?: string) {
   const htmlBody = body
     .trim()
     .split(/\n\n+/)
     .map((p: string) => `<p style="margin:0 0 1.6rem 0;">${p.replace(/\n/g, "<br/>")}</p>`)
     .join("");
+  const preheaderHtml = preheader?.trim()
+    ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`
+    : "";
   return `
+    ${preheaderHtml}
     <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
       <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${htmlBody}</div>
       <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
@@ -66,14 +70,14 @@ export async function GET(req: Request) {
         to: toField(email, nombre),
         replyTo: "contacto@niala.es",
         subject: campana.subject_eu,
-        html: buildHtml(campana.body_eu, email),
+        html: buildHtml(campana.body_eu, email, campana.preheader_eu),
       })),
       ...esContactos.map(({ email, nombre }) => ({
         from: "Alain Zulaika <contacto@niala.es>",
         to: toField(email, nombre),
         replyTo: "contacto@niala.es",
         subject: campana.subject_es,
-        html: buildHtml(campana.body_es, email),
+        html: buildHtml(campana.body_es, email, campana.preheader_es),
       })),
     ];
 

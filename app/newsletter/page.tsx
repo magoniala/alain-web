@@ -16,8 +16,10 @@ interface Campana {
   id: string;
   subject_eu: string | null;
   body_eu: string | null;
+  preheader_eu: string | null;
   subject_es: string | null;
   body_es: string | null;
+  preheader_es: string | null;
   programado_para: string;
   estado: string;
   enviado_en: string | null;
@@ -48,8 +50,10 @@ export default function NewsletterPage() {
 
   // Compose state
   const [subjectEu, setSubjectEu] = useState("");
+  const [preheaderEu, setPreheaderEu] = useState("");
   const [bodyEu, setBodyEu] = useState("");
   const [subjectEs, setSubjectEs] = useState("");
+  const [preheaderEs, setPreheaderEs] = useState("");
   const [bodyEs, setBodyEs] = useState("");
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
   const [sending, setSending] = useState(false);
@@ -64,8 +68,10 @@ export default function NewsletterPage() {
   // Edit campaign state
   const [editing, setEditing] = useState<Campana | null>(null);
   const [editSubjectEu, setEditSubjectEu] = useState("");
+  const [editPreheaderEu, setEditPreheaderEu] = useState("");
   const [editBodyEu, setEditBodyEu] = useState("");
   const [editSubjectEs, setEditSubjectEs] = useState("");
+  const [editPreheaderEs, setEditPreheaderEs] = useState("");
   const [editBodyEs, setEditBodyEs] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editTime, setEditTime] = useState("");
@@ -120,13 +126,13 @@ export default function NewsletterPage() {
     const res = await fetch("/api/newsletter/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, subject_es: subjectEs, body_es: bodyEs }),
+      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs }),
     });
     const data = await res.json();
     setSendResult(data);
     setSending(false);
     setConfirm(false);
-    if (data.ok) { setSubjectEu(""); setBodyEu(""); setSubjectEs(""); setBodyEs(""); }
+    if (data.ok) { setSubjectEu(""); setPreheaderEu(""); setBodyEu(""); setSubjectEs(""); setPreheaderEs(""); setBodyEs(""); }
   }
 
   async function handleSchedule() {
@@ -137,12 +143,12 @@ export default function NewsletterPage() {
     const res = await fetch("/api/newsletter/campanas", {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ subject_eu: subjectEu, body_eu: bodyEu, subject_es: subjectEs, body_es: bodyEs, programado_para }),
+      body: JSON.stringify({ subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs, programado_para }),
     });
     const data = await res.json();
     if (data.id) {
       setScheduleResult({ ok: true });
-      setSubjectEu(""); setBodyEu(""); setSubjectEs(""); setBodyEs("");
+      setSubjectEu(""); setPreheaderEu(""); setBodyEu(""); setSubjectEs(""); setPreheaderEs(""); setBodyEs("");
       setScheduleDate(""); setScheduleTime("");
       setCampanas(prev => [...prev, data].sort((a, b) => a.programado_para.localeCompare(b.programado_para)));
     } else {
@@ -165,8 +171,10 @@ export default function NewsletterPage() {
   function startEdit(c: Campana) {
     setEditing(c);
     setEditSubjectEu(c.subject_eu ?? "");
+    setEditPreheaderEu(c.preheader_eu ?? "");
     setEditBodyEu(c.body_eu ?? "");
     setEditSubjectEs(c.subject_es ?? "");
+    setEditPreheaderEs(c.preheader_es ?? "");
     setEditBodyEs(c.body_es ?? "");
     const d = new Date(c.programado_para);
     setEditDate(d.toISOString().slice(0, 10));
@@ -180,10 +188,10 @@ export default function NewsletterPage() {
     await fetch("/api/newsletter/campanas", {
       method: "PATCH",
       headers: authHeaders(),
-      body: JSON.stringify({ id: editing.id, subject_eu: editSubjectEu, body_eu: editBodyEu, subject_es: editSubjectEs, body_es: editBodyEs, programado_para }),
+      body: JSON.stringify({ id: editing.id, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para }),
     });
     setCampanas(prev => prev.map(c => c.id === editing.id
-      ? { ...c, subject_eu: editSubjectEu, body_eu: editBodyEu, subject_es: editSubjectEs, body_es: editBodyEs, programado_para }
+      ? { ...c, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para }
       : c
     ));
     setEditing(null);
@@ -295,6 +303,10 @@ export default function NewsletterPage() {
                     <input type="text" value={subjectEu} onChange={e => setSubjectEu(e.target.value)} placeholder="Gaia..." className={inputClass} />
                   </div>
                   <div>
+                    <p className="text-[0.75rem] text-gray-500 mb-1">Preview <span className="text-gray-400">(opcional)</span></p>
+                    <input type="text" value={preheaderEu} onChange={e => setPreheaderEu(e.target.value)} placeholder="Testua posta-zerrendan ikusi aurretik..." className={inputClass} />
+                  </div>
+                  <div>
                     <p className="text-[0.75rem] text-gray-500 mb-1">Mezua</p>
                     <textarea value={bodyEu} onChange={e => setBodyEu(e.target.value)} rows={12} placeholder="Idatzi hemen..." className={`${inputClass} resize-none`} />
                   </div>
@@ -308,6 +320,10 @@ export default function NewsletterPage() {
                   <div>
                     <p className="text-[0.75rem] text-gray-500 mb-1">Asunto</p>
                     <input type="text" value={subjectEs} onChange={e => setSubjectEs(e.target.value)} placeholder="Asunto..." className={inputClass} />
+                  </div>
+                  <div>
+                    <p className="text-[0.75rem] text-gray-500 mb-1">Preview <span className="text-gray-400">(opcional)</span></p>
+                    <input type="text" value={preheaderEs} onChange={e => setPreheaderEs(e.target.value)} placeholder="Texto visible antes de abrir el email..." className={inputClass} />
                   </div>
                   <div>
                     <p className="text-[0.75rem] text-gray-500 mb-1">Cuerpo</p>
@@ -407,11 +423,13 @@ export default function NewsletterPage() {
                             <div className="space-y-2">
                               <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Euskera</p>
                               <input type="text" value={editSubjectEu} onChange={e => setEditSubjectEu(e.target.value)} placeholder="Gaia" className={inputClass} />
+                              <input type="text" value={editPreheaderEu} onChange={e => setEditPreheaderEu(e.target.value)} placeholder="Preview (opcional)" className={inputClass} />
                               <textarea value={editBodyEu} onChange={e => setEditBodyEu(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
                             </div>
                             <div className="space-y-2">
                               <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Castellano</p>
                               <input type="text" value={editSubjectEs} onChange={e => setEditSubjectEs(e.target.value)} placeholder="Asunto" className={inputClass} />
+                              <input type="text" value={editPreheaderEs} onChange={e => setEditPreheaderEs(e.target.value)} placeholder="Preview (opcional)" className={inputClass} />
                               <textarea value={editBodyEs} onChange={e => setEditBodyEs(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
                             </div>
                           </div>

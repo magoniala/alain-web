@@ -6,13 +6,17 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
-function buildHtml(body: string, email: string) {
+function buildHtml(body: string, email: string, preheader?: string) {
   const htmlBody = body
     .trim()
     .split(/\n\n+/)
     .map((p: string) => `<p style="margin:0 0 1.6rem 0;">${p.replace(/\n/g, "<br/>")}</p>`)
     .join("");
+  const preheaderHtml = preheader?.trim()
+    ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`
+    : "";
   return `
+    ${preheaderHtml}
     <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
       <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">
         ${htmlBody}
@@ -26,7 +30,7 @@ function buildHtml(body: string, email: string) {
 }
 
 export async function POST(req: Request) {
-  const { password, subject_eu, body_eu, subject_es, body_es } = await req.json();
+  const { password, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es } = await req.json();
 
   if (password !== process.env.NEWSLETTER_PASSWORD) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
@@ -59,7 +63,7 @@ export async function POST(req: Request) {
     to: toField(email, nombre),
     replyTo: "contacto@niala.es",
     subject: subject_eu,
-    html: buildHtml(body_eu, email),
+    html: buildHtml(body_eu, email, preheader_eu),
   }));
 
   const esEmails = esContactos.map(({ email, nombre }) => ({
@@ -67,7 +71,7 @@ export async function POST(req: Request) {
     to: toField(email, nombre),
     replyTo: "contacto@niala.es",
     subject: subject_es,
-    html: buildHtml(body_es, email),
+    html: buildHtml(body_es, email, preheader_es),
   }));
 
   const allEmails = [...euEmails, ...esEmails];
