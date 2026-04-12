@@ -27,6 +27,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
   }
 
+  // Auto-suscribir a newsletter
+  await supabase.from("newsletter_contactos")
+    .upsert({ email, origen: "tumision" }, { onConflict: "email", ignoreDuplicates: true });
+
   const tutorialUrl = isEu
     ? `${BASE_URL}/tumision/tutorial`
     : `${BASE_URL}/es/tumision/tutorial`;

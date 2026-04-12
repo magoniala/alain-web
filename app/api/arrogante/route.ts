@@ -59,6 +59,9 @@ export async function POST(req: Request) {
   }
 
   if (email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    // Auto-suscribir a newsletter
+    await supabase.from("newsletter_contactos")
+      .upsert({ email: email.trim(), origen: "arrogante" }, { onConflict: "email", ignoreDuplicates: true });
     await resend.emails.send({
       from: "Alain Zulaika <contacto@niala.es>",
       to: email.trim(),
