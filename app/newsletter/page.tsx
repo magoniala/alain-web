@@ -342,7 +342,10 @@ export default function NewsletterPage() {
                         {preheaderEu && <p style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.75rem", fontStyle: "italic" }}>↳ {preheaderEu}</p>}
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEu || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
-                          {bodyEu.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p.split(/\n/).map((line, j) => <span key={j}>{line}{j < p.split(/\n/).length - 1 && <br />}</span>)}</p>)}
+                          {bodyEu.split(/\n/).map((line, i) => line.trim()
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }}>{line}</p>
+                            : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
+                          )}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                           <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
@@ -355,7 +358,10 @@ export default function NewsletterPage() {
                         {preheaderEs && <p style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.75rem", fontStyle: "italic" }}>↳ {preheaderEs}</p>}
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEs || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
-                          {bodyEs.split(/\n\n+/).map((p, i) => <p key={i} style={{ margin: "0 0 1.2rem" }}>{p.split(/\n/).map((line, j) => <span key={j}>{line}{j < p.split(/\n/).length - 1 && <br />}</span>)}</p>)}
+                          {bodyEs.split(/\n/).map((line, i) => line.trim()
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }}>{line}</p>
+                            : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
+                          )}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                           <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>

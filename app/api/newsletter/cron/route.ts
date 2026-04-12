@@ -16,8 +16,11 @@ function processText(text: string): string {
 function buildHtml(body: string, email: string, preheader?: string) {
   const htmlBody = body
     .trim()
-    .split(/\n\n+/)
-    .map((p: string) => `<p style="margin:0 0 1.6rem 0;">${processText(p.replace(/\n/g, "<br/>"))}</p>`)
+    .split(/\n/)
+    .map((line: string) => line.trim()
+      ? `<p style="margin:0 0 1.2rem 0;">${processText(line)}</p>`
+      : `<p style="margin:0 0 0.8rem 0;">&nbsp;</p>`
+    )
     .join("");
   const preheaderHtml = preheader?.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`
