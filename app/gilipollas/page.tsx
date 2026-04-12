@@ -36,6 +36,10 @@ const STAT_LABELS: Record<keyof Stats, string> = {
 };
 
 export default function AdminPage() {
+  const [auth, setAuth] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwError, setPwError] = useState(false);
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [frases, setFrases] = useState<Frase[]>([]);
   const [emails, setEmails] = useState<EmailEntry[]>([]);
@@ -61,8 +65,28 @@ export default function AdminPage() {
   const [editNominadoTexto, setEditNominadoTexto] = useState("");
 
   useEffect(() => {
-    loadAll();
+    if (sessionStorage.getItem("gl_auth") === "1") {
+      setAuth(true);
+      loadAll();
+    }
   }, []);
+
+  function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    fetch("/api/newsletter/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
+    }).then(r => {
+      if (r.ok) {
+        sessionStorage.setItem("gl_auth", "1");
+        setAuth(true);
+        loadAll();
+      } else {
+        setPwError(true);
+      }
+    });
+  }
 
   async function loadAll() {
     const [s, f, e, n] = await Promise.all([
@@ -189,6 +213,21 @@ export default function AdminPage() {
 
   const inputClass = "border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 transition-colors w-full";
   const btnClass = "px-4 py-2 text-sm border transition-colors";
+
+  if (!auth) {
+    return (
+      <main className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+        <div className="bg-white border border-gray-200 p-8 w-full max-w-[360px]">
+          <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-6">Panel — Arrogante</p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input type="password" placeholder="Contraseña" value={pw} onChange={e => { setPw(e.target.value); setPwError(false); }} className="w-full border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500" autoFocus />
+            {pwError && <p className="text-[#DC2626] text-sm">Contraseña incorrecta.</p>}
+            <button type="submit" disabled={!pw} className="w-full bg-[#1a1a1a] text-white py-2.5 text-sm disabled:opacity-40">Entrar</button>
+          </form>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#f5f5f5] text-[#1a1a1a]">
