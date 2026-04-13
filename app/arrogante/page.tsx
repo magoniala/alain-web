@@ -331,7 +331,7 @@ export default function ArrogantePage() {
           <div className="max-w-[680px]">
             <div className="flex items-center justify-between mb-12">
               <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[#DC2626]">
-                Los nominados
+                Nominados al mayor gilipollas
               </p>
               <p className="text-[0.68rem] text-[#F2F2F0]/30 uppercase tracking-[0.15em]">
                 {nominadoIdx + 1} / {nominados.length}
