@@ -162,7 +162,7 @@ export default function PremiosMiraPage() {
           </div>
         </div>
 
-        <div className="mt-12 max-w-[860px]">
+        <div className="mt-12 max-w-[560px]">
           <p className="mb-4 text-[0.68rem] uppercase tracking-[0.28em] text-[#F2F2F0]/50">
             Pieza completa
           </p>
