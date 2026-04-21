@@ -162,21 +162,7 @@ export default function PremiosMiraPage() {
           </div>
         </div>
 
-        {/* Embed del documental */}
-        <div className="mt-12 max-w-[860px]">
-          <p className="mb-4 text-[0.68rem] uppercase tracking-[0.28em] text-[#F2F2F0]/50">
-            Pieza completa
-          </p>
-          <div className="aspect-video w-full">
-            <iframe
-              src="https://www.youtube.com/embed/jTBkv-by4N4?start=66"
-              className="w-full h-full"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        </div>
+        {/* Embed del documental — añadir iframe cuando tengas el link real */}
       </section>
 
       {/* ── 5. LA EXTENSIÓN DIGITAL ──────────────────────────── */}
