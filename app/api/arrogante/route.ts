@@ -40,12 +40,20 @@ export async function POST(req: Request) {
 
   // Auto-update stats
   const { data: current } = await supabase.from("arrogante_stats").select("*").eq("id", 1).single();
-  const base = current ?? { personas_testadas: 0, creen_que_diran_su_nombre: 0, suma_gilipollas: 0 };
+  const base = current ?? { personas_testadas: 0, creen_que_diran_su_nombre: 0, suma_gilipollas: 0, media_gilipollas: null };
 
   const creeDirian = cree_que_diran_su_nombre === "si" || cree_que_diran_su_nombre === "probablemente-si";
   const valorCuantos = CUANTOS_VALOR[cuantos_gilipollas] ?? 0;
-  const nuevaPersonas = (base.personas_testadas ?? 0) + 1;
-  const nuevaSuma = (base.suma_gilipollas ?? 0) + valorCuantos;
+  const personasActuales = base.personas_testadas ?? 0;
+  const nuevaPersonas = personasActuales + 1;
+
+  // Si suma_gilipollas está a 0 pero hay una media manual guardada, reconstruir
+  // la suma a partir de media × personas para no perder las correcciones manuales.
+  const sumaActual = (base.suma_gilipollas && base.suma_gilipollas > 0)
+    ? base.suma_gilipollas
+    : (base.media_gilipollas && personasActuales > 0 ? base.media_gilipollas * personasActuales : 0);
+
+  const nuevaSuma = sumaActual + valorCuantos;
 
   const statsUpdate: Record<string, number> = {
     personas_testadas: nuevaPersonas,
