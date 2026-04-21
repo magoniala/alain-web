@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Rutas que no tienen versión /es — el middleware no debe tocarlas
+const NO_REDIRECT_PATHS = [
+  "/premios-mira",
+  "/arrogante",
+  "/gilipollas",
+  "/aviso-legal",
+  "/privacidad",
+  "/cookies",
+];
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Rutas sin versión /es: pasar siempre sin redirigir
+  if (NO_REDIRECT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return NextResponse.next();
+  }
 
   // If the user already has a language preference set, respect it
   if (request.cookies.has("lang")) return NextResponse.next();
