@@ -116,7 +116,7 @@ export default function PremiosMiraPage() {
               <img
                 src="/premios-mira/cartel-experimento.png"
                 alt="Diseño del cartel del experimento"
-                className="h-[680px] w-auto border border-white/8"
+                className="h-[340px] md:h-[680px] w-auto border border-white/8"
               />
               <p className="mt-3 text-[0.82rem] text-[#F2F2F0]/38">
                 Cartel de 175×110 cm para captar participantes
@@ -126,7 +126,7 @@ export default function PremiosMiraPage() {
               <img
                 src="/premios-mira/certificado-experimento.png"
                 alt="Diseño del certificado del experimento"
-                className="h-[680px] w-auto border border-white/8"
+                className="h-[340px] md:h-[680px] w-auto border border-white/8"
               />
               <p className="mt-3 text-[0.82rem] text-[#F2F2F0]/38">
                 Certificados de 10×7 cm para prolongar la experiencia
