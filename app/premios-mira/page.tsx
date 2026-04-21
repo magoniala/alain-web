@@ -257,7 +257,7 @@ export default function PremiosMiraPage() {
               { label: "TikTok — fase de proceso", value: "17.000+", unit: "visualizaciones" },
               { label: "Interacciones reales", value: "50+", unit: "" },
               { label: "Piezas cortas para TikTok", value: "150+", unit: "listas para publicar" },
-              { label: "Inicio segunda fase", value: "22 abr", unit: "" },
+              { label: "Inicio segunda fase", value: "23 abr", unit: "" },
             ].map((item) => (
               <div key={item.label} className="bg-[#0B0B0C] px-7 py-7">
                 <p className="text-[0.72rem] uppercase tracking-[0.2em] text-[#F2F2F0]/38 mb-3">
