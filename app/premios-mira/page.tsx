@@ -167,21 +167,14 @@ export default function PremiosMiraPage() {
           <p className="mb-4 text-[0.68rem] uppercase tracking-[0.28em] text-[#F2F2F0]/50">
             Pieza completa
           </p>
-          {/* Sustituir el div por el iframe cuando tengas la URL:
           <div className="aspect-video w-full">
             <iframe
-              src="https://player.vimeo.com/video/TU_ID_AQUI"
+              src="https://www.youtube.com/embed/jTBkv-by4N4?start=66"
               className="w-full h-full"
               frameBorder="0"
-              allow="autoplay; fullscreen; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
-          </div>
-          */}
-          <div className="aspect-video w-full bg-white/[0.03] border border-white/8 flex items-center justify-center">
-            <p className="text-[0.8rem] uppercase tracking-[0.2em] text-[#F2F2F0]/20">
-              Próximamente
-            </p>
           </div>
         </div>
       </section>
@@ -267,6 +260,11 @@ export default function PremiosMiraPage() {
               continúa.
             </p>
           </div>
+
+          <p className="mt-8 max-w-[760px] text-[clamp(1rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/68">
+            El volumen y la naturaleza del material hacen que esta segunda fase no sea lineal,
+            sino que pueda generar picos de alcance a partir de algunas piezas.
+          </p>
 
           <div className="mt-14 grid grid-cols-1 gap-px bg-white/8 border border-white/8 max-w-[760px] sm:grid-cols-2">
             {[
