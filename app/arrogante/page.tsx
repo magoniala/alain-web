@@ -141,11 +141,13 @@ export default function ArrogantePage() {
               ¿Cuántos gilipollas dirías que conoces?
             </p>
             <div>
-              <OptionBtn value="ninguno" label="Ninguno" selected={cuantos} onSelect={setCuantos} />
-              <OptionBtn value="1-2" label="1–2" selected={cuantos} onSelect={setCuantos} />
-              <OptionBtn value="3-5" label="3–5" selected={cuantos} onSelect={setCuantos} />
-              <OptionBtn value="6-10" label="6–10" selected={cuantos} onSelect={setCuantos} />
-              <OptionBtn value="mas-de-10" label="Más de 10" selected={cuantos} onSelect={setCuantos} />
+              <OptionBtn value="1-5" label="1–5" selected={cuantos} onSelect={setCuantos} />
+              <OptionBtn value="5-50" label="5–50" selected={cuantos} onSelect={setCuantos} />
+              <OptionBtn value="50-100" label="50–100" selected={cuantos} onSelect={setCuantos} />
+              <OptionBtn value="100-1000" label="100–1.000" selected={cuantos} onSelect={setCuantos} />
+              <OptionBtn value="1000-10000" label="1.000–10.000" selected={cuantos} onSelect={setCuantos} />
+              <OptionBtn value="1000000" label="1.000.000" selected={cuantos} onSelect={setCuantos} />
+              <OptionBtn value="mas-1000000" label="+1.000.000" selected={cuantos} onSelect={setCuantos} />
             </div>
             <NextBtn disabled={!canProceed()} />
           </div>

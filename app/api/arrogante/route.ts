@@ -10,11 +10,13 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
 // Midpoint values for average calculation
 const CUANTOS_VALOR: Record<string, number> = {
-  "ninguno": 0,
-  "1-2": 1.5,
-  "3-5": 4,
-  "6-10": 8,
-  "mas-de-10": 15,
+  "1-5": 3,
+  "5-50": 28,
+  "50-100": 75,
+  "100-1000": 550,
+  "1000-10000": 5500,
+  "1000000": 1000000,
+  "mas-1000000": 2000000,
 };
 
 export async function POST(req: Request) {
