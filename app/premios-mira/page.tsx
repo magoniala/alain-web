@@ -168,7 +168,7 @@ export default function PremiosMiraPage() {
           </p>
           <div className="aspect-video w-full">
             <iframe
-              src="https://www.youtube.com/embed/ltBHEN3fHaQ"
+              src="https://www.youtube.com/embed/79SYLUnoHmA"
               className="w-full h-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
