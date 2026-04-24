@@ -64,6 +64,10 @@ export default function AdminPage() {
   const [editingNominadoId, setEditingNominadoId] = useState<string | null>(null);
   const [editNominadoTexto, setEditNominadoTexto] = useState("");
 
+  // New nominado
+  const [newNominadoTexto, setNewNominadoTexto] = useState("");
+  const [addingNominado, setAddingNominado] = useState(false);
+
   useEffect(() => {
     if (sessionStorage.getItem("gl_auth") === "1") {
       setAuth(true);
@@ -100,6 +104,20 @@ export default function AdminPage() {
     setFrases(f);
     setEmails(e);
     setNominados(n);
+  }
+
+  async function addNominado() {
+    if (!newNominadoTexto.trim()) return;
+    setAddingNominado(true);
+    await fetch("/api/arrogante/nominados", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ respuesta_texto_libre: newNominadoTexto.trim() }),
+    });
+    setNewNominadoTexto("");
+    const n = await fetch("/api/arrogante/nominados").then(r => r.json());
+    setNominados(n);
+    setAddingNominado(false);
   }
 
   async function toggleNominado(id: string, publicado: boolean) {
@@ -381,6 +399,25 @@ export default function AdminPage() {
           <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#DC2626] mb-6">
             Nominados — respuestas del formulario ({nominados.length})
           </p>
+
+          {/* Añadir nominado */}
+          <div className="mb-6 p-4 bg-[#f9f9f9] border border-gray-100 space-y-3">
+            <p className="text-[0.78rem] font-medium text-gray-500 uppercase tracking-wider">Añadir nominado</p>
+            <textarea
+              placeholder="Texto del nominado..."
+              value={newNominadoTexto}
+              onChange={e => setNewNominadoTexto(e.target.value)}
+              rows={2}
+              className={`${inputClass} resize-none`}
+            />
+            <button
+              onClick={addNominado}
+              disabled={addingNominado || !newNominadoTexto.trim()}
+              className={`${btnClass} bg-[#DC2626] text-white border-[#DC2626] hover:opacity-90 disabled:opacity-40 w-full`}
+            >
+              {addingNominado ? "Añadiendo..." : "Añadir nominado"}
+            </button>
+          </div>
           {nominados.length === 0 ? (
             <p className="text-sm text-gray-400 italic">Sin respuestas todavía.</p>
           ) : (

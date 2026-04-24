@@ -276,7 +276,7 @@ export default function ArrogantePage() {
             Resultados del experimento
           </p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-10">
-            <div className="col-span-2">
+            <div>
               <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#1a1a1a]">
                 {stats && stats.personas_testadas > 0 ? stats.personas_testadas : "—"}
               </p>
@@ -286,18 +286,18 @@ export default function ArrogantePage() {
             </div>
             <div>
               <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#DC2626]">
-                {stats && stats.personas_testadas > 0 ? stats.media_gilipollas : "—"}
-              </p>
-              <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
-                Gilipollas de media<br />por persona
-              </p>
-            </div>
-            <div>
-              <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#DC2626]">
                 {stats && stats.personas_testadas > 0 ? pct(stats.creen_que_diran_su_nombre) : "—"}
               </p>
               <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
                 Creen que alguien<br />les toma por gilipollas
+              </p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-[clamp(3rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.03em] text-[#DC2626]">
+                {stats && stats.personas_testadas > 0 ? stats.media_gilipollas : "—"}
+              </p>
+              <p className="mt-3 text-[0.7rem] uppercase tracking-[0.15em] text-[#888] leading-[1.6]">
+                Gilipollas de media por persona
               </p>
             </div>
           </div>

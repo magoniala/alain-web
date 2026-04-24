@@ -20,6 +20,18 @@ export async function GET(req: Request) {
   return NextResponse.json(data ?? []);
 }
 
+export async function POST(req: Request) {
+  const { respuesta_texto_libre } = await req.json();
+  if (!respuesta_texto_libre?.trim()) return NextResponse.json({ error: "Falta texto." }, { status: 400 });
+  const { error } = await supabase.from("arrogante_respuestas").insert({
+    respuesta_texto_libre: respuesta_texto_libre.trim(),
+    origen: "admin",
+    publicado: true,
+  });
+  if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(req: Request) {
   const { id, publicado, respuesta_texto_libre } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
