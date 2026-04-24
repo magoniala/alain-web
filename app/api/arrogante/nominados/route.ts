@@ -9,11 +9,16 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from("arrogante_respuestas")
-    .select("id, respuesta_texto_libre, publicado, fecha, origen")
-    .not("respuesta_texto_libre", "is", null)
-    .order("fecha", { ascending: false });
+    .select("id, respuesta_texto_libre, publicado, fecha, origen, posicion")
+    .not("respuesta_texto_libre", "is", null);
 
-  if (soloPublicadas) query = query.eq("publicado", true);
+  if (soloPublicadas) {
+    // En /arrogante: solo publicados, ordenados por posicion (nulls al final), luego fecha
+    query = query.eq("publicado", true).order("posicion", { ascending: true, nullsFirst: false }).order("fecha", { ascending: false });
+  } else {
+    // En admin: todos, publicados primero por posicion, luego no publicados por fecha
+    query = query.order("publicado", { ascending: false }).order("posicion", { ascending: true, nullsFirst: false }).order("fecha", { ascending: false });
+  }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
@@ -33,11 +38,12 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const { id, publicado, respuesta_texto_libre } = await req.json();
+  const { id, publicado, respuesta_texto_libre, posicion } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
   const update: Record<string, unknown> = {};
   if (publicado !== undefined) update.publicado = publicado;
   if (respuesta_texto_libre !== undefined) update.respuesta_texto_libre = respuesta_texto_libre;
+  if (posicion !== undefined) update.posicion = posicion;
   const { error } = await supabase
     .from("arrogante_respuestas")
     .update(update)

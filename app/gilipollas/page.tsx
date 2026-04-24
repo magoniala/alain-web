@@ -27,6 +27,7 @@ interface Nominado {
   publicado: boolean;
   fecha: string;
   origen: string;
+  posicion: number | null;
 }
 
 const STAT_LABELS: Record<keyof Stats, string> = {
@@ -104,6 +105,31 @@ export default function AdminPage() {
     setFrases(f);
     setEmails(e);
     setNominados(n);
+  }
+
+  async function moveNominado(id: string, direction: "up" | "down") {
+    const publicados = nominados.filter(n => n.publicado);
+    const idx = publicados.findIndex(n => n.id === id);
+    if (idx === -1) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= publicados.length) return;
+
+    const a = publicados[idx];
+    const b = publicados[swapIdx];
+    const posA = a.posicion ?? idx + 1;
+    const posB = b.posicion ?? swapIdx + 1;
+
+    // Swap optimistic
+    setNominados(prev => prev.map(n => {
+      if (n.id === a.id) return { ...n, posicion: posB };
+      if (n.id === b.id) return { ...n, posicion: posA };
+      return n;
+    }));
+
+    await Promise.all([
+      fetch("/api/arrogante/nominados", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: a.id, posicion: posB }) }),
+      fetch("/api/arrogante/nominados", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, posicion: posA }) }),
+    ]);
   }
 
   async function addNominado() {
@@ -422,7 +448,14 @@ export default function AdminPage() {
             <p className="text-sm text-gray-400 italic">Sin respuestas todavía.</p>
           ) : (
             <div className="space-y-4">
-              {nominados.map((n) => (
+              {[...nominados].sort((a, b) => {
+                if (a.publicado && !b.publicado) return -1;
+                if (!a.publicado && b.publicado) return 1;
+                if (a.posicion !== null && b.posicion !== null) return a.posicion - b.posicion;
+                if (a.posicion !== null) return -1;
+                if (b.posicion !== null) return 1;
+                return 0;
+              }).map((n) => (
                 <div key={n.id} className={`border p-4 ${n.publicado ? "border-green-200 bg-green-50/40" : "border-gray-100"}`}>
                   {editingNominadoId === n.id ? (
                     <div className="space-y-2">
@@ -452,7 +485,19 @@ export default function AdminPage() {
                             {new Date(n.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
                           </span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                          {n.publicado && (
+                            <>
+                              <button
+                                onClick={() => moveNominado(n.id, "up")}
+                                className={`${btnClass} border-gray-300 hover:border-gray-500 text-xs font-mono`}
+                              >↑</button>
+                              <button
+                                onClick={() => moveNominado(n.id, "down")}
+                                className={`${btnClass} border-gray-300 hover:border-gray-500 text-xs font-mono`}
+                              >↓</button>
+                            </>
+                          )}
                           <button
                             onClick={() => { setEditingNominadoId(n.id); setEditNominadoTexto(n.respuesta_texto_libre); }}
                             className={`${btnClass} border-gray-300 text-gray-600 hover:border-gray-500 text-xs`}
