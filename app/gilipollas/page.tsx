@@ -108,27 +108,37 @@ export default function AdminPage() {
   }
 
   async function moveNominado(id: string, direction: "up" | "down") {
-    const publicados = nominados.filter(n => n.publicado);
+    // Publicados en el orden actual de la UI (ya ordenados por posicion)
+    const publicados = [...nominados]
+      .filter(n => n.publicado)
+      .sort((a, b) => {
+        if (a.posicion !== null && b.posicion !== null) return a.posicion - b.posicion;
+        if (a.posicion !== null) return -1;
+        if (b.posicion !== null) return 1;
+        return 0;
+      });
+
     const idx = publicados.findIndex(n => n.id === id);
     if (idx === -1) return;
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= publicados.length) return;
 
-    const a = publicados[idx];
-    const b = publicados[swapIdx];
-    const posA = a.posicion ?? idx + 1;
-    const posB = b.posicion ?? swapIdx + 1;
+    // Normalizar: asignar posiciones secuenciales 1,2,3...
+    const normalized = publicados.map((n, i) => ({ ...n, posicion: i + 1 }));
+    // Intercambiar
+    const tmp = normalized[idx].posicion;
+    normalized[idx] = { ...normalized[idx], posicion: normalized[swapIdx].posicion };
+    normalized[swapIdx] = { ...normalized[swapIdx], posicion: tmp };
 
-    // Swap optimistic
-    setNominados(prev => prev.map(n => {
-      if (n.id === a.id) return { ...n, posicion: posB };
-      if (n.id === b.id) return { ...n, posicion: posA };
-      return n;
-    }));
+    // Actualizar estado local
+    const updatedMap: Record<string, number> = {};
+    normalized.forEach(n => { updatedMap[n.id] = n.posicion; });
+    setNominados(prev => prev.map(n => updatedMap[n.id] !== undefined ? { ...n, posicion: updatedMap[n.id] } : n));
 
+    // Guardar los dos intercambiados en DB
     await Promise.all([
-      fetch("/api/arrogante/nominados", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: a.id, posicion: posB }) }),
-      fetch("/api/arrogante/nominados", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, posicion: posA }) }),
+      fetch("/api/arrogante/nominados", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: normalized[idx].id, posicion: normalized[idx].posicion }) }),
+      fetch("/api/arrogante/nominados", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: normalized[swapIdx].id, posicion: normalized[swapIdx].posicion }) }),
     ]);
   }
 

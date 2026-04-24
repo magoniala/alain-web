@@ -32,8 +32,10 @@ export async function POST(req: Request) {
     respuesta_texto_libre: respuesta_texto_libre.trim(),
     origen: "admin",
     publicado: true,
+    cuantos_gilipollas: "admin",
+    cree_que_diran_su_nombre: "admin",
   });
-  if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 
