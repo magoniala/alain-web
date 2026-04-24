@@ -81,10 +81,9 @@ export async function POST(req: Request) {
         <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
           <div style="font-size:1.05rem;line-height:2;color:#1a1a1a;">
             <p style="margin:0 0 1.4rem;">Gracias por participar.</p>
-            <p style="margin:0 0 1.4rem;">Estamos recopilando respuestas y grabando interacciones en la calle durante estos días.</p>
-            <p style="margin:0 0 1.4rem;">El documental final se publicará el 21 de abril.</p>
-            <p style="margin:0 0 1.4rem;">Cuando esté listo, te lo enviaré por aquí.</p>
-            <p style="margin:0 0 1.4rem;">Mientras tanto puedes ver algunas de las interacciones y el proceso que estamos grabando <a href="${TIKTOK_URL}" style="color:#DC2626;">aquí</a>.</p>
+            <p style="margin:0 0 1.4rem;">Puedes ver el documental <a href="https://www.youtube.com/watch?v=79SYLUnoHmA" style="color:#DC2626;">aquí</a>.</p>
+            <p style="margin:0 0 1.4rem;">Ahora estamos publicando las interacciones reales (sin tanto corte) grabadas en la calle.</p>
+            <p style="margin:0 0 1.4rem;">Si quieres seguir el proceso, puedes hacerlo en <a href="${TIKTOK_URL}" style="color:#DC2626;">TikTok</a>.</p>
           </div>
           <div style="margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid #eee;font-size:0.88rem;color:#999;">
             <p style="margin:0 0 0.5rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#999;">contacto@niala.es</a></p>
