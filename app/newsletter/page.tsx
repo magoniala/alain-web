@@ -210,6 +210,61 @@ export default function NewsletterPage() {
 
   const inputClass = "w-full border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 transition-colors";
 
+  function applyFormat(id: string, syntax: string, setValue: (v: string) => void, getValue: () => string) {
+    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const val = getValue();
+    const selected = val.slice(start, end);
+    const wrapped = selected ? `${syntax}${selected}${syntax}` : `${syntax}texto${syntax}`;
+    const newVal = val.slice(0, start) + wrapped + val.slice(end);
+    setValue(newVal);
+    // Restore cursor
+    requestAnimationFrame(() => {
+      el.focus();
+      const newEnd = start + wrapped.length;
+      el.setSelectionRange(selected ? start : start + syntax.length, selected ? newEnd : newEnd - syntax.length);
+    });
+  }
+
+  function applyLink(id: string, setValue: (v: string) => void, getValue: () => string) {
+    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const val = getValue();
+    const selected = val.slice(start, end) || "texto";
+    const wrapped = `[${selected}](https://)`;
+    const newVal = val.slice(0, start) + wrapped + val.slice(end);
+    setValue(newVal);
+    requestAnimationFrame(() => {
+      el.focus();
+      // Select the URL part for easy replacement
+      const urlStart = start + selected.length + 3;
+      el.setSelectionRange(urlStart, urlStart + 8);
+    });
+  }
+
+  function processPreview(text: string) {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/_(.+?)_/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
+  }
+
+  const toolbarBtnClass = "px-2 py-1 text-[0.72rem] border border-gray-200 hover:border-gray-400 transition-colors bg-white text-gray-600 hover:text-gray-900 select-none";
+
+  function Toolbar({ id, setValue, getValue }: { id: string; setValue: (v: string) => void; getValue: () => string }) {
+    return (
+      <div className="flex gap-1 mb-1">
+        <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "**", setValue, getValue); }} title="Negrita"><strong>B</strong></button>
+        <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "_", setValue, getValue); }} title="Cursiva"><em>I</em></button>
+        <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyLink(id, setValue, getValue); }} title="Enlace">🔗 enlace</button>
+      </div>
+    );
+  }
+
   function fmtDate(iso: string) {
     return new Date(iso).toLocaleString("es-ES", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" });
   }
@@ -308,7 +363,8 @@ export default function NewsletterPage() {
                   </div>
                   <div>
                     <p className="text-[0.75rem] text-gray-500 mb-1">Mezua</p>
-                    <textarea value={bodyEu} onChange={e => setBodyEu(e.target.value)} rows={12} placeholder="Idatzi hemen..." className={`${inputClass} resize-none`} />
+                    <Toolbar id="body-eu" setValue={setBodyEu} getValue={() => bodyEu} />
+                    <textarea id="body-eu" value={bodyEu} onChange={e => setBodyEu(e.target.value)} rows={12} placeholder="Idatzi hemen..." className={`${inputClass} resize-none`} />
                   </div>
                 </div>
                 {/* Castellano */}
@@ -327,7 +383,8 @@ export default function NewsletterPage() {
                   </div>
                   <div>
                     <p className="text-[0.75rem] text-gray-500 mb-1">Cuerpo</p>
-                    <textarea value={bodyEs} onChange={e => setBodyEs(e.target.value)} rows={12} placeholder="Escribe aquí..." className={`${inputClass} resize-none`} />
+                    <Toolbar id="body-es" setValue={setBodyEs} getValue={() => bodyEs} />
+                    <textarea id="body-es" value={bodyEs} onChange={e => setBodyEs(e.target.value)} rows={12} placeholder="Escribe aquí..." className={`${inputClass} resize-none`} />
                   </div>
                 </div>
               </div>
@@ -343,7 +400,7 @@ export default function NewsletterPage() {
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEu || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
                           {bodyEu.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>') }} />
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: processPreview(line) }} />
                             : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
                           )}
                         </div>
@@ -359,7 +416,7 @@ export default function NewsletterPage() {
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEs || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
                           {bodyEs.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: line.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>') }} />
+                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: processPreview(line) }} />
                             : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
                           )}
                         </div>
@@ -440,13 +497,15 @@ export default function NewsletterPage() {
                               <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Euskera</p>
                               <input type="text" value={editSubjectEu} onChange={e => setEditSubjectEu(e.target.value)} placeholder="Gaia" className={inputClass} />
                               <input type="text" value={editPreheaderEu} onChange={e => setEditPreheaderEu(e.target.value)} placeholder="Preview (opcional)" className={inputClass} />
-                              <textarea value={editBodyEu} onChange={e => setEditBodyEu(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
+                              <Toolbar id="edit-body-eu" setValue={setEditBodyEu} getValue={() => editBodyEu} />
+                              <textarea id="edit-body-eu" value={editBodyEu} onChange={e => setEditBodyEu(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
                             </div>
                             <div className="space-y-2">
                               <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Castellano</p>
                               <input type="text" value={editSubjectEs} onChange={e => setEditSubjectEs(e.target.value)} placeholder="Asunto" className={inputClass} />
                               <input type="text" value={editPreheaderEs} onChange={e => setEditPreheaderEs(e.target.value)} placeholder="Preview (opcional)" className={inputClass} />
-                              <textarea value={editBodyEs} onChange={e => setEditBodyEs(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
+                              <Toolbar id="edit-body-es" setValue={setEditBodyEs} getValue={() => editBodyEs} />
+                              <textarea id="edit-body-es" value={editBodyEs} onChange={e => setEditBodyEs(e.target.value)} rows={6} className={`${inputClass} resize-none`} />
                             </div>
                           </div>
                           <div className="flex gap-2 items-end">

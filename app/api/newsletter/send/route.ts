@@ -7,11 +7,10 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
 function processText(text: string): string {
-  // Convert [text](url) markdown links to <a> tags
-  return text.replace(
-    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-    '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>'
-  );
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/_(.+?)_/g, '<em>$1</em>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
 }
 
 function buildHtml(body: string, email: string, preheader?: string) {
