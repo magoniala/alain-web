@@ -1,9 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+
+interface Fase2Stats {
+  visualizaciones_fase2: number;
+  videos_publicados: number;
+}
 
 export default function PremiosMiraPage() {
+  const [fase2Stats, setFase2Stats] = useState<Fase2Stats | null>(null);
+
+  const diasEnMarcha = Math.floor(
+    (Date.now() - new Date("2026-04-23T00:00:00").getTime()) / (1000 * 60 * 60 * 24)
+  );
+
   useEffect(() => {
+    fetch("/api/premios-mira/stats")
+      .then((r) => r.json())
+      .then(setFase2Stats)
+      .catch(() => {});
     const elements = document.querySelectorAll(".fade-in");
     const observer = new IntersectionObserver(
       (entries) => {
@@ -283,7 +298,63 @@ export default function PremiosMiraPage() {
             ))}
           </div>
 
-          <div className="mt-12">
+        </div>
+      </section>
+
+      {/* ── 7. SEGUNDA FASE — EN CURSO ───────────────────────── */}
+      <section className="fade-in bg-[#0E0E10] w-full px-8 pb-20 md:px-16">
+        <div className="mx-auto max-w-[1200px]">
+          <div className="h-px w-full bg-white/6 mb-14" />
+          <div className="flex items-center gap-3 mb-10">
+            <span
+              className="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-[#2ED3E6]"
+              style={{ animation: "pulse-dot 1.4s ease-in-out infinite" }}
+            />
+            <p className="text-[0.72rem] uppercase tracking-[0.28em] text-[#2ED3E6]/70">
+              Segunda fase — en curso
+            </p>
+          </div>
+
+          <style>{`
+            @keyframes pulse-dot {
+              0%, 100% { opacity: 1; transform: scale(1); }
+              50% { opacity: 0.2; transform: scale(0.6); }
+            }
+          `}</style>
+
+          <div className="grid grid-cols-1 gap-px bg-[#2ED3E6]/10 border border-[#2ED3E6]/15 max-w-[760px] sm:grid-cols-3">
+            <div className="bg-[#0B0B0C] px-7 py-7">
+              <p className="text-[0.72rem] uppercase tracking-[0.2em] text-[#F2F2F0]/38 mb-3">
+                Visualizaciones
+              </p>
+              <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] font-medium tracking-[-0.03em] text-[#F2F2F0]">
+                {fase2Stats ? fase2Stats.visualizaciones_fase2.toLocaleString("es-ES") + "+" : "—"}
+              </p>
+              <p className="text-[0.8rem] text-[#F2F2F0]/40 mt-0.5">TikTok + documental</p>
+            </div>
+
+            <div className="bg-[#0B0B0C] px-7 py-7">
+              <p className="text-[0.72rem] uppercase tracking-[0.2em] text-[#F2F2F0]/38 mb-3">
+                Vídeos publicados
+              </p>
+              <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] font-medium tracking-[-0.03em] text-[#F2F2F0]">
+                {fase2Stats ? fase2Stats.videos_publicados : "—"}
+              </p>
+              <p className="text-[0.8rem] text-[#F2F2F0]/40 mt-0.5">de +150 preparados</p>
+            </div>
+
+            <div className="bg-[#0B0B0C] px-7 py-7">
+              <p className="text-[0.72rem] uppercase tracking-[0.2em] text-[#F2F2F0]/38 mb-3">
+                Días en marcha
+              </p>
+              <p className="text-[clamp(1.8rem,2.4vw,2.4rem)] font-medium tracking-[-0.03em] text-[#F2F2F0]">
+                {diasEnMarcha}
+              </p>
+              <p className="text-[0.8rem] text-[#F2F2F0]/40 mt-0.5">desde el 23 de abril</p>
+            </div>
+          </div>
+
+          <div className="mt-10">
             <a
               href="https://www.tiktok.com/@proyecto_2026"
               target="_blank"
