@@ -1,10 +1,28 @@
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-const resend = new Resend(process.env.RESEND_API_KEY!);
+const ses = new SESClient({
+  region: process.env.AWS_SES_REGION!,
+  credentials: {
+    accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY!,
+  },
+});
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
+
+async function sendSESEmail(to: string, nombre: string | null, subject: string, html: string) {
+  await ses.send(new SendEmailCommand({
+    Source: "Alain Zulaika <contacto@niala.es>",
+    Destination: { ToAddresses: [nombre ? `${nombre} <${to}>` : to] },
+    ReplyToAddresses: ["contacto@niala.es"],
+    Message: {
+      Subject: { Data: subject, Charset: "UTF-8" },
+      Body: { Html: { Data: html, Charset: "UTF-8" } },
+    },
+  }));
+}
 
 function processText(text: string): string {
   return text
@@ -66,29 +84,26 @@ export async function POST(req: Request) {
   const euContactos = hasEu ? (hasEs ? contactos.filter(c => c.idioma === "eu") : contactos) : [];
   const esContactos = hasEs ? (hasEu ? contactos.filter(c => c.idioma !== "eu") : contactos) : [];
 
-  const toField = (email: string, nombre: string | null) =>
-    nombre ? `${nombre} <${email}>` : email;
-
   const euEmails = euContactos.map(({ email, nombre }) => ({
-    from: "Alain Zulaika <contacto@niala.es>",
-    to: toField(email, nombre),
-    replyTo: "contacto@niala.es",
+    email, nombre,
     subject: subject_eu,
     html: buildHtml(body_eu, email, preheader_eu),
   }));
 
   const esEmails = esContactos.map(({ email, nombre }) => ({
-    from: "Alain Zulaika <contacto@niala.es>",
-    to: toField(email, nombre),
-    replyTo: "contacto@niala.es",
+    email, nombre,
     subject: subject_es,
     html: buildHtml(body_es, email, preheader_es),
   }));
 
   const allEmails = [...euEmails, ...esEmails];
-  const BATCH = 100;
-  for (let i = 0; i < allEmails.length; i += BATCH) {
-    await resend.batch.send(allEmails.slice(i, i + BATCH));
+  const CONCURRENCY = 10;
+  for (let i = 0; i < allEmails.length; i += CONCURRENCY) {
+    await Promise.all(
+      allEmails.slice(i, i + CONCURRENCY).map(({ email, nombre, subject, html }) =>
+        sendSESEmail(email, nombre, subject, html)
+      )
+    );
   }
 
   return NextResponse.json({ ok: true, enviados: allEmails.length, eu: euEmails.length, es: esEmails.length });

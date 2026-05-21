@@ -1,10 +1,28 @@
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-const resend = new Resend(process.env.RESEND_API_KEY!);
+const ses = new SESClient({
+  region: process.env.AWS_SES_REGION!,
+  credentials: {
+    accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY!,
+  },
+});
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
+
+async function sendSESEmail(to: string, nombre: string | null, subject: string, html: string) {
+  await ses.send(new SendEmailCommand({
+    Source: "Alain Zulaika <contacto@niala.es>",
+    Destination: { ToAddresses: [nombre ? `${nombre} <${to}>` : to] },
+    ReplyToAddresses: ["contacto@niala.es"],
+    Message: {
+      Subject: { Data: subject, Charset: "UTF-8" },
+      Body: { Html: { Data: html, Charset: "UTF-8" } },
+    },
+  }));
+}
 
 function processText(text: string): string {
   return text
@@ -62,9 +80,6 @@ export async function GET(req: Request) {
 
   if (!contactos?.length) return NextResponse.json({ ok: true, procesadas: 0 });
 
-  const toField = (email: string, nombre: string | null) =>
-    nombre ? `${nombre} <${email}>` : email;
-
   let procesadas = 0;
 
   for (const campana of campanas) {
@@ -77,24 +92,24 @@ export async function GET(req: Request) {
 
     const emails = [
       ...euContactos.map(({ email, nombre }) => ({
-        from: "Alain Zulaika <contacto@niala.es>",
-        to: toField(email, nombre),
-        replyTo: "contacto@niala.es",
+        email, nombre,
         subject: campana.subject_eu,
         html: buildHtml(campana.body_eu, email, campana.preheader_eu),
       })),
       ...esContactos.map(({ email, nombre }) => ({
-        from: "Alain Zulaika <contacto@niala.es>",
-        to: toField(email, nombre),
-        replyTo: "contacto@niala.es",
+        email, nombre,
         subject: campana.subject_es,
         html: buildHtml(campana.body_es, email, campana.preheader_es),
       })),
     ];
 
-    const BATCH = 100;
-    for (let i = 0; i < emails.length; i += BATCH) {
-      await resend.batch.send(emails.slice(i, i + BATCH));
+    const CONCURRENCY = 10;
+    for (let i = 0; i < emails.length; i += CONCURRENCY) {
+      await Promise.all(
+        emails.slice(i, i + CONCURRENCY).map(({ email, nombre, subject, html }) =>
+          sendSESEmail(email, nombre, subject, html)
+        )
+      );
     }
 
     await supabase
