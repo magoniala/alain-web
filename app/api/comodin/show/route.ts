@@ -1,12 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY!
 );
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export async function POST(req: Request) {
   const { email } = await req.json();
@@ -29,12 +28,10 @@ export async function POST(req: Request) {
   const showUrl = `${BASE_URL}/es/comodin/show`;
   const bajaUrl = `${BASE_URL}/api/comodin/baja?email=${encodeURIComponent(email)}`;
 
-  await resend.emails.send({
-    from: "Alain Zulaika <contacto@niala.es>",
-    to: email,
-    replyTo: "contacto@niala.es",
-    subject: "El link al show",
-    html: `
+  await sendEmail(
+    email,
+    "El link al show",
+    `
       <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
         <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">
           <p style="margin:0 0 1.6rem 0;">Aquí lo tienes.</p>
@@ -47,8 +44,8 @@ export async function POST(req: Request) {
           <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">Dejar de recibir estos emails</a></p>
         </div>
       </div>
-    `,
-  });
+    `
+  );
 
   return NextResponse.json({ ok: true });
 }

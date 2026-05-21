@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -7,14 +7,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
-
 export async function POST(req: Request) {
   const body = await req.json();
   const { nombre, email, telefono, contexto, contextoOtro, tipoEvento, descripcion, preferencia, lang } = body;
   const isEu = lang === "eu";
 
-  // 1. Guardar en Supabase
   const { error: dbError } = await supabase.from("contactos").insert({
     nombre,
     email,
@@ -31,12 +28,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Error al guardar los datos." }, { status: 500 });
   }
 
-  // 2. Email de confirmación al usuario
-  await resend.emails.send({
-    from: "Alain Zulaika <contacto@niala.es>",
-    to: email,
-    subject: isEu ? "Zure mezua jaso dut" : "He recibido tu mensaje",
-    html: isEu ? `
+  await sendEmail(
+    email,
+    isEu ? "Zure mezua jaso dut" : "He recibido tu mensaje",
+    isEu ? `
       <p>Kaixo ${nombre},</p>
       <p>Zure informazioa jaso dut. Laster deituko dizut testuingurua ondo ulertzeko eta elkarrekin lan egiteak zentzua duen ikusteko.</p>
       <p>Lehenago harremanetan jarri nahi baduzu, idatz iezadazu <a href="mailto:contacto@niala.es">contacto@niala.es</a> helbidera.</p>
@@ -48,15 +43,13 @@ export async function POST(req: Request) {
       <p>Si necesitas contactarme antes, puedes escribirme a <a href="mailto:contacto@niala.es">contacto@niala.es</a>.</p>
       <br />
       <p>Alain Zulaika</p>
-    `,
-  });
+    `
+  );
 
-  // 3. Notificación a Alain
-  await resend.emails.send({
-    from: "Web <contacto@niala.es>",
-    to: "contacto@niala.es",
-    subject: isEu ? `Kontaktu berria: ${nombre}` : `Nuevo contacto: ${nombre}`,
-    html: isEu ? `
+  await sendEmail(
+    "contacto@niala.es",
+    isEu ? `Kontaktu berria: ${nombre}` : `Nuevo contacto: ${nombre}`,
+    isEu ? `
       <h2>Kontaktu formulario berria</h2>
       <p><strong>Izena:</strong> ${nombre}</p>
       <p><strong>Emaila:</strong> ${email}</p>
@@ -75,7 +68,8 @@ export async function POST(req: Request) {
       ${descripcion ? `<p><strong>Descripción:</strong> ${descripcion}</p>` : ""}
       <p><strong>Preferencia de llamada:</strong> ${preferencia}</p>
     `,
-  });
+    "Web <contacto@niala.es>"
+  );
 
   return NextResponse.json({ ok: true });
 }

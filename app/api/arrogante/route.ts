@@ -1,14 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 const TIKTOK_URL = "https://www.tiktok.com/@proyecto_2026";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
-// Midpoint values for average calculation
 const CUANTOS_VALOR: Record<string, number> = {
   "1-5": 3,
   "5-50": 28,
@@ -38,7 +36,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
   }
 
-  // Auto-update stats
   const { data: current } = await supabase.from("arrogante_stats").select("*").eq("id", 1).single();
   const base = current ?? { personas_testadas: 0, creen_que_diran_su_nombre: 0, suma_gilipollas: 0, media_gilipollas: null };
 
@@ -47,8 +44,6 @@ export async function POST(req: Request) {
   const personasActuales = base.personas_testadas ?? 0;
   const nuevaPersonas = personasActuales + 1;
 
-  // Si suma_gilipollas está a 0 pero hay una media manual guardada, reconstruir
-  // la suma a partir de media × personas para no perder las correcciones manuales.
   const sumaActual = (base.suma_gilipollas && base.suma_gilipollas > 0)
     ? base.suma_gilipollas
     : (base.media_gilipollas && personasActuales > 0 ? base.media_gilipollas * personasActuales : 0);
@@ -69,15 +64,12 @@ export async function POST(req: Request) {
   }
 
   if (email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    // Auto-suscribir a newsletter
     await supabase.from("newsletter_contactos")
       .upsert({ email: email.trim(), origen: "arrogante" }, { onConflict: "email", ignoreDuplicates: true });
-    await resend.emails.send({
-      from: "Alain Zulaika <contacto@niala.es>",
-      to: email.trim(),
-      replyTo: "contacto@niala.es",
-      subject: "Tu respuesta ya está dentro del experimento.",
-      html: `
+    await sendEmail(
+      email.trim(),
+      "Tu respuesta ya está dentro del experimento.",
+      `
         <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
           <div style="font-size:1.05rem;line-height:2;color:#1a1a1a;">
             <p style="margin:0 0 1.4rem;">Gracias por participar.</p>
@@ -90,8 +82,8 @@ export async function POST(req: Request) {
             <p style="margin:0;"><a href="${BASE_URL}/api/arrogante/baja?email=${encodeURIComponent(email.trim())}" style="color:#bbb;">Dejar de recibir estos emails</a></p>
           </div>
         </div>
-      `,
-    });
+      `
+    );
   }
 
   return NextResponse.json({ ok: true });
