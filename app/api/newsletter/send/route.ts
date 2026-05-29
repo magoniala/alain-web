@@ -82,7 +82,7 @@ export async function POST(req: Request) {
   for (let i = 0; i < allEmails.length; i += CONCURRENCY) {
     await Promise.all(
       allEmails.slice(i, i + CONCURRENCY).map(({ email, nombre, subject, html }) =>
-        sendEmail(nombre ? `${nombre} <${email}>` : email, subject, html)
+        sendEmail(nombre ? `${nombre} <${email}>` : email, subject, html, "Alain Zulaika <newsletter@niala.es>")
       )
     );
   }

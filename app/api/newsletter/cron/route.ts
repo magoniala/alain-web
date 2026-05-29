@@ -88,7 +88,7 @@ export async function GET(req: Request) {
     for (let i = 0; i < emails.length; i += CONCURRENCY) {
       await Promise.all(
         emails.slice(i, i + CONCURRENCY).map(({ email, nombre, subject, html }) =>
-          sendEmail(nombre ? `${nombre} <${email}>` : email, subject, html)
+          sendEmail(nombre ? `${nombre} <${email}>` : email, subject, html, "Alain Zulaika <newsletter@niala.es>")
         )
       );
     }
