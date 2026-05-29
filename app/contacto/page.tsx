@@ -7,7 +7,6 @@ const CONTEXTO_LABELS: Record<string, string> = {
   empresa: "Enpresa",
   cultura: "Kultura / erakundea",
   educativo: "Hezkuntza-zentroa",
-  hosteleria: "Ostalaritza",
   otro: "Beste bat",
 };
 
@@ -131,7 +130,6 @@ export default function ContactoPage() {
     }
 
     if (screen === 2) {
-      if (formData.contexto === "hosteleria") { setScreen(5); return; }
       if (formData.contexto === "otro") { setScreen(4); return; }
       setScreen(3); return;
     }
@@ -145,7 +143,6 @@ export default function ContactoPage() {
       setScreen(3); return;
     }
     if (screen === 5) {
-      if (formData.contexto === "hosteleria") { setScreen(2); return; }
       setScreen(4); return;
     }
     setScreen(screen - 1);
@@ -156,11 +153,7 @@ export default function ContactoPage() {
     let step = screen;
     let total = 5;
 
-    if (ctx === "hosteleria") {
-      const map: Record<number, number> = { 1: 1, 2: 2, 5: 3 };
-      step = map[screen] ?? screen;
-      total = 3;
-    } else if (ctx === "otro") {
+    if (ctx === "otro") {
       const map: Record<number, number> = { 1: 1, 2: 2, 4: 3, 5: 4 };
       step = map[screen] ?? screen;
       total = 4;
@@ -493,7 +486,6 @@ export default function ContactoPage() {
               <Link href="/" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Hasiera<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
               <Link href="/empresa" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Enpresa<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
               <Link href="/cultura" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Kultura / Euskara<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
-              <Link href="/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">Ostalaritza<span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" /></Link>
               <Link href="/contacto" className="group relative w-fit text-[#2ED3E6]">Kontaktua<span className="absolute -bottom-0.5 left-0 h-px w-full bg-[#2ED3E6]" /></Link>
             </div>
           </div>

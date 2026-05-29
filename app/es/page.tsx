@@ -303,7 +303,7 @@ export default function Home() {
           </p>
 
           <nav className="mt-25 hidden xl:flex gap-3">
-            {(["empresa", "cultura", "hosteleria"] as const).map((key) => (
+            {(["empresa", "cultura"] as const).map((key) => (
               <a
                 key={key}
                 href={contextContent[key].href}
@@ -339,7 +339,7 @@ export default function Home() {
 
           {/* Mobile: stacked context links with preview */}
           <div className="xl:hidden mt-10 space-y-3">
-            {(["empresa", "cultura", "hosteleria"] as const).map((key) => (
+            {(["empresa", "cultura"] as const).map((key) => (
               <a
                 key={key}
                 href={contextContent[key].href}
@@ -476,10 +476,6 @@ export default function Home() {
               </a>
               <a href="/es/cultura" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
                 Cultura
-                <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" />
-              </a>
-              <a href="/es/hosteleria" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
-                Hostelería
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#2ED3E6] transition-all duration-300 group-hover:w-full" />
               </a>
               <a href="/es/contacto" className="group relative w-fit text-[#F2F2F0]/72 transition-colors hover:text-[#2ED3E6]">
