@@ -1,12 +1,9 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import Mailjet from "node-mailjet";
 
-const ses = new SESClient({
-  region: process.env.AWS_SES_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY!,
-  },
-});
+const client = Mailjet.apiConnect(
+  process.env.MJ_APIKEY_PUBLIC!,
+  process.env.MJ_APIKEY_PRIVATE!
+);
 
 export async function sendEmail(
   to: string,
@@ -14,15 +11,24 @@ export async function sendEmail(
   html: string,
   from = "Alain Zulaika <contacto@niala.es>"
 ) {
-  await ses.send(
-    new SendEmailCommand({
-      Source: from,
-      Destination: { ToAddresses: [to] },
-      ReplyToAddresses: ["contacto@niala.es"],
-      Message: {
-        Subject: { Data: subject, Charset: "UTF-8" },
-        Body: { Html: { Data: html, Charset: "UTF-8" } },
+  const fromMatch = from.match(/^(.+?)\s*<(.+?)>$/);
+  const fromName = fromMatch ? fromMatch[1].trim() : "Alain Zulaika";
+  const fromEmail = fromMatch ? fromMatch[2].trim() : from;
+
+  const toMatch = to.match(/^(.+?)\s*<(.+?)>$/);
+  const toEntry = toMatch
+    ? { Email: toMatch[2].trim(), Name: toMatch[1].trim() }
+    : { Email: to };
+
+  await client.post("send", { version: "v3.1" }).request({
+    Messages: [
+      {
+        From: { Email: fromEmail, Name: fromName },
+        To: [toEntry],
+        Subject: subject,
+        HTMLPart: html,
+        ReplyTo: { Email: "contacto@niala.es" },
       },
-    })
-  );
+    ],
+  });
 }

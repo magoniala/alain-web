@@ -1,28 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { sendEmail } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-const ses = new SESClient({
-  region: process.env.AWS_SES_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY!,
-  },
-});
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
-
-async function sendSESEmail(to: string, nombre: string | null, subject: string, html: string) {
-  await ses.send(new SendEmailCommand({
-    Source: "Alain Zulaika <contacto@niala.es>",
-    Destination: { ToAddresses: [nombre ? `${nombre} <${to}>` : to] },
-    ReplyToAddresses: ["contacto@niala.es"],
-    Message: {
-      Subject: { Data: subject, Charset: "UTF-8" },
-      Body: { Html: { Data: html, Charset: "UTF-8" } },
-    },
-  }));
-}
 
 function processText(text: string): string {
   return text
@@ -101,7 +82,7 @@ export async function POST(req: Request) {
   for (let i = 0; i < allEmails.length; i += CONCURRENCY) {
     await Promise.all(
       allEmails.slice(i, i + CONCURRENCY).map(({ email, nombre, subject, html }) =>
-        sendSESEmail(email, nombre, subject, html)
+        sendEmail(nombre ? `${nombre} <${email}>` : email, subject, html)
       )
     );
   }
