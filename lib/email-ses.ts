@@ -27,7 +27,7 @@ export async function sendEmail(
         To: [toEntry],
         Subject: subject,
         HTMLPart: html,
-        ReplyTo: { Email: "contacto@niala.es" },
+        ReplyTo: { Email: "newsletter@niala.es" },
       },
     ],
   });

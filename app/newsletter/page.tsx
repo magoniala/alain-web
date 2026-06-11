@@ -177,8 +177,9 @@ export default function NewsletterPage() {
     setEditPreheaderEs(c.preheader_es ?? "");
     setEditBodyEs(c.body_es ?? "");
     const d = new Date(c.programado_para);
-    setEditDate(d.toISOString().slice(0, 10));
-    setEditTime(d.toISOString().slice(11, 16));
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setEditDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+    setEditTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
   }
 
   async function handleSaveEdit() {
