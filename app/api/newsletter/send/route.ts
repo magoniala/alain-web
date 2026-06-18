@@ -7,19 +7,24 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 
 function processText(text: string): string {
   return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/_(.+?)_/g, '<em>$1</em>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;">$1</strong>')
+    .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
 }
+
+const IMG_RE = /^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/;
 
 function buildHtml(body: string, email: string, preheader?: string) {
   const htmlBody = body
     .trim()
     .split(/\n/)
-    .map((line: string) => line.trim()
-      ? `<p style="margin:0 0 1.2rem 0;">${processText(line)}</p>`
-      : `<p style="margin:0 0 0.8rem 0;">&nbsp;</p>`
-    )
+    .map((line: string) => {
+      const t = line.trim();
+      if (!t) return `<p style="margin:0 0 0.8rem 0;">&nbsp;</p>`;
+      const img = t.match(IMG_RE);
+      if (img) return `<img src="${img[2]}" alt="${img[1]}" style="max-width:100%;height:auto;display:block;margin:1.2rem 0;">`;
+      return `<p style="margin:0 0 1.2rem 0;">${processText(t)}</p>`;
+    })
     .join("");
   const preheaderHtml = preheader?.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`

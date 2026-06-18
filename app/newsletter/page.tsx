@@ -271,17 +271,40 @@ export default function NewsletterPage() {
     setValue(newVal);
     requestAnimationFrame(() => {
       el.focus();
-      // Select the URL part for easy replacement
       const urlStart = start + selected.length + 3;
       el.setSelectionRange(urlStart, urlStart + 8);
     });
   }
 
+  function applyImage(id: string, setValue: (v: string) => void, getValue: () => string) {
+    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    if (!el) return;
+    const start = el.selectionStart;
+    const val = getValue();
+    const inserted = `![](https://)`;
+    const newVal = val.slice(0, start) + inserted + val.slice(start);
+    setValue(newVal);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + 4, start + 12);
+    });
+  }
+
+  const IMG_PREVIEW_RE = /^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/;
+
   function processPreview(text: string) {
     return text
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/_(.+?)_/g, '<em>$1</em>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;">$1</strong>')
+      .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
+  }
+
+  function renderPreviewLine(line: string, i: number) {
+    const t = line.trim();
+    if (!t) return <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>;
+    const img = t.match(IMG_PREVIEW_RE);
+    if (img) return <img key={i} src={img[2]} alt={img[1]} style={{ maxWidth: "100%", height: "auto", display: "block", margin: "1.2rem 0" }} />;
+    return <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: processPreview(t) }} />;
   }
 
   const toolbarBtnClass = "px-2 py-1 text-[0.72rem] border border-gray-200 hover:border-gray-400 transition-colors bg-white text-gray-600 hover:text-gray-900 select-none";
@@ -292,6 +315,7 @@ export default function NewsletterPage() {
         <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "**", setValue, getValue); }} title="Negrita"><strong>B</strong></button>
         <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "_", setValue, getValue); }} title="Cursiva"><em>I</em></button>
         <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyLink(id, setValue, getValue); }} title="Enlace">🔗 enlace</button>
+        <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyImage(id, setValue, getValue); }} title="Imagen">🖼 imagen</button>
       </div>
     );
   }
@@ -430,10 +454,7 @@ export default function NewsletterPage() {
                         {preheaderEu && <p style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.75rem", fontStyle: "italic" }}>↳ {preheaderEu}</p>}
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEu || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
-                          {bodyEu.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: processPreview(line) }} />
-                            : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
-                          )}
+                          {bodyEu.split(/\n/).map((line, i) => renderPreviewLine(line, i))}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                           <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
@@ -446,9 +467,7 @@ export default function NewsletterPage() {
                         {preheaderEs && <p style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.75rem", fontStyle: "italic" }}>↳ {preheaderEs}</p>}
                         <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>{subjectEs || "—"}</p>
                         <div style={{ fontSize: "0.95rem", lineHeight: 1.9 }}>
-                          {bodyEs.split(/\n/).map((line, i) => line.trim()
-                            ? <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: processPreview(line) }} />
-                            : <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>
+                          {bodyEs.split(/\n/).map((line, i) => renderPreviewLine(line, i)
                           )}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
