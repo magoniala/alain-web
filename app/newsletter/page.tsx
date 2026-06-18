@@ -73,6 +73,8 @@ export default function NewsletterPage() {
   const [addingContact, setAddingContact] = useState(false);
   const [addContactResult, setAddContactResult] = useState<{ ok?: boolean; error?: string } | null>(null);
 
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   // Edit campaign state
   const [editing, setEditing] = useState<Campana | null>(null);
   const [editSubjectEu, setEditSubjectEu] = useState("");
@@ -587,24 +589,51 @@ export default function NewsletterPage() {
                 <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-4">
                   Enviadas ({enviadas.length})
                 </p>
-                <div className="space-y-2">
-                  {enviadas.map(c => (
-                    <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                      <div>
-                        <p className="text-sm text-gray-700">
-                          {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "—"}
-                        </p>
-                        <p className="text-[0.72rem] text-gray-400">
-                          {c.enviado_en ? fmtDate(c.enviado_en) : "—"}
-                        </p>
+                <div className="space-y-1">
+                  {enviadas.map(c => {
+                    const isOpen = expandedId === c.id;
+                    return (
+                      <div key={c.id} className="border border-gray-100">
+                        <button
+                          onClick={() => setExpandedId(isOpen ? null : c.id)}
+                          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <div>
+                            <p className="text-sm text-gray-700">
+                              {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "—"}
+                            </p>
+                            <p className="text-[0.72rem] text-gray-400 mt-0.5">
+                              {c.enviado_en ? fmtDate(c.enviado_en) : "—"} · {(c.enviados_eu ?? 0) + (c.enviados_es ?? 0)} enviados
+                              {c.enviados_eu ? ` (${c.enviados_eu} eu` : ""}
+                              {c.enviados_eu && c.enviados_es ? " · " : ""}
+                              {c.enviados_es ? `${c.enviados_es} es)` : c.enviados_eu ? ")" : ""}
+                            </p>
+                          </div>
+                          <span className="text-gray-400 text-[0.75rem] shrink-0 ml-4">{isOpen ? "▲" : "▼"}</span>
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-gray-100 px-4 py-4 grid md:grid-cols-2 gap-6 bg-gray-50">
+                            {c.body_eu && (
+                              <div>
+                                <p className="text-[0.7rem] uppercase tracking-wider text-gray-400 mb-2">Euskera</p>
+                                {c.preheader_eu && <p className="text-[0.72rem] italic text-gray-400 mb-2">↳ {c.preheader_eu}</p>}
+                                <p className="text-[0.78rem] font-medium text-gray-600 mb-3">{c.subject_eu}</p>
+                                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{c.body_eu}</div>
+                              </div>
+                            )}
+                            {c.body_es && (
+                              <div>
+                                <p className="text-[0.7rem] uppercase tracking-wider text-gray-400 mb-2">Castellano</p>
+                                {c.preheader_es && <p className="text-[0.72rem] italic text-gray-400 mb-2">↳ {c.preheader_es}</p>}
+                                <p className="text-[0.78rem] font-medium text-gray-600 mb-3">{c.subject_es}</p>
+                                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{c.body_es}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <p className="text-[0.72rem] text-gray-400 shrink-0 ml-4">
-                        {(c.enviados_eu ?? 0) + (c.enviados_es ?? 0)} enviados
-                        {c.enviados_eu ? ` · ${c.enviados_eu} eu` : ""}
-                        {c.enviados_es ? ` · ${c.enviados_es} es` : ""}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
