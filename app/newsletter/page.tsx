@@ -65,6 +65,14 @@ export default function NewsletterPage() {
   const [scheduling, setScheduling] = useState(false);
   const [scheduleResult, setScheduleResult] = useState<{ ok?: boolean; error?: string } | null>(null);
 
+  // Add contact state
+  const [newEmail, setNewEmail] = useState("");
+  const [newNombre, setNewNombre] = useState("");
+  const [newIdioma, setNewIdioma] = useState("es");
+  const [newOrigen, setNewOrigen] = useState("");
+  const [addingContact, setAddingContact] = useState(false);
+  const [addContactResult, setAddContactResult] = useState<{ ok?: boolean; error?: string } | null>(null);
+
   // Edit campaign state
   const [editing, setEditing] = useState<Campana | null>(null);
   const [editSubjectEu, setEditSubjectEu] = useState("");
@@ -155,6 +163,26 @@ export default function NewsletterPage() {
       setScheduleResult({ error: data.error || "Error al programar." });
     }
     setScheduling(false);
+  }
+
+  async function handleAddContact(e: React.FormEvent) {
+    e.preventDefault();
+    setAddingContact(true);
+    setAddContactResult(null);
+    const res = await fetch("/api/newsletter", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ email: newEmail.trim(), nombre: newNombre.trim() || null, idioma: newIdioma, origen: newOrigen.trim() || "manual" }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setAddContactResult({ ok: true });
+      if (data.contacto) setContactos(prev => [data.contacto, ...prev]);
+      setNewEmail(""); setNewNombre(""); setNewIdioma("es"); setNewOrigen("");
+    } else {
+      setAddContactResult({ error: data.error || "Error al añadir." });
+    }
+    setAddingContact(false);
   }
 
   async function handleCancel(id: string) {
@@ -585,7 +613,44 @@ export default function NewsletterPage() {
 
         {/* ── TAB: SUSCRIPTORES ── */}
         {tab === "Suscriptores" && (
-          <section className="bg-white border border-gray-200 p-5 md:p-6">
+          <section className="bg-white border border-gray-200 p-5 md:p-6 space-y-8">
+
+            {/* Add contact form */}
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a] mb-5">Añadir contacto</p>
+              {addContactResult?.ok && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 text-sm text-green-700">✓ Contacto añadido.</div>
+              )}
+              {addContactResult?.error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{addContactResult.error}</div>
+              )}
+              <form onSubmit={handleAddContact} className="flex flex-wrap gap-2 items-end">
+                <div>
+                  <p className="text-[0.72rem] text-gray-500 mb-1">Email *</p>
+                  <input type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@ejemplo.com" className={`${inputClass} w-56`} />
+                </div>
+                <div>
+                  <p className="text-[0.72rem] text-gray-500 mb-1">Nombre</p>
+                  <input type="text" value={newNombre} onChange={e => setNewNombre(e.target.value)} placeholder="Opcional" className={`${inputClass} w-36`} />
+                </div>
+                <div>
+                  <p className="text-[0.72rem] text-gray-500 mb-1">Idioma</p>
+                  <select value={newIdioma} onChange={e => setNewIdioma(e.target.value)} className={`${inputClass} w-20`}>
+                    <option value="es">ES</option>
+                    <option value="eu">EU</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[0.72rem] text-gray-500 mb-1">Origen</p>
+                  <input type="text" value={newOrigen} onChange={e => setNewOrigen(e.target.value)} placeholder="entrenamiento…" className={`${inputClass} w-36`} />
+                </div>
+                <button type="submit" disabled={addingContact || !newEmail} className="px-4 py-2 bg-[#1a1a1a] text-white text-sm disabled:opacity-40">
+                  {addingContact ? "Añadiendo..." : "Añadir"}
+                </button>
+              </form>
+            </div>
+
+            <div>
             <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-6">
               Activos ({activos.length})
             </p>
@@ -620,6 +685,7 @@ export default function NewsletterPage() {
                 ))}
               </div>
             )}
+            </div>
           </section>
         )}
 

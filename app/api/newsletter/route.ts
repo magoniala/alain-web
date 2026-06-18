@@ -13,11 +13,16 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { email, origen } = await req.json();
+  const { email, nombre, idioma, origen } = await req.json();
   if (!email) return NextResponse.json({ error: "Falta email." }, { status: 400 });
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("newsletter_contactos")
-    .upsert({ email, origen: origen || "web" }, { onConflict: "email", ignoreDuplicates: true });
+    .upsert(
+      { email, nombre: nombre || null, idioma: idioma || "es", origen: origen || "manual" },
+      { onConflict: "email", ignoreDuplicates: true }
+    )
+    .select()
+    .single();
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, contacto: data });
 }
