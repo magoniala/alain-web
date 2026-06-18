@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface Contacto {
   id: string;
@@ -74,6 +74,9 @@ export default function NewsletterPage() {
   const [addContactResult, setAddContactResult] = useState<{ ok?: boolean; error?: string } | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeImgTarget, setActiveImgTarget] = useState<{ id: string; setValue: (v: string) => void; getValue: () => string } | null>(null);
 
   // Edit campaign state
   const [editing, setEditing] = useState<Campana | null>(null);
@@ -276,6 +279,26 @@ export default function NewsletterPage() {
     });
   }
 
+  async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !activeImgTarget) return;
+    e.target.value = "";
+    setUploadingImg(true);
+    const form = new FormData();
+    form.append("password", pw());
+    form.append("file", file);
+    const res = await fetch("/api/newsletter/upload", { method: "POST", body: form });
+    const data = await res.json();
+    setUploadingImg(false);
+    if (!data.url) return;
+    const { id, setValue, getValue } = activeImgTarget;
+    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    const pos = el?.selectionStart ?? getValue().length;
+    const val = getValue();
+    const inserted = `![](${data.url})`;
+    setValue(val.slice(0, pos) + inserted + val.slice(pos));
+  }
+
   function applyImage(id: string, setValue: (v: string) => void, getValue: () => string) {
     const el = document.getElementById(id) as HTMLTextAreaElement | null;
     if (!el) return;
@@ -315,7 +338,20 @@ export default function NewsletterPage() {
         <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "**", setValue, getValue); }} title="Negrita"><strong>B</strong></button>
         <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "_", setValue, getValue); }} title="Cursiva"><em>I</em></button>
         <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyLink(id, setValue, getValue); }} title="Enlace">🔗 enlace</button>
-        <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyImage(id, setValue, getValue); }} title="Imagen">🖼 imagen</button>
+        <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyImage(id, setValue, getValue); }} title="URL imagen">🖼 url</button>
+        <button
+          type="button"
+          className={`${toolbarBtnClass} text-[0.65rem]`}
+          disabled={uploadingImg}
+          onMouseDown={e => {
+            e.preventDefault();
+            setActiveImgTarget({ id, setValue, getValue });
+            fileInputRef.current?.click();
+          }}
+          title="Subir imagen desde ordenador"
+        >
+          {uploadingImg ? "subiendo…" : "🖼 subir"}
+        </button>
       </div>
     );
   }
@@ -738,6 +774,13 @@ export default function NewsletterPage() {
         )}
 
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={handleImageFileChange}
+      />
     </main>
   );
 }
