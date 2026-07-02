@@ -85,7 +85,7 @@ export async function POST(req: Request) {
   const allEmails = [...euEmails, ...esEmails];
   const CONCURRENCY = 10;
   for (let i = 0; i < allEmails.length; i += CONCURRENCY) {
-    await Promise.all(
+    await Promise.allSettled(
       allEmails.slice(i, i + CONCURRENCY).map(({ email, nombre, subject, html }) =>
         sendEmail(nombre ? `${nombre} <${email}>` : email, subject, html, "Alain Zulaika <newsletter@niala.es>")
       )
