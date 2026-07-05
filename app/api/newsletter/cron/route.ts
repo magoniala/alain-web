@@ -69,6 +69,13 @@ export async function GET(req: Request) {
   let procesadas = 0;
 
   for (const campana of campanas) {
+    // Mark as in-progress immediately so concurrent cron runs don't re-send
+    await supabase
+      .from("newsletter_campanas")
+      .update({ estado: "enviando" })
+      .eq("id", campana.id)
+      .eq("estado", "programado");
+
     const hasEu = campana.subject_eu && campana.body_eu;
     const hasEs = campana.subject_es && campana.body_es;
 
