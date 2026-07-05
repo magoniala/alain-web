@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmailBatch } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -96,12 +96,14 @@ export async function GET(req: Request) {
       })),
     ];
 
-    const CONCURRENCY = 10;
-    for (let i = 0; i < emails.length; i += CONCURRENCY) {
-      await Promise.allSettled(
-        emails.slice(i, i + CONCURRENCY).map(({ email, nombre, subject, html }) =>
-          sendEmail(nombre ? `${nombre} <${email}>` : email, subject, html, "Alain Zulaika <newsletter@niala.es>")
-        )
+    const BATCH = 50;
+    for (let i = 0; i < emails.length; i += BATCH) {
+      await sendEmailBatch(
+        emails.slice(i, i + BATCH).map(({ email, nombre, subject, html }) => ({
+          to: nombre ? `${nombre} <${email}>` : email,
+          subject,
+          html,
+        }))
       );
     }
 
