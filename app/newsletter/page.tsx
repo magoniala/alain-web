@@ -90,6 +90,10 @@ export default function NewsletterPage() {
   const [editTime, setEditTime] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Cancel confirmation state
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [cancelInput, setCancelInput] = useState("");
+
   const pw = useCallback(() => sessionStorage.getItem("nl_pw") || "", []);
 
   const authHeaders = useCallback(() => ({
@@ -97,12 +101,36 @@ export default function NewsletterPage() {
     "x-nl-password": pw(),
   }), [pw]);
 
+  const DRAFT_KEY = "nl_draft";
+
   useEffect(() => {
     if (sessionStorage.getItem("nl_auth") === "1") {
       setAuth(true);
       loadAll();
+      try {
+        const saved = localStorage.getItem(DRAFT_KEY);
+        if (saved) {
+          const d = JSON.parse(saved);
+          if (d.subjectEu) setSubjectEu(d.subjectEu);
+          if (d.preheaderEu) setPreheaderEu(d.preheaderEu);
+          if (d.bodyEu) setBodyEu(d.bodyEu);
+          if (d.subjectEs) setSubjectEs(d.subjectEs);
+          if (d.preheaderEs) setPreheaderEs(d.preheaderEs);
+          if (d.bodyEs) setBodyEs(d.bodyEs);
+        }
+      } catch {}
     }
   }, []);
+
+  // Auto-save draft to localStorage
+  useEffect(() => {
+    if (!auth) return;
+    if (!subjectEu && !bodyEu && !subjectEs && !bodyEs) {
+      localStorage.removeItem(DRAFT_KEY);
+    } else {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ subjectEu, preheaderEu, bodyEu, subjectEs, preheaderEs, bodyEs }));
+    }
+  }, [auth, subjectEu, preheaderEu, bodyEu, subjectEs, preheaderEs, bodyEs]);
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -145,7 +173,7 @@ export default function NewsletterPage() {
     setSendResult(data);
     setSending(false);
     setConfirm(false);
-    if (data.ok) { setSubjectEu(""); setPreheaderEu(""); setBodyEu(""); setSubjectEs(""); setPreheaderEs(""); setBodyEs(""); }
+    if (data.ok) { setSubjectEu(""); setPreheaderEu(""); setBodyEu(""); setSubjectEs(""); setPreheaderEs(""); setBodyEs(""); localStorage.removeItem(DRAFT_KEY); }
   }
 
   async function handleSchedule() {
@@ -163,6 +191,7 @@ export default function NewsletterPage() {
       setScheduleResult({ ok: true });
       setSubjectEu(""); setPreheaderEu(""); setBodyEu(""); setSubjectEs(""); setPreheaderEs(""); setBodyEs("");
       setScheduleDate(""); setScheduleTime("");
+      localStorage.removeItem(DRAFT_KEY);
       setCampanas(prev => [...prev, data].sort((a, b) => a.programado_para.localeCompare(b.programado_para)));
     } else {
       setScheduleResult({ error: data.error || "Error al programar." });
@@ -190,15 +219,21 @@ export default function NewsletterPage() {
     setAddingContact(false);
   }
 
-  async function handleCancel(id: string) {
-    if (!confirm) {
-      await fetch("/api/newsletter/campanas", {
-        method: "DELETE",
-        headers: authHeaders(),
-        body: JSON.stringify({ id }),
-      });
-      setCampanas(prev => prev.map(c => c.id === id ? { ...c, estado: "cancelado" } : c));
-    }
+  function handleCancel(id: string) {
+    setCancelTarget(id);
+    setCancelInput("");
+  }
+
+  async function handleCancelConfirm() {
+    if (!cancelTarget || cancelInput !== "CANCELAR") return;
+    await fetch("/api/newsletter/campanas", {
+      method: "DELETE",
+      headers: authHeaders(),
+      body: JSON.stringify({ id: cancelTarget }),
+    });
+    setCampanas(prev => prev.map(c => c.id === cancelTarget ? { ...c, estado: "cancelado" } : c));
+    setCancelTarget(null);
+    setCancelInput("");
   }
 
   function startEdit(c: Campana) {
@@ -612,24 +647,54 @@ export default function NewsletterPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="border border-gray-200 p-4 flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">
-                              {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "Sin asunto"}
-                            </p>
-                            <p className="text-[0.75rem] text-gray-400 mt-0.5">{fmtDate(c.programado_para)}</p>
-                            <p className="text-[0.7rem] text-gray-400 mt-0.5">
-                              {[c.subject_eu && "eu", c.subject_es && "es"].filter(Boolean).join(" + ")}
-                            </p>
+                        <div className="border border-gray-200 p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">
+                                {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "Sin asunto"}
+                              </p>
+                              <p className="text-[0.75rem] text-gray-400 mt-0.5">{fmtDate(c.programado_para)}</p>
+                              <p className="text-[0.7rem] text-gray-400 mt-0.5">
+                                {[c.subject_eu && "eu", c.subject_es && "es"].filter(Boolean).join(" + ")}
+                              </p>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button onClick={() => startEdit(c)} className="text-[0.75rem] text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5">
+                                Editar
+                              </button>
+                              <button onClick={() => handleCancel(c.id)} className="text-[0.75rem] text-[#DC2626] hover:text-red-700 border border-red-200 px-3 py-1.5">
+                                Cancelar
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex gap-2 shrink-0">
-                            <button onClick={() => startEdit(c)} className="text-[0.75rem] text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5">
-                              Editar
-                            </button>
-                            <button onClick={() => handleCancel(c.id)} className="text-[0.75rem] text-[#DC2626] hover:text-red-700 border border-red-200 px-3 py-1.5">
-                              Cancelar
-                            </button>
-                          </div>
+                          {cancelTarget === c.id && (
+                            <div className="mt-3 pt-3 border-t border-red-100">
+                              <p className="text-[0.72rem] text-[#DC2626] mb-2">Escribe CANCELAR para confirmar:</p>
+                              <div className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={cancelInput}
+                                  onChange={e => setCancelInput(e.target.value)}
+                                  placeholder="CANCELAR"
+                                  className="border border-gray-300 px-2 py-1 text-sm outline-none focus:border-red-400 w-28"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={handleCancelConfirm}
+                                  disabled={cancelInput !== "CANCELAR"}
+                                  className="px-3 py-1 bg-[#DC2626] text-white text-[0.75rem] disabled:opacity-30"
+                                >
+                                  Confirmar
+                                </button>
+                                <button
+                                  onClick={() => setCancelTarget(null)}
+                                  className="px-3 py-1 border border-gray-300 text-[0.75rem] hover:border-gray-500"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
