@@ -25,6 +25,7 @@ interface Campana {
   enviado_en: string | null;
   enviados_eu: number | null;
   enviados_es: number | null;
+  excluidos: string[] | null;
 }
 
 interface SendResult {
@@ -88,6 +89,8 @@ export default function NewsletterPage() {
   const [editBodyEs, setEditBodyEs] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editTime, setEditTime] = useState("");
+  const [editExcluidos, setEditExcluidos] = useState<string[]>([]);
+  const [editExcludeInput, setEditExcludeInput] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Cancel confirmation state
@@ -248,6 +251,8 @@ export default function NewsletterPage() {
     const pad = (n: number) => String(n).padStart(2, "0");
     setEditDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
     setEditTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    setEditExcluidos(c.excluidos ?? []);
+    setEditExcludeInput("");
   }
 
   async function handleSaveEdit() {
@@ -257,10 +262,10 @@ export default function NewsletterPage() {
     await fetch("/api/newsletter/campanas", {
       method: "PATCH",
       headers: authHeaders(),
-      body: JSON.stringify({ id: editing.id, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para }),
+      body: JSON.stringify({ id: editing.id, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para, excluidos: editExcluidos }),
     });
     setCampanas(prev => prev.map(c => c.id === editing.id
-      ? { ...c, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para }
+      ? { ...c, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para, excluidos: editExcluidos }
       : c
     ));
     setEditing(null);
@@ -644,6 +649,47 @@ export default function NewsletterPage() {
                             <button onClick={() => setEditing(null)} className="px-4 py-2 border border-gray-300 text-sm">
                               Cancelar
                             </button>
+                          </div>
+                          <div className="border-t border-gray-100 pt-4 space-y-2">
+                            <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Excluir de este envío</p>
+                            <div className="flex gap-2">
+                              <input
+                                type="email"
+                                value={editExcludeInput}
+                                onChange={e => setEditExcludeInput(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const v = editExcludeInput.trim().toLowerCase();
+                                    if (v && !editExcluidos.includes(v)) setEditExcluidos(prev => [...prev, v]);
+                                    setEditExcludeInput("");
+                                  }
+                                }}
+                                placeholder="email@ejemplo.com"
+                                className="border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-500 w-56"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const v = editExcludeInput.trim().toLowerCase();
+                                  if (v && !editExcluidos.includes(v)) setEditExcluidos(prev => [...prev, v]);
+                                  setEditExcludeInput("");
+                                }}
+                                className="px-3 py-1.5 border border-gray-300 text-sm hover:border-gray-500"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                            {editExcluidos.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {editExcluidos.map(email => (
+                                  <span key={email} className="flex items-center gap-1 bg-gray-100 text-gray-600 text-[0.72rem] px-2 py-0.5">
+                                    {email}
+                                    <button onClick={() => setEditExcluidos(prev => prev.filter(e => e !== email))} className="text-gray-400 hover:text-gray-700 ml-0.5">×</button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (

@@ -78,10 +78,11 @@ export async function GET(req: Request) {
 
     const hasEu = campana.subject_eu && campana.body_eu;
     const hasEs = campana.subject_es && campana.body_es;
+    const excluded = new Set((campana.excluidos ?? []).map((e: string) => e.toLowerCase()));
 
     // If both languages provided: route by idioma. If only one: send to everyone.
-    const euContactos = hasEu ? (hasEs ? contactos.filter(c => c.idioma === "eu") : contactos) : [];
-    const esContactos = hasEs ? (hasEu ? contactos.filter(c => c.idioma !== "eu") : contactos) : [];
+    const euContactos = hasEu ? (hasEs ? contactos.filter(c => c.idioma === "eu" && !excluded.has(c.email.toLowerCase())) : contactos.filter(c => !excluded.has(c.email.toLowerCase()))) : [];
+    const esContactos = hasEs ? (hasEu ? contactos.filter(c => c.idioma !== "eu" && !excluded.has(c.email.toLowerCase())) : contactos.filter(c => !excluded.has(c.email.toLowerCase()))) : [];
 
     const emails = [
       ...euContactos.map(({ email, nombre }) => ({

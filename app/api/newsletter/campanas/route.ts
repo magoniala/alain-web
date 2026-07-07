@@ -37,11 +37,11 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  const { id, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para } = await req.json();
+  const { id, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, excluidos } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
   const { error } = await supabase
     .from("newsletter_campanas")
-    .update({ subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para })
+    .update({ subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, excluidos })
     .eq("id", id)
     .eq("estado", "programado");
   if (error) return NextResponse.json({ error: "Error al actualizar." }, { status: 500 });
