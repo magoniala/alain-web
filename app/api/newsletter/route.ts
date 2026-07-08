@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     const bajaUrl = `${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}`;
     const euskeraUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(email)}&idioma=eu`;
     const castellanoUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(email)}&idioma=es`;
-    const contactoUrl = `${BASE_URL}/es/contacto`;
+    const contactoEsUrl = `${BASE_URL}/es/contacto`;
+    const contactoEuUrl = `${BASE_URL}/contacto`;
     const entrenamientoUrl = `mailto:contacto@niala.es?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`;
     const unsubscribeText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
 
@@ -62,16 +63,16 @@ export async function POST(req: Request) {
       isEu
         ? wrap(`
           <p style="${pStyle}">Kaixo, Alain naiz.</p>
-          <p style="${pStyle}">Agertokietan mago. Online entrenatzaile pertsonala. Eta jakin-min handikoa jaiotzatik.</p>
-          <p style="${pStyle}">Nire emailetan entrenamendua, osasuna eta magiari buruzko gogoeta, ikasketa eta anekdotak aurkituko dituzu — eta kontatu nahi dudana.</p>
-          <p style="${pStyle}">Ez maiztasun finkorik agintzen, nahiz eta ohikoena egunero idaztea den.</p>
-          <p style="margin:0 0 2rem 0;">Edozein momentutan interesatzeari uzten badio, behean botoi bat duzu irteteko. Arazorik gabe.</p>
+          <p style="${pStyle}">Magoa eszenatoki gainean. Entrenatzaile pertsonala online. Eta kuriosoa jaiotzaz eta hazkundez.</p>
+          <p style="${pStyle}">Nire mezuetan entrenamenduari, osasunari eta magiari buruzko hausnarketa, ikasgai eta pasadizoak aurkituko dituzu; baita partekatzeko gogoa ematen didan beste edozer ere.</p>
+          <p style="${pStyle}">Ez dago egutegi finkorik, nahiz eta normalean egunero idazten dudan.</p>
+          <p style="margin:0 0 2rem 0;">Interesa galtzen baduzu, behean harpidetza bertan behera uzteko botoia duzu. Klik bat eta kitto.</p>
           <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
-          <p style="${pdStyle}"><strong>Pd:</strong> Nire emailak ez galtzeko: mugitu mezu hau zure sarrera nagusira.</p>
-          <p style="${pdStyle}"><strong>Pd2:</strong> Gaztelaniaz jaso nahi dituzu? <a href="${castellanoUrl}" style="${linkStyle}">Klik hemen</a></p>
-          <p style="${pdStyle}"><strong>Pd3:</strong> Entrenamendua interesatzen zaizu? <a href="${entrenamientoUrl}" style="${linkStyle}">Interesatzen zait.</a></p>
-          <p style="${pdStyle}"><strong>Pd4:</strong> Ekitaldi bat berezia egin nahi duzu? <a href="${contactoUrl}" style="${linkStyle}">Egin klik hemen eta hitz egin dezagun.</a> Enpresa-ekitaldiak, ekitaldi kulturalak, festa pribatuak… Normalean hamar minutuko solasaldi batekin zentzurik ote duen argitzen duzu.</p>
-          <p style="${pdStyle}"><strong>Pd5:</strong> Mezu honi "kaixo" batekin erantzuten badidazu, gmailek hau spam ez dela ulertzen lagunduko didazu, eskerrik asko.<br>Gainera nor zaren, nola ezagutu nauzun eta nire mailetik zer espero duzun kontatzen badidazu... eguna alaituko didazu.</p>
+          <p style="${pdStyle}"><strong>Pd:</strong> Nire mezuak galdu nahi ez badituzu, mugitu hau zure sarrera-ontzi nagusira oraintxe bertan.</p>
+          <p style="${pdStyle}"><strong>Pd2:</strong> Nahiago gazteleraz jasotzea? <a href="${castellanoUrl}" style="${linkStyle}">Egin klik hemen</a></p>
+          <p style="${pdStyle}"><strong>Pd3:</strong> Online entrenamendua interesatzen zaizu? Egin klik hemen → <a href="${entrenamientoUrl}" style="${linkStyle}">Bai.</a></p>
+          <p style="${pdStyle}"><strong>Pd4:</strong> Ekitaldi berezi bat antolatzen ari zara? <a href="${contactoEuUrl}" style="${linkStyle}">Egin klik hemen eta hitz egin dezagun.</a> Enpresa-ekitaldiak, kultur ekitaldiak, festa pribatuak… Hamar minutuko solasaldia nahikoa izaten da magiak zentzua duen ala ez ikusteko.</p>
+          <p style="${pdStyle}"><strong>Pd5:</strong> Mezu honi "kaixo" soil batekin erantzuten badiozu, Gmaili lagunduko diozu hau spam ez dela ulertzen — eskerrik asko.<br>Eta nor zaren, nola aurkitu nauzun eta nire mezuetatik zer jasotzea espero duzun kontatzen badidazu... eguna alaituko didazu.</p>
           <p style="${pdStyle}"><strong>Pd6:</strong> pd,pd,pd,pd...</p>
         `)
         : wrap(`
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
           <p style="${pdStyle}"><strong>Pd:</strong> Si no te quieres perder mis emails, mueve este ahora a tu bandeja principal.</p>
           <p style="${pdStyle}"><strong>Pd2:</strong> ¿Prefieres recibirlos en euskera? <a href="${euskeraUrl}" style="${linkStyle}">Clic aquí</a></p>
           <p style="${pdStyle}"><strong>Pd3:</strong> ¿Te interesa el entrenamiento online? <a href="${entrenamientoUrl}" style="${linkStyle}">Me interesa.</a></p>
-          <p style="${pdStyle}"><strong>Pd4:</strong> ¿Tienes un evento que hacer especial? <a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a> Eventos de empresa, eventos culturales, fiestas privadas… Diez minutos de conversación suelen aclarar si tiene sentido.</p>
+          <p style="${pdStyle}"><strong>Pd4:</strong> ¿Tienes un evento que hacer especial? <a href="${contactoEsUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a> Eventos de empresa, eventos culturales, fiestas privadas… Diez minutos de conversación suelen aclarar si tiene sentido.</p>
           <p style="${pdStyle}"><strong>Pd5:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.<br>Si encima me cuentas quien eres, como me has conocido, que esperas recibir en mis mails... me alegras el día.</p>
           <p style="${pdStyle}"><strong>Pd6:</strong> pd,pd,pd,pd...</p>
         `)
