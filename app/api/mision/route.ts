@@ -34,7 +34,8 @@ export async function POST(req: Request) {
     : `${BASE_URL}/es/tumision/tutorial`;
   const euskeraUrl = `${BASE_URL}/api/mision/idioma?email=${encodeURIComponent(email)}&idioma=eu`;
   const castellanoUrl = `${BASE_URL}/api/mision/idioma?email=${encodeURIComponent(email)}&idioma=es`;
-  const contactoUrl = `${BASE_URL}/contacto`;
+  const contactoUrl = isEu ? `${BASE_URL}/contacto` : `${BASE_URL}/es/contacto`;
+  const entrenamientoUrl = `mailto:contacto@niala.es?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`;
   const bajaUrl = `${BASE_URL}/api/mision/baja?email=${encodeURIComponent(email)}`;
   const unsubscribeText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
 
@@ -54,7 +55,6 @@ export async function POST(req: Request) {
   const linkStyle = `color:#2a9d8f;`;
   const pStyle = `margin:0 0 1.6rem 0;`;
 
-  // Mail 1 — inmediato
   await sendEmail(
     email,
     isEu ? "Zure guraso misioa" : "Tu misión como madre (o padre)",
@@ -70,14 +70,16 @@ export async function POST(req: Request) {
         <p style="${pStyle}">Edalontzi bat, zilarrezko paper pixka bat… eta hiru minutu besterik ez dituzu behar.</p>
         <p style="${pStyle}"><a href="${tutorialUrl}" style="${linkStyle}font-weight:bold;">Egin klik hemen ustekabeko desagerpenaren sekretua ikasteko.</a></p>
         <p style="${pStyle}"><strong>PASAHITZA: Ander</strong><br>Tenis munduan (4 urterekin) murgildu ninduen lagunaren izena da.</p>
-        <p style="${pStyle}">Proba ezazu.<br>Gozatu.<br>Eta animatzen bazera, grabatu eta bidali iezadazu bideoa edo kontatu zer gertatu zen.</p>
-        <p style="margin:0 0 2rem 0;">Egiten badezu, beste truko are magikoago bat daukat zure zain.<br>Bestalde, zenbat urte ditu zure txikiak?<br>Erantzun iezadazu zenbaki batekin.<br>Horrela, bere adinera egokitutako trukoak bidal diezazkizuket.</p>
+        <p style="margin:0 0 2rem 0;">Proba ezazu.<br>Gozatu.<br>Eta animatzen bazera, grabatu eta bidali iezadazu bideoa edo kontatu zer gertatu zen.</p>
         <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
         <p style="${pdStyle}"><strong>Pd:</strong> Gaztelaniaz jaso nahi dituzu hurrengo emailak?<br><a href="${castellanoUrl}" style="${linkStyle}">Klik hemen</a></p>
         <p style="${pdStyle}"><strong>Pd2:</strong> Ez galdu nire hurrengo emailak: mugitu mezu hau zure sarrera nagusira.</p>
-        <p style="${pdStyle}"><strong>Pd3:</strong> Noizbait nere mezuak jasotzeaz aspertzen bazera, ez dago arazorik. Amaieran ni desagertarazteko botoi bat daukazu beti.</p>
-        <p style="${pdStyle}"><strong>Pd4:</strong> Urtebetetze edo jaunartze bat ospatu nahi?<br><a href="${contactoUrl}" style="${linkStyle}">Egin klik hemen eta hitz egin dezagun.</a> Urteetan zehar gogoratuko duten egun berezia nahi baduzu, hau da gomendatuko dizudana. Bat 7 urteko semearentzat eta baita zure 73 urteko aitarentzat.</p>
-        <p style="${pdStyle}"><strong>Pd5:</strong> pd, pd, pd…</p>
+        <p style="${pdStyle}"><strong>Pd3:</strong> Noizbait nire mezuak jasotzeaz aspertzen bazera, ez dago arazorik. Amaieran ni desagertarazteko botoi bat daukazu beti.</p>
+        <p style="${pdStyle}"><strong>Pd4:</strong> Urtebetetze edo beste ekitaldi bat ospatu nahi duzu? <a href="${contactoUrl}" style="${linkStyle}">Egin klik hemen eta hitz egin dezagun.</a> Zure 8 urteko seme-alabarentzat edo zure 65 urteko aitarentzat, urteetan zehar gogoratuko dutena da.</p>
+        <p style="${pdStyle}"><strong>Pd5:</strong> Bide batez, newsletter honetan ez dut soilik magiaz hitz egiten. Entrenamendua, osasuna eta kontatu nahi dudana ere bai. Baliteke ez espero izatea.</p>
+        <p style="${pdStyle}"><strong>Pd6:</strong> Bai, mago izateaz gain, entrenatzaile naiz. Zure forma fisikoa hobetu nahi duzu? Sakatu hemen → <a href="${entrenamientoUrl}" style="${linkStyle}">Interesatzen zait.</a></p>
+        <p style="${pdStyle}"><strong>Pd7:</strong> Mezu honi "kaixo" batekin erantzuten badidazu, gmailek hau spam ez dela ulertzen lagunduko didazu, eskerrik asko.<br>Gainera nor zaren, nola ezagutu nauzun eta nire mailetik zer espero duzun kontatzen badidazu... eguna alaituko didazu.</p>
+        <p style="${pdStyle}"><strong>Pd8:</strong> pd,pd,pd,pd...</p>
       `)
       : wrap(`
         <p style="${pStyle}">Esa tarjeta que tu hijo se llevó…<br>ya ha hecho su primer truco (gracias a tu ayuda).</p>
@@ -90,18 +92,19 @@ export async function POST(req: Request) {
         <p style="${pStyle}">Solo necesitas un vaso, un poco de papel de aluminio… y tres minutos.</p>
         <p style="${pStyle}"><a href="${tutorialUrl}" style="${linkStyle}font-weight:bold;">Haz clic aquí para aprender el secreto de la desaparición inesperada.</a></p>
         <p style="${pStyle}"><strong>LA CONTRASEÑA: Ander</strong><br>Es el nombre de quien me introdujo en el tenis (a mis 4 años).</p>
-        <p style="${pStyle}">Hazlo.<br>Disfrútalo.<br>Y si te animas, grábalo y me envías el vídeo o me cuentas qué pasó.</p>
-        <p style="margin:0 0 2rem 0;">Te prometo que si lo haces, tengo otro truco aún más mágico para ti.<br>Por cierto, ¿qué edad tiene tu peque?<br>Respóndeme con un número.<br>Así te puedo enviar trucos acordes a su edad.</p>
+        <p style="margin:0 0 2rem 0;">Hazlo.<br>Disfrútalo.<br>Y si te animas, grábalo y me envías el vídeo o me cuentas qué pasó.</p>
         <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
         <p style="${pdStyle}"><strong>Pd:</strong> ¿Prefieres recibir los próximos mails en euskera?<br><a href="${euskeraUrl}" style="${linkStyle}">Clic aquí</a></p>
         <p style="${pdStyle}"><strong>Pd2:</strong> Si no te quieres perder mis emails, mueve este ahora a tu bandeja principal.</p>
-        <p style="${pdStyle}"><strong>Pd3:</strong> Si un día te aburres de recibir mis mails, no pasa nada.<br>Al final de todos hay un botón para hacerme desaparecer.</p>
-        <p style="${pdStyle}"><strong>Pd4:</strong> ¿Tienes un cumpleaños que celebrar?<br><a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a><br>Si quieres que hablen y recuerden ese día especial durante años, es lo mejor que te puedo recomendar.<br>Tanto para tu hijo de 8 años, como para tu padre de 65.</p>
-        <p style="${pdStyle}"><strong>Pd5:</strong> pd, pd, pd…</p>
+        <p style="${pdStyle}"><strong>Pd3:</strong> Si un día te aburres de recibir mis mails, no pasa nada. Al final de todos hay un botón para hacerme desaparecer.</p>
+        <p style="${pdStyle}"><strong>Pd4:</strong> ¿Tienes un cumpleaños u otro evento que celebrar? <a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a> Tanto para tu hijo de 8 años como para tu padre de 65, es lo que mejor recuerdan años después.</p>
+        <p style="${pdStyle}"><strong>Pd5:</strong> Por cierto, en este newsletter no solo hablo de magia. También de entrenamiento, salud y lo que me apetezca. Por si acaso no te lo esperabas.</p>
+        <p style="${pdStyle}"><strong>Pd6:</strong> Sí, más allá de mago, soy entrenador. ¿Te interesa mejorar tu condición física? Dale aquí → <a href="${entrenamientoUrl}" style="${linkStyle}">Me interesa.</a></p>
+        <p style="${pdStyle}"><strong>Pd7:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.<br>Si encima me cuentas quien eres, como me has conocido, que esperas recibir en mis mails... me alegras el día.</p>
+        <p style="${pdStyle}"><strong>Pd8:</strong> pd,pd,pd,pd...</p>
       `)
   );
 
-  // Guardar timestamps para mail2 (+2 días) y mail3 (+4 días)
   const mail2SendAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
   const mail3SendAt = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
 
