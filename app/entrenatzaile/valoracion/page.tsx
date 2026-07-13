@@ -84,10 +84,15 @@ export default function ValoracionEntrenatzailePage() {
   const [hoveredTurno, setHoveredTurno] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/entrenatzaile/valoracion")
-      .then((r) => r.json())
-      .then((d) => setRemaining(typeof d.remaining === "number" ? d.remaining : null))
-      .catch(() => {});
+    const fetchRemaining = () => {
+      fetch("/api/entrenatzaile/valoracion")
+        .then((r) => r.json())
+        .then((d) => setRemaining(typeof d.remaining === "number" ? d.remaining : null))
+        .catch(() => {});
+    };
+    fetchRemaining();
+    const interval = setInterval(fetchRemaining, 20000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -180,6 +185,15 @@ export default function ValoracionEntrenatzailePage() {
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
                 No necesitas más esfuerzo. Necesitas un mejor mapa.
               </p>
+            </div>
+
+            <div className="hero-fade-3 mt-10">
+              <a
+                href="#formulario"
+                className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
+              >
+                Quiero la valoración gratis
+              </a>
             </div>
           </div>
         </div>
@@ -319,20 +333,29 @@ export default function ValoracionEntrenatzailePage() {
             ]}
           />
           <p style={emphasisP}>Por eso he decidido hacerlo gratis a las 10 primeras personas que me lo pidan.</p>
-          <p
+          <div
             style={{
-              fontSize: "clamp(1.3rem,1.8vw,1.6rem)",
-              fontWeight: 500,
-              color: "#2ED3E6",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.65rem",
+              border: `1px solid ${full ? "rgba(242,242,240,0.18)" : "rgba(46,211,230,0.35)"}`,
+              background: full ? "rgba(242,242,240,0.03)" : "rgba(46,211,230,0.06)",
+              padding: "0.7rem 1.2rem",
               marginBottom: "2.5rem",
             }}
           >
-            {remaining === null
-              ? "Cargando plazas disponibles…"
-              : full
-              ? "Todas las plazas están cubiertas."
-              : `Quedan ${remaining} plaza${remaining === 1 ? "" : "s"} de ${TOTAL_PLAZAS}.`}
-          </p>
+            <span
+              className="live-dot"
+              style={{ color: full ? "rgba(242,242,240,0.35)" : "#2ED3E6", flexShrink: 0 }}
+            />
+            <span style={{ fontSize: "clamp(1.1rem,1.5vw,1.35rem)", fontWeight: 500, color: full ? "rgba(242,242,240,0.55)" : "#2ED3E6" }}>
+              {remaining === null
+                ? "Actualizando plazas disponibles…"
+                : full
+                ? "Todas las plazas están cubiertas"
+                : `Quedan ${remaining} plaza${remaining === 1 ? "" : "s"} de ${TOTAL_PLAZAS}`}
+            </span>
+          </div>
         </div>
 
         <div className="max-w-[600px]">
@@ -472,7 +495,7 @@ export default function ValoracionEntrenatzailePage() {
                     onChange={(e) => setFormData({ ...formData, newsletter: e.target.checked })}
                     style={{ marginTop: "0.2rem" }}
                   />
-                  Quiero recibir sus mails diarios sobre entrenamiento y salud. Gratis, y me doy de baja
+                  Quiero recibir mails diarios sobre entrenamiento y salud. Gratis, y me doy de baja
                   cuando quiera.
                 </label>
 
@@ -503,24 +526,6 @@ export default function ValoracionEntrenatzailePage() {
               </form>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* TESTIMONIO */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
-        <div className="max-w-[680px]">
-          <p
-            style={{
-              fontSize: "clamp(1.3rem,1.7vw,1.6rem)",
-              lineHeight: 1.6,
-              color: "rgba(242,242,240,0.85)",
-              fontStyle: "italic",
-              marginBottom: "1rem",
-            }}
-          >
-            &ldquo;Esto me motiva más, eskerrik asko.&rdquo;
-          </p>
-          <p style={{ fontSize: "0.95rem", color: "rgba(242,242,240,0.45)" }}>— Mi madre, 55 años</p>
         </div>
       </section>
 
