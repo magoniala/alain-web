@@ -9,7 +9,7 @@ const supabase = createClient(
 
 const TOTAL_PLAZAS = 10;
 // Plazas ya ocupadas fuera de este formulario (peticiones directas antes de la landing).
-const YA_RESERVADAS = 3;
+const YA_RESERVADAS = 2;
 
 export async function GET() {
   const { count, error } = await supabase
