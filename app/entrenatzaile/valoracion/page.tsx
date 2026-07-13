@@ -201,7 +201,7 @@ export default function ValoracionEntrenatzailePage() {
                 href="#formulario"
                 className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
               >
-                Quiero la valoración gratis
+                Quiero mi mapa gratis
               </a>
             </div>
           </div>
