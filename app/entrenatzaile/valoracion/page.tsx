@@ -393,8 +393,9 @@ export default function ValoracionEntrenatzailePage() {
                 Pide tu valoración gratuita
               </p>
               <p style={{ fontSize: "0.95rem", color: "rgba(15,34,64,0.60)", marginBottom: "2rem", lineHeight: 1.6 }}>
-                Te contacto en menos de 48h para agendar una llamada de 90 minutos. Al terminar recibes tu
-                mapa personalizado por escrito.
+                Te contacto en menos de 48h para agendar una llamada de 90 minutos. Al terminar recibes tu{" "}
+                <strong style={{ textTransform: "uppercase", fontWeight: 700 }}>mapa</strong> personalizado por
+                escrito.
               </p>
 
               <form onSubmit={handleSubmit}>
