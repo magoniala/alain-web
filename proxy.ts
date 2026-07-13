@@ -10,8 +10,17 @@ const NO_REDIRECT_PATHS = [
   "/cookies",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = request.headers.get("host") || "";
+
+  // Subdominio dedicado: entrenatzaile.alainzulaika.com sirve la landing
+  // de valoración gratuita desde /entrenatzaile/valoracion, sin tocar /es.
+  if (hostname.startsWith("entrenatzaile.")) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/entrenatzaile${pathname === "/" ? "/valoracion" : pathname}`;
+    return NextResponse.rewrite(url);
+  }
 
   // Rutas sin versión /es: pasar siempre sin redirigir
   if (NO_REDIRECT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
