@@ -178,8 +178,8 @@ export default function ValoracionEntrenatzailePage() {
       </header>
 
       {/* HERO */}
-      <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center bg-[#D4860A] px-8 md:px-16">
-        <div className="relative -translate-y-8 md:-translate-y-10">
+      <section className="w-full bg-[#D4860A] px-8 py-24 md:px-16 md:py-32">
+        <div className="relative mx-auto max-w-[1400px]">
           <div className="absolute left-0 top-0 w-[2px] bg-[#1C3A5E]/30 h-[242px] md:h-[287px] xl:h-[329px]" />
 
           <div className="pl-5 md:pl-10">
