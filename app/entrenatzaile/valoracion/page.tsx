@@ -215,7 +215,7 @@ export default function ValoracionEntrenatzailePage() {
               "Y cada dos por tres el pensamiento de “¿merece la pena seguir?”",
               "Muchos llegan, pero cansados, tarde y con la sensación de haber sufrido lo que no estaba en los planes.",
             ]}
-            mb="4.5rem"
+            mb="6.5rem"
           />
 
           <p style={emphasisP}>Ahora imagínate lo mismo con un mapa.</p>
@@ -235,7 +235,7 @@ export default function ValoracionEntrenatzailePage() {
               "Alguna desviación por obras.",
             ]}
           />
-          <p style={{ ...emphasisP, marginBottom: "4.5rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
+          <p style={{ ...emphasisP, marginBottom: "6.5rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
 
           <p style={emphasisP}>Y si encima tienes un copiloto (o Google Maps)...</p>
           <Lines
@@ -252,7 +252,7 @@ export default function ValoracionEntrenatzailePage() {
           />
           <Lines
             lines={["Es lo que hace cualquiera hoy en día.", "Ya hemos aprendido que ir sin mapa y sin copiloto puede costarte mucho."]}
-            mb="4.5rem"
+            mb="6.5rem"
           />
 
           <p style={emphasisP}>Con cualquier cambio físico pasa exactamente lo mismo.</p>
