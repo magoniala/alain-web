@@ -6,6 +6,11 @@ const TURNO_OPTIONS = ["Mañana", "Tarde", "Me da igual"];
 
 const TOTAL_PLAZAS = 10;
 
+const AMBER = "#D4860A";
+const NAVY = "#1C3A5E";
+const CREAM = "#FAF3E8";
+const DARK_NAVY = "#0F2240";
+
 const inputStyle: React.CSSProperties = {
   background: "none",
   border: "none",
@@ -13,7 +18,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
   lineHeight: 1.6,
-  color: "rgba(242,242,240,0.88)",
+  color: DARK_NAVY,
   paddingBottom: "0.6rem",
 };
 
@@ -21,20 +26,20 @@ const labelStyle: React.CSSProperties = {
   fontSize: "0.75rem",
   textTransform: "uppercase",
   letterSpacing: "0.16em",
-  color: "rgba(242,242,240,0.58)",
+  color: "rgba(28,58,94,0.65)",
   display: "block",
   marginBottom: "0.4rem",
 };
 
 const fieldStyle: React.CSSProperties = {
-  borderBottom: "1px solid rgba(242,242,240,0.12)",
+  borderBottom: "1px solid rgba(28,58,94,0.25)",
   marginBottom: "2rem",
 };
 
 const proseP: React.CSSProperties = {
   fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
   lineHeight: 1.8,
-  color: "rgba(242,242,240,0.72)",
+  color: "rgba(15,34,64,0.80)",
   marginBottom: "2rem",
 };
 
@@ -44,7 +49,7 @@ const sectionTitle: React.CSSProperties = {
   letterSpacing: "-0.02em",
   lineHeight: 1.2,
   marginBottom: "1.8rem",
-  color: "#F2F2F0",
+  color: NAVY,
 };
 
 const emphasisP: React.CSSProperties = {
@@ -52,8 +57,13 @@ const emphasisP: React.CSSProperties = {
   fontWeight: 500,
   letterSpacing: "-0.015em",
   lineHeight: 1.35,
-  color: "#F2F2F0",
+  color: NAVY,
   marginBottom: "2rem",
+};
+
+const cardStyle: React.CSSProperties = {
+  border: "1px solid rgba(28,58,94,0.18)",
+  background: "rgba(28,58,94,0.04)",
 };
 
 function Lines({ lines, mb = "2.75rem" }: { lines: string[]; mb?: string }) {
@@ -157,32 +167,32 @@ export default function ValoracionEntrenatzailePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0]">
+    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
       {/* HEADER */}
-      <header className="border-b border-white/10 px-8 py-4 md:px-16">
+      <header className="border-b border-[#1C3A5E]/12 bg-[#FAF3E8] px-8 py-4 md:px-16">
         <div className="mx-auto max-w-[1400px]">
-          <p className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]">
+          <p className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#D4860A]">
             Entrenatzaile
           </p>
         </div>
       </header>
 
       {/* HERO */}
-      <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
+      <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center bg-[#D4860A] px-8 md:px-16">
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[242px] md:h-[287px] xl:h-[329px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-[#1C3A5E]/30 h-[242px] md:h-[287px] xl:h-[329px]" />
 
           <div className="pl-5 md:pl-10">
-            <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
+            <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#0F2240]">
               <span className="uppercase">Valoración</span> gratuita
             </p>
 
-            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.9rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
+            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.9rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em] text-[#0F2240]">
               ¿Y si llevas años dando vueltas?
             </h1>
 
             <div className="hero-fade-3 mt-8 max-w-[600px]">
-              <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
+              <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#0F2240]/75">
                 No necesitas más esfuerzo. Necesitas un mejor mapa.
               </p>
             </div>
@@ -190,7 +200,7 @@ export default function ValoracionEntrenatzailePage() {
             <div className="hero-fade-3 mt-10">
               <a
                 href="#formulario"
-                className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
+                className="inline-block bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] transition-opacity duration-300 hover:opacity-90"
               >
                 Quiero la valoración gratis
               </a>
@@ -338,17 +348,17 @@ export default function ValoracionEntrenatzailePage() {
               display: "inline-flex",
               alignItems: "center",
               gap: "0.65rem",
-              border: `1px solid ${full ? "rgba(242,242,240,0.18)" : "rgba(46,211,230,0.35)"}`,
-              background: full ? "rgba(242,242,240,0.03)" : "rgba(46,211,230,0.06)",
+              border: `1px solid ${full ? "rgba(28,58,94,0.18)" : "rgba(212,134,10,0.35)"}`,
+              background: full ? "rgba(28,58,94,0.04)" : "rgba(212,134,10,0.08)",
               padding: "0.7rem 1.2rem",
               marginBottom: "2.5rem",
             }}
           >
             <span
               className="live-dot"
-              style={{ color: full ? "rgba(242,242,240,0.35)" : "#2ED3E6", flexShrink: 0 }}
+              style={{ color: full ? "rgba(28,58,94,0.45)" : AMBER, flexShrink: 0 }}
             />
-            <span style={{ fontSize: "clamp(1.1rem,1.5vw,1.35rem)", fontWeight: 500, color: full ? "rgba(242,242,240,0.55)" : "#2ED3E6" }}>
+            <span style={{ fontSize: "clamp(1.1rem,1.5vw,1.35rem)", fontWeight: 500, color: full ? "rgba(28,58,94,0.55)" : AMBER }}>
               {remaining === null
                 ? "Actualizando plazas disponibles…"
                 : full
@@ -360,39 +370,30 @@ export default function ValoracionEntrenatzailePage() {
 
         <div className="max-w-[600px]">
           {done ? (
-            <div
-              className="context-fade-in p-6 md:p-10"
-              style={{ border: "1px solid rgba(242,242,240,0.16)", background: "rgba(242,242,240,0.025)" }}
-            >
-              <p style={{ fontSize: "clamp(1.5rem,2.4vw,2rem)", fontWeight: 500, letterSpacing: "-0.02em", marginBottom: "1rem" }}>
+            <div className="context-fade-in p-6 md:p-10" style={cardStyle}>
+              <p style={{ fontSize: "clamp(1.5rem,2.4vw,2rem)", fontWeight: 500, letterSpacing: "-0.02em", marginBottom: "1rem", color: NAVY }}>
                 Recibido, {formData.nombre.split(" ")[0]}.
               </p>
-              <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(242,242,240,0.72)" }}>
+              <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(15,34,64,0.80)" }}>
                 Te contacto en menos de 48h.
               </p>
             </div>
           ) : full ? (
-            <div
-              className="p-6 md:p-10"
-              style={{ border: "1px solid rgba(242,242,240,0.16)", background: "rgba(242,242,240,0.025)" }}
-            >
-              <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(242,242,240,0.72)" }}>
+            <div className="p-6 md:p-10" style={cardStyle}>
+              <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(15,34,64,0.80)" }}>
                 Todas las plazas están cubiertas. Si quieres avisarte para futuras aperturas, escribe a{" "}
-                <a href="mailto:contacto@niala.es" style={{ color: "#2ED3E6" }}>
+                <a href="mailto:contacto@niala.es" style={{ color: AMBER }}>
                   contacto@niala.es
                 </a>
                 .
               </p>
             </div>
           ) : (
-            <div
-              className="p-6 md:p-10"
-              style={{ border: "1px solid rgba(242,242,240,0.16)", background: "rgba(242,242,240,0.025)" }}
-            >
-              <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(242,242,240,0.90)", marginBottom: "0.6rem", lineHeight: 1.4 }}>
+            <div className="p-6 md:p-10" style={cardStyle}>
+              <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: NAVY, marginBottom: "0.6rem", lineHeight: 1.4 }}>
                 Pide tu valoración gratuita
               </p>
-              <p style={{ fontSize: "0.95rem", color: "rgba(242,242,240,0.55)", marginBottom: "2rem", lineHeight: 1.6 }}>
+              <p style={{ fontSize: "0.95rem", color: "rgba(15,34,64,0.60)", marginBottom: "2rem", lineHeight: 1.6 }}>
                 Te contacto en menos de 48h para agendar una llamada de 90 minutos. Al terminar recibes tu
                 mapa personalizado por escrito.
               </p>
@@ -406,7 +407,7 @@ export default function ValoracionEntrenatzailePage() {
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#F2F2F0]/30"
+                    className="placeholder:text-[#1C3A5E]/35"
                   />
                 </div>
                 <div style={fieldStyle}>
@@ -417,7 +418,7 @@ export default function ValoracionEntrenatzailePage() {
                     value={formData.edad}
                     onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#F2F2F0]/30"
+                    className="placeholder:text-[#1C3A5E]/35"
                   />
                 </div>
                 <div style={fieldStyle}>
@@ -428,7 +429,7 @@ export default function ValoracionEntrenatzailePage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#F2F2F0]/30"
+                    className="placeholder:text-[#1C3A5E]/35"
                   />
                 </div>
                 <div style={fieldStyle}>
@@ -439,7 +440,7 @@ export default function ValoracionEntrenatzailePage() {
                     value={formData.motivo}
                     onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#F2F2F0]/30"
+                    className="placeholder:text-[#1C3A5E]/35"
                   />
                 </div>
 
@@ -457,15 +458,15 @@ export default function ValoracionEntrenatzailePage() {
                           padding: "0.55rem 1.1rem",
                           border:
                             formData.turno === opt
-                              ? "1px solid rgba(46,211,230,0.60)"
-                              : "1px solid rgba(242,242,240,0.18)",
+                              ? `1px solid ${AMBER}`
+                              : "1px solid rgba(28,58,94,0.25)",
                           color:
                             formData.turno === opt
-                              ? "#2ED3E6"
+                              ? AMBER
                               : hoveredTurno === opt
-                              ? "rgba(242,242,240,0.90)"
-                              : "rgba(242,242,240,0.62)",
-                          background: formData.turno === opt ? "rgba(46,211,230,0.05)" : "none",
+                              ? NAVY
+                              : "rgba(28,58,94,0.62)",
+                          background: formData.turno === opt ? "rgba(212,134,10,0.08)" : "none",
                           fontSize: "0.9rem",
                           cursor: "pointer",
                           transition: "all 0.2s",
@@ -486,7 +487,7 @@ export default function ValoracionEntrenatzailePage() {
                     cursor: "pointer",
                     fontSize: "0.92rem",
                     lineHeight: 1.5,
-                    color: "rgba(242,242,240,0.65)",
+                    color: "rgba(15,34,64,0.70)",
                   }}
                 >
                   <input
@@ -500,7 +501,7 @@ export default function ValoracionEntrenatzailePage() {
                 </label>
 
                 {error && (
-                  <p style={{ fontSize: "0.88rem", color: "rgba(242,242,240,0.65)", marginBottom: "1rem" }}>
+                  <p style={{ fontSize: "0.88rem", color: "#B3261E", marginBottom: "1rem" }}>
                     {error}
                   </p>
                 )}
@@ -509,17 +510,17 @@ export default function ValoracionEntrenatzailePage() {
                   type="submit"
                   disabled={sending}
                   style={{
-                    border: "1px solid rgba(242,242,240,0.20)",
+                    background: NAVY,
+                    border: "none",
                     padding: "0.9rem 2.5rem",
                     fontSize: "0.98rem",
                     letterSpacing: "0.08em",
-                    color: "rgba(242,242,240,1)",
-                    background: "none",
+                    color: CREAM,
                     cursor: sending ? "default" : "pointer",
                     display: "block",
                     opacity: sending ? 0.6 : 1,
                   }}
-                  className="transition-colors duration-300 hover:border-white/40 hover:text-[#2ED3E6]"
+                  className="transition-opacity duration-300 hover:opacity-90"
                 >
                   {sending ? "Enviando..." : "Pedir mi valoración gratuita"}
                 </button>
@@ -549,12 +550,8 @@ export default function ValoracionEntrenatzailePage() {
                 a: "La valoración puede ser online. Puedes hacerla desde donde estés.",
               },
             ].map(({ q, a }) => (
-              <div
-                key={q}
-                className="p-5 md:p-6"
-                style={{ border: "1px solid rgba(242,242,240,0.12)", background: "rgba(242,242,240,0.02)" }}
-              >
-                <p style={{ fontSize: "1.1rem", color: "#2ED3E6", marginBottom: "0.6rem" }}>{q}</p>
+              <div key={q} className="p-5 md:p-6" style={cardStyle}>
+                <p style={{ fontSize: "1.1rem", color: AMBER, marginBottom: "0.6rem" }}>{q}</p>
                 <p style={{ ...proseP, marginBottom: 0 }}>{a}</p>
               </div>
             ))}
@@ -565,13 +562,13 @@ export default function ValoracionEntrenatzailePage() {
       {/* CONTACTO ALTERNATIVO */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
-          <p style={{ fontSize: "1.15rem", color: "rgba(242,242,240,0.72)", marginBottom: "0.6rem" }}>
+          <p style={{ fontSize: "1.15rem", color: "rgba(15,34,64,0.80)", marginBottom: "0.6rem" }}>
             ¿Prefieres escribirme directamente?
           </p>
           <a
             href="mailto:contacto@niala.es"
-            style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(46,211,230,0.75)" }}
-            className="hover:text-[#2ED3E6]"
+            style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: AMBER }}
+            className="hover:opacity-80"
           >
             contacto@niala.es
           </a>
@@ -580,7 +577,7 @@ export default function ValoracionEntrenatzailePage() {
 
       {/* PD FINAL — SOBRE MÍ */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-32 md:px-16">
-        <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(242,242,240,0.12)", paddingTop: "2rem" }}>
+        <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(28,58,94,0.15)", paddingTop: "2rem" }}>
           <Lines
             lines={[
               "Soy Alain Zulaika (Entrenatzaile).",
@@ -595,9 +592,9 @@ export default function ValoracionEntrenatzailePage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/6 px-8 py-10 md:px-16">
+      <footer className="border-t border-[#1C3A5E]/12 px-8 py-10 md:px-16">
         <div className="mx-auto max-w-[1400px]">
-          <p className="text-[0.88rem] text-[#F2F2F0]/28">© Alain Zulaika</p>
+          <p className="text-[0.88rem] text-[#0F2240]/35">© Alain Zulaika</p>
         </div>
       </footer>
     </main>
