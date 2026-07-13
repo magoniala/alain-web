@@ -165,18 +165,18 @@ export default function ValoracionEntrenatzailePage() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[151px] md:h-[180px] xl:h-[205px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[204px] md:h-[243px] xl:h-[277px]" />
 
           <div className="pl-5 md:pl-10">
-            <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
+            <p className="hero-fade-1 mb-10 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
               <span className="uppercase">Valoración</span> gratuita
             </p>
 
-            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.9rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em]">
+            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.9rem,5vw,4.8rem)] font-medium leading-[1.15] tracking-[-0.03em]">
               ¿Y si llevas años dando vueltas?
             </h1>
 
-            <div className="hero-fade-3 mt-8 max-w-[600px]">
+            <div className="hero-fade-3 mt-12 max-w-[600px]">
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/75">
                 No necesitas más esfuerzo. Necesitas un mejor mapa.
               </p>

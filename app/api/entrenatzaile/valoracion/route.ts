@@ -8,6 +8,8 @@ const supabase = createClient(
 );
 
 const TOTAL_PLAZAS = 10;
+// Plazas ya ocupadas fuera de este formulario (peticiones directas antes de la landing).
+const YA_RESERVADAS = 3;
 
 export async function GET() {
   const { count, error } = await supabase
@@ -18,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ error: "Error" }, { status: 500 });
   }
 
-  const usadas = count ?? 0;
+  const usadas = YA_RESERVADAS + (count ?? 0);
   return NextResponse.json(
     { remaining: Math.max(0, TOTAL_PLAZAS - usadas), full: usadas >= TOTAL_PLAZAS },
     { headers: { "Cache-Control": "no-store" } }
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ha ocurrido un error. Inténtalo de nuevo." }, { status: 500 });
   }
 
-  if ((count ?? 0) >= TOTAL_PLAZAS) {
+  if (YA_RESERVADAS + (count ?? 0) >= TOTAL_PLAZAS) {
     return NextResponse.json(
       { error: "Todas las plazas están cubiertas. Escribe a contacto@niala.es si quieres avisarte para futuras aperturas." },
       { status: 409 }
@@ -69,6 +71,8 @@ export async function POST(req: Request) {
     console.error("valoracion_entrenatzaile insert error:", dbError);
     return NextResponse.json({ error: "Ha ocurrido un error. Inténtalo de nuevo." }, { status: 500 });
   }
+
+  const remaining = Math.max(0, TOTAL_PLAZAS - YA_RESERVADAS - (count ?? 0) - 1);
 
   if (newsletter) {
     await supabase.from("newsletter_contactos").upsert(
@@ -135,7 +139,7 @@ export async function POST(req: Request) {
         <tr><td style="${rowStyle}"><strong>Newsletter</strong></td><td style="${rowStyle}">${newsletter ? "Sí" : "No"}</td></tr>
         <tr><td style="${rowStyle}vertical-align:top;"><strong>Motivo</strong></td><td style="${rowStyle}">${motivo.trim()}</td></tr>
       </table>
-      <p style="margin:1rem 0 0;color:#999;">Quedan ${Math.max(0, TOTAL_PLAZAS - (count ?? 0) - 1)} plazas de ${TOTAL_PLAZAS}.</p>
+      <p style="margin:1rem 0 0;color:#999;">Quedan ${remaining} plazas de ${TOTAL_PLAZAS}.</p>
     </div>
   `;
 
@@ -146,5 +150,5 @@ export async function POST(req: Request) {
     "Entrenatzaile <contacto@niala.es>"
   );
 
-  return NextResponse.json({ ok: true, remaining: Math.max(0, TOTAL_PLAZAS - (count ?? 0) - 1) });
+  return NextResponse.json({ ok: true, remaining });
 }
