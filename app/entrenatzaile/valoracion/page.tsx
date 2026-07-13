@@ -8,7 +8,6 @@ const TOTAL_PLAZAS = 10;
 
 const AMBER = "#D4860A";
 const NAVY = "#1C3A5E";
-const CREAM = "#FAF3E8";
 const DARK_NAVY = "#0F2240";
 
 const inputStyle: React.CSSProperties = {
@@ -200,7 +199,7 @@ export default function ValoracionEntrenatzailePage() {
             <div className="hero-fade-3 mt-10">
               <a
                 href="#formulario"
-                className="inline-block bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] transition-opacity duration-300 hover:opacity-90"
+                className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
               >
                 Quiero la valoración gratis
               </a>
@@ -210,7 +209,7 @@ export default function ValoracionEntrenatzailePage() {
       </section>
 
       {/* CUERPO PRINCIPAL — metáfora del mapa */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 pt-20 md:px-16 md:pt-28">
         <div className="max-w-[680px]">
           <Lines lines={["Quieres ir de Madrid a Bruselas en coche.", "Sin mapa, sin GPS y sin compañía."]} />
           <Lines
@@ -510,17 +509,15 @@ export default function ValoracionEntrenatzailePage() {
                   type="submit"
                   disabled={sending}
                   style={{
-                    background: NAVY,
                     border: "none",
                     padding: "0.9rem 2.5rem",
                     fontSize: "0.98rem",
                     letterSpacing: "0.08em",
-                    color: CREAM,
                     cursor: sending ? "default" : "pointer",
                     display: "block",
                     opacity: sending ? 0.6 : 1,
                   }}
-                  className="transition-opacity duration-300 hover:opacity-90"
+                  className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
                 >
                   {sending ? "Enviando..." : "Pedir mi valoración gratuita"}
                 </button>
