@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   if ((count ?? 0) >= TOTAL_PLAZAS) {
     return NextResponse.json(
-      { error: "Todas las plazas están cubiertas. Escribe a newsletter@niala.es si quieres avisarte para futuras aperturas." },
+      { error: "Todas las plazas están cubiertas. Escribe a contacto@niala.es si quieres avisarte para futuras aperturas." },
       { status: 409 }
     );
   }

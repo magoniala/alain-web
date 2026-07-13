@@ -47,6 +47,27 @@ const sectionTitle: React.CSSProperties = {
   color: "#F2F2F0",
 };
 
+const emphasisP: React.CSSProperties = {
+  fontSize: "clamp(1.4rem,2vw,1.75rem)",
+  fontWeight: 500,
+  letterSpacing: "-0.015em",
+  lineHeight: 1.35,
+  color: "#F2F2F0",
+  marginBottom: "2rem",
+};
+
+function Lines({ lines, mb = "2rem" }: { lines: string[]; mb?: string }) {
+  return (
+    <div style={{ marginBottom: mb }}>
+      {lines.map((line, i) => (
+        <p key={i} style={{ ...proseP, marginBottom: i === lines.length - 1 ? 0 : "0.15rem" }}>
+          {line}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export default function ValoracionEntrenatzailePage() {
   const [formData, setFormData] = useState({
     nombre: "",
@@ -168,73 +189,104 @@ export default function ValoracionEntrenatzailePage() {
       {/* CUERPO PRINCIPAL — metáfora del mapa */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16">
         <div className="max-w-[680px]">
-          <p style={proseP}>Quieres ir de Madrid a Bruselas en coche.</p>
-          <p style={proseP}>Sin mapa, sin GPS y sin compañía.</p>
-          <p style={proseP}>
-            Sales sin saber muy bien qué carretera coger. Vas mirando carteles. Cuando ves uno, respiras.
-            Cuando pasas veinte minutos sin ver ninguno, empiezas a dudar. &ldquo;¿Estaré yendo bien?
-            ¿Debería haber cogido aquella salida de antes?&rdquo;
-          </p>
-          <p style={proseP}>
-            Paras en una gasolinera y preguntas. La persona te da unas indicaciones que no terminas de
-            entender. Sigues. A los diez kilómetros dudas otra vez si te dijeron &ldquo;la segunda a la
-            derecha&rdquo; o &ldquo;la segunda a la izquierda&rdquo;.
-          </p>
-          <p style={proseP}>
-            Y así todo el rato. Preguntar, dudar, volver atrás, corregir. Muchos kilómetros de más. Muchas
-            horas de más. Mucho más gasto en gasolina.
-          </p>
-          <p style={proseP}>Y cada dos por tres el pensamiento de &ldquo;¿merece la pena seguir?&rdquo;</p>
-          <p style={{ ...proseP, marginBottom: "2.5rem" }}>
-            Muchos llegan, pero cansados, tarde y con la sensación de haber sufrido lo que no estaba en los
-            planes.
-          </p>
+          <Lines lines={["Quieres ir de Madrid a Bruselas en coche.", "Sin mapa, sin GPS y sin compañía."]} />
+          <Lines
+            lines={[
+              "Sales sin saber muy bien qué carretera coger.",
+              "Vas mirando carteles.",
+              "Cuando ves uno, respiras.",
+              "Cuando pasas veinte minutos sin ver ninguno, empiezas a dudar.",
+              "“¿Estaré yendo bien? ¿Debería haber cogido aquella salida de antes?”",
+            ]}
+          />
+          <Lines
+            lines={[
+              "Paras en una gasolinera y preguntas.",
+              "La persona te da unas indicaciones que no terminas de entender.",
+              "Sigues.",
+              "A los diez kilómetros dudas otra vez si te dijeron “la segunda a la derecha” o “la segunda a la izquierda”.",
+            ]}
+          />
+          <Lines lines={["Y así todo el rato.", "Preguntar, dudar, volver atrás, corregir."]} />
+          <Lines
+            lines={[
+              "Muchos kilómetros de más.",
+              "Muchas horas de más.",
+              "Mucho más gasto en gasolina.",
+              "Y cada dos por tres el pensamiento de “¿merece la pena seguir?”",
+              "Muchos llegan, pero cansados, tarde y con la sensación de haber sufrido lo que no estaba en los planes.",
+            ]}
+            mb="3rem"
+          />
 
-          <p style={proseP}>Ahora imagínate lo mismo con un mapa.</p>
-          <p style={proseP}>Nada que ver.</p>
-          <p style={proseP}>
-            Sales con un plan. Sabes por dónde tienes que ir. De vez en cuando paras un momento a mirarlo,
-            ubicarte, y sigues. Menos dudas. Menos preguntas. Menos vueltas.
-          </p>
-          <p style={proseP}>
-            Aun así, te comes algún atasco que no esperabas. Algún peaje que hubieras podido evitar. Alguna
-            desviación por obras.
-          </p>
-          <p style={{ ...proseP, marginBottom: "2.5rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
+          <Lines
+            lines={[
+              "Ahora imagínate lo mismo con un mapa.",
+              "Nada que ver.",
+              "Sales con un plan.",
+              "Sabes por dónde tienes que ir.",
+              "De vez en cuando paras un momento a mirarlo, ubicarte, y sigues.",
+            ]}
+          />
+          <Lines lines={["Menos dudas.", "Menos preguntas.", "Menos vueltas."]} />
+          <Lines
+            lines={[
+              "Aun así, te comes algún atasco que no esperabas.",
+              "Algún peaje que hubieras podido evitar.",
+              "Alguna desviación por obras.",
+            ]}
+          />
+          <p style={{ ...emphasisP, marginBottom: "3rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
 
-          <p style={proseP}>Ahora imagina el mapa más un copiloto (o Google Maps).</p>
-          <p style={proseP}>
-            Alguien que va a tu lado y te dice &ldquo;gira aquí, coge la segunda salida, ojo con este tramo
-            que suele haber atascos, para en la próxima gasolinera que llevas la reserva baja.&rdquo;
-          </p>
-          <p style={proseP}>
-            Se adelanta a lo que tú no ves. Ajusta la ruta cuando aparece algo imprevisto. Va contigo durante
-            todo el camino.
-          </p>
-          <p style={proseP}>Es lo que hace cualquiera hoy en día.</p>
-          <p style={{ ...proseP, marginBottom: "2.5rem" }}>
-            Ya hemos aprendido que ir sin mapa y sin copiloto puede costarte mucho.
-          </p>
+          <Lines lines={["Ahora imagina el mapa más un copiloto (o Google Maps)."]} />
+          <Lines
+            lines={[
+              "Alguien que va a tu lado y te dice “gira aquí, coge la segunda salida, ojo con este tramo que suele haber atascos, para en la próxima gasolinera que llevas la reserva baja.”",
+            ]}
+          />
+          <Lines
+            lines={[
+              "Se adelanta a lo que tú no ves.",
+              "Ajusta la ruta cuando aparece algo imprevisto.",
+              "Va contigo durante todo el camino.",
+            ]}
+          />
+          <Lines
+            lines={["Es lo que hace cualquiera hoy en día.", "Ya hemos aprendido que ir sin mapa y sin copiloto puede costarte mucho."]}
+            mb="3rem"
+          />
 
-          <p style={proseP}>Con cualquier cambio físico pasa exactamente lo mismo.</p>
-          <p style={proseP}>Solo que muchos aún piensan que pueden ir sin mapa sin problemas.</p>
-          <p style={proseP}>
-            Van dando tumbos. Empiezan por una cosa, luego otra, dudan si correr o levantar peso, prueban
-            máquinas que no saben si están hechas para ellos.
-          </p>
-          <p style={proseP}>
-            Preguntan a un colega que entrena y le dicen una cosa. A otro que le va bien y le dicen la
-            contraria. Empujando a ciegas.
-          </p>
+          <Lines
+            lines={[
+              "Con cualquier cambio físico pasa exactamente lo mismo.",
+              "Solo que muchos aún piensan que pueden ir sin mapa sin problemas.",
+            ]}
+          />
+          <Lines
+            lines={[
+              "Van dando tumbos.",
+              "Empiezan por una cosa, luego otra, dudan si correr o levantar peso, prueban máquinas que no saben si están hechas para ellos.",
+            ]}
+          />
+          <Lines
+            lines={[
+              "Preguntan a un colega que entrena y le dicen una cosa.",
+              "A otro que le va bien y le dicen la contraria. Empujando a ciegas.",
+            ]}
+          />
           <p style={proseP}>
             Muchas veces ven algún resultado a los años, pero nada comparado con lo que podrían haber
             conseguido con menos tiempo, esfuerzo y dinero, con dirección.
           </p>
-          <p style={proseP}>
-            Con mapa, sabes qué priorizar y qué evitar. Sabes qué esperar a los 3 meses. Qué a los 12. Vas
-            directo. Aún tienes que decidir tú, pero decides con criterio.
-          </p>
-          <p style={{ ...proseP, color: "rgba(242,242,240,0.90)" }}>
+          <Lines
+            lines={[
+              "Con mapa, sabes qué priorizar y qué evitar.",
+              "Sabes qué esperar a los 3 meses. Qué a los 12.",
+              "Vas directo.",
+              "Aún tienes que decidir tú, pero decides con criterio.",
+            ]}
+          />
+          <p style={emphasisP}>
             Con mapa y copiloto, encima tienes a alguien ajustando la ruta cuando aparece un imprevisto — una
             molestia, una semana rara, un cambio en tu vida — y exigiéndote un poco más cuando podrías estar
             quedándote corto sin darte cuenta.
@@ -245,33 +297,33 @@ export default function ValoracionEntrenatzailePage() {
       {/* QUÉ ES ESTO */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16">
         <div className="max-w-[680px]">
-          <p style={proseP}>Llevo semanas diseñando ese mapa.</p>
+          <p style={emphasisP}>Llevo semanas diseñando ese mapa.</p>
           <p style={proseP}>
             Un protocolo de valoración inicial donde recojo tu situación real — historial, lesiones, hábitos,
             control postural, composición corporal, fuerza, cardio, movilidad — y te preparo una ficha con tu
             plan personalizado.
           </p>
-          <p style={proseP}>Qué priorizar. Qué evitar. Qué esperar en 3 meses. Qué en 12.</p>
-          <p style={proseP}>
-            Un mapa personalizado que puedes seguir por tu cuenta, conmigo, o con otro entrenador. Sin
-            compromiso.
-          </p>
-          <p style={{ ...proseP, color: "rgba(242,242,240,0.90)" }}>
-            Y te lo hago en menos de 90 minutos de tu tiempo.
-          </p>
+          <Lines lines={["Qué priorizar.", "Qué evitar.", "Qué esperar en 3 meses.", "Qué en 12."]} />
+          <Lines
+            lines={[
+              "Un mapa personalizado que puedes seguir por tu cuenta, conmigo, o con otro entrenador.",
+              "Sin compromiso.",
+            ]}
+          />
+          <p style={emphasisP}>Y te lo hago en menos de 90 minutos de tu tiempo.</p>
         </div>
       </section>
 
       {/* OFERTA + CONTADOR + FORMULARIO */}
       <section id="formulario" className="fade-in mx-auto max-w-[1400px] px-8 pb-32 md:px-16 md:pb-40">
         <div className="max-w-[680px]">
-          <p style={proseP}>
-            Cuando el servicio esté rodado, hacerte este mapa tendrá su precio. Ahora estoy en fase inicial y
-            quiero probar el protocolo con personas reales antes de cerrarlo.
-          </p>
-          <p style={{ ...proseP, color: "rgba(242,242,240,0.90)" }}>
-            Por eso he decidido hacerlo gratis a las 10 primeras personas que me lo pidan.
-          </p>
+          <Lines
+            lines={[
+              "Cuando el servicio esté rodado, hacerte este mapa tendrá su precio.",
+              "Ahora estoy en fase inicial y quiero probar el protocolo con personas reales antes de cerrarlo.",
+            ]}
+          />
+          <p style={emphasisP}>Por eso he decidido hacerlo gratis a las 10 primeras personas que me lo pidan.</p>
           <p
             style={{
               fontSize: "clamp(1.3rem,1.8vw,1.6rem)",
@@ -308,8 +360,8 @@ export default function ValoracionEntrenatzailePage() {
             >
               <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(242,242,240,0.72)" }}>
                 Todas las plazas están cubiertas. Si quieres avisarte para futuras aperturas, escribe a{" "}
-                <a href="mailto:newsletter@niala.es" style={{ color: "#2ED3E6" }}>
-                  newsletter@niala.es
+                <a href="mailto:contacto@niala.es" style={{ color: "#2ED3E6" }}>
+                  contacto@niala.es
                 </a>
                 .
               </p>
@@ -482,26 +534,30 @@ export default function ValoracionEntrenatzailePage() {
         <div className="max-w-[680px]">
           <p style={sectionTitle}>Dudas frecuentes</p>
 
-          <div style={{ marginBottom: "2rem" }}>
-            <p style={{ fontSize: "1.1rem", color: "#F2F2F0", marginBottom: "0.5rem" }}>&ldquo;No tengo tiempo.&rdquo;</p>
-            <p style={proseP}>
-              La sesión son 90 minutos, una sola vez. Después tienes el mapa por escrito para seguirlo cuando
-              y como quieras.
-            </p>
-          </div>
-
-          <div style={{ marginBottom: "2rem" }}>
-            <p style={{ fontSize: "1.1rem", color: "#F2F2F0", marginBottom: "0.5rem" }}>
-              &ldquo;No sé si estoy en forma para esto.&rdquo;
-            </p>
-            <p style={proseP}>
-              Precisamente es para eso. El punto de partida da igual. El protocolo se adapta a lo que hay.
-            </p>
-          </div>
-
-          <div>
-            <p style={{ fontSize: "1.1rem", color: "#F2F2F0", marginBottom: "0.5rem" }}>&ldquo;Vivo lejos.&rdquo;</p>
-            <p style={proseP}>La valoración puede ser online. Puedes hacerla desde donde estés.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {[
+              {
+                q: "“No tengo tiempo.”",
+                a: "La sesión son 90 minutos, una sola vez. Después tienes el mapa por escrito para seguirlo cuando y como quieras.",
+              },
+              {
+                q: "“No sé si estoy en forma para esto.”",
+                a: "Precisamente es para eso. El punto de partida da igual. El protocolo se adapta a lo que hay.",
+              },
+              {
+                q: "“Vivo lejos.”",
+                a: "La valoración puede ser online. Puedes hacerla desde donde estés.",
+              },
+            ].map(({ q, a }) => (
+              <div
+                key={q}
+                className="p-5 md:p-6"
+                style={{ border: "1px solid rgba(242,242,240,0.12)", background: "rgba(242,242,240,0.02)" }}
+              >
+                <p style={{ fontSize: "1.1rem", color: "#2ED3E6", marginBottom: "0.6rem" }}>{q}</p>
+                <p style={{ ...proseP, marginBottom: 0 }}>{a}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -513,11 +569,11 @@ export default function ValoracionEntrenatzailePage() {
             ¿Prefieres escribirme directamente?
           </p>
           <a
-            href="mailto:newsletter@niala.es"
+            href="mailto:contacto@niala.es"
             style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(46,211,230,0.75)" }}
             className="hover:text-[#2ED3E6]"
           >
-            newsletter@niala.es
+            contacto@niala.es
           </a>
         </div>
       </section>
@@ -525,12 +581,16 @@ export default function ValoracionEntrenatzailePage() {
       {/* PD FINAL — SOBRE MÍ */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-32 md:px-16">
         <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(242,242,240,0.12)", paddingTop: "2rem" }}>
-          <p style={{ ...proseP, marginBottom: 0 }}>
-            Soy Alain Zulaika (Entrenatzaile). Llevo más de 10 años entrenando. Hace 6 me saqué varias
-            titulaciones de entrenador/monitor. Hace años acompañé a varias personas en su cambio físico y
-            ahora estoy retomándolo. Si te ha llegado este enlace por alguien cercano y quieres saber más,
-            escríbeme.
-          </p>
+          <Lines
+            lines={[
+              "Soy Alain Zulaika (Entrenatzaile).",
+              "Llevo desde los 14 años entrenándome a mí mismo.",
+              "Hace 6 años terminé mis estudios de entrenador/monitor y me saqué varias titulaciones.",
+              "Durante un tiempo acompañé a varias personas en su cambio físico y ahora estoy retomándolo.",
+              "Si te ha llegado este enlace por alguien cercano y quieres saber más, rellena el formulario.",
+            ]}
+            mb="0"
+          />
         </div>
       </section>
 
