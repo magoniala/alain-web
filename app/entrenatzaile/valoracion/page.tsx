@@ -165,7 +165,7 @@ export default function ValoracionEntrenatzailePage() {
       {/* HERO */}
       <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[235px] md:h-[279px] xl:h-[319px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15 h-[242px] md:h-[287px] xl:h-[329px]" />
 
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6]">
@@ -237,7 +237,7 @@ export default function ValoracionEntrenatzailePage() {
           />
           <p style={{ ...emphasisP, marginBottom: "4.5rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
 
-          <p style={emphasisP}>Ahora imagina el mapa más un copiloto (o Google Maps).</p>
+          <p style={emphasisP}>Y si encima tienes un copiloto (o Google Maps)...</p>
           <Lines
             lines={[
               "Alguien que va a tu lado y te dice “gira aquí, coge la segunda salida, ojo con este tramo que suele haber atascos, para en la próxima gasolinera que llevas la reserva baja.”",
