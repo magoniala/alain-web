@@ -149,6 +149,18 @@ export default function NewsletterPage() {
       sessionStorage.setItem("nl_pw", password);
       setAuth(true);
       loadAll();
+      try {
+        const saved = localStorage.getItem(DRAFT_KEY);
+        if (saved) {
+          const d = JSON.parse(saved);
+          if (d.subjectEu) setSubjectEu(d.subjectEu);
+          if (d.preheaderEu) setPreheaderEu(d.preheaderEu);
+          if (d.bodyEu) setBodyEu(d.bodyEu);
+          if (d.subjectEs) setSubjectEs(d.subjectEs);
+          if (d.preheaderEs) setPreheaderEs(d.preheaderEs);
+          if (d.bodyEs) setBodyEs(d.bodyEs);
+        }
+      } catch {}
     } else {
       setAuthError("Contraseña incorrecta.");
     }
