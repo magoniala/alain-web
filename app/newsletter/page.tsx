@@ -371,7 +371,7 @@ export default function NewsletterPage() {
     return text
       .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;">$1</strong>')
       .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
+      .replace(/\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
   }
 
   function renderPreviewLine(line: string, i: number) {
