@@ -215,12 +215,12 @@ export default function ValoracionEntrenatzailePage() {
               "Y cada dos por tres el pensamiento de “¿merece la pena seguir?”",
               "Muchos llegan, pero cansados, tarde y con la sensación de haber sufrido lo que no estaba en los planes.",
             ]}
-            mb="4rem"
+            mb="4.5rem"
           />
 
+          <p style={emphasisP}>Ahora imagínate lo mismo con un mapa.</p>
           <Lines
             lines={[
-              "Ahora imagínate lo mismo con un mapa.",
               "Nada que ver.",
               "Sales con un plan.",
               "Sabes por dónde tienes que ir.",
@@ -235,9 +235,9 @@ export default function ValoracionEntrenatzailePage() {
               "Alguna desviación por obras.",
             ]}
           />
-          <p style={{ ...emphasisP, marginBottom: "3rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
+          <p style={{ ...emphasisP, marginBottom: "4.5rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
 
-          <Lines lines={["Ahora imagina el mapa más un copiloto (o Google Maps)."]} />
+          <p style={emphasisP}>Ahora imagina el mapa más un copiloto (o Google Maps).</p>
           <Lines
             lines={[
               "Alguien que va a tu lado y te dice “gira aquí, coge la segunda salida, ojo con este tramo que suele haber atascos, para en la próxima gasolinera que llevas la reserva baja.”",
@@ -252,15 +252,11 @@ export default function ValoracionEntrenatzailePage() {
           />
           <Lines
             lines={["Es lo que hace cualquiera hoy en día.", "Ya hemos aprendido que ir sin mapa y sin copiloto puede costarte mucho."]}
-            mb="4rem"
+            mb="4.5rem"
           />
 
-          <Lines
-            lines={[
-              "Con cualquier cambio físico pasa exactamente lo mismo.",
-              "Solo que muchos aún piensan que pueden ir sin mapa sin problemas.",
-            ]}
-          />
+          <p style={emphasisP}>Con cualquier cambio físico pasa exactamente lo mismo.</p>
+          <Lines lines={["Solo que muchos aún piensan que pueden ir sin mapa sin problemas."]} />
           <Lines
             lines={[
               "Van dando tumbos.",
