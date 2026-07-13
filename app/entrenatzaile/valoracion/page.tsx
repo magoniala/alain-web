@@ -35,7 +35,7 @@ const proseP: React.CSSProperties = {
   fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
   lineHeight: 1.8,
   color: "rgba(242,242,240,0.72)",
-  marginBottom: "1.4rem",
+  marginBottom: "2rem",
 };
 
 const sectionTitle: React.CSSProperties = {
@@ -56,11 +56,11 @@ const emphasisP: React.CSSProperties = {
   marginBottom: "2rem",
 };
 
-function Lines({ lines, mb = "2rem" }: { lines: string[]; mb?: string }) {
+function Lines({ lines, mb = "2.75rem" }: { lines: string[]; mb?: string }) {
   return (
     <div style={{ marginBottom: mb }}>
       {lines.map((line, i) => (
-        <p key={i} style={{ ...proseP, marginBottom: i === lines.length - 1 ? 0 : "0.15rem" }}>
+        <p key={i} style={{ ...proseP, marginBottom: i === lines.length - 1 ? 0 : "0.75rem" }}>
           {line}
         </p>
       ))}
@@ -186,7 +186,7 @@ export default function ValoracionEntrenatzailePage() {
       </section>
 
       {/* CUERPO PRINCIPAL — metáfora del mapa */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
           <Lines lines={["Quieres ir de Madrid a Bruselas en coche.", "Sin mapa, sin GPS y sin compañía."]} />
           <Lines
@@ -215,7 +215,7 @@ export default function ValoracionEntrenatzailePage() {
               "Y cada dos por tres el pensamiento de “¿merece la pena seguir?”",
               "Muchos llegan, pero cansados, tarde y con la sensación de haber sufrido lo que no estaba en los planes.",
             ]}
-            mb="3rem"
+            mb="4rem"
           />
 
           <Lines
@@ -252,7 +252,7 @@ export default function ValoracionEntrenatzailePage() {
           />
           <Lines
             lines={["Es lo que hace cualquiera hoy en día.", "Ya hemos aprendido que ir sin mapa y sin copiloto puede costarte mucho."]}
-            mb="3rem"
+            mb="4rem"
           />
 
           <Lines
@@ -294,7 +294,7 @@ export default function ValoracionEntrenatzailePage() {
       </section>
 
       {/* QUÉ ES ESTO */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
           <p style={emphasisP}>Llevo semanas diseñando ese mapa.</p>
           <p style={proseP}>
@@ -511,7 +511,7 @@ export default function ValoracionEntrenatzailePage() {
       </section>
 
       {/* TESTIMONIO */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
           <p
             style={{
@@ -529,7 +529,7 @@ export default function ValoracionEntrenatzailePage() {
       </section>
 
       {/* DUDAS FRECUENTES */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
           <p style={sectionTitle}>Dudas frecuentes</p>
 
@@ -562,7 +562,7 @@ export default function ValoracionEntrenatzailePage() {
       </section>
 
       {/* CONTACTO ALTERNATIVO */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16">
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
           <p style={{ fontSize: "1.15rem", color: "rgba(242,242,240,0.72)", marginBottom: "0.6rem" }}>
             ¿Prefieres escribirme directamente?
