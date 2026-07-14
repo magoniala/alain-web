@@ -77,6 +77,17 @@ function Lines({ lines, mb = "2.75rem" }: { lines: string[]; mb?: string }) {
   );
 }
 
+function MapaCTA() {
+  return (
+    <a
+      href="#formulario"
+      className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+    >
+      Quiero mi mapa gratis
+    </a>
+  );
+}
+
 export default function ValoracionEntrenatzailePage() {
   const [formData, setFormData] = useState({
     nombre: "",
@@ -554,6 +565,10 @@ export default function ValoracionEntrenatzailePage() {
               </div>
             ))}
           </div>
+
+          <div style={{ marginTop: "2.5rem" }}>
+            <MapaCTA />
+          </div>
         </div>
       </section>
 
@@ -584,8 +599,8 @@ export default function ValoracionEntrenatzailePage() {
               "Durante un tiempo acompañé a varias personas en su cambio físico y ahora estoy retomándolo.",
               "Si te ha llegado este enlace por alguien cercano y quieres saber más, rellena el formulario.",
             ]}
-            mb="0"
           />
+          <MapaCTA />
         </div>
       </section>
 
