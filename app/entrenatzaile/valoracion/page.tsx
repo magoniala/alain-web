@@ -445,7 +445,7 @@ export default function ValoracionEntrenatzailePage() {
                 </div>
 
                 <div style={{ marginBottom: "2rem" }}>
-                  <label style={labelStyle}>¿Cuándo prefieres que hagamos la llamada?</label>
+                  <label style={labelStyle}>¿Cuándo sueles tener más tiempo libre?</label>
                   <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
                     {TURNO_OPTIONS.map((opt) => (
                       <button
