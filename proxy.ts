@@ -15,11 +15,12 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
 
-  // Subdominio dedicado: entrenatzaile.alainzulaika.com sirve la landing
-  // de valoración gratuita desde /entrenatzaile/valoracion, sin tocar /es.
+  // Subdominio dedicado: entrenatzaile.alainzulaika.com sirve la landing de
+  // valoración gratuita. Euskera es el idioma principal (/ -> /entrenatzaile/eu)
+  // y castellano vive en /es (/es -> /entrenatzaile/es).
   if (hostname.startsWith("entrenatzaile.")) {
     const url = request.nextUrl.clone();
-    url.pathname = `/entrenatzaile${pathname === "/" ? "/valoracion" : pathname}`;
+    url.pathname = `/entrenatzaile${pathname === "/" ? "/eu" : pathname}`;
     return NextResponse.rewrite(url);
   }
 

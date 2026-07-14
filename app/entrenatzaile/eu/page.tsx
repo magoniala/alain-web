@@ -1,95 +1,27 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
+import {
+  AMBER,
+  NAVY,
+  Lines,
+  MapaCTA,
+  Header,
+  Footer,
+  inputStyle,
+  labelStyle,
+  fieldStyle,
+  proseP,
+  sectionTitle,
+  emphasisP,
+  cardStyle,
+} from "../_ui";
 
-const TURNO_OPTIONS = ["Mañana", "Tarde", "Me da igual"];
+const TURNO_OPTIONS = ["Goizez", "Arratsaldez", "Berdin zait"];
 
 const TOTAL_PLAZAS = 10;
 
-const AMBER = "#D4860A";
-const NAVY = "#1C3A5E";
-const DARK_NAVY = "#0F2240";
-
-const inputStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  outline: "none",
-  width: "100%",
-  fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
-  lineHeight: 1.6,
-  color: DARK_NAVY,
-  paddingBottom: "0.6rem",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: "0.75rem",
-  textTransform: "uppercase",
-  letterSpacing: "0.16em",
-  color: "rgba(28,58,94,0.65)",
-  display: "block",
-  marginBottom: "0.4rem",
-};
-
-const fieldStyle: React.CSSProperties = {
-  borderBottom: "1px solid rgba(28,58,94,0.25)",
-  marginBottom: "2rem",
-};
-
-const proseP: React.CSSProperties = {
-  fontSize: "clamp(1.05rem,1.3vw,1.2rem)",
-  lineHeight: 1.8,
-  color: "rgba(15,34,64,0.80)",
-  marginBottom: "2rem",
-};
-
-const sectionTitle: React.CSSProperties = {
-  fontSize: "clamp(1.7rem,2.6vw,2.3rem)",
-  fontWeight: 500,
-  letterSpacing: "-0.02em",
-  lineHeight: 1.2,
-  marginBottom: "1.8rem",
-  color: NAVY,
-};
-
-const emphasisP: React.CSSProperties = {
-  fontSize: "clamp(1.4rem,2vw,1.75rem)",
-  fontWeight: 500,
-  letterSpacing: "-0.015em",
-  lineHeight: 1.35,
-  color: NAVY,
-  marginBottom: "2rem",
-};
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid rgba(28,58,94,0.18)",
-  background: "rgba(28,58,94,0.04)",
-};
-
-function Lines({ lines, mb = "2.75rem" }: { lines: string[]; mb?: string }) {
-  return (
-    <div style={{ marginBottom: mb }}>
-      {lines.map((line, i) => (
-        <p key={i} style={{ ...proseP, marginBottom: i === lines.length - 1 ? 0 : "0.75rem" }}>
-          {line}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-function MapaCTA() {
-  return (
-    <a
-      href="#formulario"
-      className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
-    >
-      Quiero mi mapa gratis
-    </a>
-  );
-}
-
-export default function ValoracionEntrenatzailePage() {
+export default function ValoracionEntrenatzaileEuPage() {
   const [formData, setFormData] = useState({
     nombre: "",
     edad: "",
@@ -137,21 +69,21 @@ export default function ValoracionEntrenatzailePage() {
     setError("");
 
     if (!formData.nombre.trim() || !formData.edad.trim() || !formData.email.trim() || !formData.motivo.trim()) {
-      setError("Por favor, rellena todos los campos obligatorios.");
+      setError("Bete beharrezko eremu guztiak, mesedez.");
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email.trim())) {
-      setError("Introduce un email válido.");
+      setError("Sartu baliozko helbide elektroniko bat.");
       return;
     }
     const edadNum = Number(formData.edad);
     if (!Number.isFinite(edadNum) || edadNum < 14 || edadNum > 100) {
-      setError("Introduce una edad válida.");
+      setError("Sartu baliozko adin bat.");
       return;
     }
     if (!formData.turno) {
-      setError("Indica si prefieres mañana o tarde.");
+      setError("Adierazi noiz duzun denbora libre gehiago.");
       return;
     }
 
@@ -160,18 +92,18 @@ export default function ValoracionEntrenatzailePage() {
       const res = await fetch("/api/entrenatzaile/valoracion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, edad: edadNum }),
+        body: JSON.stringify({ ...formData, edad: edadNum, idioma: "eu" }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
+        setError(data.error || "Zerbait gaizki joan da. Saiatu berriro edo idatzi niri zuzenean.");
         if (typeof data.remaining === "number") setRemaining(data.remaining);
         return;
       }
       setDone(true);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
     } catch {
-      setError("Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
+      setError("Zerbait gaizki joan da. Saiatu berriro edo idatzi niri zuzenean.");
     } finally {
       setSending(false);
     }
@@ -179,15 +111,7 @@ export default function ValoracionEntrenatzailePage() {
 
   return (
     <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
-      {/* HEADER */}
-      <header className="border-b border-[#1C3A5E]/12 bg-[#FAF3E8] px-8 py-4 md:px-16">
-        <div className="mx-auto flex max-w-[1400px] items-center gap-3">
-          <Image src="/entrenatzaile-logo.png" alt="" width={34} height={27} priority />
-          <p className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#D4860A]">
-            Entrenatzaile
-          </p>
-        </div>
-      </header>
+      <Header current="eu" />
 
       {/* HERO */}
       <section className="w-full bg-[#D4860A] px-8 py-24 md:px-16 md:py-32">
@@ -196,16 +120,16 @@ export default function ValoracionEntrenatzailePage() {
 
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#0F2240]">
-              <span className="uppercase">Valoración</span> gratuita
+              <span className="uppercase">Doako</span> balorazioa
             </p>
 
             <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.9rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em] text-[#0F2240]">
-              ¿Y si llevas años dando vueltas?
+              Eta urteak badaramatzazu bueltaka?
             </h1>
 
             <div className="hero-fade-3 mt-8 max-w-[600px]">
               <p className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#0F2240]/75">
-                No necesitas más esfuerzo. Necesitas un mejor mapa.
+                Ez duzu beste ahaleginik behar. Mapa hobea behar duzu.
               </p>
             </div>
 
@@ -214,147 +138,152 @@ export default function ValoracionEntrenatzailePage() {
                 href="#formulario"
                 className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
               >
-                Quiero mi mapa gratis
+                Nire mapa nahi dut
               </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CUERPO PRINCIPAL — metáfora del mapa */}
+      {/* GORPUTZ NAGUSIA — maparen metafora */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 pt-20 md:px-16 md:pt-28">
         <div className="max-w-[680px]">
-          <Lines lines={["Quieres ir de Madrid a Bruselas en coche.", "Sin mapa, sin GPS y sin compañía."]} />
+          <Lines lines={["Madrildik Minks-era autoz joan nahi duzu.", "Maparik, GPSrik eta konpainiarik gabe."]} />
           <Lines
             lines={[
-              "Sales sin saber muy bien qué carretera coger.",
-              "Vas mirando carteles.",
-              "Cuando ves uno, respiras.",
-              "Cuando pasas veinte minutos sin ver ninguno, empiezas a dudar.",
-              "“¿Estaré yendo bien? ¿Debería haber cogido aquella salida de antes?”",
+              "Ez dakizu zein bide hartu.",
+              "Kartelei begira zaude.",
+              "Bat ikusten duzunean, arnasa hartzen duzu.",
+              "Hogei minutu igarotzen dituzunean bat ere ikusi gabe, zalantzaka hasten zara.",
+              "“Ondo noa? Lehengo irteera hura hartu behar ote nuen?”",
             ]}
           />
           <Lines
             lines={[
-              "Paras en una gasolinera y preguntas.",
-              "La persona te da unas indicaciones que no terminas de entender.",
-              "Sigues.",
-              "A los diez kilómetros dudas otra vez si te dijeron “la segunda a la derecha” o “la segunda a la izquierda”.",
+              "Gasolindegi batean gelditu eta galdetzen hasten zara.",
+              "Ulertzen ez dituzun argibide batzuk ematen dizkizute.",
+              "Jarraitzen duzu.",
+              "Hamar kilometrora berriz ere zalantza egiten duzu “bigarrena eskuinera” edo “bigarrena ezkerrera” esan ote zizuten.",
             ]}
           />
-          <Lines lines={["Y así todo el rato.", "Preguntar, dudar, volver atrás, corregir."]} />
+          <Lines lines={["Eta horrela denbora guztian.", "Galdetu, zalantzak, atzera egin, zuzendu."]} />
           <Lines
             lines={[
-              "Muchos kilómetros de más.",
-              "Muchas horas de más.",
-              "Mucho más gasto en gasolina.",
-              "Y cada dos por tres el pensamiento de “¿merece la pena seguir?”",
-              "Muchos llegan, pero cansados, tarde y con la sensación de haber sufrido lo que no estaba en los planes.",
+              "Kilometro askoz gehiago.",
+              "Ordu askoz gehiago.",
+              "Askoz ere gastu handiagoa gasolinan.",
+              "Eta “merezi al du jarraitzea?” pentsamenduak.",
+              "Asko iristen dira, baina beranduago, nekatuta, planetan ez zegoena jasan izanaren sentsazioarekin.",
             ]}
             mb="6.5rem"
           />
 
-          <p style={emphasisP}>Ahora imagínate lo mismo con un mapa.</p>
+          <p style={emphasisP}>Orain imajinatu gauza bera mapa batekin.</p>
           <Lines
             lines={[
-              "Nada que ver.",
-              "Sales con un plan.",
-              "Sabes por dónde tienes que ir.",
-              "De vez en cuando paras un momento a mirarlo, ubicarte, y sigues.",
+              "Zer ikusirik ez.",
+              "Plan batekin ateratzen zara.",
+              "Badakizu nondik joan behar duzun.",
+              "Noizean behin, begiratu, orientatu eta jarraitu egiten duzu.",
             ]}
           />
-          <Lines lines={["Menos dudas.", "Menos preguntas.", "Menos vueltas."]} />
+          <Lines lines={["Zalantza gutxiago.", "Galdera gutxiago.", "Buelta gutxiago."]} />
           <Lines
             lines={[
-              "Aun así, te comes algún atasco que no esperabas.",
-              "Algún peaje que hubieras podido evitar.",
-              "Alguna desviación por obras.",
+              "Hala ere, espero ez zenuen trabaren bat jaten duzu.",
+              "Saihets zenezakeen bidesariren bat.",
+              "Obren ondoriozko desbideratzeren bat.",
             ]}
           />
-          <p style={{ ...emphasisP, marginBottom: "6.5rem" }}>Pero llegas. Y llegas antes. Y sin tanto estrés.</p>
+          <p style={{ ...emphasisP, marginBottom: "6.5rem" }}>
+            Baina iritsi zara. Eta lehenago iristen zara. Ia estresik gabe.
+          </p>
 
-          <p style={emphasisP}>Y si encima tienes un copiloto (o Google Maps)...</p>
+          <p style={emphasisP}>Eta gainera kopilotu bat baduzu (edo Google Maps)...</p>
           <Lines
             lines={[
-              "Alguien que va a tu lado y te dice “gira aquí, coge la segunda salida, ojo con este tramo que suele haber atascos, para en la próxima gasolinera que llevas la reserva baja.”",
+              "Zure ondoan “Biratu hemen, hartu bigarren irteera, kontuz trabak egon ohi diren tarte honekin, erreserba baxua daramazun hurrengo gasolindegian gelditzeko” esaten dizun norbait.",
             ]}
           />
           <Lines
             lines={[
-              "Se adelanta a lo que tú no ves.",
-              "Ajusta la ruta cuando aparece algo imprevisto.",
-              "Va contigo durante todo el camino.",
+              "Zuk ikusten ez duzunari aurrea hartzen dio.",
+              "Ustekabeko zerbait agertzen denean bidea doitzen dizu.",
+              "Zurekin doa bide osoan.",
             ]}
           />
           <Lines
-            lines={["Es lo que hace cualquiera hoy en día.", "Ya hemos aprendido que ir sin mapa y sin copiloto puede costarte mucho."]}
+            lines={[
+              "Gaur egun edonork egiten duena da.",
+              "Ikasi dugu maparik eta kopiloturik gabe joatea asko kostatzen zaigula.",
+            ]}
             mb="6.5rem"
           />
 
-          <p style={emphasisP}>Con cualquier cambio físico pasa exactamente lo mismo.</p>
-          <Lines lines={["Solo que muchos aún piensan que pueden ir sin mapa sin problemas."]} />
+          <p style={emphasisP}>Edozein aldaketa fisikorekin gauza bera gertatzen da.</p>
+          <Lines lines={["Baina askok oraindik uste dute maparik gabe joan daitezkeela arazorik gabe."]} />
           <Lines
             lines={[
-              "Van dando tumbos.",
-              "Empiezan por una cosa, luego otra, dudan si correr o levantar peso, prueban máquinas que no saben si están hechas para ellos.",
+              "Ziztu bizian doaz.",
+              "Gauza batekin hasten dira, eta, gero, beste batekin, zalantzan jartzen dute korrika egin edo pisua altxatu, eta makina batzuk probatzen dituzte, beraientzat eginak ote diren ez dakitenak.",
             ]}
           />
           <Lines
             lines={[
-              "Preguntan a un colega que entrena y le dicen una cosa.",
-              "A otro que le va bien y le dicen la contraria. Empujando a ciegas.",
+              "Entrenatzen ari den lankide bati galdetzen diote eta gauza bat esaten diote.",
+              "Ondo doakion beste bati galdetu eta kontrakoa esaten diote. Itsumustuan bultzaka.",
             ]}
           />
           <p style={proseP}>
-            Muchas veces ven algún resultado a los años, pero nada comparado con lo que podrían haber
-            conseguido con menos tiempo, esfuerzo y dinero, con dirección.
+            Askotan urteak pasa ahala emaitzaren bat ikusten dute, baina gidatuta, denbora, esfortzu eta diru
+            gutxiagorekin lor zezaketenarekin alderatuta ezer ez.
           </p>
           <Lines
             lines={[
-              "Con mapa, sabes qué priorizar y qué evitar.",
-              "Sabes qué esperar a los 3 meses. Qué a los 12.",
-              "Vas directo.",
-              "Aún tienes que decidir tú, pero decides con criterio.",
+              "Maparekin, badakizu zer lehenetsi eta zer saihestu.",
+              "Badakizu zer itxaron 3 hilabete barru. Zer 12 hilabetera.",
+              "Zuzen zoaz.",
+              "Zuk erabaki behar duzu, baina irizpidez erabakitzen duzu.",
             ]}
           />
           <p style={emphasisP}>
-            Con mapa y copiloto, encima tienes a alguien ajustando la ruta cuando aparece un imprevisto — una
-            molestia, una semana rara, un cambio en tu vida — y exigiéndote un poco más cuando podrías estar
-            quedándote corto sin darte cuenta.
+            Maparekin eta kopilotuarekin, gainean norbait duzu bidea doitzen ustekabeko bat agertzen denean —
+            molestia bat, aste arraro bat, zure bizitzako aldaketa bat — eta pixka bat gehiago eskatzen,
+            konturatu gabe motz gera zintezkeenean.
           </p>
         </div>
       </section>
 
-      {/* QUÉ ES ESTO */}
+      {/* HAU ZER DEN */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
-          <p style={emphasisP}>Llevo semanas diseñando ese mapa.</p>
+          <p style={emphasisP}>Asteak daramatzat mapa hori diseinatzen.</p>
           <p style={proseP}>
-            Un protocolo de valoración inicial donde recojo tu situación real — historial, lesiones, hábitos,
-            control postural, composición corporal, fuerza, cardio, movilidad — y te preparo una ficha con tu
-            plan personalizado.
+            Hasierako balorazio-protokolo bat, zure benetako egoera jasotzen duena (historia, lesioak, ohiturak,
+            jarrera-kontrola, gorputz-osaera, indarra, kardioa, mugikortasuna) eta zure plan pertsonalizatua duen
+            fitxa bat prestatzen dizuna.
           </p>
-          <Lines lines={["Qué priorizar.", "Qué evitar.", "Qué esperar en 3 meses.", "Qué en 12."]} />
+          <Lines lines={["Zer lehenetsi.", "Zer saihestu.", "Zer itxaron 3 hilabete barru.", "Zer 12tan."]} />
           <Lines
             lines={[
-              "Un mapa personalizado que puedes seguir por tu cuenta, conmigo, o con otro entrenador.",
-              "Sin compromiso.",
+              "Zure kabuz, nirekin edo beste entrenatzaile batekin jarrai dezakezun mapa pertsonalizatua.",
+              "Konpromisorik gabe.",
             ]}
           />
-          <p style={emphasisP}>Y te lo hago en menos de 90 minutos de tu tiempo.</p>
+          <p style={emphasisP}>Eta zure 90 minutu baino gutxiagotan egingo dizut.</p>
         </div>
       </section>
 
-      {/* OFERTA + CONTADOR + FORMULARIO */}
+      {/* ESKAINTZA + KONTAGAILUA + FORMULARIOA */}
       <section id="formulario" className="fade-in mx-auto max-w-[1400px] px-8 pb-32 md:px-16 md:pb-40">
         <div className="max-w-[680px]">
           <Lines
             lines={[
-              "Cuando el servicio esté rodado, hacerte este mapa tendrá su precio.",
-              "Ahora estoy en fase inicial y quiero probar el protocolo con personas reales antes de cerrarlo.",
+              "Zerbitzua finkatuta dagoenean, mapa hau egiteak bere prezioa izango du.",
+              "Orain hasierako fasean nago eta protokoloa benetako pertsonekin probatu nahi dut itxi aurretik.",
             ]}
           />
-          <p style={emphasisP}>Por eso he decidido hacerlo gratis a las 10 primeras personas que me lo pidan.</p>
+          <p style={emphasisP}>Horregatik erabaki dut doan egitea eskatzen didaten lehen 10 pertsonei.</p>
           <div
             style={{
               display: "inline-flex",
@@ -372,10 +301,10 @@ export default function ValoracionEntrenatzailePage() {
             />
             <span style={{ fontSize: "clamp(1.1rem,1.5vw,1.35rem)", fontWeight: 500, color: full ? "rgba(28,58,94,0.55)" : AMBER }}>
               {remaining === null
-                ? "Actualizando plazas disponibles…"
+                ? "Plaza kopurua eguneratzen…"
                 : full
-                ? "Todas las plazas están cubiertas"
-                : `Quedan ${remaining} plaza${remaining === 1 ? "" : "s"} de ${TOTAL_PLAZAS}`}
+                ? "Plaza guztiak beteta daude"
+                : `${remaining} plaza geratzen dira ${TOTAL_PLAZAS}etik`}
             </span>
           </div>
         </div>
@@ -384,16 +313,16 @@ export default function ValoracionEntrenatzailePage() {
           {done ? (
             <div className="context-fade-in p-6 md:p-10" style={cardStyle}>
               <p style={{ fontSize: "clamp(1.5rem,2.4vw,2rem)", fontWeight: 500, letterSpacing: "-0.02em", marginBottom: "1rem", color: NAVY }}>
-                Recibido, {formData.nombre.split(" ")[0]}.
+                Jasota, {formData.nombre.split(" ")[0]}.
               </p>
               <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(15,34,64,0.80)" }}>
-                Te contacto en menos de 48h.
+                48 ordu baino gutxiagoan kontaktatuko zaitut.
               </p>
             </div>
           ) : full ? (
             <div className="p-6 md:p-10" style={cardStyle}>
               <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(15,34,64,0.80)" }}>
-                Todas las plazas están cubiertas. Si quieres avisarte para futuras aperturas, escribe a{" "}
+                Plaza guztiak beteta daude. Etorkizuneko irekierez jakinarazi nahi baduzu, idatzi hona{" "}
                 <a href="mailto:contacto@niala.es" style={{ color: AMBER }}>
                   contacto@niala.es
                 </a>
@@ -403,20 +332,20 @@ export default function ValoracionEntrenatzailePage() {
           ) : (
             <div className="p-6 md:p-10" style={cardStyle}>
               <p style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: NAVY, marginBottom: "0.6rem", lineHeight: 1.4 }}>
-                Pide tu valoración gratuita
+                Eskatu zure doako balorazioa
               </p>
               <p style={{ fontSize: "0.95rem", color: "rgba(15,34,64,0.60)", marginBottom: "2rem", lineHeight: 1.6 }}>
-                Te contacto en menos de 48h para agendar una llamada de 90 minutos. Al terminar recibes tu{" "}
-                <strong style={{ textTransform: "uppercase", fontWeight: 700 }}>mapa</strong> personalizado por
-                escrito.
+                48 ordu baino gutxiagoan kontaktatzen zaitut 90 minutuko deia egiteko. Amaitzean, zure{" "}
+                <strong style={{ textTransform: "uppercase", fontWeight: 700 }}>mapa</strong> pertsonalizatua
+                idatziz jasotzen duzu.
               </p>
 
               <form onSubmit={handleSubmit}>
                 <div style={fieldStyle}>
-                  <label style={labelStyle}>Nombre</label>
+                  <label style={labelStyle}>Izena</label>
                   <input
                     type="text"
-                    placeholder="Tu nombre"
+                    placeholder="Zure izena"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     style={inputStyle}
@@ -424,10 +353,10 @@ export default function ValoracionEntrenatzailePage() {
                   />
                 </div>
                 <div style={fieldStyle}>
-                  <label style={labelStyle}>Edad</label>
+                  <label style={labelStyle}>Adina</label>
                   <input
                     type="number"
-                    placeholder="Tu edad"
+                    placeholder="Zure adina"
                     value={formData.edad}
                     onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
                     style={inputStyle}
@@ -435,10 +364,10 @@ export default function ValoracionEntrenatzailePage() {
                   />
                 </div>
                 <div style={fieldStyle}>
-                  <label style={labelStyle}>Email</label>
+                  <label style={labelStyle}>Emaila</label>
                   <input
                     type="email"
-                    placeholder="tu@email.com"
+                    placeholder="zure@email.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     style={inputStyle}
@@ -446,10 +375,10 @@ export default function ValoracionEntrenatzailePage() {
                   />
                 </div>
                 <div style={fieldStyle}>
-                  <label style={labelStyle}>Qué te ha traído aquí</label>
+                  <label style={labelStyle}>Zerk ekarri zaitu hona?</label>
                   <input
                     type="text"
-                    placeholder="Cuéntamelo en una frase"
+                    placeholder="Esadazu esaldi batean."
                     value={formData.motivo}
                     onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                     style={inputStyle}
@@ -458,7 +387,7 @@ export default function ValoracionEntrenatzailePage() {
                 </div>
 
                 <div style={{ marginBottom: "2rem" }}>
-                  <label style={labelStyle}>¿Cuándo sueles tener más tiempo libre?</label>
+                  <label style={labelStyle}>Noiz izaten duzu denbora libre gehiago?</label>
                   <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
                     {TURNO_OPTIONS.map((opt) => (
                       <button
@@ -509,8 +438,8 @@ export default function ValoracionEntrenatzailePage() {
                     onChange={(e) => setFormData({ ...formData, newsletter: e.target.checked })}
                     style={{ marginTop: "0.2rem" }}
                   />
-                  Quiero recibir mails diarios sobre entrenamiento y salud. Gratis, y me doy de baja
-                  cuando quiera.
+                  Entrenamenduari eta osasunari buruzko mezuak jaso nahi ditut egunero. Doan, eta nahi dudanean
+                  ematen dut baja.
                 </label>
 
                 {error && (
@@ -533,7 +462,7 @@ export default function ValoracionEntrenatzailePage() {
                   }}
                   className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
                 >
-                  {sending ? "Enviando..." : "Pedir mi valoración gratuita"}
+                  {sending ? "Bidaltzen..." : "Nire doako balorazioa eskatu"}
                 </button>
               </form>
             </div>
@@ -541,24 +470,24 @@ export default function ValoracionEntrenatzailePage() {
         </div>
       </section>
 
-      {/* DUDAS FRECUENTES */}
+      {/* OHIKO ZALANTZAK */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
-          <p style={sectionTitle}>Dudas frecuentes</p>
+          <p style={sectionTitle}>Ohiko zalantzak</p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {[
               {
-                q: "“No tengo tiempo.”",
-                a: "La sesión son 90 minutos, una sola vez. Después tienes el mapa por escrito para seguirlo cuando y como quieras.",
+                q: "“Ez dut astirik.”",
+                a: "Saioa 90 minutu dira, behin bakarrik. Ondoren, mapa idatzita daukazu, nahi duzunean eta nahi duzun moduan jarraitzeko.",
               },
               {
-                q: "“No sé si estoy en forma para esto.”",
-                a: "Precisamente es para eso. El punto de partida da igual. El protocolo se adapta a lo que hay.",
+                q: "“Ez dakit honetarako sasoian nagoen.”",
+                a: "Horretarako da, hain zuzen ere. Abiapuntuak ez du garrantzirik. Protokoloa dagoenari egokitzen zaio.",
               },
               {
-                q: "“Vivo lejos.”",
-                a: "La valoración puede ser online. Puedes hacerla desde donde estés.",
+                q: "“Urrun bizi naiz.”",
+                a: "Balorazioa online egin daiteke. Zauden lekutik egin dezakezu.",
               },
             ].map(({ q, a }) => (
               <div key={q} className="p-5 md:p-6" style={cardStyle}>
@@ -569,16 +498,16 @@ export default function ValoracionEntrenatzailePage() {
           </div>
 
           <div style={{ marginTop: "2.5rem" }}>
-            <MapaCTA />
+            <MapaCTA label="Nire mapa doan nahi dut" />
           </div>
         </div>
       </section>
 
-      {/* CONTACTO ALTERNATIVO */}
+      {/* BESTE KONTAKTU BIDE BAT */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 md:px-16">
         <div className="max-w-[680px]">
           <p style={{ fontSize: "1.15rem", color: "rgba(15,34,64,0.80)", marginBottom: "0.6rem" }}>
-            ¿Prefieres escribirme directamente?
+            Nahiago duzu niri zuzenean idaztea?
           </p>
           <a
             href="mailto:contacto@niala.es"
@@ -590,28 +519,23 @@ export default function ValoracionEntrenatzailePage() {
         </div>
       </section>
 
-      {/* PD FINAL — SOBRE MÍ */}
+      {/* PD AZKENA — NORI BURUZ */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-32 md:px-16">
         <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(28,58,94,0.15)", paddingTop: "2rem" }}>
           <Lines
             lines={[
-              "Soy Alain Zulaika (Entrenatzaile).",
-              "Llevo desde los 14 años entrenándome a mí mismo.",
-              "Hace 6 años terminé mis estudios de entrenador/monitor y me saqué varias titulaciones.",
-              "Durante un tiempo acompañé a varias personas en su cambio físico y ahora estoy retomándolo.",
-              "Si te ha llegado este enlace por alguien cercano y quieres saber más, rellena el formulario.",
+              "Alain Zulaika naiz (Entrenatzaile).",
+              "14 urte daramatzat neure burua entrenatzen.",
+              "Duela 6 urte entrenatzaile/monitore ikasketak amaitu nituen eta hainbat titulazio atera nituen.",
+              "Bolada batean, hainbat pertsonari lagundu nien beren aldaketa fisikoan, eta orain berriz ekin diot.",
+              "Esteka hau hurbileko norbaitek bidali badizu eta gehiago jakin nahi baduzu, bete formularioa.",
             ]}
           />
-          <MapaCTA />
+          <MapaCTA label="Nire mapa doan nahi dut" />
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-[#1C3A5E]/12 px-8 py-10 md:px-16">
-        <div className="mx-auto max-w-[1400px]">
-          <p className="text-[0.88rem] text-[#0F2240]/35">© Alain Zulaika</p>
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }

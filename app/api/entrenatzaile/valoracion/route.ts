@@ -29,17 +29,27 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { nombre, edad, email, motivo, turno, newsletter } = body;
+  const { nombre, edad, email, motivo, turno, newsletter, idioma } = body;
+  const isEu = idioma === "eu";
 
   if (!nombre?.trim() || !edad || !email?.trim() || !motivo?.trim() || !turno) {
-    return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+    return NextResponse.json(
+      { error: isEu ? "Bete beharrezko eremu guztiak, mesedez." : "Faltan campos obligatorios." },
+      { status: 400 }
+    );
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    return NextResponse.json({ error: "El email no es válido." }, { status: 400 });
+    return NextResponse.json(
+      { error: isEu ? "Sartu baliozko helbide elektroniko bat." : "El email no es válido." },
+      { status: 400 }
+    );
   }
   const edadNum = Number(edad);
   if (!Number.isFinite(edadNum) || edadNum < 14 || edadNum > 100) {
-    return NextResponse.json({ error: "Introduce una edad válida." }, { status: 400 });
+    return NextResponse.json(
+      { error: isEu ? "Sartu baliozko adin bat." : "Introduce una edad válida." },
+      { status: 400 }
+    );
   }
 
   const { count, error: countError } = await supabase
@@ -48,12 +58,19 @@ export async function POST(req: Request) {
 
   if (countError) {
     console.error("valoracion_entrenatzaile count error:", countError);
-    return NextResponse.json({ error: "Ha ocurrido un error. Inténtalo de nuevo." }, { status: 500 });
+    return NextResponse.json(
+      { error: isEu ? "Errore bat gertatu da. Saiatu berriro." : "Ha ocurrido un error. Inténtalo de nuevo." },
+      { status: 500 }
+    );
   }
 
   if (YA_RESERVADAS + (count ?? 0) >= TOTAL_PLAZAS) {
     return NextResponse.json(
-      { error: "Todas las plazas están cubiertas. Escribe a contacto@niala.es si quieres avisarte para futuras aperturas." },
+      {
+        error: isEu
+          ? "Plaza guztiak beteta daude. Idatzi contacto@niala.es helbidera etorkizuneko irekierez jakinarazi nahi baduzu."
+          : "Todas las plazas están cubiertas. Escribe a contacto@niala.es si quieres avisarte para futuras aperturas.",
+      },
       { status: 409 }
     );
   }
@@ -65,11 +82,15 @@ export async function POST(req: Request) {
     motivo: motivo.trim(),
     turno,
     newsletter: !!newsletter,
+    idioma: isEu ? "eu" : "es",
   });
 
   if (dbError) {
     console.error("valoracion_entrenatzaile insert error:", dbError);
-    return NextResponse.json({ error: "Ha ocurrido un error. Inténtalo de nuevo." }, { status: 500 });
+    return NextResponse.json(
+      { error: isEu ? "Errore bat gertatu da. Saiatu berriro." : "Ha ocurrido un error. Inténtalo de nuevo." },
+      { status: 500 }
+    );
   }
 
   const remaining = Math.max(0, TOTAL_PLAZAS - YA_RESERVADAS - (count ?? 0) - 1);
@@ -79,7 +100,7 @@ export async function POST(req: Request) {
       {
         email: email.trim().toLowerCase(),
         nombre: nombre.trim(),
-        idioma: "es",
+        idioma: isEu ? "eu" : "es",
         origen: "entrenatzaile_valoracion",
       },
       { onConflict: "email", ignoreDuplicates: true }
@@ -93,8 +114,8 @@ export async function POST(req: Request) {
     const BASE_URL = host.includes("localhost") ? `http://${host}` : "https://alainzulaika.com";
     const emailLower = email.trim().toLowerCase();
     const bajaUrl = `${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(emailLower)}`;
-    const euskeraUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(emailLower)}&idioma=eu`;
-    const contactoEsUrl = `${BASE_URL}/es/contacto`;
+    const idiomaUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(emailLower)}&idioma=${isEu ? "es" : "eu"}`;
+    const contactoUrl = isEu ? `${BASE_URL}/contacto` : `${BASE_URL}/es/contacto`;
 
     const pdStyle = `font-size:1.15rem;color:#1a1a1a;line-height:2.1;margin-top:0.5rem;`;
     const linkStyle = `color:#2a9d8f;`;
@@ -106,27 +127,41 @@ export async function POST(req: Request) {
         </div>
         <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
           <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
-          <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">Dejar de recibir estos emails</a></p>
+          <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails"}</a></p>
         </div>
       </div>
     `;
 
     await sendEmail(
       nombre.trim() ? `${nombre.trim()} <${emailLower}>` : emailLower,
-      "Bienvenido/a — ya tengo tu valoración",
-      wrap(`
-        <p style="${pStyle}">Hola, soy Alain.</p>
-        <p style="${pStyle}">Ya tengo la información que me has enviado en el formulario. Te contacto en menos de 48h para agendar la llamada de valoración de 90 minutos.</p>
-        <p style="${pStyle}">Mientras tanto, esto es lo que puedes esperar de mis mails: mago en los escenarios, entrenador personal online, y curioso de nacimiento y crecimiento.</p>
-        <p style="${pStyle}">En mis mails vas a encontrar reflexiones, aprendizajes y anécdotas sobre entrenamiento, salud y magia — y lo que me apetezca contar.</p>
-        <p style="${pStyle}">Sin frecuencia fija prometida, aunque lo habitual es que te escriba a diario.</p>
-        <p style="margin:0 0 2rem 0;">Si en algún momento deja de interesarte, abajo tienes el botón para salir. Sin rollos.</p>
-        <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
-        <p style="${pdStyle}"><strong>Pd:</strong> Si no te quieres perder mis emails, mueve este ahora a tu bandeja principal.</p>
-        <p style="${pdStyle}"><strong>Pd2:</strong> ¿Prefieres recibirlos en euskera? <a href="${euskeraUrl}" style="${linkStyle}">Clic aquí</a></p>
-        <p style="${pdStyle}"><strong>Pd3:</strong> ¿Tienes un evento que hacer especial? <a href="${contactoEsUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a> Eventos de empresa, eventos culturales, fiestas privadas… Diez minutos de conversación suelen aclarar si tiene sentido.</p>
-        <p style="${pdStyle}"><strong>Pd4:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.<br>Si encima me cuentas quien eres, como me has conocido, que esperas recibir en mis mails... me alegras el día.</p>
-      `)
+      isEu ? "Ongi etorri — jada jaso dut zure balorazioa" : "Bienvenido/a — ya tengo tu valoración",
+      isEu
+        ? wrap(`
+          <p style="${pStyle}">Kaixo, Alain naiz.</p>
+          <p style="${pStyle}">Jada jaso dut formularioan bidali didazun informazioa. 48 ordu baino gutxiagoan zurekin harremanetan jarriko naiz 90 minutuko balorazio-deia antolatzeko.</p>
+          <p style="${pStyle}">Bitartean, hau da nire mezuetatik espero dezakezuna: magoa eszenatoki gainean, entrenatzaile pertsonala online, eta kuriosoa jaiotzaz eta hazkundez.</p>
+          <p style="${pStyle}">Nire mezuetan entrenamenduari, osasunari eta magiari buruzko hausnarketa, ikasgai eta pasadizoak aurkituko dituzu — baita partekatzeko gogoa ematen didan beste edozer ere.</p>
+          <p style="${pStyle}">Ez dago egutegi finkorik, nahiz eta normalean egunero idazten dudan.</p>
+          <p style="margin:0 0 2rem 0;">Interesa galtzen baduzu, behean harpidetza bertan behera uzteko botoia duzu. Klik bat eta kitto.</p>
+          <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
+          <p style="${pdStyle}"><strong>Pd:</strong> Nire mezuak galdu nahi ez badituzu, mugitu hau zure sarrera-ontzi nagusira oraintxe bertan.</p>
+          <p style="${pdStyle}"><strong>Pd2:</strong> Nahiago gazteleraz jasotzea? <a href="${idiomaUrl}" style="${linkStyle}">Egin klik hemen</a></p>
+          <p style="${pdStyle}"><strong>Pd3:</strong> Ekitaldi berezi bat antolatzen ari zara? <a href="${contactoUrl}" style="${linkStyle}">Egin klik hemen eta hitz egin dezagun.</a> Enpresa-ekitaldiak, kultur ekitaldiak, festa pribatuak… Hamar minutuko solasaldia nahikoa izaten da magiak zentzua duen ala ez ikusteko.</p>
+          <p style="${pdStyle}"><strong>Pd4:</strong> Mezu honi "kaixo" soil batekin erantzuten badiozu, Gmaili lagunduko diozu hau spam ez dela ulertzen — eskerrik asko.<br>Eta nor zaren, nola aurkitu nauzun eta nire mezuetatik zer jasotzea espero duzun kontatzen badidazu... eguna alaituko didazu.</p>
+        `)
+        : wrap(`
+          <p style="${pStyle}">Hola, soy Alain.</p>
+          <p style="${pStyle}">Ya tengo la información que me has enviado en el formulario. Te contacto en menos de 48h para agendar la llamada de valoración de 90 minutos.</p>
+          <p style="${pStyle}">Mientras tanto, esto es lo que puedes esperar de mis mails: mago en los escenarios, entrenador personal online, y curioso de nacimiento y crecimiento.</p>
+          <p style="${pStyle}">En mis mails vas a encontrar reflexiones, aprendizajes y anécdotas sobre entrenamiento, salud y magia — y lo que me apetezca contar.</p>
+          <p style="${pStyle}">Sin frecuencia fija prometida, aunque lo habitual es que te escriba a diario.</p>
+          <p style="margin:0 0 2rem 0;">Si en algún momento deja de interesarte, abajo tienes el botón para salir. Sin rollos.</p>
+          <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
+          <p style="${pdStyle}"><strong>Pd:</strong> Si no te quieres perder mis emails, mueve este ahora a tu bandeja principal.</p>
+          <p style="${pdStyle}"><strong>Pd2:</strong> ¿Prefieres recibirlos en euskera? <a href="${idiomaUrl}" style="${linkStyle}">Clic aquí</a></p>
+          <p style="${pdStyle}"><strong>Pd3:</strong> ¿Tienes un evento que hacer especial? <a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a> Eventos de empresa, eventos culturales, fiestas privadas… Diez minutos de conversación suelen aclarar si tiene sentido.</p>
+          <p style="${pdStyle}"><strong>Pd4:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.<br>Si encima me cuentas quien eres, como me has conocido, que esperas recibir en mis mails... me alegras el día.</p>
+        `)
     );
   }
 
@@ -138,6 +173,7 @@ export async function POST(req: Request) {
         <tr><td style="${rowStyle}"><strong>Nombre</strong></td><td style="${rowStyle}">${nombre.trim()}</td></tr>
         <tr><td style="${rowStyle}"><strong>Edad</strong></td><td style="${rowStyle}">${edadNum}</td></tr>
         <tr><td style="${rowStyle}"><strong>Email</strong></td><td style="${rowStyle}">${email.trim().toLowerCase()}</td></tr>
+        <tr><td style="${rowStyle}"><strong>Idioma</strong></td><td style="${rowStyle}">${isEu ? "Euskera" : "Castellano"}</td></tr>
         <tr><td style="${rowStyle}"><strong>Turno</strong></td><td style="${rowStyle}">${turno}</td></tr>
         <tr><td style="${rowStyle}"><strong>Newsletter</strong></td><td style="${rowStyle}">${newsletter ? "Sí" : "No"}</td></tr>
         <tr><td style="${rowStyle}vertical-align:top;"><strong>Motivo</strong></td><td style="${rowStyle}">${motivo.trim()}</td></tr>

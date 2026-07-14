@@ -5,7 +5,8 @@ export const metadata: Metadata = {
   description:
     "Un mapa personalizado para tu cambio físico: qué priorizar, qué evitar, qué esperar en 3 y en 12 meses. Valoración inicial gratuita para las primeras 10 personas.",
   alternates: {
-    canonical: "/",
+    canonical: "/es",
+    languages: { eu: "/", es: "/es" },
   },
   openGraph: {
     title: "Valoración gratuita para tu cambio físico — Entrenatzaile",
