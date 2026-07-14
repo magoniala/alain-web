@@ -148,7 +148,7 @@ export default function ValoracionEntrenatzaileEsPage() {
       {/* CUERPO PRINCIPAL — metáfora del mapa */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-24 pt-20 md:px-16 md:pt-28">
         <div className="max-w-[680px]">
-          <Lines lines={["Quieres ir de Madrid a Bruselas en coche.", "Sin mapa, sin GPS y sin compañía."]} />
+          <Lines lines={["Quieres ir de Madrid a Minsk en coche.", "Sin mapa, sin GPS y sin compañía."]} />
           <Lines
             lines={[
               "Sales sin saber muy bien qué carretera coger.",
