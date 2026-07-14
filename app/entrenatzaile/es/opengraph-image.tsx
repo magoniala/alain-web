@@ -28,27 +28,26 @@ export default async function Image() {
         <div
           style={{
             display: "flex",
-            position: "absolute",
-            top: 56,
-            right: 56,
-            borderRadius: 16,
-            overflow: "hidden",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoSrc} width={140} height={109} />
-        </div>
-        <div
-          style={{
-            display: "flex",
-            fontSize: 28,
-            letterSpacing: 8,
-            textTransform: "uppercase",
-            color: "#0F2240",
+            alignItems: "center",
+            gap: 20,
             marginBottom: 36,
           }}
         >
-          Entrenatzaile · Valoración gratuita
+          <div style={{ display: "flex", borderRadius: 10, overflow: "hidden" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoSrc} width={64} height={50} />
+          </div>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 28,
+              letterSpacing: 8,
+              textTransform: "uppercase",
+              color: "#0F2240",
+            }}
+          >
+            Entrenatzaile · Valoración gratuita
+          </div>
         </div>
         <div
           style={{
