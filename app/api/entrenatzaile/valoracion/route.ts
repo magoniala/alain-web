@@ -85,9 +85,12 @@ export async function POST(req: Request) {
       { onConflict: "email", ignoreDuplicates: true }
     );
 
-    const host = req.headers.get("host") || "www.alainzulaika.com";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const BASE_URL = `${protocol}://${host}`;
+    // Siempre apunta al dominio principal: /api/newsletter/baja, /idioma y /contacto
+    // solo existen ahí, no bajo el subdominio entrenatzaile.alainzulaika.com desde
+    // donde se envía este formulario (ese subdominio reescribe todo lo demás a
+    // /entrenatzaile/*, así que reusar el host de la petición daría 404).
+    const host = req.headers.get("host") || "";
+    const BASE_URL = host.includes("localhost") ? `http://${host}` : "https://alainzulaika.com";
     const emailLower = email.trim().toLowerCase();
     const bajaUrl = `${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(emailLower)}`;
     const euskeraUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(emailLower)}&idioma=eu`;
