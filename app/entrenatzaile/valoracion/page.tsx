@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const TURNO_OPTIONS = ["Mañana", "Tarde", "Me da igual"];
@@ -180,7 +181,8 @@ export default function ValoracionEntrenatzailePage() {
     <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
       {/* HEADER */}
       <header className="border-b border-[#1C3A5E]/12 bg-[#FAF3E8] px-8 py-4 md:px-16">
-        <div className="mx-auto max-w-[1400px]">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-3">
+          <Image src="/entrenatzaile-logo.png" alt="" width={34} height={27} priority />
           <p className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#D4860A]">
             Entrenatzaile
           </p>
