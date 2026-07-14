@@ -14,64 +14,16 @@ export default async function Image() {
     (
       <div
         style={{
-          position: "relative",
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
+          alignItems: "center",
           justifyContent: "center",
           background: "#D4860A",
-          padding: "90px",
-          fontFamily: "sans-serif",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 20,
-            marginBottom: 36,
-          }}
-        >
-          <div style={{ display: "flex", borderRadius: 10, overflow: "hidden" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoSrc} width={64} height={50} />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 28,
-              letterSpacing: 8,
-              textTransform: "uppercase",
-              color: "#0F2240",
-            }}
-          >
-            Entrenatzaile · Doako balorazioa
-          </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            fontSize: 76,
-            fontWeight: 700,
-            lineHeight: 1.08,
-            color: "#0F2240",
-            maxWidth: 1000,
-          }}
-        >
-          Eta urteak badaramatzazu bueltaka?
-        </div>
-        <div
-          style={{
-            display: "flex",
-            fontSize: 36,
-            color: "#1C3A5E",
-            marginTop: 36,
-            maxWidth: 860,
-          }}
-        >
-          Ez duzu beste ahaleginik behar. Mapa hobea behar duzu.
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logoSrc} width={700} height={547} />
       </div>
     ),
     { ...size }
