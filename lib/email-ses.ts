@@ -10,11 +10,18 @@ function parseAddress(addr: string) {
   return m ? { Email: m[2].trim(), Name: m[1].trim() } : { Email: addr };
 }
 
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  base64Content: string;
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
   html: string,
-  from = "Alain Zulaika <contacto@niala.es>"
+  from = "Alain Zulaika <contacto@niala.es>",
+  attachments?: EmailAttachment[]
 ) {
   const fromParsed = parseAddress(from);
   await client.post("send", { version: "v3.1" }).request({
@@ -25,6 +32,15 @@ export async function sendEmail(
         Subject: subject,
         HTMLPart: html,
         ReplyTo: { Email: "newsletter@niala.es" },
+        ...(attachments?.length
+          ? {
+              Attachments: attachments.map((a) => ({
+                ContentType: a.contentType,
+                Filename: a.filename,
+                Base64Content: a.base64Content,
+              })),
+            }
+          : {}),
       },
     ],
   });

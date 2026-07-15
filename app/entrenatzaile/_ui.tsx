@@ -107,7 +107,7 @@ export function LangSwitch({ current }: { current: "eu" | "es" }) {
   );
 }
 
-export function Header({ current }: { current: "eu" | "es" }) {
+export function Header({ current, showLangSwitch = true }: { current: "eu" | "es"; showLangSwitch?: boolean }) {
   return (
     <header className="border-b border-[#1C3A5E]/12 bg-[#FAF3E8] px-8 py-4 md:px-16">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between">
@@ -117,7 +117,7 @@ export function Header({ current }: { current: "eu" | "es" }) {
             Entrenatzaile
           </p>
         </div>
-        <LangSwitch current={current} />
+        {showLangSwitch && <LangSwitch current={current} />}
       </div>
     </header>
   );
