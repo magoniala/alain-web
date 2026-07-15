@@ -30,6 +30,15 @@ interface DiaVisitas {
   visitas: number;
 }
 
+interface VarianteVisitas {
+  variante: string;
+  visitas: number;
+}
+
+function labelVariante(v: string) {
+  return VARIANTES.find((x) => x.value === v)?.label ?? v;
+}
+
 export default function GuiasEstadisticasPage() {
   const [authed, setAuthed] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -41,6 +50,7 @@ export default function GuiasEstadisticasPage() {
   const [to, setTo] = useState(toISODate(new Date()));
   const [total, setTotal] = useState<number | null>(null);
   const [dias, setDias] = useState<DiaVisitas[]>([]);
+  const [variantes, setVariantes] = useState<VarianteVisitas[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -98,6 +108,7 @@ export default function GuiasEstadisticasPage() {
       }
       setTotal(data.total);
       setDias(data.dias);
+      setVariantes(data.variantes ?? []);
     } catch {
       setError("Error consultando las visitas.");
     } finally {
@@ -264,9 +275,36 @@ export default function GuiasEstadisticasPage() {
           </p>
         )}
 
+        {/* POR PLANTILLA */}
+        {variantes.length > 0 && (
+          <div style={{ marginBottom: "2.5rem" }}>
+            <p style={{ fontSize: "0.85rem", color: "rgba(15,34,64,0.6)", marginBottom: "0.75rem" }}>
+              Visitas por plantilla en el rango
+            </p>
+            {variantes.map((v) => (
+              <div key={v.variante} style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.4rem" }}>
+                <span style={{ width: "90px", fontSize: "0.85rem", flexShrink: 0 }}>{labelVariante(v.variante)}</span>
+                <div style={{ flex: 1, background: "rgba(28,58,94,0.08)", height: "18px" }}>
+                  <div
+                    style={{
+                      width: `${(v.visitas / Math.max(1, ...variantes.map((x) => x.visitas))) * 100}%`,
+                      background: NAVY,
+                      height: "100%",
+                    }}
+                  />
+                </div>
+                <span style={{ width: "36px", textAlign: "right", fontSize: "0.85rem", flexShrink: 0 }}>{v.visitas}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* POR DÍA */}
         {dias.length > 0 && (
           <div>
+            <p style={{ fontSize: "0.85rem", color: "rgba(15,34,64,0.6)", marginBottom: "0.75rem" }}>
+              Visitas por día
+            </p>
             {dias.map((d) => (
               <div key={d.fecha} style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.4rem" }}>
                 <span style={{ width: "90px", fontSize: "0.85rem", flexShrink: 0 }}>{d.fecha}</span>

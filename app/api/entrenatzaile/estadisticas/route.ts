@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabase
     .from("landing_visitas")
-    .select("created_at")
+    .select("created_at, variante")
     .eq("landing", landing)
     .gte("created_at", `${from}T00:00:00.000Z`)
     .lte("created_at", `${to}T23:59:59.999Z`);
@@ -41,17 +41,25 @@ export async function GET(req: Request) {
   }
 
   const porDia: Record<string, number> = {};
+  const porVariante: Record<string, number> = {};
   for (const row of data ?? []) {
     const dia = diaLocal(row.created_at);
     porDia[dia] = (porDia[dia] || 0) + 1;
+
+    const variante = row.variante || "sin registrar";
+    porVariante[variante] = (porVariante[variante] || 0) + 1;
   }
 
   const dias = Object.entries(porDia)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([fecha, visitas]) => ({ fecha, visitas }));
 
+  const variantes = Object.entries(porVariante)
+    .sort(([, a], [, b]) => b - a)
+    .map(([variante, visitas]) => ({ variante, visitas }));
+
   return NextResponse.json(
-    { total: data?.length ?? 0, dias },
+    { total: data?.length ?? 0, dias, variantes },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

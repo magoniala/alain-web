@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { getVarianteActual } from "@/lib/entrenatzaile-variantes";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -24,7 +25,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, tracked: false });
   }
 
-  await supabase.from("landing_visitas").insert({ landing, user_agent: userAgent });
+  // Guarda qué plantilla estaba activa en el momento de la visita, para
+  // poder desglosar las estadísticas por variante más adelante.
+  const variante = await getVarianteActual(landing);
+
+  await supabase.from("landing_visitas").insert({ landing, user_agent: userAgent, variante });
 
   return NextResponse.json({ ok: true, tracked: true });
 }
