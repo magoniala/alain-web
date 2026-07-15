@@ -5,17 +5,17 @@ export const metadata: Metadata = {
   description:
     "Zure aldaketa fisikorako mapa pertsonalizatua: zer lehenetsi, zer saihestu, zer espero 3 eta 12 hilabetera. Hasierako balorazio doakoa lehen 10 pertsonentzat.",
   alternates: {
-    canonical: "https://entrenatzaile.alainzulaika.com",
+    canonical: "https://entrenatzaile.alainzulaika.com/valoracion",
     languages: {
-      eu: "https://entrenatzaile.alainzulaika.com",
-      es: "https://entrenatzaile.alainzulaika.com/es",
+      eu: "https://entrenatzaile.alainzulaika.com/valoracion",
+      es: "https://entrenatzaile.alainzulaika.com/es/valoracion",
     },
   },
   openGraph: {
     title: "Doako balorazioa zure aldaketa fisikorako — Entrenatzaile",
     description:
       "Zure aldaketa fisikorako mapa pertsonalizatua: zer lehenetsi, zer saihestu, zer espero 3 eta 12 hilabetera.",
-    url: "https://entrenatzaile.alainzulaika.com",
+    url: "https://entrenatzaile.alainzulaika.com/valoracion",
     siteName: "Entrenatzaile",
     locale: "eu_EU",
     type: "website",

@@ -15,7 +15,7 @@ import {
   sectionTitle,
   emphasisP,
   cardStyle,
-} from "../_ui";
+} from "../../_ui";
 
 const TURNO_OPTIONS = ["Mañana", "Tarde", "Me da igual"];
 

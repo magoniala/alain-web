@@ -100,23 +100,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ha ocurrido un error enviando las guías. Inténtalo de nuevo." }, { status: 500 });
   }
 
-  const rowStyle = "padding:0.3rem 0.6rem;border-bottom:1px solid #eee;";
-  const notifHtml = `
-    <div style="font-family:monospace;max-width:560px;margin:0 auto;padding:1.5rem;color:#1a1a1a;background:#f8f8f8;border:1px solid #ddd;font-size:0.88rem;">
-      <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:#999;margin:0 0 1rem 0;">ENTRENATZAILE · GUÍAS</p>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="${rowStyle}"><strong>Nombre</strong></td><td style="${rowStyle}">${nombreTrim}</td></tr>
-        <tr><td style="${rowStyle}"><strong>Email</strong></td><td style="${rowStyle}">${emailLower}</td></tr>
-      </table>
-    </div>
-  `;
-
-  await sendEmail(
-    "newsletter@niala.es",
-    `Entrenatzaile — Nueva descarga de guías: ${nombreTrim}`,
-    notifHtml,
-    "Entrenatzaile <contacto@niala.es>"
-  );
-
   return NextResponse.json({ ok: true });
 }

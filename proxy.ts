@@ -15,12 +15,19 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
 
-  // Subdominio dedicado: entrenatzaile.alainzulaika.com sirve la landing de
-  // valoración gratuita. Euskera es el idioma principal (/ -> /entrenatzaile/eu)
-  // y castellano vive en /es (/es -> /entrenatzaile/es).
+  // Subdominio dedicado: entrenatzaile.alainzulaika.com. La landing de
+  // valoración gratuita vive en /valoracion (euskera) y /es/valoracion
+  // (castellano), igual que el resto del sitio (bare path = eu, /es = es).
+  // La raíz del subdominio redirige a /valoracion para no romper enlaces
+  // ya compartidos.
   if (hostname.startsWith("entrenatzaile.")) {
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/valoracion";
+      return NextResponse.redirect(url);
+    }
     const url = request.nextUrl.clone();
-    url.pathname = `/entrenatzaile${pathname === "/" ? "/eu" : pathname}`;
+    url.pathname = `/entrenatzaile${pathname}`;
     return NextResponse.rewrite(url);
   }
 

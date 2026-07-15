@@ -89,7 +89,7 @@ export function LangSwitch({ current }: { current: "eu" | "es" }) {
   return (
     <div className="flex items-center border border-[#1C3A5E]/20 text-[0.75rem] tracking-[0.1em]">
       <Link
-        href="/"
+        href="/valoracion"
         style={current === "eu" ? activeStyle : inactiveStyle}
         className="px-2.5 py-1.5 transition-colors hover:text-[#0F2240]"
       >
@@ -97,7 +97,7 @@ export function LangSwitch({ current }: { current: "eu" | "es" }) {
       </Link>
       <span className="w-px self-stretch bg-[#1C3A5E]/15" />
       <Link
-        href="/es"
+        href="/es/valoracion"
         style={current === "es" ? activeStyle : inactiveStyle}
         className="px-2.5 py-1.5 transition-colors hover:text-[#0F2240]"
       >
