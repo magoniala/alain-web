@@ -37,3 +37,63 @@ export async function setVarianteActual(landing: string, variante: Variante) {
     .from("landing_config")
     .upsert({ landing, variante, updated_at: new Date().toISOString() }, { onConflict: "landing" });
 }
+
+export interface GuiaArchivo {
+  file: string;
+  name: string;
+}
+
+// Título/descripción de cada guía en PDF, para las tarjetas "de regalo" en
+// la landing (se buscan por nombre de archivo).
+export const GUIA_INFO: Record<string, { titulo: string; desc: string }> = {
+  "espalda.pdf": {
+    titulo: "Por qué tu espalda siempre vuelve a fallar",
+    desc: "Por qué el dolor lumbar recae una y otra vez, y qué rompe de verdad el ciclo.",
+  },
+  "ereccion-50.pdf": {
+    titulo: "Lo que nadie te cuenta sobre la erección después de los 50",
+    desc: "Qué cambia de verdad, qué puedes mejorar con ejercicio, y qué merece que vayas al médico.",
+  },
+  "correr-rodillas.pdf": {
+    titulo: "Correr no te destroza las rodillas",
+    desc: "Lo que de verdad lesiona tu rodilla (spoiler: no es correr) y cómo seguir moviéndote sin miedo.",
+  },
+  "ejercicio-espalda-bonus.pdf": {
+    titulo: "El mejor ejercicio para tu espalda no es el que crees",
+    desc: "Por qué el ejercicio sí funciona para el dolor de espalda persistente, pero no como te han contado.",
+  },
+};
+
+// La guía protagonista de cada plantilla.
+export const GUIA_PRINCIPAL: Record<Variante, GuiaArchivo> = {
+  lumbar: { file: "espalda.pdf", name: "Por qué tu espalda siempre vuelve a fallar.pdf" },
+  ereccion: { file: "ereccion-50.pdf", name: "Lo que nadie te cuenta sobre la erección después de los 50.pdf" },
+  rodilla: { file: "correr-rodillas.pdf", name: "Correr no te destroza las rodillas.pdf" },
+};
+
+// Las 2 guías "de regalo" que se anuncian en la landing y se entregan
+// siempre por email — deben coincidir en ambos sitios para no prometer
+// algo que luego no se envía.
+export const GUIAS_ANUNCIADAS_EXTRA: Record<Variante, GuiaArchivo[]> = {
+  lumbar: [
+    { file: "ereccion-50.pdf", name: "Lo que nadie te cuenta sobre la erección después de los 50.pdf" },
+    { file: "correr-rodillas.pdf", name: "Correr no te destroza las rodillas.pdf" },
+  ],
+  ereccion: [
+    { file: "espalda.pdf", name: "Por qué tu espalda siempre vuelve a fallar.pdf" },
+    { file: "correr-rodillas.pdf", name: "Correr no te destroza las rodillas.pdf" },
+  ],
+  rodilla: [
+    { file: "espalda.pdf", name: "Por qué tu espalda siempre vuelve a fallar.pdf" },
+    { file: "ejercicio-espalda-bonus.pdf", name: "El mejor ejercicio para tu espalda no es el que crees.pdf" },
+  ],
+};
+
+// Guía extra que solo se entrega por email, sin anunciar en la landing
+// ("3+1 inesperado"). null cuando no hay hueco para sorpresa sin repetir
+// tema (variante rodilla ya reparte las dos guías de espalda a la vista).
+export const GUIA_SORPRESA: Record<Variante, GuiaArchivo | null> = {
+  lumbar: { file: "ejercicio-espalda-bonus.pdf", name: "El mejor ejercicio para tu espalda no es el que crees.pdf" },
+  ereccion: { file: "ejercicio-espalda-bonus.pdf", name: "El mejor ejercicio para tu espalda no es el que crees.pdf" },
+  rodilla: null,
+};

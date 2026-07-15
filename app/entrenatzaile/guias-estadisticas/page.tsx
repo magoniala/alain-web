@@ -218,12 +218,6 @@ export default function GuiasEstadisticasPage() {
               </button>
             ))}
           </div>
-          {variante && variante !== "lumbar" && (
-            <p style={{ fontSize: "0.8rem", color: "rgba(15,34,64,0.5)", marginTop: "0.75rem" }}>
-              Nota: el contenido de la landing para esta plantilla aún no está cargado — solo cambia la etiqueta
-              que se asigna a los nuevos leads.
-            </p>
-          )}
         </div>
 
         {/* FILTRO DE FECHAS */}
