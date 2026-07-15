@@ -73,7 +73,8 @@ export const GUIA_PRINCIPAL: Record<Variante, GuiaArchivo> = {
 
 // Las 2 guías "de regalo" que se anuncian en la landing y se entregan
 // siempre por email — deben coincidir en ambos sitios para no prometer
-// algo que luego no se envía.
+// algo que luego no se envía. Son siempre los otros dos temas del trío
+// (espalda / erección / rodilla) que no sea el protagonista de turno.
 export const GUIAS_ANUNCIADAS_EXTRA: Record<Variante, GuiaArchivo[]> = {
   lumbar: [
     { file: "ereccion-50.pdf", name: "Lo que nadie te cuenta sobre la erección después de los 50.pdf" },
@@ -85,15 +86,16 @@ export const GUIAS_ANUNCIADAS_EXTRA: Record<Variante, GuiaArchivo[]> = {
   ],
   rodilla: [
     { file: "espalda.pdf", name: "Por qué tu espalda siempre vuelve a fallar.pdf" },
-    { file: "ejercicio-espalda-bonus.pdf", name: "El mejor ejercicio para tu espalda no es el que crees.pdf" },
+    { file: "ereccion-50.pdf", name: "Lo que nadie te cuenta sobre la erección después de los 50.pdf" },
   ],
 };
 
-// Guía extra que solo se entrega por email, sin anunciar en la landing
-// ("3+1 inesperado"). null cuando no hay hueco para sorpresa sin repetir
-// tema (variante rodilla ya reparte las dos guías de espalda a la vista).
+// Cuarto PDF que solo se entrega por email, sin anunciar en la landing
+// ("3+1 inesperado"). Es siempre la segunda guía de espalda — solo
+// repetiría tema si el protagonista fuera espalda, y aun así se mantiene
+// (ya lo llevaba la variante original), así que es constante en las 3.
 export const GUIA_SORPRESA: Record<Variante, GuiaArchivo | null> = {
   lumbar: { file: "ejercicio-espalda-bonus.pdf", name: "El mejor ejercicio para tu espalda no es el que crees.pdf" },
   ereccion: { file: "ejercicio-espalda-bonus.pdf", name: "El mejor ejercicio para tu espalda no es el que crees.pdf" },
-  rodilla: null,
+  rodilla: { file: "ejercicio-espalda-bonus.pdf", name: "El mejor ejercicio para tu espalda no es el que crees.pdf" },
 };
