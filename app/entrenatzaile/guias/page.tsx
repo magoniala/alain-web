@@ -39,6 +39,15 @@ export default function GuiasPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    fetch("/api/entrenatzaile/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ landing: "guias" }),
+      keepalive: true,
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const elements = document.querySelectorAll(".fade-in");
     const observer = new IntersectionObserver(
       (entries) => {

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, type EmailAttachment } from "@/lib/email-ses";
+import { getVarianteActual, VARIANTE_TAG } from "@/lib/entrenatzaile-variantes";
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -42,12 +43,16 @@ export async function POST(req: Request) {
   const emailLower = email.trim().toLowerCase();
   const nombreTrim = nombre.trim();
 
+  const variante = await getVarianteActual("guias");
+  const tags = ["ENTRENAMIENTO", "GUIAS", VARIANTE_TAG[variante]];
+
   const { error: dbError } = await supabase.from("newsletter_contactos").upsert(
     {
       email: emailLower,
       nombre: nombreTrim,
       idioma: "es",
       origen: "entrenatzaile_guias",
+      tags,
     },
     { onConflict: "email", ignoreDuplicates: true }
   );
