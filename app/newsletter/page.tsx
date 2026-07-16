@@ -81,6 +81,7 @@ export default function NewsletterPage() {
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [activePdfTarget, setActivePdfTarget] = useState<{ id: string; setValue: (v: string) => void; getValue: () => string; selStart: number; selEnd: number } | null>(null);
+  const [pdfError, setPdfError] = useState<{ id: string; message: string } | null>(null);
 
   // Edit campaign state
   const [editing, setEditing] = useState<Campana | null>(null);
@@ -354,23 +355,39 @@ export default function NewsletterPage() {
     setValue(val.slice(0, pos) + inserted + val.slice(pos));
   }
 
+  const MAX_PDF_BYTES = 4 * 1024 * 1024;
+
   async function handlePdfFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !activePdfTarget) return;
+    const target = activePdfTarget;
+    if (!file || !target) return;
     e.target.value = "";
+    setPdfError(null);
+    if (file.size > MAX_PDF_BYTES) {
+      setPdfError({ id: target.id, message: `El PDF pesa ${(file.size / 1024 / 1024).toFixed(1)} MB — el máximo es 4 MB (límite del servidor). Comprímelo e inténtalo de nuevo.` });
+      return;
+    }
     setUploadingPdf(true);
-    const form = new FormData();
-    form.append("password", pw());
-    form.append("file", file);
-    const res = await fetch("/api/newsletter/upload", { method: "POST", body: form });
-    const data = await res.json();
-    setUploadingPdf(false);
-    if (!data.url) return;
-    const { setValue, getValue, selStart, selEnd } = activePdfTarget;
-    const val = getValue();
-    const selected = val.slice(selStart, selEnd) || file.name.replace(/\.pdf$/i, "");
-    const inserted = `[${selected}](${data.url})`;
-    setValue(val.slice(0, selStart) + inserted + val.slice(selEnd));
+    try {
+      const form = new FormData();
+      form.append("password", pw());
+      form.append("file", file);
+      const res = await fetch("/api/newsletter/upload", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        setPdfError({ id: target.id, message: data.error || `Error al subir el PDF (${res.status}).` });
+        return;
+      }
+      const { setValue, getValue, selStart, selEnd } = target;
+      const val = getValue();
+      const selected = val.slice(selStart, selEnd) || file.name.replace(/\.pdf$/i, "");
+      const inserted = `[${selected}](${data.url})`;
+      setValue(val.slice(0, selStart) + inserted + val.slice(selEnd));
+    } catch {
+      setPdfError({ id: target.id, message: "Error de red al subir el PDF. Inténtalo de nuevo." });
+    } finally {
+      setUploadingPdf(false);
+    }
   }
 
   function applyImage(id: string, setValue: (v: string) => void, getValue: () => string) {
@@ -408,38 +425,44 @@ export default function NewsletterPage() {
 
   function Toolbar({ id, setValue, getValue }: { id: string; setValue: (v: string) => void; getValue: () => string }) {
     return (
-      <div className="flex gap-1 mb-1">
-        <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "**", setValue, getValue); }} title="Negrita"><strong>B</strong></button>
-        <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "_", setValue, getValue); }} title="Cursiva"><em>I</em></button>
-        <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyLink(id, setValue, getValue); }} title="Enlace">🔗 enlace</button>
-        <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyImage(id, setValue, getValue); }} title="URL imagen">🖼 url</button>
-        <button
-          type="button"
-          className={`${toolbarBtnClass} text-[0.65rem]`}
-          disabled={uploadingImg}
-          onMouseDown={e => {
-            e.preventDefault();
-            setActiveImgTarget({ id, setValue, getValue });
-            fileInputRef.current?.click();
-          }}
-          title="Subir imagen desde ordenador"
-        >
-          {uploadingImg ? "subiendo…" : "🖼 subir"}
-        </button>
-        <button
-          type="button"
-          className={`${toolbarBtnClass} text-[0.65rem]`}
-          disabled={uploadingPdf}
-          onMouseDown={e => {
-            e.preventDefault();
-            const el = document.getElementById(id) as HTMLTextAreaElement | null;
-            setActivePdfTarget({ id, setValue, getValue, selStart: el?.selectionStart ?? getValue().length, selEnd: el?.selectionEnd ?? getValue().length });
-            pdfInputRef.current?.click();
-          }}
-          title="Adjuntar PDF (se enlaza al texto seleccionado)"
-        >
-          {uploadingPdf ? "subiendo…" : "📎 PDF"}
-        </button>
+      <div className="mb-1">
+        <div className="flex gap-1">
+          <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "**", setValue, getValue); }} title="Negrita"><strong>B</strong></button>
+          <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); applyFormat(id, "_", setValue, getValue); }} title="Cursiva"><em>I</em></button>
+          <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyLink(id, setValue, getValue); }} title="Enlace">🔗 enlace</button>
+          <button type="button" className={`${toolbarBtnClass} text-[0.65rem]`} onMouseDown={e => { e.preventDefault(); applyImage(id, setValue, getValue); }} title="URL imagen">🖼 url</button>
+          <button
+            type="button"
+            className={`${toolbarBtnClass} text-[0.65rem]`}
+            disabled={uploadingImg}
+            onMouseDown={e => {
+              e.preventDefault();
+              setActiveImgTarget({ id, setValue, getValue });
+              fileInputRef.current?.click();
+            }}
+            title="Subir imagen desde ordenador"
+          >
+            {uploadingImg ? "subiendo…" : "🖼 subir"}
+          </button>
+          <button
+            type="button"
+            className={`${toolbarBtnClass} text-[0.65rem]`}
+            disabled={uploadingPdf}
+            onMouseDown={e => {
+              e.preventDefault();
+              setPdfError(null);
+              const el = document.getElementById(id) as HTMLTextAreaElement | null;
+              setActivePdfTarget({ id, setValue, getValue, selStart: el?.selectionStart ?? getValue().length, selEnd: el?.selectionEnd ?? getValue().length });
+              pdfInputRef.current?.click();
+            }}
+            title="Adjuntar PDF (se enlaza al texto seleccionado)"
+          >
+            {uploadingPdf ? "subiendo…" : "📎 PDF"}
+          </button>
+        </div>
+        {pdfError?.id === id && (
+          <p className="text-[0.7rem] text-[#DC2626] mt-1">{pdfError.message}</p>
+        )}
       </div>
     );
   }
