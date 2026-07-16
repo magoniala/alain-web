@@ -78,6 +78,9 @@ export default function NewsletterPage() {
   const [uploadingImg, setUploadingImg] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeImgTarget, setActiveImgTarget] = useState<{ id: string; setValue: (v: string) => void; getValue: () => string } | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const [activePdfTarget, setActivePdfTarget] = useState<{ id: string; setValue: (v: string) => void; getValue: () => string; selStart: number; selEnd: number } | null>(null);
 
   // Edit campaign state
   const [editing, setEditing] = useState<Campana | null>(null);
@@ -351,6 +354,25 @@ export default function NewsletterPage() {
     setValue(val.slice(0, pos) + inserted + val.slice(pos));
   }
 
+  async function handlePdfFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !activePdfTarget) return;
+    e.target.value = "";
+    setUploadingPdf(true);
+    const form = new FormData();
+    form.append("password", pw());
+    form.append("file", file);
+    const res = await fetch("/api/newsletter/upload", { method: "POST", body: form });
+    const data = await res.json();
+    setUploadingPdf(false);
+    if (!data.url) return;
+    const { setValue, getValue, selStart, selEnd } = activePdfTarget;
+    const val = getValue();
+    const selected = val.slice(selStart, selEnd) || file.name.replace(/\.pdf$/i, "");
+    const inserted = `[${selected}](${data.url})`;
+    setValue(val.slice(0, selStart) + inserted + val.slice(selEnd));
+  }
+
   function applyImage(id: string, setValue: (v: string) => void, getValue: () => string) {
     const el = document.getElementById(id) as HTMLTextAreaElement | null;
     if (!el) return;
@@ -403,6 +425,20 @@ export default function NewsletterPage() {
           title="Subir imagen desde ordenador"
         >
           {uploadingImg ? "subiendo…" : "🖼 subir"}
+        </button>
+        <button
+          type="button"
+          className={`${toolbarBtnClass} text-[0.65rem]`}
+          disabled={uploadingPdf}
+          onMouseDown={e => {
+            e.preventDefault();
+            const el = document.getElementById(id) as HTMLTextAreaElement | null;
+            setActivePdfTarget({ id, setValue, getValue, selStart: el?.selectionStart ?? getValue().length, selEnd: el?.selectionEnd ?? getValue().length });
+            pdfInputRef.current?.click();
+          }}
+          title="Adjuntar PDF (se enlaza al texto seleccionado)"
+        >
+          {uploadingPdf ? "subiendo…" : "📎 PDF"}
         </button>
       </div>
     );
@@ -903,6 +939,13 @@ export default function NewsletterPage() {
         accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
         onChange={handleImageFileChange}
+      />
+      <input
+        ref={pdfInputRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={handlePdfFileChange}
       />
     </main>
   );
