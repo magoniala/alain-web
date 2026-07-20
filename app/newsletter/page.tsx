@@ -60,6 +60,11 @@ export default function NewsletterPage() {
   const [sending, setSending] = useState(false);
   const [confirm, setConfirm] = useState(false);
 
+  // Test send state
+  const [testEmails, setTestEmails] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok?: boolean; error?: string; count?: number } | null>(null);
+
   // Schedule state
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
@@ -193,6 +198,22 @@ export default function NewsletterPage() {
     setSending(false);
     setConfirm(false);
     if (data.ok) { setSubjectEu(""); setPreheaderEu(""); setBodyEu(""); setSubjectEs(""); setPreheaderEs(""); setBodyEs(""); localStorage.removeItem(DRAFT_KEY); }
+  }
+
+  async function handleSendTest() {
+    const list = testEmails.split(",").map(e => e.trim()).filter(Boolean);
+    if (list.length === 0) return;
+    setSendingTest(true);
+    setTestResult(null);
+    const res = await fetch("/api/newsletter/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs, test_emails: list }),
+    });
+    const data = await res.json();
+    setSendingTest(false);
+    if (data.ok) setTestResult({ ok: true, count: list.length });
+    else setTestResult({ error: data.error || "Error al enviar la prueba." });
   }
 
   async function handleSchedule() {
@@ -626,6 +647,40 @@ export default function NewsletterPage() {
                   </div>
                 </div>
               )}
+
+              {/* Test send */}
+              <div className="mt-6 border-t border-gray-100 pt-5">
+                <p className="text-[0.7rem] uppercase tracking-wider text-gray-400 mb-3">Enviar prueba</p>
+                {testResult?.ok && (
+                  <div className="mb-3 p-3 bg-green-50 border border-green-200 text-sm text-green-700">
+                    ✓ Prueba enviada a {testResult.count} destinatario{testResult.count === 1 ? "" : "s"}.
+                  </div>
+                )}
+                {testResult?.error && (
+                  <div className="mb-3 p-3 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{testResult.error}</div>
+                )}
+                <div className="flex gap-2 items-end flex-wrap">
+                  <div className="flex-1 min-w-[240px]">
+                    <input
+                      type="text"
+                      value={testEmails}
+                      onChange={e => setTestEmails(e.target.value)}
+                      placeholder="tuemail@ejemplo.com, otro@ejemplo.com"
+                      className={inputClass}
+                    />
+                  </div>
+                  <button
+                    onClick={handleSendTest}
+                    disabled={!canSend || !testEmails.trim() || sendingTest}
+                    className="px-5 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-sm disabled:opacity-40 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                  >
+                    {sendingTest ? "Enviando..." : "Enviar prueba"}
+                  </button>
+                </div>
+                <p className="text-[0.7rem] text-gray-400 mt-1.5">
+                  Envía el asunto "[PRUEBA] ..." con el contenido tal cual a estas direcciones, sin tocar a los suscriptores. Si hay versión eu y es, llegan las dos.
+                </p>
+              </div>
 
               {/* Actions */}
               <div className="mt-6 space-y-3">

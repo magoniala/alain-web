@@ -44,7 +44,7 @@ function buildHtml(body: string, email: string, preheader?: string) {
 }
 
 export async function POST(req: Request) {
-  const { password, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es } = await req.json();
+  const { password, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, test_emails } = await req.json();
 
   if (password !== process.env.NEWSLETTER_PASSWORD) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
@@ -55,6 +55,17 @@ export async function POST(req: Request) {
 
   if (!hasEu && !hasEs) {
     return NextResponse.json({ error: "Faltan campos." }, { status: 400 });
+  }
+
+  const testList: string[] = Array.isArray(test_emails) ? test_emails.map((e: string) => e.trim()).filter(Boolean) : [];
+
+  if (testList.length > 0) {
+    const emails = [
+      ...(hasEu ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_eu}`, html: buildHtml(body_eu, email, preheader_eu) })) : []),
+      ...(hasEs ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_es}`, html: buildHtml(body_es, email, preheader_es) })) : []),
+    ];
+    await sendEmailBatch(emails.map(({ email, subject, html }) => ({ to: email, subject, html })));
+    return NextResponse.json({ ok: true, enviados: testList.length, eu: hasEu ? testList.length : 0, es: hasEs ? testList.length : 0, prueba: true });
   }
 
   const { data: contactos, error } = await supabase
