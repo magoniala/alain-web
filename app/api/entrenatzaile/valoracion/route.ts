@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -161,7 +161,8 @@ export async function POST(req: Request) {
           <p style="${pdStyle}"><strong>Pd2:</strong> ¿Prefieres recibirlos en euskera? <a href="${idiomaUrl}" style="${linkStyle}">Clic aquí</a></p>
           <p style="${pdStyle}"><strong>Pd3:</strong> ¿Tienes un evento que hacer especial? <a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a> Eventos de empresa, eventos culturales, fiestas privadas… Diez minutos de conversación suelen aclarar si tiene sentido.</p>
           <p style="${pdStyle}"><strong>Pd4:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.<br>Si encima me cuentas quien eres, como me has conocido, que esperas recibir en mis mails... me alegras el día.</p>
-        `)
+        `),
+      resolveNewsletterFrom()
     );
   }
 

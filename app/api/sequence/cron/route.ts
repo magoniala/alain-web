@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -118,7 +118,7 @@ export async function GET(req: Request) {
     const sendAt = new Date(row.mail2_id);
     if (isNaN(sendAt.getTime()) || sendAt > now) continue;
     const { subject, html } = comodinMail2(row.email, row.idioma === "eu");
-    await sendEmail(row.email, subject, html);
+    await sendEmail(row.email, subject, html, resolveNewsletterFrom());
     await supabase.from("comodin_contactos").update({ mail2_id: null }).eq("email", row.email);
     enviados++;
   }
@@ -134,7 +134,7 @@ export async function GET(req: Request) {
     const sendAt = new Date(row.mail3_id);
     if (isNaN(sendAt.getTime()) || sendAt > now) continue;
     const { subject, html } = comodinMail3(row.email, row.idioma === "eu");
-    await sendEmail(row.email, subject, html);
+    await sendEmail(row.email, subject, html, resolveNewsletterFrom());
     await supabase.from("comodin_contactos").update({ mail3_id: null }).eq("email", row.email);
     enviados++;
   }
@@ -150,7 +150,7 @@ export async function GET(req: Request) {
     const sendAt = new Date(row.mail2_id);
     if (isNaN(sendAt.getTime()) || sendAt > now) continue;
     const { subject, html } = misionMail2(row.email, row.idioma === "eu");
-    await sendEmail(row.email, subject, html);
+    await sendEmail(row.email, subject, html, resolveNewsletterFrom());
     await supabase.from("mision_contactos").update({ mail2_id: null }).eq("email", row.email);
     enviados++;
   }
@@ -166,7 +166,7 @@ export async function GET(req: Request) {
     const sendAt = new Date(row.mail3_id);
     if (isNaN(sendAt.getTime()) || sendAt > now) continue;
     const { subject, html } = misionMail3(row.email, row.idioma === "eu");
-    await sendEmail(row.email, subject, html);
+    await sendEmail(row.email, subject, html, resolveNewsletterFrom());
     await supabase.from("mision_contactos").update({ mail3_id: null }).eq("email", row.email);
     enviados++;
   }

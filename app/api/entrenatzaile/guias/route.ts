@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail, type EmailAttachment } from "@/lib/email-ses";
+import { sendEmail, resolveNewsletterFrom, type EmailAttachment } from "@/lib/email-ses";
 import {
   getVarianteActual,
   VARIANTE_TAG,
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
         <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
         <p style="font-size:1.15rem;color:#1a1a1a;line-height:2.1;margin-top:0.5rem;"><strong>Pd:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.</p>
       `),
-      "Alain Zulaika <contacto@niala.es>",
+      resolveNewsletterFrom(),
       attachments
     );
   } catch (err) {

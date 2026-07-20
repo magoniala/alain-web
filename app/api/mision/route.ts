@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -102,7 +102,8 @@ export async function POST(req: Request) {
         <p style="${pdStyle}"><strong>Pd6:</strong> Sí, más allá de mago, soy entrenador. ¿Te interesa mejorar tu condición física? Dale aquí → <a href="${entrenamientoUrl}" style="${linkStyle}">Me interesa.</a></p>
         <p style="${pdStyle}"><strong>Pd7:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.<br>Si encima me cuentas quien eres, como me has conocido, que esperas recibir en mis mails... me alegras el día.</p>
         <p style="${pdStyle}"><strong>Pd8:</strong> pd,pd,pd,pd...</p>
-      `)
+      `),
+    resolveNewsletterFrom()
   );
 
   const mail2SendAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();

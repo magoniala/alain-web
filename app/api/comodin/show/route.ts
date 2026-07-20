@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -44,7 +44,8 @@ export async function POST(req: Request) {
           <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">Dejar de recibir estos emails</a></p>
         </div>
       </div>
-    `
+    `,
+    resolveNewsletterFrom()
   );
 
   return NextResponse.json({ ok: true });
