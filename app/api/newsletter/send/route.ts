@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmailBatch } from "@/lib/email-ses";
+import { sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -44,7 +44,7 @@ function buildHtml(body: string, email: string, preheader?: string) {
 }
 
 export async function POST(req: Request) {
-  const { password, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, test_emails } = await req.json();
+  const { password, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, test_emails, remitente } = await req.json();
 
   if (password !== process.env.NEWSLETTER_PASSWORD) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Faltan campos." }, { status: 400 });
   }
 
+  const from = resolveNewsletterFrom(remitente);
   const testList: string[] = Array.isArray(test_emails) ? test_emails.map((e: string) => e.trim()).filter(Boolean) : [];
 
   if (testList.length > 0) {
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
       ...(hasEu ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_eu}`, html: buildHtml(body_eu, email, preheader_eu) })) : []),
       ...(hasEs ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_es}`, html: buildHtml(body_es, email, preheader_es) })) : []),
     ];
-    await sendEmailBatch(emails.map(({ email, subject, html }) => ({ to: email, subject, html })));
+    await sendEmailBatch(emails.map(({ email, subject, html }) => ({ to: email, subject, html })), from);
     return NextResponse.json({ ok: true, enviados: testList.length, eu: hasEu ? testList.length : 0, es: hasEs ? testList.length : 0, prueba: true });
   }
 
@@ -101,7 +102,8 @@ export async function POST(req: Request) {
         to: nombre ? `${nombre} <${email}>` : email,
         subject,
         html,
-      }))
+      })),
+      from
     );
   }
 

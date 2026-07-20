@@ -1,7 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
+import { NEWSLETTER_SENDERS } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+function resolveRemitente(remitente?: string): string {
+  return NEWSLETTER_SENDERS.includes(remitente as (typeof NEWSLETTER_SENDERS)[number]) ? remitente! : NEWSLETTER_SENDERS[0];
+}
 
 function auth(req: Request) {
   const pw = req.headers.get("x-nl-password");
@@ -21,14 +26,14 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const body = await req.json();
-  const { subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para } = body;
+  const { subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, remitente } = body;
   if (!programado_para) return NextResponse.json({ error: "Falta fecha." }, { status: 400 });
   if (!((subject_eu && body_eu) || (subject_es && body_es))) {
     return NextResponse.json({ error: "Necesitas al menos un idioma completo." }, { status: 400 });
   }
   const { data, error } = await supabase
     .from("newsletter_campanas")
-    .insert({ subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para })
+    .insert({ subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, remitente: resolveRemitente(remitente) })
     .select()
     .single();
   if (error) return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
@@ -37,11 +42,11 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  const { id, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, excluidos } = await req.json();
+  const { id, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, excluidos, remitente } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
   const { error } = await supabase
     .from("newsletter_campanas")
-    .update({ subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, excluidos })
+    .update({ subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, programado_para, excluidos, remitente: resolveRemitente(remitente) })
     .eq("id", id)
     .eq("estado", "programado");
   if (error) return NextResponse.json({ error: "Error al actualizar." }, { status: 500 });

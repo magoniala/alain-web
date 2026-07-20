@@ -26,6 +26,7 @@ interface Campana {
   enviados_eu: number | null;
   enviados_es: number | null;
   excluidos: string[] | null;
+  remitente: string | null;
 }
 
 interface SendResult {
@@ -38,6 +39,8 @@ interface SendResult {
 
 const TABS = ["Nuevo email", "Programadas", "Suscriptores"] as const;
 type Tab = (typeof TABS)[number];
+
+const REMITENTES = ["newsletter@alainzulaika.com", "newsletter@niala.es"] as const;
 
 export default function NewsletterPage() {
   const [password, setPassword] = useState("");
@@ -56,6 +59,7 @@ export default function NewsletterPage() {
   const [subjectEs, setSubjectEs] = useState("");
   const [preheaderEs, setPreheaderEs] = useState("");
   const [bodyEs, setBodyEs] = useState("");
+  const [remitente, setRemitente] = useState<string>(REMITENTES[0]);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
   const [sending, setSending] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -100,6 +104,7 @@ export default function NewsletterPage() {
   const [editTime, setEditTime] = useState("");
   const [editExcluidos, setEditExcluidos] = useState<string[]>([]);
   const [editExcludeInput, setEditExcludeInput] = useState("");
+  const [editRemitente, setEditRemitente] = useState<string>(REMITENTES[0]);
   const [saving, setSaving] = useState(false);
 
   // Cancel confirmation state
@@ -191,7 +196,7 @@ export default function NewsletterPage() {
     const res = await fetch("/api/newsletter/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs }),
+      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs, remitente }),
     });
     const data = await res.json();
     setSendResult(data);
@@ -208,7 +213,7 @@ export default function NewsletterPage() {
     const res = await fetch("/api/newsletter/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs, test_emails: list }),
+      body: JSON.stringify({ password: pw(), subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs, test_emails: list, remitente }),
     });
     const data = await res.json();
     setSendingTest(false);
@@ -224,7 +229,7 @@ export default function NewsletterPage() {
     const res = await fetch("/api/newsletter/campanas", {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs, programado_para }),
+      body: JSON.stringify({ subject_eu: subjectEu, body_eu: bodyEu, preheader_eu: preheaderEu, subject_es: subjectEs, body_es: bodyEs, preheader_es: preheaderEs, programado_para, remitente }),
     });
     const data = await res.json();
     if (data.id) {
@@ -290,6 +295,7 @@ export default function NewsletterPage() {
     setEditTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
     setEditExcluidos(c.excluidos ?? []);
     setEditExcludeInput("");
+    setEditRemitente(c.remitente ?? REMITENTES[0]);
   }
 
   async function handleSaveEdit() {
@@ -299,10 +305,10 @@ export default function NewsletterPage() {
     await fetch("/api/newsletter/campanas", {
       method: "PATCH",
       headers: authHeaders(),
-      body: JSON.stringify({ id: editing.id, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para, excluidos: editExcluidos }),
+      body: JSON.stringify({ id: editing.id, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para, excluidos: editExcluidos, remitente: editRemitente }),
     });
     setCampanas(prev => prev.map(c => c.id === editing.id
-      ? { ...c, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para, excluidos: editExcluidos }
+      ? { ...c, subject_eu: editSubjectEu, body_eu: editBodyEu, preheader_eu: editPreheaderEu, subject_es: editSubjectEs, body_es: editBodyEs, preheader_es: editPreheaderEs, programado_para, excluidos: editExcluidos, remitente: editRemitente }
       : c
     ));
     setEditing(null);
@@ -569,6 +575,13 @@ export default function NewsletterPage() {
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{scheduleResult.error}</div>
               )}
 
+              <div className="mb-6">
+                <p className="text-[0.75rem] text-gray-500 mb-1">Remitente</p>
+                <select value={remitente} onChange={e => setRemitente(e.target.value)} className={`${inputClass} w-auto`}>
+                  {REMITENTES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Euskera */}
                 <div className="space-y-3">
@@ -762,6 +775,12 @@ export default function NewsletterPage() {
                           </div>
                           <div className="flex gap-2 items-end">
                             <div>
+                              <p className="text-[0.72rem] text-gray-500 mb-1">Remitente</p>
+                              <select value={editRemitente} onChange={e => setEditRemitente(e.target.value)} className="border border-gray-300 px-3 py-2 text-sm outline-none">
+                                {REMITENTES.map(r => <option key={r} value={r}>{r}</option>)}
+                              </select>
+                            </div>
+                            <div>
                               <p className="text-[0.72rem] text-gray-500 mb-1">Fecha</p>
                               <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="border border-gray-300 px-3 py-2 text-sm outline-none" />
                             </div>
@@ -827,7 +846,7 @@ export default function NewsletterPage() {
                               </p>
                               <p className="text-[0.75rem] text-gray-400 mt-0.5">{fmtDate(c.programado_para)}</p>
                               <p className="text-[0.7rem] text-gray-400 mt-0.5">
-                                {[c.subject_eu && "eu", c.subject_es && "es"].filter(Boolean).join(" + ")}
+                                {[c.subject_eu && "eu", c.subject_es && "es"].filter(Boolean).join(" + ")} · {c.remitente ?? REMITENTES[0]}
                               </p>
                             </div>
                             <div className="flex gap-2 shrink-0">
@@ -899,6 +918,7 @@ export default function NewsletterPage() {
                               {c.enviados_eu ? ` (${c.enviados_eu} eu` : ""}
                               {c.enviados_eu && c.enviados_es ? " · " : ""}
                               {c.enviados_es ? `${c.enviados_es} es)` : c.enviados_eu ? ")" : ""}
+                              {" · "}{c.remitente ?? REMITENTES[0]}
                             </p>
                           </div>
                           <span className="text-gray-400 text-[0.75rem] shrink-0 ml-4">{isOpen ? "▲" : "▼"}</span>

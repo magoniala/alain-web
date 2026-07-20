@@ -10,6 +10,14 @@ function parseAddress(addr: string) {
   return m ? { Email: m[2].trim(), Name: m[1].trim() } : { Email: addr };
 }
 
+export const NEWSLETTER_SENDERS = ["newsletter@alainzulaika.com", "newsletter@niala.es"] as const;
+export type NewsletterSender = (typeof NEWSLETTER_SENDERS)[number];
+
+export function resolveNewsletterFrom(remitente?: string | null): string {
+  const email = NEWSLETTER_SENDERS.includes(remitente as NewsletterSender) ? remitente! : NEWSLETTER_SENDERS[0];
+  return `Alain Zulaika <${email}>`;
+}
+
 export interface EmailAttachment {
   filename: string;
   contentType: string;
@@ -49,7 +57,7 @@ export async function sendEmail(
 // Sends up to 50 messages in a single Mailjet API call
 export async function sendEmailBatch(
   messages: Array<{ to: string; subject: string; html: string }>,
-  from = "Alain Zulaika <newsletter@niala.es>"
+  from = "Alain Zulaika <newsletter@alainzulaika.com>"
 ) {
   if (!messages.length) return;
   const fromParsed = parseAddress(from);
@@ -59,7 +67,7 @@ export async function sendEmailBatch(
       To: [parseAddress(to)],
       Subject: subject,
       HTMLPart: html,
-      ReplyTo: { Email: "newsletter@niala.es" },
+      ReplyTo: fromParsed,
     })),
   });
 }

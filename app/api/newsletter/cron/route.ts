@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmailBatch } from "@/lib/email-ses";
+import { sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -97,6 +97,7 @@ export async function GET(req: Request) {
       })),
     ];
 
+    const from = resolveNewsletterFrom(campana.remitente);
     const BATCH = 50;
     for (let i = 0; i < emails.length; i += BATCH) {
       await sendEmailBatch(
@@ -104,7 +105,8 @@ export async function GET(req: Request) {
           to: nombre ? `${nombre} <${email}>` : email,
           subject,
           html,
-        }))
+        })),
+        from
       );
     }
 
