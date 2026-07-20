@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -274,7 +274,8 @@ export async function POST(req: Request) {
   await sendEmail(
     email.trim().toLowerCase(),
     isEu ? "MIRARIAK 2026 — Zure erreserbaren baieztapena" : "MIRARIAK 2026 — Confirmación de reserva",
-    confirmHtml
+    confirmHtml,
+    ALAIN_FROM
   );
 
   // Notification to Alain

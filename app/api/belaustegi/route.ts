@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -42,7 +42,8 @@ export async function POST(req: Request) {
       <p>He recibido tu consulta. En cuanto pueda te haré llegar una propuesta adaptada a tu evento.</p>
       <br />
       <p>Alain Zulaika</p>
-    `
+    `,
+    ALAIN_FROM
   );
 
   await sendEmail(

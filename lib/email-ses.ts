@@ -18,6 +18,9 @@ export function resolveNewsletterFrom(remitente?: string | null): string {
   return `Alain Zulaika <${email}>`;
 }
 
+// Confirmaciones puntuales de formularios (contacto, belaustegi, valoración, arrogante, Mirariak)
+export const ALAIN_FROM = "Alain Zulaika <alain@alainzulaika.com>";
+
 export interface EmailAttachment {
   filename: string;
   contentType: string;

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email-ses";
+import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -44,7 +44,8 @@ export async function POST(req: Request) {
         <p>Si necesitas contactarme antes, puedes escribirme a <a href="mailto:contacto@niala.es">contacto@niala.es</a>.</p>
         <br />
         <p>Alain Zulaika</p>
-      `
+      `,
+      ALAIN_FROM
     );
   } catch (emailErr) {
     console.error("SES error (client email):", emailErr);
