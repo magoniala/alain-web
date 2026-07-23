@@ -126,8 +126,11 @@ export function Header({ current, showLangSwitch = true }: { current: "eu" | "es
 export function Footer() {
   return (
     <footer className="border-t border-[#1C3A5E]/12 px-8 py-10 md:px-16">
-      <div className="mx-auto max-w-[1400px]">
-        <p className="text-[0.88rem] text-[#0F2240]/35">© Alain Zulaika</p>
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-3 text-[0.88rem] text-[#0F2240]/35 md:flex-row md:items-center md:justify-between">
+        <p>© Alain Zulaika</p>
+        <Link href="/privacidad" className="transition-colors hover:text-[#0F2240]/60">
+          Privacidad
+        </Link>
       </div>
     </footer>
   );
