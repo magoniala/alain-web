@@ -25,6 +25,10 @@ export function proxy(request: NextRequest) {
       url.pathname = "/guias";
       return NextResponse.redirect(url);
     }
+    // Páginas legales: viven en la raíz del sitio, no bajo /entrenatzaile
+    if (NO_REDIRECT_PATHS.some((p) => p !== "/entrenatzaile" && (pathname === p || pathname.startsWith(p + "/")))) {
+      return NextResponse.next();
+    }
     const url = request.nextUrl.clone();
     url.pathname = `/entrenatzaile${pathname}`;
     return NextResponse.rewrite(url);
