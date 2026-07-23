@@ -37,6 +37,7 @@ export async function POST(req: Request) {
   } = body;
 
   const isEu = idioma === "eu";
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
   const hasTaller = actividad === "taller" || actividad === "ambas";
   const hasMicromagia = actividad === "micromagia" || actividad === "ambas";
 
@@ -140,8 +141,8 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error: isEu
-              ? `${sesion} saioa beteta dago. Jarri harremanetan kontaktu@niala.es helbidean.`
-              : `La sesión ${sesion} está completa. Escríbenos a kontaktu@niala.es.`,
+              ? `${sesion} saioa beteta dago. Jarri harremanetan ${contactEmail} helbidean.`
+              : `La sesión ${sesion} está completa. Escríbenos a ${contactEmail}.`,
           },
           { status: 409 }
         );
@@ -261,10 +262,10 @@ export async function POST(req: Request) {
         <p style="${pStyle}">${isEu ? "Doan" : "Gratuito"}</p>
       </div>
       <p style="font-size:0.95rem;color:#444;line-height:1.75;margin:0 0 2rem 0;">
-        ${isEu ? `Zalantzarik? <a href="mailto:kontaktu@niala.es" style="color:#2a9d8f;">kontaktu@niala.es</a>` : `¿Dudas? <a href="mailto:kontaktu@niala.es" style="color:#2a9d8f;">kontaktu@niala.es</a>`}
+        ${isEu ? `Zalantzarik? <a href="mailto:${contactEmail}" style="color:#2a9d8f;">${contactEmail}</a>` : `¿Dudas? <a href="mailto:${contactEmail}" style="color:#2a9d8f;">${contactEmail}</a>`}
       </p>
       <div style="padding-top:1.5rem;border-top:1px solid #eee;font-size:0.82rem;color:#bbb;line-height:1.9;">
-        <p style="margin:0 0 0.2rem;">Alain Zulaika · <a href="mailto:kontaktu@niala.es" style="color:#bbb;">kontaktu@niala.es</a></p>
+        <p style="margin:0 0 0.2rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#bbb;">${contactEmail}</a></p>
         <p style="margin:0 0 0.2rem;"><a href="https://alainzulaika.com/mirariak2026" style="color:#bbb;">alainzulaika.com/mirariak2026</a></p>
         ${unsubBlock}
       </div>
@@ -333,10 +334,10 @@ export async function POST(req: Request) {
   `;
 
   await sendEmail(
-    "kontaktu@niala.es",
+    "contacto@alainzulaika.com",
     `MIRARIAK 2026 — Erreseba berria: ${nombreContacto.trim()}`,
     notifHtml,
-    "Mirariak 2026 <contacto@niala.es>"
+    "Mirariak 2026 <alain@alainzulaika.com>"
   );
 
   return NextResponse.json({ ok: true });

@@ -318,8 +318,8 @@ export default function ValoracionEntrenatzaileEsPage() {
             <div className="p-6 md:p-10" style={cardStyle}>
               <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(15,34,64,0.80)" }}>
                 Todas las plazas están cubiertas. Si quieres avisarte para futuras aperturas, escribe a{" "}
-                <a href="mailto:contacto@niala.es" style={{ color: AMBER }}>
-                  contacto@niala.es
+                <a href="mailto:contacto@alainzulaika.com" style={{ color: AMBER }}>
+                  contacto@alainzulaika.com
                 </a>
                 .
               </p>
@@ -505,11 +505,11 @@ export default function ValoracionEntrenatzaileEsPage() {
             ¿Prefieres escribirme directamente?
           </p>
           <a
-            href="mailto:contacto@niala.es"
+            href="mailto:contacto@alainzulaika.com"
             style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: AMBER }}
             className="hover:opacity-80"
           >
-            contacto@niala.es
+            contacto@alainzulaika.com
           </a>
         </div>
       </section>

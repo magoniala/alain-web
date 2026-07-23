@@ -31,6 +31,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { nombre, edad, email, motivo, turno, newsletter, idioma } = body;
   const isEu = idioma === "eu";
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
 
   if (!nombre?.trim() || !edad || !email?.trim() || !motivo?.trim() || !turno) {
     return NextResponse.json(
@@ -68,8 +69,8 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: isEu
-          ? "Plaza guztiak beteta daude. Idatzi contacto@niala.es helbidera etorkizuneko irekierez jakinarazi nahi baduzu."
-          : "Todas las plazas están cubiertas. Escribe a contacto@niala.es si quieres avisarte para futuras aperturas.",
+          ? `Plaza guztiak beteta daude. Idatzi ${contactEmail} helbidera etorkizuneko irekierez jakinarazi nahi baduzu.`
+          : `Todas las plazas están cubiertas. Escribe a ${contactEmail} si quieres avisarte para futuras aperturas.`,
       },
       { status: 409 }
     );
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
           ${content}
         </div>
         <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
-          <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+          <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p>
           <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails"}</a></p>
         </div>
       </div>
@@ -184,10 +185,10 @@ export async function POST(req: Request) {
   `;
 
   await sendEmail(
-    "newsletter@niala.es",
+    "newsletter@alainzulaika.com",
     `Entrenatzaile — Nueva valoración: ${nombre.trim()}`,
     notifHtml,
-    "Entrenatzaile <contacto@niala.es>"
+    "Entrenatzaile <alain@alainzulaika.com>"
   );
 
   return NextResponse.json({ ok: true, remaining });

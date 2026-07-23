@@ -445,7 +445,7 @@ export default function CulturaPage() {
                     Bietako bat interesatzen zaizu?
                   </p>
                   <a
-                    href="mailto:contacto@niala.es?subject=Dossier&body=Kaixo%20Alain%2C%0A%0A%5Bproposamen%20izenburua%5D%20dosier%20osoa%20jaso%20nahi%20nuke.%0A%0AAgur%20bero%20bat%2C"
+                    href="mailto:kontaktu@alainzulaika.com?subject=Dossier&body=Kaixo%20Alain%2C%0A%0A%5Bproposamen%20izenburua%5D%20dosier%20osoa%20jaso%20nahi%20nuke.%0A%0AAgur%20bero%20bat%2C"
                     style={{
                       fontSize: "0.9rem",
                       letterSpacing: "0.04em",

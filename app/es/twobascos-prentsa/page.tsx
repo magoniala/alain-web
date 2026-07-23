@@ -231,7 +231,7 @@ export default function TwobascosPage() {
             Para más información:
           </p>
           <a
-            href="mailto:contacto@niala.es?subject=Twobascos%20ikuskizunari%20buruz"
+            href="mailto:contacto@alainzulaika.com?subject=Twobascos%20ikuskizunari%20buruz"
             style={{
               display: "inline-block",
               border: "1px solid rgba(242,242,240,0.2)",

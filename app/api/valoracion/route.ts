@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
   const estrellas = "★".repeat(valoracion) + "☆".repeat(5 - valoracion);
   await sendEmail(
-    "contacto@niala.es",
+    "contacto@alainzulaika.com",
     `Valoración: ${nombreEvento} — ${nombre}`,
     `
       <h2>Nueva valoración</h2>
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       ${permisoCita ? `<p><strong>Permiso para usar testimonio:</strong> ${permisoCita}</p>` : ""}
       ${firmaCita ? `<p><strong>Firma:</strong> ${firmaCita}</p>` : ""}
     `,
-    "Web <contacto@niala.es>"
+    "Web <alain@alainzulaika.com>"
   );
 
   return NextResponse.json({ ok: true });

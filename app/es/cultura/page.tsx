@@ -442,7 +442,7 @@ export default function CulturaEuskeraPage() {
                     ¿Te interesa alguna de las dos?
                   </p>
                   <a
-                    href="mailto:contacto@niala.es?subject=Dossier&body=Hola%20Alain%2C%0A%0AMe%20gustar%C3%ADa%20recibir%20el%20dossier%20completo%20de%20%5Bnombre%20de%20la%20propuesta%5D.%0A%0AUn%20saludo%2C"
+                    href="mailto:contacto@alainzulaika.com?subject=Dossier&body=Hola%20Alain%2C%0A%0AMe%20gustar%C3%ADa%20recibir%20el%20dossier%20completo%20de%20%5Bnombre%20de%20la%20propuesta%5D.%0A%0AUn%20saludo%2C"
                     style={{
                       fontSize: "0.9rem",
                       letterSpacing: "0.04em",

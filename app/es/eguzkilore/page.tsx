@@ -216,7 +216,7 @@ export default function EguzkilorePage() {
             <p>Y lo mejor: el curso viene incluido de regalo.</p>
           </div>
           <a
-            href="mailto:contacto@niala.es?subject=Quiero%20una%20baraja%20Eguzkilore"
+            href="mailto:contacto@alainzulaika.com?subject=Quiero%20una%20baraja%20Eguzkilore"
             className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
             style={{ textDecoration: "none" }}
           >

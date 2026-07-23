@@ -81,6 +81,7 @@ function emptyMicromagia(): ParticipanteMicromagia {
 export default function Mirariak2026Page() {
   const [lang, setLang] = useState<Lang>("eu");
   const eu = lang === "eu";
+  const contactEmail = eu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
   const [capacity, setCapacity] = useState<CapacityData | null>(null);
 
   // Form
@@ -191,8 +192,8 @@ export default function Mirariak2026Page() {
           if (slot && slot.reservados + n > slot.total) {
             setError(
               eu
-                ? `${sesion} saioa beteta dago. Jarri harremanetan kontaktu@niala.es helbidean.`
-                : `La sesión ${sesion} está completa. Escríbenos a kontaktu@niala.es.`
+                ? `${sesion} saioa beteta dago. Jarri harremanetan ${contactEmail} helbidean.`
+                : `La sesión ${sesion} está completa. Escríbenos a ${contactEmail}.`
             );
             return;
           }
@@ -858,7 +859,7 @@ export default function Mirariak2026Page() {
         </h1>
         <div className="hero-fade-3" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.75rem" }}>
           <p style={{ fontSize: "clamp(1rem, 1.8vw, 1.2rem)", color: MUTED }}>
-            {eu ? "2026ko azaroaren 14 eta 15ean" : "14 y 15 de noviembre de 2026"}
+            {eu ? "Azaroaren 14 eta 15ean" : "14 y 15 de noviembre"}
           </p>
           <p style={{ fontSize: "clamp(1rem, 1.8vw, 1.2rem)", color: MUTED }}>
             Aita Agirre Kulturgunea, Areto Nagusia · Elgoibar
@@ -882,12 +883,12 @@ export default function Mirariak2026Page() {
       <section style={{ maxWidth: "640px", margin: "0 auto", padding: "0 2rem 5rem" }}>
         <div className="fade-in" style={{ borderTop: `1px solid ${BORDER}`, paddingTop: "3rem", textAlign: "center" }}>
           <p style={{ fontSize: "clamp(1.4rem, 2.5vw, 1.8rem)", fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1.3, marginBottom: "1.5rem" }}>
-            {eu ? "Bi egun. Magia benetakoa. Elgoibarren." : "Dos días. Magia de verdad. En Elgoibar."}
+            {eu ? "Bi egun. Benetako magia. Elgoibarren." : "Dos días. Magia de verdad. En Elgoibar."}
           </p>
           <p style={{ fontSize: "clamp(1rem, 1.5vw, 1.1rem)", color: MUTED, lineHeight: 1.85, marginBottom: "1.25rem" }}>
             {eu
-              ? "Mirariak Elgoibarko magia asteburua da — tailerrak umeentzat eta mikromagia helduentzat eta gazteentzat, talde txikietan, gertutik."
-              : "Mirariak es el fin de semana de magia de Elgoibar — talleres para niños y micromagia para jóvenes y adultos, en grupos pequeños, de cerca."}
+              ? "Mirariak Elgoibarko magia asteburua da —umeentzako tailerrak eta mikromagia ikuskizunak adin guztientzat, talde txikietan, oso gertutik."
+              : "Mirariak es el fin de semana de magia de Elgoibar — talleres para niños y shows de micromagia para todas las edades, en grupos pequeños, muy de cerca."}
           </p>
           <p style={{ fontSize: "clamp(1rem, 1.5vw, 1.1rem)", fontWeight: 500, marginBottom: "2rem" }}>
             {eu ? "Ez da ikuskizun hutsa. Parte hartzen duzu." : "No es un espectáculo. Participas."}
@@ -911,8 +912,8 @@ export default function Mirariak2026Page() {
           </h2>
           <p style={{ fontSize: "clamp(1rem, 1.5vw, 1.05rem)", color: "rgba(242,242,240,0.70)", lineHeight: 1.85, marginBottom: "2.5rem", maxWidth: "600px" }}>
             {eu
-              ? "Goizean zehar, Elgoibarko aurrek magiaren sekretuak ikasiko dituzte: pertsona bat erditik nola moztu eta objektuak nola hipnotizatu."
-              : "Por la mañana, los niños y niñas de Elgoibar aprenderán los secretos de la magia: cómo cortar a una persona por la mitad y cómo hipnotizar objetos."}
+              ? "Goizean zehar, Elgoibarko aurrek magiaren sekretuak ikasiko dituzte: pentsamenduak irakurri, pertsona bat erditik nola moztu, objektuak nola hipnotizatu..."
+              : "Por la mañana, los niños y niñas de Elgoibar aprenderán los secretos de la magia: leer pensamientos, cómo cortar a una persona por la mitad, cómo hipnotizar objetos..."}
           </p>
           <div style={{ marginBottom: "3rem" }}>
             {TALLER_SESIONES.map((row, i) => {
@@ -964,8 +965,8 @@ export default function Mirariak2026Page() {
           </h2>
           <p style={{ fontSize: "clamp(1rem, 1.5vw, 1.05rem)", color: "rgba(242,242,240,0.70)", lineHeight: 1.85, marginBottom: "2.5rem", maxWidth: "600px" }}>
             {eu
-              ? "Magia gertutik. Talde txikietan. Begien aurrean gertatzen da dena. Ume, gazte eta helduek parte har dezakete (+5 urte)."
-              : "Magia de cerca. En grupos pequeños. Todo ocurre delante de tus ojos. Pueden participar niños, jóvenes y adultos (+5 años)."}
+              ? "Magia gertu-gertutik. Talde txikietan. Zure begien aurrean gertatzen da dena. Ume, gazte eta helduek parte har dezakete (+5 urte)."
+              : "Magia de cerca. En grupos pequeños. Todo ocurre delante de tus ojos. Pueden participar niños (+5 años), jóvenes y adultos."}
           </p>
           <div style={{ marginBottom: "3rem" }}>
             {MICROMAGIA_HORARIOS.map((h, i) => {
@@ -1011,8 +1012,8 @@ export default function Mirariak2026Page() {
           {screen < 6 && (
             <p style={{ fontSize: "0.95rem", color: MUTED, lineHeight: 1.8, marginBottom: "2.5rem" }}>
               {eu
-                ? "Plaza kopurua mugatua da. Iaz dena bete zen. Formularioa bete eta berehala jasoko duzu baieztapena email bidez, zure plaza eta ordutegi zehatza."
-                : "Las plazas son limitadas. El año pasado se llenó todo. Rellena el formulario y recibirás confirmación inmediata por email con tu plaza y horario concreto."}
+                ? "Plaza kopurua mugatua da. Aurrekoan dena bete zen. Formularioa bete eta berehala jasoko duzu baieztapena email bidez, beharrezko informazio guztiarekin."
+                : "Las plazas son limitadas. El año pasado se llenó todo. Rellena el formulario y recibirás confirmación inmediata por email."}
             </p>
           )}
           <div
@@ -1027,8 +1028,8 @@ export default function Mirariak2026Page() {
           {screen < 6 && (
             <p style={{ marginTop: "1.25rem", fontSize: "0.85rem", color: VERY_MUTED, textAlign: "center" }}>
               {eu ? "Zalantzarik?" : "¿Dudas?"}{" "}
-              <a href="mailto:kontaktu@niala.es" style={{ color: VERY_MUTED, textDecoration: "underline" }}>
-                kontaktu@niala.es
+              <a href={`mailto:${contactEmail}`} style={{ color: VERY_MUTED, textDecoration: "underline" }}>
+                {contactEmail}
               </a>
             </p>
           )}
@@ -1100,7 +1101,7 @@ export default function Mirariak2026Page() {
           </p>
           <p style={{ fontSize: "0.85rem", color: VERY_MUTED }}>
             {eu ? "Zalantzarik?" : "¿Dudas?"}{" "}
-            <a href="mailto:kontaktu@niala.es" style={{ color: VERY_MUTED }}>kontaktu@niala.es</a>
+            <a href={`mailto:${contactEmail}`} style={{ color: VERY_MUTED }}>{contactEmail}</a>
           </p>
         </div>
       </footer>

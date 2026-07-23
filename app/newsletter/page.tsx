@@ -40,7 +40,7 @@ interface SendResult {
 const TABS = ["Nuevo email", "Programadas", "Suscriptores"] as const;
 type Tab = (typeof TABS)[number];
 
-const REMITENTES = ["newsletter@alainzulaika.com", "newsletter@niala.es"] as const;
+const REMITENTES = ["newsletter@alainzulaika.com"] as const;
 
 export default function NewsletterPage() {
   const [password, setPassword] = useState("");
@@ -638,7 +638,7 @@ export default function NewsletterPage() {
                           {bodyEu.split(/\n/).map((line, i) => renderPreviewLine(line, i))}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
-                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
+                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · kontaktu@alainzulaika.com</p>
                           <p style={{ margin: 0, color: "#ccc" }}>Cambiar idioma · Dejar de recibir estos emails</p>
                         </div>
                       </div>
@@ -652,7 +652,7 @@ export default function NewsletterPage() {
                           )}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
-                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@niala.es</p>
+                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@alainzulaika.com</p>
                           <p style={{ margin: 0, color: "#ccc" }}>Cambiar idioma · Dejar de recibir estos emails</p>
                         </div>
                       </div>

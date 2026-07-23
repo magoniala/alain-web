@@ -10,7 +10,7 @@ function parseAddress(addr: string) {
   return m ? { Email: m[2].trim(), Name: m[1].trim() } : { Email: addr };
 }
 
-export const NEWSLETTER_SENDERS = ["newsletter@alainzulaika.com", "newsletter@niala.es"] as const;
+export const NEWSLETTER_SENDERS = ["newsletter@alainzulaika.com"] as const;
 export type NewsletterSender = (typeof NEWSLETTER_SENDERS)[number];
 
 export function resolveNewsletterFrom(remitente?: string | null): string {
@@ -31,7 +31,7 @@ export async function sendEmail(
   to: string,
   subject: string,
   html: string,
-  from = "Alain Zulaika <contacto@niala.es>",
+  from = ALAIN_FROM,
   attachments?: EmailAttachment[]
 ) {
   const fromParsed = parseAddress(from);
@@ -42,7 +42,7 @@ export async function sendEmail(
         To: [parseAddress(to)],
         Subject: subject,
         HTMLPart: html,
-        ReplyTo: { Email: "newsletter@niala.es" },
+        ReplyTo: { Email: "newsletter@alainzulaika.com" },
         ...(attachments?.length
           ? {
               Attachments: attachments.map((a) => ({

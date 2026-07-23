@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         ${content}
       </div>
       <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
-        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@alainzulaika.com" style="color:#555;">contacto@alainzulaika.com</a></p>
         <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">Dejar de recibir estos emails</a></p>
       </div>
     </div>

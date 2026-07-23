@@ -14,7 +14,7 @@ function processText(text: string): string {
 
 const IMG_RE = /^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/;
 
-function buildHtml(body: string, email: string, preheader?: string) {
+function buildHtml(body: string, email: string, preheader?: string, isEu?: boolean) {
   const htmlBody = body
     .trim()
     .split(/\n/)
@@ -29,6 +29,7 @@ function buildHtml(body: string, email: string, preheader?: string) {
   const preheaderHtml = preheader?.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`
     : "";
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
   return `
     ${preheaderHtml}
     <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
@@ -36,7 +37,7 @@ function buildHtml(body: string, email: string, preheader?: string) {
         ${htmlBody}
       </div>
       <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.9rem;color:#555;line-height:2;">
-        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p>
         <p style="margin:0;"><a href="${BASE_URL}/newsletter/idioma?email=${encodeURIComponent(email)}" style="color:#bbb;">Cambiar idioma</a> · <a href="${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}" style="color:#bbb;">Dejar de recibir estos emails</a></p>
       </div>
     </div>
@@ -62,8 +63,8 @@ export async function POST(req: Request) {
 
   if (testList.length > 0) {
     const emails = [
-      ...(hasEu ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_eu}`, html: buildHtml(body_eu, email, preheader_eu) })) : []),
-      ...(hasEs ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_es}`, html: buildHtml(body_es, email, preheader_es) })) : []),
+      ...(hasEu ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_eu}`, html: buildHtml(body_eu, email, preheader_eu, true) })) : []),
+      ...(hasEs ? testList.map(email => ({ email, subject: `[PRUEBA] ${subject_es}`, html: buildHtml(body_es, email, preheader_es, false) })) : []),
     ];
     await sendEmailBatch(emails.map(({ email, subject, html }) => ({ to: email, subject, html })), from);
     return NextResponse.json({ ok: true, enviados: testList.length, eu: hasEu ? testList.length : 0, es: hasEs ? testList.length : 0, prueba: true });
@@ -85,13 +86,13 @@ export async function POST(req: Request) {
   const euEmails = euContactos.map(({ email, nombre }) => ({
     email, nombre,
     subject: subject_eu,
-    html: buildHtml(body_eu, email, preheader_eu),
+    html: buildHtml(body_eu, email, preheader_eu, true),
   }));
 
   const esEmails = esContactos.map(({ email, nombre }) => ({
     email, nombre,
     subject: subject_es,
-    html: buildHtml(body_es, email, preheader_es),
+    html: buildHtml(body_es, email, preheader_es, false),
   }));
 
   const allEmails = [...euEmails, ...esEmails];

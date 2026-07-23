@@ -78,7 +78,7 @@ export async function POST(req: Request) {
             <p style="margin:0 0 1.4rem;">Si quieres seguir el proceso, puedes hacerlo en <a href="${TIKTOK_URL}" style="color:#DC2626;">TikTok</a>.</p>
           </div>
           <div style="margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid #eee;font-size:0.88rem;color:#999;">
-            <p style="margin:0 0 0.5rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#999;">contacto@niala.es</a></p>
+            <p style="margin:0 0 0.5rem;">Alain Zulaika · <a href="mailto:contacto@alainzulaika.com" style="color:#999;">contacto@alainzulaika.com</a></p>
             <p style="margin:0;"><a href="${BASE_URL}/api/arrogante/baja?email=${encodeURIComponent(email.trim())}" style="color:#bbb;">Dejar de recibir estos emails</a></p>
           </div>
         </div>

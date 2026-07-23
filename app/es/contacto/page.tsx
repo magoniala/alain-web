@@ -464,11 +464,11 @@ export default function ContactoPage() {
               Si prefieres escribirme directamente:
             </p>
             <a
-              href="mailto:contacto@niala.es"
+              href="mailto:contacto@alainzulaika.com"
               style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(46,211,230,0.75)", transition: "color 0.2s" }}
               className="hover:text-[#2ED3E6]"
             >
-              contacto@niala.es
+              contacto@alainzulaika.com
             </a>
           </div>
           <p style={{ marginTop: "0.8rem", fontSize: "0.95rem", lineHeight: 1.6, color: "rgba(242,242,240,0.72)" }}>

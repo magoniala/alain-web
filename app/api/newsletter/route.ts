@@ -33,12 +33,13 @@ export async function POST(req: Request) {
 
   if (data && (origen || "manual") === "manual") {
     const isEu = (idioma || "es") === "eu";
+    const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
     const bajaUrl = `${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}`;
     const euskeraUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(email)}&idioma=eu`;
     const castellanoUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(email)}&idioma=es`;
     const contactoEsUrl = `${BASE_URL}/es/contacto`;
     const contactoEuUrl = `${BASE_URL}/contacto`;
-    const entrenamientoUrl = `mailto:contacto@niala.es?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`;
+    const entrenamientoUrl = `mailto:${contactEmail}?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`;
     const unsubscribeText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
 
     const pdStyle = `font-size:1.15rem;color:#1a1a1a;line-height:2.1;margin-top:0.5rem;`;
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
           ${content}
         </div>
         <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
-          <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+          <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p>
           <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${unsubscribeText}</a></p>
         </div>
       </div>

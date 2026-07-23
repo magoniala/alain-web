@@ -223,7 +223,7 @@ export default function EguzkilorePage() {
             <p>Eta onena: ikastaro hori opari gisa barne hartuta dago.</p>
           </div>
           <a
-            href="mailto:contacto@niala.es?subject=Eguzkilore%20baraja%20nahi%20dut"
+            href="mailto:kontaktu@alainzulaika.com?subject=Eguzkilore%20baraja%20nahi%20dut"
             className="inline-block border border-white/20 px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F2F2F0] transition-all duration-300 hover:border-white/40 hover:bg-white/[0.03] hover:text-[#2ED3E6]"
             style={{ textDecoration: "none" }}
           >

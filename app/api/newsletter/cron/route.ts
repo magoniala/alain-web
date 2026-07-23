@@ -14,7 +14,7 @@ function processText(text: string): string {
 
 const IMG_RE = /^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/;
 
-function buildHtml(body: string, email: string, preheader?: string) {
+function buildHtml(body: string, email: string, preheader?: string, isEu?: boolean) {
   const htmlBody = body
     .trim()
     .split(/\n/)
@@ -29,12 +29,13 @@ function buildHtml(body: string, email: string, preheader?: string) {
   const preheaderHtml = preheader?.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`
     : "";
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
   return `
     ${preheaderHtml}
     <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
       <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${htmlBody}</div>
       <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.9rem;color:#555;line-height:2;">
-        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p>
         <p style="margin:0;"><a href="${BASE_URL}/newsletter/idioma?email=${encodeURIComponent(email)}" style="color:#bbb;">Cambiar idioma</a> · <a href="${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}" style="color:#bbb;">Dejar de recibir estos emails</a></p>
       </div>
     </div>
@@ -88,12 +89,12 @@ export async function GET(req: Request) {
       ...euContactos.map(({ email, nombre }) => ({
         email, nombre,
         subject: campana.subject_eu,
-        html: buildHtml(campana.body_eu, email, campana.preheader_eu),
+        html: buildHtml(campana.body_eu, email, campana.preheader_eu, true),
       })),
       ...esContactos.map(({ email, nombre }) => ({
         email, nombre,
         subject: campana.subject_es,
-        html: buildHtml(campana.body_es, email, campana.preheader_es),
+        html: buildHtml(campana.body_es, email, campana.preheader_es, false),
       })),
     ];
 

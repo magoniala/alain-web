@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   );
 
   await sendEmail(
-    "contacto@niala.es",
+    "contacto@alainzulaika.com",
     `Belaustegi — ${tipoEvento} · ${nombre}`,
     `
       <h2>Nueva consulta Belaustegi</h2>
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       <p><strong>Momentos:</strong> ${Array.isArray(momentos) ? momentos.join(", ") : momentos}</p>
       ${notas ? `<p><strong>Notas:</strong> ${notas}</p>` : ""}
     `,
-    "Web <contacto@niala.es>"
+    "Web <alain@alainzulaika.com>"
   );
 
   return NextResponse.json({ ok: true });

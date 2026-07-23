@@ -41,7 +41,7 @@ export default function AvisoLegalPage() {
                   <p><span className="text-[#F2F2F0]/38 mr-4">Titular</span>Alain Zulaika Fuente</p>
                   <p><span className="text-[#F2F2F0]/38 mr-4">NIF</span>79187841Z</p>
                   <p><span className="text-[#F2F2F0]/38 mr-4">Domicilio</span>Elgoibar, Gipuzkoa, 20870</p>
-                  <p><span className="text-[#F2F2F0]/38 mr-4">Correo electrónico</span>contacto@niala.es</p>
+                  <p><span className="text-[#F2F2F0]/38 mr-4">Correo electrónico</span>contacto@alainzulaika.com</p>
                   <p><span className="text-[#F2F2F0]/38 mr-4">Sitio web</span>www.alainzulaika.com</p>
                 </div>
               </div>

@@ -8,13 +8,15 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
 function wrapComodin(content: string, email: string, isEu: boolean) {
   const bajaUrl = `${BASE_URL}/api/comodin/baja?email=${encodeURIComponent(email)}`;
   const text = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
-  return `<div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;"><div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${content}</div><div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;"><p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p><p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${text}</a></p></div></div>`;
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  return `<div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;"><div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${content}</div><div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;"><p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p><p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${text}</a></p></div></div>`;
 }
 
 function wrapMision(content: string, email: string, isEu: boolean) {
   const bajaUrl = `${BASE_URL}/api/mision/baja?email=${encodeURIComponent(email)}`;
   const text = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
-  return `<div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;"><div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${content}</div><div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;"><p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p><p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${text}</a></p></div></div>`;
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  return `<div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;"><div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${content}</div><div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;"><p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p><p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${text}</a></p></div></div>`;
 }
 
 const p = `margin:0 0 1.6rem 0;`;

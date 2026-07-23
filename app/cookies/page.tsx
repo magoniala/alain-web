@@ -80,7 +80,7 @@ export default function CookiesPage() {
               </p>
               <div className="text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>
-                  Para cualquier consulta sobre el uso de cookies en este sitio, puedes escribir a <span className="text-[#F2F2F0]/85">contacto@niala.es</span>.
+                  Para cualquier consulta sobre el uso de cookies en este sitio, puedes escribir a <span className="text-[#F2F2F0]/85">contacto@alainzulaika.com</span>.
                 </p>
               </div>
             </div>

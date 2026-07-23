@@ -35,13 +35,13 @@ export async function POST(req: Request) {
       isEu ? `
         <p>Kaixo ${nombre},</p>
         <p>Zure informazioa jaso dut. Laster deituko dizut testuingurua ondo ulertzeko eta elkarrekin lan egiteak zentzua duen ikusteko.</p>
-        <p>Lehenago harremanetan jarri nahi baduzu, idatz iezadazu <a href="mailto:contacto@niala.es">contacto@niala.es</a> helbidera.</p>
+        <p>Lehenago harremanetan jarri nahi baduzu, idatz iezadazu <a href="mailto:kontaktu@alainzulaika.com">kontaktu@alainzulaika.com</a> helbidera.</p>
         <br />
         <p>Alain Zulaika</p>
       ` : `
         <p>Hola ${nombre},</p>
         <p>He recibido tu información. Te llamaré en breve para entender bien el contexto y ver si tiene sentido trabajar juntos.</p>
-        <p>Si necesitas contactarme antes, puedes escribirme a <a href="mailto:contacto@niala.es">contacto@niala.es</a>.</p>
+        <p>Si necesitas contactarme antes, puedes escribirme a <a href="mailto:contacto@alainzulaika.com">contacto@alainzulaika.com</a>.</p>
         <br />
         <p>Alain Zulaika</p>
       `,
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
 
   try {
     await sendEmail(
-      "contacto@niala.es",
+      "contacto@alainzulaika.com",
       isEu ? `Kontaktu berria: ${nombre}` : `Nuevo contacto: ${nombre}`,
       isEu ? `
         <h2>Kontaktu formulario berria</h2>
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         ${descripcion ? `<p><strong>Descripción:</strong> ${descripcion}</p>` : ""}
         <p><strong>Preferencia de llamada:</strong> ${preferencia}</p>
       `,
-      "Web <contacto@niala.es>"
+      "Web <alain@alainzulaika.com>"
     );
   } catch (emailErr) {
     console.error("SES error (admin email):", emailErr);

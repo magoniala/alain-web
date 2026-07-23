@@ -10,6 +10,7 @@ const supabase = createClient(
 export async function POST(req: Request) {
   const { email, lang } = await req.json();
   const isEu = lang === "eu";
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
   const host = req.headers.get("host") || "alainzulaika.com";
   const protocol = host.includes("localhost") ? "http" : "https";
   const BASE_URL = `${protocol}://${host}`;
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   const euskeraUrl = `${BASE_URL}/api/mision/idioma?email=${encodeURIComponent(email)}&idioma=eu`;
   const castellanoUrl = `${BASE_URL}/api/mision/idioma?email=${encodeURIComponent(email)}&idioma=es`;
   const contactoUrl = isEu ? `${BASE_URL}/contacto` : `${BASE_URL}/es/contacto`;
-  const entrenamientoUrl = `mailto:contacto@niala.es?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`;
+  const entrenamientoUrl = `mailto:${contactEmail}?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`;
   const bajaUrl = `${BASE_URL}/api/mision/baja?email=${encodeURIComponent(email)}`;
   const unsubscribeText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
 
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
         ${content}
       </div>
       <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
-        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@niala.es" style="color:#555;">contacto@niala.es</a></p>
+        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p>
         <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">${unsubscribeText}</a></p>
       </div>
     </div>
