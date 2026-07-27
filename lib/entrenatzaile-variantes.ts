@@ -8,9 +8,9 @@ export type Variante = (typeof VARIANTES)[number];
 // Etiqueta que se añade a los leads captados según qué guía protagoniza
 // la landing en el momento del alta.
 export const VARIANTE_TAG: Record<Variante, string> = {
-  lumbar: "LUMBAR",
-  rodilla: "RODILLA",
-  ereccion: "ERECCIONES",
+  lumbar: "lumbar",
+  rodilla: "rodilla",
+  ereccion: "erecciones",
 };
 
 export const VARIANTE_LABEL: Record<Variante, string> = {

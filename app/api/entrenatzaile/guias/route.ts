@@ -43,12 +43,18 @@ export async function POST(req: Request) {
   const nombreTrim = nombre.trim();
 
   const variante = await getVarianteActual("guias");
-  const tags = ["ENTRENAMIENTO", "GUIAS", VARIANTE_TAG[variante]];
+  const tags = ["entrenamiento", VARIANTE_TAG[variante]];
 
   const principal = GUIA_PRINCIPAL[variante];
   const extras = GUIAS_ANUNCIADAS_EXTRA[variante];
   const sorpresa = GUIA_SORPRESA[variante];
   const archivos = [principal, ...extras, ...(sorpresa ? [sorpresa] : [])];
+
+  // Normaliza tags previas (pudieron quedar en mayúsculas o con la vieja
+  // etiqueta "GUIAS" de versiones anteriores de este endpoint) antes de
+  // fusionarlas con las nuevas.
+  const normalizarTags = (arr: string[] | null | undefined) =>
+    (arr ?? []).map((t) => t.toLowerCase()).filter((t) => t !== "guias");
 
   // Si el contacto ya existía (de antes de que existiera este sistema de tags,
   // o de una visita anterior a /guias con otra variante activa), no lo
@@ -62,7 +68,7 @@ export async function POST(req: Request) {
 
   let dbError;
   if (existente) {
-    const tagsFusionadas = Array.from(new Set([...(existente.tags ?? []), ...tags]));
+    const tagsFusionadas = Array.from(new Set([...normalizarTags(existente.tags), ...tags]));
     ({ error: dbError } = await supabase
       .from("newsletter_contactos")
       .update({ tags: tagsFusionadas })
@@ -72,7 +78,7 @@ export async function POST(req: Request) {
       email: emailLower,
       nombre: nombreTrim,
       idioma: "es",
-      origen: `entrenamiento_${variante}`,
+      origen: "guias",
       tags,
     }));
     if (dbError?.code === "23505") {
@@ -83,7 +89,7 @@ export async function POST(req: Request) {
         .select("tags")
         .eq("email", emailLower)
         .maybeSingle();
-      const tagsFusionadas = Array.from(new Set([...(carrera?.tags ?? []), ...tags]));
+      const tagsFusionadas = Array.from(new Set([...normalizarTags(carrera?.tags), ...tags]));
       ({ error: dbError } = await supabase
         .from("newsletter_contactos")
         .update({ tags: tagsFusionadas })
