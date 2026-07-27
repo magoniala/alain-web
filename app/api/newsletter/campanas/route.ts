@@ -1,16 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { NEWSLETTER_SENDERS } from "@/lib/email-ses";
+import { requireAdminAuth as auth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 function resolveRemitente(remitente?: string): string {
   return NEWSLETTER_SENDERS.includes(remitente as (typeof NEWSLETTER_SENDERS)[number]) ? remitente! : NEWSLETTER_SENDERS[0];
-}
-
-function auth(req: Request) {
-  const pw = req.headers.get("x-nl-password");
-  return pw === process.env.NEWSLETTER_PASSWORD;
 }
 
 export async function GET(req: Request) {

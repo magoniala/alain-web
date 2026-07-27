@@ -1,14 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireAdminAuth as auth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY!
 );
-
-function auth(req: Request) {
-  return req.headers.get("x-stats-password") === process.env.STATS_PASSWORD;
-}
 
 // Agrupa un timestamp UTC por día en horario de Madrid. El formato sv-SE
 // da directamente YYYY-MM-DD, cómodo como clave de agrupación.

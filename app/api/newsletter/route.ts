@@ -1,10 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
+import { requireAdminAuth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { data, error } = await supabase
     .from("newsletter_contactos")
     .select("id, email, nombre, idioma, fecha_alta, origen, unsubscribed")
@@ -14,6 +16,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { email, nombre, idioma, origen } = await req.json();
   if (!email) return NextResponse.json({ error: "Falta email." }, { status: 400 });
 

@@ -1,10 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireAdminAuth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 const ALLOWED = ["personas_testadas", "creen_que_diran_su_nombre", "suma_gilipollas", "media_gilipollas"];
 
+// GET es público: lo usa la landing /arrogante para mostrar los contadores en vivo.
 export async function GET() {
   const { data, error } = await supabase.from("arrogante_stats").select("*").eq("id", 1).single();
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
@@ -12,6 +14,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const body = await req.json();
   const update: Record<string, number> = {};
   for (const key of ALLOWED) {

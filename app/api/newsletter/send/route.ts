@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
+import { requireAdminAuth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -45,11 +46,11 @@ function buildHtml(body: string, email: string, preheader?: string, isEu?: boole
 }
 
 export async function POST(req: Request) {
-  const { password, subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, test_emails, remitente } = await req.json();
-
-  if (password !== process.env.NEWSLETTER_PASSWORD) {
+  if (!requireAdminAuth(req)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
+
+  const { subject_eu, body_eu, preheader_eu, subject_es, body_es, preheader_es, test_emails, remitente } = await req.json();
 
   const hasEu = subject_eu?.trim() && body_eu?.trim();
   const hasEs = subject_es?.trim() && body_es?.trim();

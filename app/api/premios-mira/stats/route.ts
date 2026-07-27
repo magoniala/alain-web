@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireAdminAuth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -14,6 +15,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const body = await req.json();
   const update: Record<string, number> = {};
   if (typeof body.visualizaciones_fase2 === "number") update.visualizaciones_fase2 = body.visualizaciones_fase2;

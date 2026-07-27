@@ -1,17 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireAdminAuth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
 
 export async function POST(req: Request) {
-  const formData = await req.formData();
-  const password = formData.get("password") as string;
-  const file = formData.get("file") as File | null;
-
-  if (password !== process.env.NEWSLETTER_PASSWORD) {
+  if (!requireAdminAuth(req)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
+
+  const formData = await req.formData();
+  const file = formData.get("file") as File | null;
+
   if (!file) {
     return NextResponse.json({ error: "Falta archivo." }, { status: 400 });
   }

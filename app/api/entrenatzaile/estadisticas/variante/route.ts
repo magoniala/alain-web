@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { VARIANTES, getVarianteActual, setVarianteActual, type Variante } from "@/lib/entrenatzaile-variantes";
-
-function auth(req: Request) {
-  return req.headers.get("x-stats-password") === process.env.STATS_PASSWORD;
-}
+import { requireAdminAuth as auth } from "@/lib/admin-auth";
 
 export async function GET(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });

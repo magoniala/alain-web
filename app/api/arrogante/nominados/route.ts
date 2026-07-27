@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireAdminAuth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -6,6 +7,12 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const soloPublicadas = url.searchParams.get("publicadas") === "true";
+
+  // La landing pública /arrogante solo pide ?publicadas=true; la vista
+  // completa (con no publicados) es de uso admin y requiere login.
+  if (!soloPublicadas && !requireAdminAuth(req)) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
 
   let query = supabase
     .from("arrogante_respuestas")
@@ -26,6 +33,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { respuesta_texto_libre } = await req.json();
   if (!respuesta_texto_libre?.trim()) return NextResponse.json({ error: "Falta texto." }, { status: 400 });
   const { error } = await supabase.from("arrogante_respuestas").insert({
@@ -40,6 +48,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { id, publicado, respuesta_texto_libre, posicion } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
   const update: Record<string, unknown> = {};

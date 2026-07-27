@@ -1,8 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireAdminAuth } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
+// GET es público: lo usa la landing /arrogante para mostrar las frases.
 export async function GET() {
   const { data, error } = await supabase.from("arrogante_frases").select("*").order("sujeto_num");
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
@@ -10,6 +12,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { texto, sujeto_num } = await req.json();
   if (!texto || !sujeto_num) return NextResponse.json({ error: "Faltan campos." }, { status: 400 });
   const { error } = await supabase.from("arrogante_frases").insert({ texto, sujeto_num });
@@ -18,6 +21,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { id, texto, sujeto_num } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
   const { error } = await supabase.from("arrogante_frases").update({ texto, sujeto_num }).eq("id", id);
@@ -26,6 +30,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
   const { error } = await supabase.from("arrogante_frases").delete().eq("id", id);
