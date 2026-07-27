@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { data, error } = await supabase
     .from("newsletter_contactos")
-    .select("id, email, nombre, idioma, fecha_alta, origen, unsubscribed")
+    .select("id, email, nombre, idioma, fecha_alta, origen, unsubscribed, tags")
     .order("fecha_alta", { ascending: false });
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
   return NextResponse.json(data ?? []);

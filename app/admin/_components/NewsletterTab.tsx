@@ -10,6 +10,7 @@ interface Contacto {
   fecha_alta: string;
   origen: string;
   unsubscribed: boolean;
+  tags: string[] | null;
 }
 
 interface Campana {
@@ -952,6 +953,11 @@ export default function NewsletterTab() {
                       }`}>
                         {c.origen}
                       </span>
+                      {c.tags?.map(tag => (
+                        <span key={tag} className="text-[0.65rem] tracking-wider px-2 py-0.5 bg-amber-50 text-amber-700">
+                          {tag}
+                        </span>
+                      ))}
                       <p className="text-[0.72rem] text-gray-400">
                         {new Date(c.fecha_alta).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "2-digit" })}
                       </p>
