@@ -50,16 +50,46 @@ export async function POST(req: Request) {
   const sorpresa = GUIA_SORPRESA[variante];
   const archivos = [principal, ...extras, ...(sorpresa ? [sorpresa] : [])];
 
-  const { error: dbError } = await supabase.from("newsletter_contactos").upsert(
-    {
+  // Si el contacto ya existía (de antes de que existiera este sistema de tags,
+  // o de una visita anterior a /guias con otra variante activa), no lo
+  // volvemos a insertar (eso pisaría origen/nombre/idioma de su alta
+  // original) — solo le fusionamos la etiqueta de variante que le falte.
+  const { data: existente } = await supabase
+    .from("newsletter_contactos")
+    .select("tags")
+    .eq("email", emailLower)
+    .maybeSingle();
+
+  let dbError;
+  if (existente) {
+    const tagsFusionadas = Array.from(new Set([...(existente.tags ?? []), ...tags]));
+    ({ error: dbError } = await supabase
+      .from("newsletter_contactos")
+      .update({ tags: tagsFusionadas })
+      .eq("email", emailLower));
+  } else {
+    ({ error: dbError } = await supabase.from("newsletter_contactos").insert({
       email: emailLower,
       nombre: nombreTrim,
       idioma: "es",
       origen: "entrenatzaile_guias",
       tags,
-    },
-    { onConflict: "email", ignoreDuplicates: true }
-  );
+    }));
+    if (dbError?.code === "23505") {
+      // Carrera: alguien insertó este email justo entre el select y el insert.
+      // Nos comportamos como si hubiera existido: fusionamos tags.
+      const { data: carrera } = await supabase
+        .from("newsletter_contactos")
+        .select("tags")
+        .eq("email", emailLower)
+        .maybeSingle();
+      const tagsFusionadas = Array.from(new Set([...(carrera?.tags ?? []), ...tags]));
+      ({ error: dbError } = await supabase
+        .from("newsletter_contactos")
+        .update({ tags: tagsFusionadas })
+        .eq("email", emailLower));
+    }
+  }
 
   if (dbError) {
     console.error("guias newsletter_contactos error:", dbError);
