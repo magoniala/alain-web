@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       email: emailLower,
       nombre: nombreTrim,
       idioma: "es",
-      origen: "entrenatzaile_guias",
+      origen: `entrenamiento_${variante}`,
       tags,
     }));
     if (dbError?.code === "23505") {
