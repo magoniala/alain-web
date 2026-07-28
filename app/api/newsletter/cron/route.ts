@@ -159,10 +159,13 @@ export async function GET(req: Request) {
     .lte("programado_para", new Date().toISOString());
 
   if (campanas?.length) {
+    // Excluye a quien esté activo en una secuencia de nurture — vuelve a
+    // recibir el newsletter normal en cuanto se reserva o la completa.
     const { data: contactos } = await supabase
       .from("newsletter_contactos")
       .select("email, nombre, idioma")
-      .eq("unsubscribed", false);
+      .eq("unsubscribed", false)
+      .or("recibe_secuencia.eq.false,secuencia_completada.eq.true");
 
     for (const campana of contactos?.length ? campanas : []) {
       // Mark as in-progress immediately so concurrent cron runs don't re-send

@@ -71,10 +71,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, enviados: testList.length, eu: hasEu ? testList.length : 0, es: hasEs ? testList.length : 0, prueba: true });
   }
 
+  // Excluye a quien esté activo en una secuencia de nurture (recibe_secuencia=true
+  // y aún no la ha completado) — vuelve a recibir el newsletter normal en cuanto
+  // se le marca como reservado o termina la secuencia.
   const { data: contactos, error } = await supabase
     .from("newsletter_contactos")
     .select("email, nombre, idioma")
-    .eq("unsubscribed", false);
+    .eq("unsubscribed", false)
+    .or("recibe_secuencia.eq.false,secuencia_completada.eq.true");
 
   if (error || !contactos) {
     return NextResponse.json({ error: "Error al obtener contactos." }, { status: 500 });
