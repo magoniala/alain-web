@@ -139,13 +139,17 @@ async function procesarRecordatorioValoracion(): Promise<number> {
     // Candado anti-carrera, separado del marcador de "enviado de verdad":
     // recordatorio_valoracion_enviado solo se pone a true tras confirmar el
     // envío, nunca antes.
-    const { data: claimed } = await supabase
+    const { data: claimed, error: claimError } = await supabase
       .from("newsletter_contactos")
       .update({ recordatorio_valoracion_enviando_desde: new Date().toISOString() })
       .eq("id", contacto.id)
       .eq("recordatorio_valoracion_enviado", false)
       .or(`recordatorio_valoracion_enviando_desde.is.null,recordatorio_valoracion_enviando_desde.lt.${staleThreshold}`)
       .select("id");
+    if (claimError) {
+      console.error("recordatorio: error al reclamar el envío (revisar esquema de la tabla):", contacto.email, claimError);
+      continue;
+    }
     if (!claimed?.length) continue;
 
     const isEu = contacto.idioma === "eu";

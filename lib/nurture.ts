@@ -48,7 +48,7 @@ export const CANDADO_STALE_MS = 5 * 60 * 1000; // 5 min: si un intento se quedó
 // solo a los 5 minutos y se puede reclamar de nuevo.
 export async function enviarMailSecuencia(
   contacto: NurtureContacto
-): Promise<{ enviado: boolean; motivo?: "sin-contenido" | "raced" | "error-envio" }> {
+): Promise<{ enviado: boolean; motivo?: "sin-contenido" | "raced" | "error-envio" | "error-db" }> {
   const { data: mail } = await supabase
     .from("secuencia_mails")
     .select("posicion, asunto, cuerpo_html, remitente")
@@ -59,7 +59,7 @@ export async function enviarMailSecuencia(
   if (!mail) return { enviado: false, motivo: "sin-contenido" };
 
   const staleThreshold = new Date(Date.now() - CANDADO_STALE_MS).toISOString();
-  const { data: claimed } = await supabase
+  const { data: claimed, error: claimError } = await supabase
     .from("newsletter_contactos")
     .update({ enviando_secuencia_desde: new Date().toISOString() })
     .eq("id", contacto.id)
@@ -67,6 +67,12 @@ export async function enviarMailSecuencia(
     .or(`enviando_secuencia_desde.is.null,enviando_secuencia_desde.lt.${staleThreshold}`)
     .select("id");
 
+  // Un error aquí (ej. falta una columna) no es "raced" — es un fallo real
+  // que hay que ver, no tragarse en silencio.
+  if (claimError) {
+    console.error("nurture: error al reclamar el envío (revisar esquema de la tabla):", contacto.email, claimError);
+    return { enviado: false, motivo: "error-db" };
+  }
   if (!claimed?.length) return { enviado: false, motivo: "raced" };
 
   const isEu = contacto.idioma === "eu";

@@ -51,13 +51,20 @@ async function enviarMailDuplicado(
 
   // Candado anti-carrera separado del marcador de "enviado de verdad":
   // mail_duplicado_ads_enviado solo se pone a true tras confirmar el envío.
-  const { data: claimed } = await supabase
+  const { data: claimed, error: claimError } = await supabase
     .from("newsletter_contactos")
     .update({ mail_duplicado_ads_enviando_desde: new Date().toISOString() })
     .eq("id", contacto.id)
     .eq("mail_duplicado_ads_enviado", false)
     .or(`mail_duplicado_ads_enviando_desde.is.null,mail_duplicado_ads_enviando_desde.lt.${staleThreshold}`)
     .select("id");
+  if (claimError) {
+    // Un error aquí (ej. falta una columna en el esquema) NO es "ya
+    // enviado" — es un fallo real que se guarda para poder verlo.
+    console.error("leads/entrada: error al reclamar el envío del duplicado (revisar esquema):", contacto.email, claimError);
+    await marcarResultadoToque(touchId, false, `error de base de datos: ${claimError.message}`);
+    return;
+  }
   if (!claimed?.length) {
     await marcarResultadoToque(touchId, false, "omitido: ya se le había enviado antes, o hay otro intento en curso");
     return;
