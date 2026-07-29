@@ -144,12 +144,47 @@ export async function POST(req: Request) {
     .eq("email", emailLower)
     .maybeSingle();
 
+  if (existente?.unsubscribed) {
+    // Estaba dado de baja: rellenar el formulario de ads es una señal de
+    // interés renovado, así que se reactiva del todo y entra en la
+    // secuencia desde cero, como si fuera un lead nuevo. No cuenta como
+    // "duplicado" para métricas — es, a todos los efectos, una alta nueva.
+    const edadNumReactivar = typeof edad === "number" ? edad : parseInt(edad, 10);
+    const { data: reactivado, error: reactivarError } = await supabase
+      .from("newsletter_contactos")
+      .update({
+        unsubscribed: false,
+        recibe_secuencia: true,
+        posicion_secuencia: 0,
+        secuencia_completada: false,
+        fecha_ultimo_mail_secuencia: null,
+        enviando_secuencia_desde: null,
+        origen: "meta_ads",
+        edad: Number.isFinite(edadNumReactivar) ? edadNumReactivar : null,
+        leadgen_id: leadgenId,
+        form_id: form_id ? String(form_id) : null,
+        fecha_alta: fecha,
+      })
+      .eq("id", existente.id)
+      .select("id, email, nombre, idioma, posicion_secuencia, fecha_ultimo_mail_secuencia")
+      .single();
+
+    if (reactivarError) {
+      console.error("leads/entrada: error reactivando contacto dado de baja:", existente.email, reactivarError);
+      return NextResponse.json({ error: "Error al reactivar el lead." }, { status: 500 });
+    }
+
+    await enviarMailSecuencia(reactivado);
+    return NextResponse.json({ ok: true, reactivado: true });
+  }
+
   if (existente) {
-    // Ya estaba en la lista: no tocamos su suscripción ni recibe_secuencia.
-    // Registramos el toque de ads para métricas de campaña (cuenta aunque
-    // no entre en la secuencia) y, si es la primera vez, le mandamos el
-    // mail de cortesía — el resultado del envío queda grabado en la propia
-    // fila del toque (mail_enviado / mail_error), visible con una consulta.
+    // Ya estaba en la lista y activo: no tocamos su suscripción ni
+    // recibe_secuencia. Registramos el toque de ads para métricas de
+    // campaña (cuenta aunque no entre en la secuencia) y, si es la primera
+    // vez, le mandamos el mail de cortesía — el resultado del envío queda
+    // grabado en la propia fila del toque (mail_enviado / mail_error),
+    // visible con una consulta.
     const { data: touch, error: logError } = await supabase
       .from("leads_ads_duplicados")
       .insert({ email: emailLower, leadgen_id: leadgenId, fecha })
