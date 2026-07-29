@@ -27,7 +27,26 @@ function normalizarEmail(email: string): string {
   return `${sinPuntos}@gmail.com`;
 }
 
-async function enviarMailDuplicado(contacto: { id: string; email: string; nombre: string | null; idioma: string | null }) {
+// Registra en la fila del toque (leads_ads_duplicados) qué pasó de verdad
+// con el intento de envío, para poder verlo con una consulta en vez de
+// depender de logs de Vercel a los que ni tú ni yo tenemos acceso cómodo.
+async function marcarResultadoToque(touchId: string | null, mailEnviado: boolean, error?: string) {
+  if (!touchId) return;
+  await supabase
+    .from("leads_ads_duplicados")
+    .update({ mail_enviado: mailEnviado, mail_error: error ?? null })
+    .eq("id", touchId);
+}
+
+async function enviarMailDuplicado(
+  contacto: { id: string; email: string; nombre: string | null; idioma: string | null; unsubscribed: boolean },
+  touchId: string | null
+) {
+  if (contacto.unsubscribed) {
+    await marcarResultadoToque(touchId, false, "omitido: contacto dado de baja (unsubscribed=true)");
+    return;
+  }
+
   const staleThreshold = new Date(Date.now() - CANDADO_STALE_MS).toISOString();
 
   // Candado anti-carrera separado del marcador de "enviado de verdad":
@@ -39,7 +58,10 @@ async function enviarMailDuplicado(contacto: { id: string; email: string; nombre
     .eq("mail_duplicado_ads_enviado", false)
     .or(`mail_duplicado_ads_enviando_desde.is.null,mail_duplicado_ads_enviando_desde.lt.${staleThreshold}`)
     .select("id");
-  if (!claimed?.length) return; // ya enviado antes, o alguien más lo está intentando ahora mismo
+  if (!claimed?.length) {
+    await marcarResultadoToque(touchId, false, "omitido: ya se le había enviado antes, o hay otro intento en curso");
+    return;
+  }
 
   const { data: mail } = await supabase
     .from("secuencia_mails")
@@ -49,7 +71,8 @@ async function enviarMailDuplicado(contacto: { id: string; email: string; nombre
     .maybeSingle();
   if (!mail) {
     await supabase.from("newsletter_contactos").update({ mail_duplicado_ads_enviando_desde: null }).eq("id", contacto.id);
-    return; // contenido aún no cargado
+    await marcarResultadoToque(touchId, false, "error: contenido del mail -2 no cargado o inactivo");
+    return;
   }
 
   const isEu = contacto.idioma === "eu";
@@ -63,8 +86,10 @@ async function enviarMailDuplicado(contacto: { id: string; email: string; nombre
       resolveNewsletterFrom(mail.remitente)
     );
   } catch (err) {
+    const mensaje = err instanceof Error ? err.message : String(err);
     console.error("leads/entrada: error enviando mail de duplicado:", contacto.email, err);
     await supabase.from("newsletter_contactos").update({ mail_duplicado_ads_enviando_desde: null }).eq("id", contacto.id);
+    await marcarResultadoToque(touchId, false, `error Mailjet: ${mensaje}`);
     return; // no marcado como enviado: se puede reintentar cuando caduque el candado
   }
 
@@ -72,6 +97,7 @@ async function enviarMailDuplicado(contacto: { id: string; email: string; nombre
     .from("newsletter_contactos")
     .update({ mail_duplicado_ads_enviado: true, mail_duplicado_ads_enviando_desde: null })
     .eq("id", contacto.id);
+  await marcarResultadoToque(touchId, true);
 }
 
 export async function POST(req: Request) {
@@ -107,24 +133,39 @@ export async function POST(req: Request) {
 
   const { data: existente } = await supabase
     .from("newsletter_contactos")
-    .select("id, email, nombre, idioma, mail_duplicado_ads_enviado")
+    .select("id, email, nombre, idioma, unsubscribed, mail_duplicado_ads_enviado")
     .eq("email", emailLower)
     .maybeSingle();
 
   if (existente) {
     // Ya estaba en la lista: no tocamos su suscripción ni recibe_secuencia.
-    // Solo registramos el toque de ads para métricas de campaña y, si es la
-    // primera vez, le mandamos el mail de cortesía.
-    const { error: logError } = await supabase.from("leads_ads_duplicados").insert({
-      email: emailLower,
-      leadgen_id: leadgenId,
-      fecha,
-    });
-    if (logError && logError.code !== "23505") {
-      console.error("leads/entrada: error registrando duplicado:", logError);
+    // Registramos el toque de ads para métricas de campaña (cuenta aunque
+    // no entre en la secuencia) y, si es la primera vez, le mandamos el
+    // mail de cortesía — el resultado del envío queda grabado en la propia
+    // fila del toque (mail_enviado / mail_error), visible con una consulta.
+    const { data: touch, error: logError } = await supabase
+      .from("leads_ads_duplicados")
+      .insert({ email: emailLower, leadgen_id: leadgenId, fecha })
+      .select("id")
+      .single();
+
+    let touchId: string | null = touch?.id ?? null;
+
+    if (logError) {
+      if (logError.code === "23505" && leadgenId) {
+        // Carrera: alguien más registró ya un toque con este leadgen_id.
+        const { data: existenteTouch } = await supabase
+          .from("leads_ads_duplicados")
+          .select("id")
+          .eq("leadgen_id", leadgenId)
+          .maybeSingle();
+        touchId = existenteTouch?.id ?? null;
+      } else {
+        console.error("leads/entrada: error registrando duplicado:", logError);
+      }
     }
 
-    await enviarMailDuplicado(existente);
+    await enviarMailDuplicado(existente, touchId);
 
     return NextResponse.json({ ok: true, existente: true });
   }

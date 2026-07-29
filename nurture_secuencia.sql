@@ -69,3 +69,13 @@ ALTER TABLE newsletter_contactos
   ADD COLUMN IF NOT EXISTS enviando_secuencia_desde timestamptz,
   ADD COLUMN IF NOT EXISTS recordatorio_valoracion_enviando_desde timestamptz,
   ADD COLUMN IF NOT EXISTS mail_duplicado_ads_enviando_desde timestamptz;
+
+-- ============================================================
+-- Ampliación 2026-07-29 (5): visibilidad real del envío del mail de
+-- duplicados — queda registrado en la propia fila del toque, no solo en
+-- logs de Vercel que nadie puede consultar cómodamente.
+-- ============================================================
+
+ALTER TABLE leads_ads_duplicados
+  ADD COLUMN IF NOT EXISTS mail_enviado boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS mail_error text;
