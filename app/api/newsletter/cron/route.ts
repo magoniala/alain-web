@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
+import { wrapNurture, enviarMailSecuencia, type NurtureContacto } from "@/lib/nurture";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -42,32 +43,6 @@ function buildHtml(body: string, email: string, preheader?: string, isEu?: boole
   `;
 }
 
-function wrapNurture(cuerpoHtml: string, email: string, isEu: boolean) {
-  const bajaUrl = `${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}`;
-  const idiomaUrl = `${BASE_URL}/newsletter/idioma?email=${encodeURIComponent(email)}`;
-  const bajaText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
-  const idiomaText = isEu ? "Hizkuntza aldatu" : "Cambiar idioma";
-  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
-  return `
-    <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
-      <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${cuerpoHtml}</div>
-      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.9rem;color:#555;line-height:2;">
-        <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:${contactEmail}" style="color:#555;">${contactEmail}</a></p>
-        <p style="margin:0;"><a href="${idiomaUrl}" style="color:#bbb;">${idiomaText}</a> · <a href="${bajaUrl}" style="color:#bbb;">${bajaText}</a></p>
-      </div>
-    </div>
-  `;
-}
-
-interface NurtureContacto {
-  id: string;
-  email: string;
-  nombre: string | null;
-  idioma: string | null;
-  posicion_secuencia: number;
-  fecha_ultimo_mail_secuencia: string | null;
-}
-
 // Hora fija (Europe/Madrid) a la que sale cada mail de la secuencia, salvo el
 // primero (posición 0), que es inmediato en cuanto el contacto se apunta.
 const HORA_ENVIO_DIARIO_MIN = 14 * 60 + 30; // 14:30
@@ -100,7 +75,6 @@ async function procesarNurture(): Promise<number> {
   const ahora = madridParts();
   const minutosAhora = ahora.hour * 60 + ahora.minute;
   const dentroVentanaDiaria = enVentana(minutosAhora, HORA_ENVIO_DIARIO_MIN);
-  const nowIso = new Date().toISOString();
 
   let enviados = 0;
 
@@ -116,63 +90,15 @@ async function procesarNurture(): Promise<number> {
 
     if (!esPrimerMail) {
       // A partir del segundo mail, solo se envía dentro de la ventana diaria
-      // fija y como mucho una vez por día natural (hora de Madrid).
+      // fija y como mucho una vez por día natural (hora de Madrid). El primer
+      // mail no tiene ventana: sale en cuanto el cron lo vea (o lo intenta de
+      // nuevo si un envío inmediato desde /api/leads/entrada falló).
       if (!dentroVentanaDiaria) continue;
       if (contacto.fecha_ultimo_mail_secuencia && madridDate(contacto.fecha_ultimo_mail_secuencia) === ahora.date) continue;
     }
 
-    const { data: mail } = await supabase
-      .from("secuencia_mails")
-      .select("posicion, asunto, cuerpo_html, remitente")
-      .eq("posicion", contacto.posicion_secuencia)
-      .eq("activo", true)
-      .maybeSingle();
-
-    if (!mail) continue; // sin contenido cargado para esta posición todavía
-
-    // Claim atómico: solo seguimos si nadie más ha tocado este contacto desde la lectura.
-    let claimQuery = supabase
-      .from("newsletter_contactos")
-      .update({ fecha_ultimo_mail_secuencia: nowIso })
-      .eq("id", contacto.id)
-      .eq("posicion_secuencia", contacto.posicion_secuencia);
-    claimQuery = contacto.fecha_ultimo_mail_secuencia
-      ? claimQuery.eq("fecha_ultimo_mail_secuencia", contacto.fecha_ultimo_mail_secuencia)
-      : claimQuery.is("fecha_ultimo_mail_secuencia", null);
-    const { data: claimed } = await claimQuery.select("id");
-    if (!claimed?.length) continue;
-
-    const isEu = contacto.idioma === "eu";
-    const html = wrapNurture(mail.cuerpo_html ?? "", contacto.email, isEu);
-
-    try {
-      await sendEmail(
-        contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
-        mail.asunto ?? "",
-        html,
-        resolveNewsletterFrom(mail.remitente)
-      );
-    } catch (err) {
-      console.error("nurture send error:", contacto.email, err);
-      continue; // fecha_ultimo_mail_secuencia ya quedó marcada; reintenta al día siguiente en la misma posición
-    }
-
-    const siguientePosicion = contacto.posicion_secuencia + 1;
-    const { count: quedan } = await supabase
-      .from("secuencia_mails")
-      .select("posicion", { count: "exact", head: true })
-      .gte("posicion", siguientePosicion)
-      .eq("activo", true);
-
-    await supabase
-      .from("newsletter_contactos")
-      .update({
-        posicion_secuencia: siguientePosicion,
-        secuencia_completada: (quedan ?? 0) === 0,
-      })
-      .eq("id", contacto.id);
-
-    enviados++;
+    const { enviado } = await enviarMailSecuencia(contacto);
+    if (enviado) enviados++;
   }
 
   return enviados;

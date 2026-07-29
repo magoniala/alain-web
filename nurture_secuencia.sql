@@ -26,3 +26,17 @@ ALTER TABLE secuencia_mails
 
 ALTER TABLE newsletter_contactos
   ADD COLUMN IF NOT EXISTS recordatorio_valoracion_enviado boolean DEFAULT false;
+
+-- ============================================================
+-- Ampliación 2026-07-29 (2): captación de leads de Meta/Facebook Ads
+-- vía POST /api/leads/entrada
+-- ============================================================
+
+ALTER TABLE newsletter_contactos
+  ADD COLUMN IF NOT EXISTS edad int,
+  ADD COLUMN IF NOT EXISTS leadgen_id text,
+  ADD COLUMN IF NOT EXISTS form_id text;
+
+CREATE UNIQUE INDEX IF NOT EXISTS newsletter_contactos_leadgen_id_key
+  ON newsletter_contactos (leadgen_id)
+  WHERE leadgen_id IS NOT NULL;
