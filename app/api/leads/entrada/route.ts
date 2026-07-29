@@ -1,11 +1,49 @@
 import { createClient } from "@supabase/supabase-js";
-import { enviarMailSecuencia } from "@/lib/nurture";
+import { enviarMailSecuencia, wrapNurture } from "@/lib/nurture";
+import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
+// Mail de cortesía para quien ya estaba en la lista antes de rellenar el
+// formulario de ads — vive en secuencia_mails con posicion=-2 (fuera del
+// rango normal, igual que el recordatorio en -1).
+const POSICION_MAIL_DUPLICADO = -2;
+
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function enviarMailDuplicado(contacto: { id: string; email: string; nombre: string | null; idioma: string | null }) {
+  const { data: claimed } = await supabase
+    .from("newsletter_contactos")
+    .update({ mail_duplicado_ads_enviado: true })
+    .eq("id", contacto.id)
+    .eq("mail_duplicado_ads_enviado", false)
+    .select("id");
+  if (!claimed?.length) return; // ya se le había enviado antes
+
+  const { data: mail } = await supabase
+    .from("secuencia_mails")
+    .select("asunto, cuerpo_html, remitente")
+    .eq("posicion", POSICION_MAIL_DUPLICADO)
+    .eq("activo", true)
+    .maybeSingle();
+  if (!mail) return; // contenido aún no cargado
+
+  const isEu = contacto.idioma === "eu";
+  const html = wrapNurture(mail.cuerpo_html ?? "", contacto.email, isEu);
+
+  try {
+    await sendEmail(
+      contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
+      mail.asunto ?? "",
+      html,
+      resolveNewsletterFrom(mail.remitente)
+    );
+  } catch (err) {
+    console.error("leads/entrada: error enviando mail de duplicado:", contacto.email, err);
+  }
 }
 
 export async function POST(req: Request) {
@@ -24,20 +62,47 @@ export async function POST(req: Request) {
 
   const emailLower = email.trim().toLowerCase();
   const leadgenId = leadgen_id ? String(leadgen_id) : null;
+  const fecha = created_time ? new Date(created_time).toISOString() : new Date().toISOString();
 
+  // Deduplicación por leadgen_id: puede haberse registrado ya como alta nueva
+  // (newsletter_contactos) o como toque de alguien que ya estaba en la lista
+  // (leads_ads_duplicados) — miramos las dos.
   if (leadgenId) {
-    const { data: existente } = await supabase
-      .from("newsletter_contactos")
-      .select("id")
-      .eq("leadgen_id", leadgenId)
-      .maybeSingle();
-    if (existente) {
+    const [{ data: enContactos }, { data: enDuplicados }] = await Promise.all([
+      supabase.from("newsletter_contactos").select("id").eq("leadgen_id", leadgenId).maybeSingle(),
+      supabase.from("leads_ads_duplicados").select("id").eq("leadgen_id", leadgenId).maybeSingle(),
+    ]);
+    if (enContactos || enDuplicados) {
       return NextResponse.json({ ok: true, duplicado: true });
     }
   }
 
+  const { data: existente } = await supabase
+    .from("newsletter_contactos")
+    .select("id, email, nombre, idioma, mail_duplicado_ads_enviado")
+    .eq("email", emailLower)
+    .maybeSingle();
+
+  if (existente) {
+    // Ya estaba en la lista: no tocamos su suscripción ni recibe_secuencia.
+    // Solo registramos el toque de ads para métricas de campaña y, si es la
+    // primera vez, le mandamos el mail de cortesía.
+    const { error: logError } = await supabase.from("leads_ads_duplicados").insert({
+      email: emailLower,
+      leadgen_id: leadgenId,
+      fecha,
+    });
+    if (logError && logError.code !== "23505") {
+      console.error("leads/entrada: error registrando duplicado:", logError);
+    }
+
+    await enviarMailDuplicado(existente);
+
+    return NextResponse.json({ ok: true, existente: true });
+  }
+
+  // ---- Flujo normal: lead nuevo ----
   const edadNum = typeof edad === "number" ? edad : parseInt(edad, 10);
-  const fechaAlta = created_time ? new Date(created_time).toISOString() : new Date().toISOString();
 
   const { data: contacto, error } = await supabase
     .from("newsletter_contactos")
@@ -48,7 +113,7 @@ export async function POST(req: Request) {
       edad: Number.isFinite(edadNum) ? edadNum : null,
       leadgen_id: leadgenId,
       form_id: form_id ? String(form_id) : null,
-      fecha_alta: fechaAlta,
+      fecha_alta: fecha,
       recibe_secuencia: true,
       posicion_secuencia: 0,
       secuencia_completada: false,
@@ -59,7 +124,7 @@ export async function POST(req: Request) {
 
   if (error) {
     if (error.code === "23505") {
-      // Carrera: otro reintento del mismo leadgen_id ganó la inserción primero.
+      // Carrera: otro reintento del mismo leadgen_id (o del mismo email) ganó la inserción primero.
       return NextResponse.json({ ok: true, duplicado: true });
     }
     console.error("leads/entrada insert error:", error);

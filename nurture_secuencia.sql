@@ -40,3 +40,21 @@ ALTER TABLE newsletter_contactos
 CREATE UNIQUE INDEX IF NOT EXISTS newsletter_contactos_leadgen_id_key
   ON newsletter_contactos (leadgen_id)
   WHERE leadgen_id IS NOT NULL;
+
+-- ============================================================
+-- Ampliación 2026-07-29 (3): leads de ads que ya estaban en la lista
+-- ============================================================
+
+ALTER TABLE newsletter_contactos
+  ADD COLUMN IF NOT EXISTS mail_duplicado_ads_enviado boolean DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS leads_ads_duplicados (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  email      text NOT NULL,
+  leadgen_id text,
+  fecha      timestamptz DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS leads_ads_duplicados_leadgen_id_key
+  ON leads_ads_duplicados (leadgen_id)
+  WHERE leadgen_id IS NOT NULL;
