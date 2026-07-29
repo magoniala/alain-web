@@ -25,8 +25,14 @@ export function proxy(request: NextRequest) {
       url.pathname = "/guias";
       return NextResponse.redirect(url);
     }
-    // Páginas legales: viven en la raíz del sitio, no bajo /entrenatzaile
-    if (NO_REDIRECT_PATHS.some((p) => p !== "/entrenatzaile" && (pathname === p || pathname.startsWith(p + "/")))) {
+    // Páginas legales: viven en la raíz del sitio, no bajo /entrenatzaile.
+    // La de privacidad es la excepción: tiene su propia versión con la
+    // estética de Entrenatzaile en /entrenatzaile/privacidad.
+    if (
+      NO_REDIRECT_PATHS.some(
+        (p) => p !== "/entrenatzaile" && p !== "/privacidad" && (pathname === p || pathname.startsWith(p + "/"))
+      )
+    ) {
       return NextResponse.next();
     }
     const url = request.nextUrl.clone();
