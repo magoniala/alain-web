@@ -15,3 +15,14 @@ CREATE TABLE IF NOT EXISTS secuencia_mails (
   cuerpo_html text,
   activo      boolean DEFAULT false
 );
+
+-- ============================================================
+-- Ampliación 2026-07-29: remitente por mail + recordatorio puntual
+-- (secuencia de leads de Facebook Ads)
+-- ============================================================
+
+ALTER TABLE secuencia_mails
+  ADD COLUMN IF NOT EXISTS remitente text;
+
+ALTER TABLE newsletter_contactos
+  ADD COLUMN IF NOT EXISTS recordatorio_valoracion_enviado boolean DEFAULT false;

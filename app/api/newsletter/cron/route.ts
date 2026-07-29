@@ -68,8 +68,40 @@ interface NurtureContacto {
   fecha_ultimo_mail_secuencia: string | null;
 }
 
+// Hora fija (Europe/Madrid) a la que sale cada mail de la secuencia, salvo el
+// primero (posición 0), que es inmediato en cuanto el contacto se apunta.
+const HORA_ENVIO_DIARIO_MIN = 14 * 60 + 30; // 14:30
+const HORA_RECORDATORIO_MIN = 19 * 60 + 14; // 19:14
+const VENTANA_MIN = 30; // margen para no perder la ventana si el cron se retrasa
+
+function madridParts(d: Date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "0";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")), minute: Number(get("minute")) };
+}
+
+function madridDate(iso: string) {
+  return madridParts(new Date(iso)).date;
+}
+
+function enVentana(minutosAhora: number, minutosObjetivo: number) {
+  return minutosAhora >= minutosObjetivo && minutosAhora < minutosObjetivo + VENTANA_MIN;
+}
+
 async function procesarNurture(): Promise<number> {
-  const now = new Date();
+  const ahora = madridParts();
+  const minutosAhora = ahora.hour * 60 + ahora.minute;
+  const dentroVentanaDiaria = enVentana(minutosAhora, HORA_ENVIO_DIARIO_MIN);
+  const nowIso = new Date().toISOString();
+
   let enviados = 0;
 
   const { data: contactos } = await supabase
@@ -80,14 +112,18 @@ async function procesarNurture(): Promise<number> {
     .eq("unsubscribed", false);
 
   for (const contacto of (contactos ?? []) as NurtureContacto[]) {
-    if (contacto.fecha_ultimo_mail_secuencia) {
-      const ultimoEnvio = new Date(contacto.fecha_ultimo_mail_secuencia);
-      if (now.getTime() - ultimoEnvio.getTime() < 24 * 60 * 60 * 1000) continue;
+    const esPrimerMail = contacto.posicion_secuencia === 0;
+
+    if (!esPrimerMail) {
+      // A partir del segundo mail, solo se envía dentro de la ventana diaria
+      // fija y como mucho una vez por día natural (hora de Madrid).
+      if (!dentroVentanaDiaria) continue;
+      if (contacto.fecha_ultimo_mail_secuencia && madridDate(contacto.fecha_ultimo_mail_secuencia) === ahora.date) continue;
     }
 
     const { data: mail } = await supabase
       .from("secuencia_mails")
-      .select("posicion, asunto, cuerpo_html")
+      .select("posicion, asunto, cuerpo_html, remitente")
       .eq("posicion", contacto.posicion_secuencia)
       .eq("activo", true)
       .maybeSingle();
@@ -97,7 +133,7 @@ async function procesarNurture(): Promise<number> {
     // Claim atómico: solo seguimos si nadie más ha tocado este contacto desde la lectura.
     let claimQuery = supabase
       .from("newsletter_contactos")
-      .update({ fecha_ultimo_mail_secuencia: now.toISOString() })
+      .update({ fecha_ultimo_mail_secuencia: nowIso })
       .eq("id", contacto.id)
       .eq("posicion_secuencia", contacto.posicion_secuencia);
     claimQuery = contacto.fecha_ultimo_mail_secuencia
@@ -114,11 +150,11 @@ async function procesarNurture(): Promise<number> {
         contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
         mail.asunto ?? "",
         html,
-        resolveNewsletterFrom()
+        resolveNewsletterFrom(mail.remitente)
       );
     } catch (err) {
       console.error("nurture send error:", contacto.email, err);
-      continue; // fecha_ultimo_mail_secuencia ya quedó marcada; reintenta mañana en la misma posición
+      continue; // fecha_ultimo_mail_secuencia ya quedó marcada; reintenta al día siguiente en la misma posición
     }
 
     const siguientePosicion = contacto.posicion_secuencia + 1;
@@ -137,6 +173,66 @@ async function procesarNurture(): Promise<number> {
       .eq("id", contacto.id);
 
     enviados++;
+  }
+
+  return enviados;
+}
+
+// Recordatorio puntual, mismo día que el mail de la posición 7 pero más
+// tarde (19:14): vive en secuencia_mails con posicion=-1 (fuera del rango
+// normal 0+, para no chocar nunca con la progresión de posicion_secuencia).
+// Se dispara para quien ya recibió hoy mismo el mail que le hizo avanzar a
+// la posición 8 (es decir, el de la posición 7).
+async function procesarRecordatorioValoracion(): Promise<number> {
+  const ahora = madridParts();
+  const minutosAhora = ahora.hour * 60 + ahora.minute;
+  if (!enVentana(minutosAhora, HORA_RECORDATORIO_MIN)) return 0;
+
+  const { data: mail } = await supabase
+    .from("secuencia_mails")
+    .select("asunto, cuerpo_html, remitente")
+    .eq("posicion", -1)
+    .eq("activo", true)
+    .maybeSingle();
+  if (!mail) return 0;
+
+  const { data: contactos } = await supabase
+    .from("newsletter_contactos")
+    .select("id, email, nombre, idioma, fecha_ultimo_mail_secuencia")
+    .eq("recibe_secuencia", true)
+    .eq("posicion_secuencia", 8)
+    .eq("recordatorio_valoracion_enviado", false);
+
+  let enviados = 0;
+
+  for (const contacto of contactos ?? []) {
+    if (!contacto.fecha_ultimo_mail_secuencia) continue;
+    if (madridDate(contacto.fecha_ultimo_mail_secuencia) !== ahora.date) continue; // el mail 7 no fue hoy
+
+    const { data: claimed } = await supabase
+      .from("newsletter_contactos")
+      .update({ recordatorio_valoracion_enviado: true })
+      .eq("id", contacto.id)
+      .eq("recordatorio_valoracion_enviado", false)
+      .select("id");
+    if (!claimed?.length) continue;
+
+    const isEu = contacto.idioma === "eu";
+    const html = wrapNurture(mail.cuerpo_html ?? "", contacto.email, isEu);
+
+    try {
+      await sendEmail(
+        contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
+        mail.asunto ?? "",
+        html,
+        resolveNewsletterFrom(mail.remitente)
+      );
+      enviados++;
+    } catch (err) {
+      console.error("recordatorio send error:", contacto.email, err);
+      // Queda marcado como enviado igualmente: es un recordatorio puntual,
+      // no crítico, y no tiene sentido reintentar al día siguiente.
+    }
   }
 
   return enviados;
@@ -224,6 +320,7 @@ export async function GET(req: Request) {
   }
 
   const nurtureEnviados = await procesarNurture();
+  const recordatorioEnviados = await procesarRecordatorioValoracion();
 
-  return NextResponse.json({ ok: true, procesadas, nurtureEnviados });
+  return NextResponse.json({ ok: true, procesadas, nurtureEnviados, recordatorioEnviados });
 }

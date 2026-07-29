@@ -10,7 +10,7 @@ function parseAddress(addr: string) {
   return m ? { Email: m[2].trim(), Name: m[1].trim() } : { Email: addr };
 }
 
-export const NEWSLETTER_SENDERS = ["newsletter@alainzulaika.com"] as const;
+export const NEWSLETTER_SENDERS = ["newsletter@alainzulaika.com", "entrenatzaile@alainzulaika.com"] as const;
 export type NewsletterSender = (typeof NEWSLETTER_SENDERS)[number];
 
 export function resolveNewsletterFrom(remitente?: string | null): string {
