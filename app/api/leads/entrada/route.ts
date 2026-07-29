@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { enviarMailSecuencia, wrapNurture } from "@/lib/nurture";
+import { enviarMailSecuencia, wrapNurture, CANDADO_STALE_MS } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
@@ -14,14 +14,32 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Gmail (y su alias googlemail.com) ignora los puntos en la parte local y
+// trata cualquier "+lo-que-sea" como el mismo buzón. Normalizamos para que
+// la deduplicación por email detecte de verdad que es la misma persona,
+// aunda rellene el formulario con variantes distintas de su dirección.
+function normalizarEmail(email: string): string {
+  const trimmed = email.trim().toLowerCase();
+  const [local, dominio] = trimmed.split("@");
+  if (dominio !== "gmail.com" && dominio !== "googlemail.com") return trimmed;
+  const sinTag = local.split("+")[0];
+  const sinPuntos = sinTag.replace(/\./g, "");
+  return `${sinPuntos}@gmail.com`;
+}
+
 async function enviarMailDuplicado(contacto: { id: string; email: string; nombre: string | null; idioma: string | null }) {
+  const staleThreshold = new Date(Date.now() - CANDADO_STALE_MS).toISOString();
+
+  // Candado anti-carrera separado del marcador de "enviado de verdad":
+  // mail_duplicado_ads_enviado solo se pone a true tras confirmar el envío.
   const { data: claimed } = await supabase
     .from("newsletter_contactos")
-    .update({ mail_duplicado_ads_enviado: true })
+    .update({ mail_duplicado_ads_enviando_desde: new Date().toISOString() })
     .eq("id", contacto.id)
     .eq("mail_duplicado_ads_enviado", false)
+    .or(`mail_duplicado_ads_enviando_desde.is.null,mail_duplicado_ads_enviando_desde.lt.${staleThreshold}`)
     .select("id");
-  if (!claimed?.length) return; // ya se le había enviado antes
+  if (!claimed?.length) return; // ya enviado antes, o alguien más lo está intentando ahora mismo
 
   const { data: mail } = await supabase
     .from("secuencia_mails")
@@ -29,7 +47,10 @@ async function enviarMailDuplicado(contacto: { id: string; email: string; nombre
     .eq("posicion", POSICION_MAIL_DUPLICADO)
     .eq("activo", true)
     .maybeSingle();
-  if (!mail) return; // contenido aún no cargado
+  if (!mail) {
+    await supabase.from("newsletter_contactos").update({ mail_duplicado_ads_enviando_desde: null }).eq("id", contacto.id);
+    return; // contenido aún no cargado
+  }
 
   const isEu = contacto.idioma === "eu";
   const html = wrapNurture(mail.cuerpo_html ?? "", contacto.email, isEu);
@@ -43,7 +64,14 @@ async function enviarMailDuplicado(contacto: { id: string; email: string; nombre
     );
   } catch (err) {
     console.error("leads/entrada: error enviando mail de duplicado:", contacto.email, err);
+    await supabase.from("newsletter_contactos").update({ mail_duplicado_ads_enviando_desde: null }).eq("id", contacto.id);
+    return; // no marcado como enviado: se puede reintentar cuando caduque el candado
   }
+
+  await supabase
+    .from("newsletter_contactos")
+    .update({ mail_duplicado_ads_enviado: true, mail_duplicado_ads_enviando_desde: null })
+    .eq("id", contacto.id);
 }
 
 export async function POST(req: Request) {
@@ -60,7 +88,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, descartado: true });
   }
 
-  const emailLower = email.trim().toLowerCase();
+  const emailLower = normalizarEmail(email);
   const leadgenId = leadgen_id ? String(leadgen_id) : null;
   const fecha = created_time ? new Date(created_time).toISOString() : new Date().toISOString();
 

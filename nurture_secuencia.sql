@@ -58,3 +58,14 @@ CREATE TABLE IF NOT EXISTS leads_ads_duplicados (
 CREATE UNIQUE INDEX IF NOT EXISTS leads_ads_duplicados_leadgen_id_key
   ON leads_ads_duplicados (leadgen_id)
   WHERE leadgen_id IS NOT NULL;
+
+-- ============================================================
+-- Ampliación 2026-07-29 (4): candado de envío separado del marcador de
+-- "enviado de verdad" — fecha_ultimo_mail_secuencia ahora solo se toca
+-- tras confirmación de Mailjet, nunca antes del intento.
+-- ============================================================
+
+ALTER TABLE newsletter_contactos
+  ADD COLUMN IF NOT EXISTS enviando_secuencia_desde timestamptz,
+  ADD COLUMN IF NOT EXISTS recordatorio_valoracion_enviando_desde timestamptz,
+  ADD COLUMN IF NOT EXISTS mail_duplicado_ads_enviando_desde timestamptz;

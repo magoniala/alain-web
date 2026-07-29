@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
-import { wrapNurture, enviarMailSecuencia, type NurtureContacto } from "@/lib/nurture";
+import { wrapNurture, enviarMailSecuencia, CANDADO_STALE_MS, type NurtureContacto } from "@/lib/nurture";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -130,16 +130,21 @@ async function procesarRecordatorioValoracion(): Promise<number> {
     .eq("recordatorio_valoracion_enviado", false);
 
   let enviados = 0;
+  const staleThreshold = new Date(Date.now() - CANDADO_STALE_MS).toISOString();
 
   for (const contacto of contactos ?? []) {
     if (!contacto.fecha_ultimo_mail_secuencia) continue;
     if (madridDate(contacto.fecha_ultimo_mail_secuencia) !== ahora.date) continue; // el mail 7 no fue hoy
 
+    // Candado anti-carrera, separado del marcador de "enviado de verdad":
+    // recordatorio_valoracion_enviado solo se pone a true tras confirmar el
+    // envío, nunca antes.
     const { data: claimed } = await supabase
       .from("newsletter_contactos")
-      .update({ recordatorio_valoracion_enviado: true })
+      .update({ recordatorio_valoracion_enviando_desde: new Date().toISOString() })
       .eq("id", contacto.id)
       .eq("recordatorio_valoracion_enviado", false)
+      .or(`recordatorio_valoracion_enviando_desde.is.null,recordatorio_valoracion_enviando_desde.lt.${staleThreshold}`)
       .select("id");
     if (!claimed?.length) continue;
 
@@ -153,12 +158,17 @@ async function procesarRecordatorioValoracion(): Promise<number> {
         html,
         resolveNewsletterFrom(mail.remitente)
       );
-      enviados++;
     } catch (err) {
       console.error("recordatorio send error:", contacto.email, err);
-      // Queda marcado como enviado igualmente: es un recordatorio puntual,
-      // no crítico, y no tiene sentido reintentar al día siguiente.
+      await supabase.from("newsletter_contactos").update({ recordatorio_valoracion_enviando_desde: null }).eq("id", contacto.id);
+      continue; // no marcado como enviado: puede reintentarse si el candado caduca
     }
+
+    await supabase
+      .from("newsletter_contactos")
+      .update({ recordatorio_valoracion_enviado: true, recordatorio_valoracion_enviando_desde: null })
+      .eq("id", contacto.id);
+    enviados++;
   }
 
   return enviados;

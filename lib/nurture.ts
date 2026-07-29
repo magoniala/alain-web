@@ -30,13 +30,22 @@ export interface NurtureContacto {
   fecha_ultimo_mail_secuencia: string | null;
 }
 
-// Envía a `contacto` el mail que le toca según su posicion_secuencia, con
-// claim atómico para que dos llamadas concurrentes (el cron y un envío
-// inmediato desde /api/leads/entrada, por ejemplo) nunca dupliquen un envío.
-// Si falla el envío, NO se revierte el claim de fecha_ultimo_mail_secuencia
-// a propósito: eso es lo que hace que el cron lo recoja como "pendiente" en
-// la siguiente pasada — no hace falta ningún campo ni lógica de reintento
-// aparte, ya sale gratis de este mismo mecanismo.
+export const CANDADO_STALE_MS = 5 * 60 * 1000; // 5 min: si un intento se quedó a medias (crash), se puede reclamar de nuevo
+
+// Envía a `contacto` el mail que le toca según su posicion_secuencia.
+//
+// Regla dura: posicion_secuencia y fecha_ultimo_mail_secuencia NUNCA se
+// tocan hasta que sendEmail() confirma el envío sin lanzar excepción. Si
+// Mailjet falla, el contacto se queda exactamente como estaba (misma
+// posición, sin fecha) — el cron lo recoge en la siguiente pasada porque
+// para él no ha cambiado nada. Nunca al revés.
+//
+// El anti-carrera (para que el cron y un envío inmediato desde
+// /api/leads/entrada no dupliquen un envío si coinciden) usa un candado
+// aparte, enviando_secuencia_desde, que no tiene nada que ver con "enviado
+// de verdad": se libera tanto si el envío sale bien como si falla. Si un
+// intento se queda a medias por un cuelgue del proceso, el candado caduca
+// solo a los 5 minutos y se puede reclamar de nuevo.
 export async function enviarMailSecuencia(
   contacto: NurtureContacto
 ): Promise<{ enviado: boolean; motivo?: "sin-contenido" | "raced" | "error-envio" }> {
@@ -49,16 +58,15 @@ export async function enviarMailSecuencia(
 
   if (!mail) return { enviado: false, motivo: "sin-contenido" };
 
-  const nowIso = new Date().toISOString();
-  let claimQuery = supabase
+  const staleThreshold = new Date(Date.now() - CANDADO_STALE_MS).toISOString();
+  const { data: claimed } = await supabase
     .from("newsletter_contactos")
-    .update({ fecha_ultimo_mail_secuencia: nowIso })
+    .update({ enviando_secuencia_desde: new Date().toISOString() })
     .eq("id", contacto.id)
-    .eq("posicion_secuencia", contacto.posicion_secuencia);
-  claimQuery = contacto.fecha_ultimo_mail_secuencia
-    ? claimQuery.eq("fecha_ultimo_mail_secuencia", contacto.fecha_ultimo_mail_secuencia)
-    : claimQuery.is("fecha_ultimo_mail_secuencia", null);
-  const { data: claimed } = await claimQuery.select("id");
+    .eq("posicion_secuencia", contacto.posicion_secuencia)
+    .or(`enviando_secuencia_desde.is.null,enviando_secuencia_desde.lt.${staleThreshold}`)
+    .select("id");
+
   if (!claimed?.length) return { enviado: false, motivo: "raced" };
 
   const isEu = contacto.idioma === "eu";
@@ -73,9 +81,13 @@ export async function enviarMailSecuencia(
     );
   } catch (err) {
     console.error("nurture send error:", contacto.email, err);
+    // Liberamos el candado; NO tocamos posicion_secuencia ni
+    // fecha_ultimo_mail_secuencia — el contacto queda tal cual estaba.
+    await supabase.from("newsletter_contactos").update({ enviando_secuencia_desde: null }).eq("id", contacto.id);
     return { enviado: false, motivo: "error-envio" };
   }
 
+  // Envío confirmado por Mailjet: ahora sí avanzamos posición y marcamos la fecha.
   const siguientePosicion = contacto.posicion_secuencia + 1;
   const { count: quedan } = await supabase
     .from("secuencia_mails")
@@ -88,6 +100,8 @@ export async function enviarMailSecuencia(
     .update({
       posicion_secuencia: siguientePosicion,
       secuencia_completada: (quedan ?? 0) === 0,
+      fecha_ultimo_mail_secuencia: new Date().toISOString(),
+      enviando_secuencia_desde: null,
     })
     .eq("id", contacto.id);
 
