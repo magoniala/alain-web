@@ -61,9 +61,13 @@ export default function MagicClient({ showSchedule, testimonials }: MagicClientP
       )}
 
       {/* HERO */}
-      <section className="mx-auto flex min-h-screen max-w-[1400px] flex-col justify-center px-8 md:px-16">
+      <section
+        className={`mx-auto flex max-w-[1400px] flex-col justify-center px-8 md:px-16 ${
+          showSchedule ? "min-h-[70vh]" : "min-h-screen"
+        }`}
+      >
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "470px" }} />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "141px" }} />
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6] uppercase">
               Niala · Magician
