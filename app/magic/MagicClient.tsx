@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
 import type { Testimonial } from "@/lib/magic-config";
 
@@ -31,14 +30,14 @@ export default function MagicClient({ showSchedule, testimonials }: MagicClientP
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0]">
+    <main id="top" className="min-h-screen bg-[#0B0B0C] text-[#F2F2F0]">
 
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0B0C]/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-4 md:px-16">
-          <Link href="/" className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]">
+          <a href="#top" className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#2ED3E6]">
             Niala
-          </Link>
+          </a>
         </div>
       </header>
 
@@ -67,7 +66,7 @@ export default function MagicClient({ showSchedule, testimonials }: MagicClientP
         }`}
       >
         <div className="relative -translate-y-8 md:-translate-y-10">
-          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "141px" }} />
+          <div className="absolute left-0 top-0 w-[2px] bg-white/15" style={{ height: "226px" }} />
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#2ED3E6] uppercase">
               Niala · Magician
@@ -84,22 +83,78 @@ export default function MagicClient({ showSchedule, testimonials }: MagicClientP
         </div>
       </section>
 
-      {/* BLOQUE 1 — La historia */}
-      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
+      {/* BLOQUE 1a — El gancho */}
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16 md:pb-28">
+        <div className="max-w-[760px]">
+          <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] mb-10">
+            He wasn&rsquo;t drunk.<br />
+            <span className="text-[#F2F2F0]/55">Nobody pushed him.</span>
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
+            className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
+            <p>A few of us from school were sitting at a table in a friend&rsquo;s garden on a quiet afternoon. Jon among them.<br />We see each other less every year.<br />There was a pool, and the afternoon was long — so I took out a deck of cards.</p>
+            <p>I hadn&rsquo;t done magic for Jon in years.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* BLOQUE 1b — El momento */}
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16 md:pb-28">
         <div className="max-w-[760px]">
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
-            <p>He wasn&rsquo;t drunk.<br />Nobody pushed him.</p>
-            <p>A few of us from school were sitting at a table in a friend&rsquo;s garden on a quiet afternoon. Jon among them.<br />We see each other less every year.<br />There was a pool, and the afternoon was long — so I took out a deck of cards.</p>
-            <p>I hadn&rsquo;t done magic for Jon in years.</p>
-            <p>When the impossible moment came, his body reacted before his head did.<br />He threw his weight back, the chair gave way, and he ended up on the grass looking at the sky.</p>
-            <p>We laughed for a long time.</p>
-            <p>I started when I was twelve. I&rsquo;ve been doing this for more than half my life — twelve of those years on stage, at more than 200 events.<br />This has happened maybe twice.</p>
-            <p>It isn&rsquo;t normal.<br />Most people laugh.<br />Some call me something I can&rsquo;t print here.<br />Some go completely silent.<br />Almost everyone asks to see the deck.</p>
-            <p>But every now and then someone reacts with their whole body.<br />They stand up.<br />They walk or run away.<br />They drop whatever they were holding.</p>
-            <p>That reaction can&rsquo;t be faked, and it can&rsquo;t be forced.<br />It only shows up when someone believes — even for a second and a half — that they just saw something that cannot happen.</p>
-            <p>There aren&rsquo;t many jobs where doing your work well means somebody falls backwards off a chair.</p>
+            <p>When the impossible moment came, <strong className="text-[#F2F2F0]">his body reacted before his head did.</strong><br />He threw his weight back, the chair gave way, and he ended up on the grass looking at the sky.</p>
           </div>
+          <p className="mt-10 text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em]">
+            We laughed for a long time.
+          </p>
+        </div>
+      </section>
+
+      {/* BLOQUE 1c — Contexto y rareza */}
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16 md:pb-28">
+        <div className="max-w-[760px]">
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
+            className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
+            <p>I started when I was twelve. I&rsquo;ve been doing this for more than half my life — <strong className="text-[#F2F2F0]">twelve of those years on stage, at more than 200 events.</strong></p>
+            <p className="text-[#F2F2F0]/50 italic">This has happened maybe twice.</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+            className="mt-10 text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
+            <p>It isn&rsquo;t normal.</p>
+            <p>Most people laugh.</p>
+            <p>Some call me something I can&rsquo;t print here.</p>
+            <p>Some go completely silent.</p>
+            <p>Almost everyone asks to see the deck.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* BLOQUE 1d — La reacción rara */}
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-20 md:px-16 md:pb-28">
+        <div className="max-w-[760px]">
+          <p className="text-[clamp(1.85rem,3.1vw,2.8rem)] font-medium leading-[1.08] tracking-[-0.04em] mb-10">
+            But every now and then, someone reacts with their whole body.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+            className="mb-10 text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
+            <p>They stand up.</p>
+            <p>They walk or run away.</p>
+            <p>They drop whatever they were holding.</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
+            className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
+            <p>That reaction can&rsquo;t be faked, and it can&rsquo;t be forced.<br />It only shows up when someone believes — <span className="text-[#F2F2F0]">even for a second and a half</span> — that they just saw something that cannot happen.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* BLOQUE 1e — Cierre */}
+      <section className="fade-in mx-auto max-w-[1400px] px-8 pb-28 md:px-16 md:pb-36">
+        <div className="max-w-[760px]">
+          <p className="text-[clamp(1.6rem,2.6vw,2.3rem)] font-medium leading-[1.2] tracking-[-0.03em] text-[#F2F2F0]/90">
+            There aren&rsquo;t many jobs where doing your work well means somebody falls backwards off a chair.
+          </p>
         </div>
       </section>
 
