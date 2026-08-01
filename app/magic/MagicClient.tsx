@@ -215,7 +215,7 @@ export default function MagicClient({ showSchedule, testimonials }: MagicClientP
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
             <p><strong className="text-[#F2F2F0]">Are your guests sitting down and facing forward?</strong> Then it&rsquo;s a show — or a shorter piece built into the programme, if there&rsquo;s a message to land.</p>
             <p><strong className="text-[#F2F2F0]">Are they standing around with a drink in their hand?</strong> Then I move between groups, table to table, corner to corner. Nobody has to stop what they&rsquo;re doing.</p>
-            <p>Some events want or need both. Audiences of up to around 600 people. Length always depends on the event.</p>
+            <p>Some events want or need both.<br />I can deal audiences up to 600 people.<br />Length always depends on the event.</p>
           </div>
         </div>
       </section>
