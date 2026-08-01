@@ -9,6 +9,7 @@ const NO_REDIRECT_PATHS = [
   "/privacidad",
   "/cookies",
   "/entrenatzaile",
+  "/magic",
 ];
 
 export function proxy(request: NextRequest) {

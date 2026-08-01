@@ -5,8 +5,9 @@ import NewsletterTab from "./_components/NewsletterTab";
 import NurtureTab from "./_components/NurtureTab";
 import ArroganteTab from "./_components/ArroganteTab";
 import EstadisticasGuiasTab from "./_components/EstadisticasGuiasTab";
+import MagicTab from "./_components/MagicTab";
 
-const TABS = ["Newsletter", "Nurture", "Arrogante", "Estadísticas guías"] as const;
+const TABS = ["Newsletter", "Nurture", "Arrogante", "Estadísticas guías", "Magic"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminPage() {
@@ -101,6 +102,7 @@ export default function AdminPage() {
         {tab === "Nurture" && <NurtureTab />}
         {tab === "Arrogante" && <ArroganteTab />}
         {tab === "Estadísticas guías" && <EstadisticasGuiasTab />}
+        {tab === "Magic" && <MagicTab />}
       </div>
     </main>
   );

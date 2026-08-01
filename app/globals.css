@@ -120,3 +120,18 @@ body {
     transition: none;
   }
 }
+
+/* Respetar la preferencia de movimiento reducido: quitar animaciones de
+   entrada de bloques y hero, mostrando el contenido directamente. */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .hero-fade-1,
+  .hero-fade-2,
+  .hero-fade-3 {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
