@@ -123,7 +123,7 @@ export default function MagicClient({ showSchedule, testimonials }: MagicClientP
             className="mt-10 text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
             <p>It isn&rsquo;t normal.</p>
             <p>Most people laugh.</p>
-            <p>Some call me something I can&rsquo;t print here.</p>
+            <p>Some call me something I can&rsquo;t tell you here.</p>
             <p>Some go completely silent.</p>
             <p>Almost everyone asks to see the deck.</p>
           </div>
@@ -215,7 +215,7 @@ export default function MagicClient({ showSchedule, testimonials }: MagicClientP
             className="text-[clamp(1.35rem,1.8vw,1.65rem)] leading-relaxed text-[#F2F2F0]/72">
             <p><strong className="text-[#F2F2F0]">Are your guests sitting down and facing forward?</strong> Then it&rsquo;s a show — or a shorter piece built into the programme, if there&rsquo;s a message to land.</p>
             <p><strong className="text-[#F2F2F0]">Are they standing around with a drink in their hand?</strong> Then I move between groups, table to table, corner to corner. Nobody has to stop what they&rsquo;re doing.</p>
-            <p>Some events want or need both.<br />I can deal audiences up to 600 people.<br />Length always depends on the event.</p>
+            <p>Some events want or need both.<br />I can deal with audiences up to 600 people.<br />Length always depends on the event.</p>
           </div>
         </div>
       </section>
