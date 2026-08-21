@@ -113,5 +113,24 @@ export async function POST(req: Request) {
     );
   }
 
+  // Se deja constancia en newsletter_campanas: alimenta el histórico de
+  // "Enviadas" y, sobre todo, hace que la cola B sepa que hoy ya ha salido algo.
+  const ahora = new Date().toISOString();
+  const { error: logError } = await supabase.from("newsletter_campanas").insert({
+    subject_eu: hasEu ? subject_eu : null,
+    body_eu: hasEu ? body_eu : null,
+    preheader_eu: hasEu ? preheader_eu : null,
+    subject_es: hasEs ? subject_es : null,
+    body_es: hasEs ? body_es : null,
+    preheader_es: hasEs ? preheader_es : null,
+    programado_para: ahora,
+    estado: "enviado",
+    enviado_en: ahora,
+    enviados_eu: euEmails.length,
+    enviados_es: esEmails.length,
+    remitente: resolveNewsletterFrom(remitente).replace(/^.*<(.+)>$/, "$1"),
+  });
+  if (logError) console.error("send: envío hecho pero no se pudo registrar la campaña:", logError);
+
   return NextResponse.json({ ok: true, enviados: allEmails.length, eu: euEmails.length, es: esEmails.length });
 }

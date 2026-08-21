@@ -47,6 +47,7 @@ function buildHtml(body: string, email: string, preheader?: string, isEu?: boole
 // primero (posición 0), que es inmediato en cuanto el contacto se apunta.
 const HORA_ENVIO_DIARIO_MIN = 14 * 60 + 30; // 14:30
 const HORA_RECORDATORIO_MIN = 19 * 60 + 14; // 19:14
+const HORA_COLA_B_MIN = 19 * 60 + 15; // 19:15 — rescate del día si no ha salido nada
 const VENTANA_MIN = 30; // margen para no perder la ventana si el cron se retrasa
 
 function madridParts(d: Date = new Date()) {
@@ -178,6 +179,149 @@ async function procesarRecordatorioValoracion(): Promise<number> {
   return enviados;
 }
 
+interface CampanaEnviable {
+  id: string;
+  subject_eu: string | null;
+  body_eu: string | null;
+  preheader_eu: string | null;
+  subject_es: string | null;
+  body_es: string | null;
+  preheader_es: string | null;
+  remitente: string | null;
+  excluidos: string[] | null;
+}
+
+interface ContactoEnvio {
+  email: string;
+  nombre: string | null;
+  idioma: string | null;
+}
+
+// Destinatarios del newsletter: excluye a quien esté activo en una secuencia de
+// nurture — vuelve a recibirlo en cuanto se reserva o la completa. Se carga como
+// mucho una vez por ejecución del cron, y solo si hay algo que enviar.
+function crearCargadorContactos() {
+  let cache: ContactoEnvio[] | null = null;
+  return async (): Promise<ContactoEnvio[]> => {
+    if (cache) return cache;
+    const { data } = await supabase
+      .from("newsletter_contactos")
+      .select("email, nombre, idioma")
+      .eq("unsubscribed", false)
+      .or("recibe_secuencia.eq.false,secuencia_completada.eq.true");
+    cache = data ?? [];
+    return cache;
+  };
+}
+
+// Envía una campaña ya reclamada (estado 'enviando') y la cierra como 'enviado'.
+async function enviarCampana(campana: CampanaEnviable, contactos: ContactoEnvio[]) {
+  const hasEu = !!(campana.subject_eu && campana.body_eu);
+  const hasEs = !!(campana.subject_es && campana.body_es);
+  const excluded = new Set((campana.excluidos ?? []).map((e: string) => e.toLowerCase()));
+  const destinatarios = contactos.filter(c => !excluded.has(c.email.toLowerCase()));
+
+  // Si vienen los dos idiomas: se reparte por idioma. Si solo uno: va a todos.
+  const euContactos = hasEu ? (hasEs ? destinatarios.filter(c => c.idioma === "eu") : destinatarios) : [];
+  const esContactos = hasEs ? (hasEu ? destinatarios.filter(c => c.idioma !== "eu") : destinatarios) : [];
+
+  const emails = [
+    ...euContactos.map(({ email, nombre }) => ({
+      email, nombre,
+      subject: campana.subject_eu!,
+      html: buildHtml(campana.body_eu!, email, campana.preheader_eu ?? undefined, true),
+    })),
+    ...esContactos.map(({ email, nombre }) => ({
+      email, nombre,
+      subject: campana.subject_es!,
+      html: buildHtml(campana.body_es!, email, campana.preheader_es ?? undefined, false),
+    })),
+  ];
+
+  const from = resolveNewsletterFrom(campana.remitente);
+  const BATCH = 50;
+  for (let i = 0; i < emails.length; i += BATCH) {
+    await sendEmailBatch(
+      emails.slice(i, i + BATCH).map(({ email, nombre, subject, html }) => ({
+        to: nombre ? `${nombre} <${email}>` : email,
+        subject,
+        html,
+      })),
+      from
+    );
+  }
+
+  await supabase
+    .from("newsletter_campanas")
+    .update({
+      estado: "enviado",
+      enviado_en: new Date().toISOString(),
+      enviados_eu: euContactos.length,
+      enviados_es: esContactos.length,
+    })
+    .eq("id", campana.id);
+}
+
+// Cola B: mails de reserva sin fecha (estado 'cola', ordenados por orden_cola).
+// A las 19:15 (Madrid), si ese día no ha salido ni está programado ningún otro
+// envío, sale el primero de la cola. Un solo mail por día, nunca dos.
+async function procesarColaB(cargarContactos: () => Promise<ContactoEnvio[]>): Promise<number> {
+  const ahora = madridParts();
+  const minutosAhora = ahora.hour * 60 + ahora.minute;
+  if (!enVentana(minutosAhora, HORA_COLA_B_MIN)) return 0;
+
+  // ¿Hay algo hoy? Cuenta lo ya enviado, lo que está saliendo ahora mismo y lo
+  // que sigue programado para hoy más tarde (los canceladas no cuentan). El
+  // filtro por fecha reciente es solo para no traerse el histórico entero.
+  const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const { data: recientes } = await supabase
+    .from("newsletter_campanas")
+    .select("estado, enviado_en, programado_para")
+    .in("estado", ["enviado", "enviando", "programado"])
+    .or(`enviado_en.gte.${desde},programado_para.gte.${desde}`);
+
+  const hayEnvioHoy = (recientes ?? []).some(c =>
+    (c.enviado_en && madridDate(c.enviado_en) === ahora.date) ||
+    (c.programado_para && madridDate(c.programado_para) === ahora.date)
+  );
+  if (hayEnvioHoy) return 0;
+
+  const { data: cola } = await supabase
+    .from("newsletter_campanas")
+    .select("*")
+    .eq("estado", "cola")
+    .order("orden_cola", { ascending: true })
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  const siguiente = cola?.[0];
+  if (!siguiente) return 0;
+
+  // Candado: el paso a 'enviando' solo lo gana una ejecución. Se le pone fecha
+  // de hoy para que quede como envío del día (y para que, si el envío se corta a
+  // medias, la comprobación de arriba no deje salir otro mail después).
+  const { data: claimed } = await supabase
+    .from("newsletter_campanas")
+    .update({ estado: "enviando", programado_para: new Date().toISOString() })
+    .eq("id", siguiente.id)
+    .eq("estado", "cola")
+    .select("id");
+  if (!claimed?.length) return 0;
+
+  const contactos = await cargarContactos();
+  if (!contactos.length) {
+    await supabase
+      .from("newsletter_campanas")
+      .update({ estado: "cola", programado_para: null })
+      .eq("id", siguiente.id)
+      .eq("estado", "enviando");
+    return 0;
+  }
+
+  await enviarCampana(siguiente as CampanaEnviable, contactos);
+  return 1;
+}
+
 export async function GET(req: Request) {
   // cron-job.org firma las peticiones con Authorization: Bearer <CRON_SECRET>
   const auth = req.headers.get("authorization");
@@ -185,9 +329,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
+  const cargarContactos = crearCargadorContactos();
   let procesadas = 0;
 
-  // Fetch due campaigns
+  // Campañas programadas que ya tocan
   const { data: campanas } = await supabase
     .from("newsletter_campanas")
     .select("*")
@@ -195,72 +340,26 @@ export async function GET(req: Request) {
     .lte("programado_para", new Date().toISOString());
 
   if (campanas?.length) {
-    // Excluye a quien esté activo en una secuencia de nurture — vuelve a
-    // recibir el newsletter normal en cuanto se reserva o la completa.
-    const { data: contactos } = await supabase
-      .from("newsletter_contactos")
-      .select("email, nombre, idioma")
-      .eq("unsubscribed", false)
-      .or("recibe_secuencia.eq.false,secuencia_completada.eq.true");
+    const contactos = await cargarContactos();
 
-    for (const campana of contactos?.length ? campanas : []) {
-      // Mark as in-progress immediately so concurrent cron runs don't re-send
-      await supabase
+    for (const campana of contactos.length ? campanas : []) {
+      // Candado: solo una ejecución del cron se queda la campaña
+      const { data: claimed } = await supabase
         .from("newsletter_campanas")
         .update({ estado: "enviando" })
         .eq("id", campana.id)
-        .eq("estado", "programado");
+        .eq("estado", "programado")
+        .select("id");
+      if (!claimed?.length) continue;
 
-      const hasEu = campana.subject_eu && campana.body_eu;
-      const hasEs = campana.subject_es && campana.body_es;
-      const excluded = new Set((campana.excluidos ?? []).map((e: string) => e.toLowerCase()));
-
-      // If both languages provided: route by idioma. If only one: send to everyone.
-      const euContactos = hasEu ? (hasEs ? contactos!.filter(c => c.idioma === "eu" && !excluded.has(c.email.toLowerCase())) : contactos!.filter(c => !excluded.has(c.email.toLowerCase()))) : [];
-      const esContactos = hasEs ? (hasEu ? contactos!.filter(c => c.idioma !== "eu" && !excluded.has(c.email.toLowerCase())) : contactos!.filter(c => !excluded.has(c.email.toLowerCase()))) : [];
-
-      const emails = [
-        ...euContactos.map(({ email, nombre }) => ({
-          email, nombre,
-          subject: campana.subject_eu,
-          html: buildHtml(campana.body_eu, email, campana.preheader_eu, true),
-        })),
-        ...esContactos.map(({ email, nombre }) => ({
-          email, nombre,
-          subject: campana.subject_es,
-          html: buildHtml(campana.body_es, email, campana.preheader_es, false),
-        })),
-      ];
-
-      const from = resolveNewsletterFrom(campana.remitente);
-      const BATCH = 50;
-      for (let i = 0; i < emails.length; i += BATCH) {
-        await sendEmailBatch(
-          emails.slice(i, i + BATCH).map(({ email, nombre, subject, html }) => ({
-            to: nombre ? `${nombre} <${email}>` : email,
-            subject,
-            html,
-          })),
-          from
-        );
-      }
-
-      await supabase
-        .from("newsletter_campanas")
-        .update({
-          estado: "enviado",
-          enviado_en: new Date().toISOString(),
-          enviados_eu: euContactos.length,
-          enviados_es: esContactos.length,
-        })
-        .eq("id", campana.id);
-
+      await enviarCampana(campana as CampanaEnviable, contactos);
       procesadas++;
     }
   }
 
   const nurtureEnviados = await procesarNurture();
   const recordatorioEnviados = await procesarRecordatorioValoracion();
+  const colaBEnviadas = await procesarColaB(cargarContactos);
 
-  return NextResponse.json({ ok: true, procesadas, nurtureEnviados, recordatorioEnviados });
+  return NextResponse.json({ ok: true, procesadas, nurtureEnviados, recordatorioEnviados, colaBEnviadas });
 }
