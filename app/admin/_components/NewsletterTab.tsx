@@ -1070,7 +1070,9 @@ export default function NewsletterTab() {
                               {c.enviados_eu && c.enviados_es ? " · " : ""}
                               {c.enviados_es ? `${c.enviados_es} es)` : c.enviados_eu ? ")" : ""}
                               {" · "}{c.remitente ?? REMITENTES[0]}
-                              {c.orden_cola !== null && <span className="text-teal-600"> · desde cola B</span>}
+                              {/* typeof, no !== null: si la columna faltase en la respuesta
+                                  llegaría undefined y la etiqueta saldría en todas. */}
+                              {typeof c.orden_cola === "number" && <span className="text-teal-600"> · desde cola B</span>}
                             </p>
                           </div>
                           <span className="text-gray-400 text-[0.75rem] shrink-0 ml-4">{isOpen ? "▲" : "▼"}</span>
