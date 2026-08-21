@@ -23,8 +23,10 @@ export async function POST(req: Request) {
     )
   );
 
-  if (results.some(r => r.error)) {
-    return NextResponse.json({ error: "Error al reordenar." }, { status: 500 });
+  const fallo = results.find(r => r.error)?.error;
+  if (fallo) {
+    console.error("campanas/orden: error al reordenar:", fallo);
+    return NextResponse.json({ error: `Error al reordenar: ${fallo.message}` }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
 }

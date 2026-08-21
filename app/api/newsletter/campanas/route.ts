@@ -15,8 +15,16 @@ export async function GET(req: Request) {
     .from("newsletter_campanas")
     .select("*")
     .order("programado_para", { ascending: true });
-  if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
+  if (error) return fallo("Error al listar las campañas", error);
   return NextResponse.json(data ?? []);
+}
+
+// El panel está tras el login de admin, así que el motivo real del fallo puede
+// llegar hasta la pantalla: un "Error al guardar" seco no dice si falta una
+// columna, una migración o un permiso.
+function fallo(contexto: string, error: { message?: string } | null) {
+  console.error(`campanas: ${contexto}:`, error);
+  return NextResponse.json({ error: `${contexto}: ${error?.message ?? "error desconocido"}` }, { status: 500 });
 }
 
 // Siguiente hueco al final de la cola B
@@ -49,7 +57,7 @@ export async function POST(req: Request) {
     })
     .select()
     .single();
-  if (error) return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
+  if (error) return fallo("Error al guardar", error);
   return NextResponse.json(data);
 }
 
@@ -80,7 +88,7 @@ export async function PATCH(req: Request) {
     .update(update)
     .eq("id", id)
     .in("estado", ["programado", "cola"]);
-  if (error) return NextResponse.json({ error: "Error al actualizar." }, { status: 500 });
+  if (error) return fallo("Error al actualizar", error);
   return NextResponse.json({ ok: true });
 }
 
@@ -93,6 +101,6 @@ export async function DELETE(req: Request) {
     .update({ estado: "cancelado", orden_cola: null })
     .eq("id", id)
     .in("estado", ["programado", "cola"]);
-  if (error) return NextResponse.json({ error: "Error al cancelar." }, { status: 500 });
+  if (error) return fallo("Error al cancelar", error);
   return NextResponse.json({ ok: true });
 }

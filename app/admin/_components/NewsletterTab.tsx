@@ -114,6 +114,11 @@ export default function NewsletterTab() {
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
   const [cancelInput, setCancelInput] = useState("");
 
+  // Error de las acciones sobre una campaña ya guardada (mover, reordenar,
+  // editar, cancelar). Sin esto un fallo del servidor no se ve: el botón
+  // simplemente no hace nada.
+  const [accionError, setAccionError] = useState<string | null>(null);
+
   const pw = useCallback(() => sessionStorage.getItem("admin_pw") || "", []);
 
   const authHeaders = useCallback(() => ({
@@ -266,11 +271,17 @@ export default function NewsletterTab() {
 
   async function handleCancelConfirm() {
     if (!cancelTarget || cancelInput !== "CANCELAR") return;
-    await fetch("/api/newsletter/campanas", {
+    setAccionError(null);
+    const res = await fetch("/api/newsletter/campanas", {
       method: "DELETE",
       headers: authHeaders(),
       body: JSON.stringify({ id: cancelTarget }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setAccionError(data.error || `Error ${res.status} al cancelar.`);
+      return;
+    }
     setCampanas(prev => prev.map(c => c.id === cancelTarget ? { ...c, estado: "cancelado" } : c));
     setCancelTarget(null);
     setCancelInput("");
@@ -308,6 +319,21 @@ export default function NewsletterTab() {
     };
   }
 
+  // Devuelve true solo si el servidor confirma el cambio. Si falla, deja el
+  // motivo a la vista en lugar de que el botón parezca no responder.
+  async function patchCampana(payload: Record<string, unknown>): Promise<boolean> {
+    setAccionError(null);
+    const res = await fetch("/api/newsletter/campanas", {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return true;
+    const data = await res.json().catch(() => ({}));
+    setAccionError(data.error || `Error ${res.status} al guardar el cambio.`);
+    return false;
+  }
+
   async function handleSaveEdit() {
     if (!editing) return;
     setSaving(true);
@@ -315,16 +341,12 @@ export default function NewsletterTab() {
     // En la cola no se toca la fecha: el PATCH sin programado_para ni en_cola
     // deja la campaña donde está y solo actualiza el contenido.
     const programado_para = esCola ? null : new Date(`${editDate}T${editTime}`).toISOString();
-    await fetch("/api/newsletter/campanas", {
-      method: "PATCH",
-      headers: authHeaders(),
-      body: JSON.stringify({ id: editing.id, ...edicionActual(), ...(esCola ? {} : { programado_para }) }),
-    });
-    setCampanas(prev => prev.map(c => c.id === editing.id
-      ? { ...c, ...edicionActual(), ...(esCola ? {} : { programado_para }) }
-      : c
-    ));
-    setEditing(null);
+    const cambios = { ...edicionActual(), ...(esCola ? {} : { programado_para }) };
+    const ok = await patchCampana({ id: editing.id, ...cambios });
+    if (ok) {
+      setCampanas(prev => prev.map(c => c.id === editing.id ? { ...c, ...cambios } : c));
+      setEditing(null);
+    }
     setSaving(false);
   }
 
@@ -333,32 +355,27 @@ export default function NewsletterTab() {
     if (!editing || !editDate || !editTime) return;
     setSaving(true);
     const programado_para = new Date(`${editDate}T${editTime}`).toISOString();
-    await fetch("/api/newsletter/campanas", {
-      method: "PATCH",
-      headers: authHeaders(),
-      body: JSON.stringify({ id: editing.id, ...edicionActual(), programado_para }),
-    });
-    setCampanas(prev => prev.map(c => c.id === editing.id
-      ? { ...c, ...edicionActual(), programado_para, estado: "programado", orden_cola: null }
-      : c
-    ));
-    setEditing(null);
+    const ok = await patchCampana({ id: editing.id, ...edicionActual(), programado_para });
+    if (ok) {
+      setCampanas(prev => prev.map(c => c.id === editing.id
+        ? { ...c, ...edicionActual(), programado_para, estado: "programado", orden_cola: null }
+        : c
+      ));
+      setEditing(null);
+      setTab("Programadas");
+    }
     setSaving(false);
-    setTab("Programadas");
   }
 
   // Calendario → cola B: le quita la fecha y la manda al final de la cola.
   async function handleMandarACola(c: Campana) {
-    await fetch("/api/newsletter/campanas", {
-      method: "PATCH",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        id: c.id,
-        subject_eu: c.subject_eu, body_eu: c.body_eu, preheader_eu: c.preheader_eu,
-        subject_es: c.subject_es, body_es: c.body_es, preheader_es: c.preheader_es,
-        excluidos: c.excluidos, remitente: c.remitente, en_cola: true,
-      }),
+    const ok = await patchCampana({
+      id: c.id,
+      subject_eu: c.subject_eu, body_eu: c.body_eu, preheader_eu: c.preheader_eu,
+      subject_es: c.subject_es, body_es: c.body_es, preheader_es: c.preheader_es,
+      excluidos: c.excluidos, remitente: c.remitente, en_cola: true,
     });
+    if (!ok) return;
     if (editing?.id === c.id) setEditing(null);
     await loadAll();
     setTab("Cola B");
@@ -376,13 +393,18 @@ export default function NewsletterTab() {
     setCampanas(prev => prev.map(c => posiciones.has(c.id) ? { ...c, orden_cola: posiciones.get(c.id)! } : c));
 
     setReordering(true);
+    setAccionError(null);
     const res = await fetch("/api/newsletter/campanas/orden", {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ ids: ordenada.map(c => c.id) }),
     });
     setReordering(false);
-    if (!res.ok) await loadAll(); // si falla, se recupera el orden real
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setAccionError(data.error || `Error ${res.status} al reordenar.`);
+      await loadAll(); // si falla, se recupera el orden real
+    }
   }
 
   const activos = contactos.filter(c => !c.unsubscribed);
@@ -947,6 +969,9 @@ export default function NewsletterTab() {
         {/* ── TAB: PROGRAMADAS ── */}
         {tab === "Programadas" && (
           <section className="bg-white border border-gray-200 p-5 md:p-6 space-y-8">
+            {accionError && (
+              <div className="p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{accionError}</div>
+            )}
             {/* Pending */}
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a] mb-5">
@@ -1082,6 +1107,9 @@ export default function NewsletterTab() {
         {/* ── TAB: COLA B ── */}
         {tab === "Cola B" && (
           <section className="bg-white border border-gray-200 p-5 md:p-6">
+            {accionError && (
+              <div className="mb-5 p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{accionError}</div>
+            )}
             <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a] mb-2">
               Cola B ({cola.length})
             </p>
