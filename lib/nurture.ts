@@ -30,6 +30,158 @@ export interface NurtureContacto {
   fecha_ultimo_mail_secuencia: string | null;
 }
 
+// Gmail (y su alias googlemail.com) ignora los puntos en la parte local y
+// trata cualquier "+lo-que-sea" como el mismo buzón. Normalizamos para que
+// la deduplicación por email detecte de verdad que es la misma persona,
+// aunque rellene el formulario con variantes distintas de su dirección.
+export function normalizarEmail(email: string): string {
+  const trimmed = email.trim().toLowerCase();
+  const [local, dominio] = trimmed.split("@");
+  if (dominio !== "gmail.com" && dominio !== "googlemail.com") return trimmed;
+  const sinTag = local.split("+")[0];
+  const sinPuntos = sinTag.replace(/\./g, "");
+  return `${sinPuntos}@gmail.com`;
+}
+
+const CAMPOS_CONTACTO = "id, email, nombre, idioma, posicion_secuencia, fecha_ultimo_mail_secuencia";
+
+export interface AltaSecuenciaInput {
+  email: string;
+  origen: string;
+  nombre?: string | null;
+  idioma?: string;
+  tags?: string[];
+  edad?: number | null;
+  telefono?: string | null;
+  // Casilla de newsletter del formulario. Si no está marcada, el lead se
+  // guarda igual pero con recibe_secuencia=false: el cron lo ignora y no
+  // recibe ni el M0 ni el resto de la secuencia.
+  recibeSecuencia: boolean;
+}
+
+export interface AltaSecuenciaResultado {
+  estado: "nuevo" | "reactivado" | "existente" | "error";
+  contactoId: string | null;
+  // Solo viene relleno cuando procede disparar el M0 (alta nueva o
+  // reactivación con la casilla marcada). Si ya estaba en la lista, va null:
+  // no se le reinicia la secuencia por rellenar otro formulario.
+  contacto: NurtureContacto | null;
+  error?: string;
+}
+
+// Da de alta en newsletter_contactos a alguien que entra desde una landing
+// propia (no desde Meta Ads, que tiene su camino en /api/leads/entrada con
+// su deduplicación por leadgen_id). Misma tabla, mismas columnas y misma
+// secuencia: lo único distinto es la puerta de entrada y el `origen`.
+export async function altaEnSecuencia({
+  email,
+  origen,
+  nombre = null,
+  idioma = "es",
+  tags = [],
+  edad = null,
+  telefono = null,
+  recibeSecuencia,
+}: AltaSecuenciaInput): Promise<AltaSecuenciaResultado> {
+  const emailLower = normalizarEmail(email);
+  const tagsNuevas = tags.map((t) => t.toLowerCase());
+
+  const seleccionar = () =>
+    supabase
+      .from("newsletter_contactos")
+      .select(`${CAMPOS_CONTACTO}, tags, telefono, edad, unsubscribed`)
+      .eq("email", emailLower)
+      .maybeSingle();
+
+  const fusionar = async (fila: {
+    id: string;
+    tags: string[] | null;
+    telefono: string | null;
+    edad: number | null;
+    unsubscribed: boolean;
+  }): Promise<AltaSecuenciaResultado> => {
+    const tagsFusionadas = Array.from(
+      new Set([...(fila.tags ?? []).map((t) => t.toLowerCase()), ...tagsNuevas])
+    );
+    // Datos que antes no teníamos: se rellenan, nunca se pisan los que ya había.
+    const completar = {
+      tags: tagsFusionadas,
+      telefono: fila.telefono ?? telefono,
+      edad: fila.edad ?? edad,
+    };
+
+    if (fila.unsubscribed && recibeSecuencia) {
+      // Estaba dado de baja y vuelve a marcar la casilla: es una señal de
+      // interés renovado, así que se reactiva y entra en la secuencia desde
+      // cero, igual que hace /api/leads/entrada con los leads de ads.
+      const { data, error } = await supabase
+        .from("newsletter_contactos")
+        .update({
+          ...completar,
+          unsubscribed: false,
+          recibe_secuencia: true,
+          posicion_secuencia: 0,
+          secuencia_completada: false,
+          fecha_ultimo_mail_secuencia: null,
+          enviando_secuencia_desde: null,
+          origen,
+        })
+        .eq("id", fila.id)
+        .select(CAMPOS_CONTACTO)
+        .single();
+      if (error) {
+        console.error("altaEnSecuencia: error reactivando", emailLower, error);
+        return { estado: "error", contactoId: fila.id, contacto: null, error: error.message };
+      }
+      return { estado: "reactivado", contactoId: fila.id, contacto: data };
+    }
+
+    // Ya estaba en la lista: no le tocamos recibe_secuencia ni la posición.
+    // Rellenar otro formulario no debe reiniciarle la secuencia ni volver a
+    // mandarle mails que ya recibió.
+    const { error } = await supabase.from("newsletter_contactos").update(completar).eq("id", fila.id);
+    if (error) {
+      console.error("altaEnSecuencia: error fusionando datos", emailLower, error);
+      return { estado: "error", contactoId: fila.id, contacto: null, error: error.message };
+    }
+    return { estado: "existente", contactoId: fila.id, contacto: null };
+  };
+
+  const { data: existente } = await seleccionar();
+  if (existente) return fusionar(existente);
+
+  const { data: creado, error } = await supabase
+    .from("newsletter_contactos")
+    .insert({
+      email: emailLower,
+      nombre,
+      idioma,
+      origen,
+      tags: tagsNuevas,
+      edad,
+      telefono,
+      recibe_secuencia: recibeSecuencia,
+      posicion_secuencia: 0,
+      secuencia_completada: false,
+      unsubscribed: false,
+    })
+    .select(CAMPOS_CONTACTO)
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      // Carrera: alguien insertó este email entre el select y el insert.
+      // Nos comportamos como si hubiera existido desde el principio.
+      const { data: carrera } = await seleccionar();
+      if (carrera) return fusionar(carrera);
+    }
+    console.error("altaEnSecuencia: error insertando", emailLower, error);
+    return { estado: "error", contactoId: null, contacto: null, error: error.message };
+  }
+
+  return { estado: "nuevo", contactoId: creado.id, contacto: recibeSecuencia ? creado : null };
+}
+
 export const CANDADO_STALE_MS = 5 * 60 * 1000; // 5 min: si un intento se quedó a medias (crash), se puede reclamar de nuevo
 
 // Envía a `contacto` el mail que le toca según su posicion_secuencia.

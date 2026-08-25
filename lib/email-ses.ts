@@ -1,9 +1,22 @@
 import Mailjet from "node-mailjet";
 
-const client = Mailjet.apiConnect(
-  process.env.MJ_APIKEY_PUBLIC!,
-  process.env.MJ_APIKEY_PRIVATE!
-);
+// El cliente se crea en el primer envío, no al importar el módulo.
+//
+// Antes se creaba arriba del todo, y si faltaban las claves (en local viven
+// solo en Vercel) reventaba al cargar el módulo: eso tumbaba la ruta entera
+// que lo importase, que devolvía un 500 de HTML sin JSON. Resultado: un
+// formulario que fallaba entero, sin decir por qué, cuando lo único roto era
+// el correo. Así el fallo ocurre donde tiene que ocurrir —dentro de
+// sendEmail, que ya está envuelto en try/catch en todos los sitios— y el
+// cron lo reintenta.
+let cliente: ReturnType<typeof Mailjet.apiConnect> | null = null;
+
+function getClient() {
+  if (!cliente) {
+    cliente = Mailjet.apiConnect(process.env.MJ_APIKEY_PUBLIC!, process.env.MJ_APIKEY_PRIVATE!);
+  }
+  return cliente;
+}
 
 function parseAddress(addr: string) {
   const m = addr.match(/^(.+?)\s*<(.+?)>$/);
@@ -35,7 +48,7 @@ export async function sendEmail(
   attachments?: EmailAttachment[]
 ) {
   const fromParsed = parseAddress(from);
-  await client.post("send", { version: "v3.1" }).request({
+  await getClient().post("send", { version: "v3.1" }).request({
     Messages: [
       {
         From: fromParsed,
@@ -64,7 +77,7 @@ export async function sendEmailBatch(
 ) {
   if (!messages.length) return;
   const fromParsed = parseAddress(from);
-  await client.post("send", { version: "v3.1" }).request({
+  await getClient().post("send", { version: "v3.1" }).request({
     Messages: messages.map(({ to, subject, html }) => ({
       From: fromParsed,
       To: [parseAddress(to)],

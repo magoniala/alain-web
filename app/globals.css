@@ -112,6 +112,101 @@ body {
   }
 }
 
+/* ---------------------------------------------------------------------
+   Preview de la Hoja de Ruta (landings de Entrenatzaile).
+   Va aquí y no en un CSS Module porque este proyecto no usa CSS Modules en
+   ningún sitio: los keyframes y la política de movimiento reducido viven
+   todos en este archivo. Fondo transparente a propósito — el bloque se
+   apoya sobre el crema (#FAF3E8) de la landing.
+   --------------------------------------------------------------------- */
+
+.hr-escena {
+  /* 90% y no 100%: las dos páginas van rotadas (5,5° y -3,5°) y su caja
+     visual sobresale ~8% del ancho de la escena. Con el 100% (o con el
+     88vw del diseño original) el mockup desbordaba a 375px y sacaba scroll
+     horizontal. Ese 10% de holgura es justo lo que ocupan las rotaciones. */
+  width: min(430px, 90%);
+  margin: 0 auto;
+  perspective: 1300px;
+  /* La flotación va aquí, en la escena, y no en la pila: la pila usa su
+     propio transform para la inclinación que sigue al puntero, y las dos
+     cosas se pisarían. */
+  animation: hrFlotar 7s ease-in-out infinite;
+}
+
+.hr-pila {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateY(-7deg) rotateX(3deg);
+  transition: transform 0.35s ease;
+}
+
+.hr-pagina {
+  display: block;
+  width: 74%;
+  height: auto;
+  border-radius: 5px;
+  box-shadow:
+    0 30px 60px -22px rgba(15, 34, 64, 0.38),
+    0 8px 18px -8px rgba(15, 34, 64, 0.22);
+}
+
+.hr-anexo {
+  position: absolute;
+  top: 7%;
+  left: 26%;
+  transform: rotate(5.5deg) translateZ(-45px);
+  filter: brightness(0.965);
+}
+
+.hr-portada {
+  position: relative;
+  transform: rotate(-3.5deg);
+}
+
+/* Con transform, nunca con margin-top: animar el margen cambia la altura real
+   del documento y hace que se mueva la página entera, no solo el mockup. */
+@keyframes hrFlotar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-11px);
+  }
+}
+
+.hr-detalle {
+  margin: 40px auto 0;
+  max-width: 620px;
+  padding: 0 16px;
+}
+
+.hr-detalle img {
+  width: 100%;
+  height: auto;
+  border-radius: 5px;
+  box-shadow: 0 10px 28px -12px rgba(15, 34, 64, 0.25);
+}
+
+.hr-detalle figcaption {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1c3a5e;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hr-escena {
+    animation: none;
+  }
+  .hr-pila {
+    transition: none;
+  }
+}
+
 /* Touch feedback on mobile */
 @media (hover: none) {
   a:active,

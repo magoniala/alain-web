@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { enviarMailSecuencia, wrapNurture, CANDADO_STALE_MS } from "@/lib/nurture";
+import { enviarMailSecuencia, wrapNurture, normalizarEmail, CANDADO_STALE_MS } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { NextResponse } from "next/server";
 
@@ -12,19 +12,6 @@ const POSICION_MAIL_DUPLICADO = -2;
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// Gmail (y su alias googlemail.com) ignora los puntos en la parte local y
-// trata cualquier "+lo-que-sea" como el mismo buzón. Normalizamos para que
-// la deduplicación por email detecte de verdad que es la misma persona,
-// aunda rellene el formulario con variantes distintas de su dirección.
-function normalizarEmail(email: string): string {
-  const trimmed = email.trim().toLowerCase();
-  const [local, dominio] = trimmed.split("@");
-  if (dominio !== "gmail.com" && dominio !== "googlemail.com") return trimmed;
-  const sinTag = local.split("+")[0];
-  const sinPuntos = sinTag.replace(/\./g, "");
-  return `${sinPuntos}@gmail.com`;
 }
 
 // Registra en la fila del toque (leads_ads_duplicados) qué pasó de verdad

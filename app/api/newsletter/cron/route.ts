@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
 import { wrapNurture, enviarMailSecuencia, CANDADO_STALE_MS, type NurtureContacto } from "@/lib/nurture";
+import { MAIL_ABANDONO_ASUNTO, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -322,6 +323,110 @@ async function procesarColaB(cargarContactos: () => Promise<ContactoEnvio[]>): P
   return 1;
 }
 
+// Reservas de la Hoja de Ruta que se quedaron a medias: el lead rellenó sus
+// datos (ya está guardado) pero no llegó a elegir hueco. Pasado un rato se
+// le escribe una vez, y solo una.
+//
+// No tiene ventana horaria propia: sale en cuanto se cumple la espera, en la
+// pasada del cron que toque.
+const ABANDONO_ESPERA_MS = 60 * 60 * 1000; // 1 h desde que dejó los datos
+const ABANDONO_MAX_ANTIGUEDAD_MS = 7 * 24 * 60 * 60 * 1000; // no rescatar histórico viejo
+
+async function procesarReservasAbandonadas(): Promise<number> {
+  const ahora = Date.now();
+  const limiteSuperior = new Date(ahora - ABANDONO_ESPERA_MS).toISOString();
+  const limiteInferior = new Date(ahora - ABANDONO_MAX_ANTIGUEDAD_MS).toISOString();
+
+  const { data: reservas, error } = await supabase
+    .from("hoja_ruta_reservas")
+    .select("id, nombre, email, variante")
+    .is("hueco", null)
+    // Una llamada anulada desde el panel también se queda sin hueco. Sin este
+    // filtro, al anularla le llegaría al lead un correo diciéndole que dejó
+    // la reserva a medias, que es justo lo contrario de lo que pasó.
+    .is("cancelada_en", null)
+    .eq("aviso_abandono_enviado", false)
+    .lt("creado_en", limiteSuperior)
+    .gt("creado_en", limiteInferior);
+
+  if (error) {
+    console.error("cron: error buscando reservas abandonadas (¿falta la columna?):", error);
+    return 0;
+  }
+  if (!reservas?.length) return 0;
+
+  // Quien volvió más tarde y sí completó una reserva no debe recibir el
+  // aviso, aunque la fila a medias siga ahí.
+  const { data: completadas } = await supabase
+    .from("hoja_ruta_reservas")
+    .select("email")
+    .not("hueco", "is", null)
+    .in("email", reservas.map((r) => r.email));
+  const yaReservaron = new Set((completadas ?? []).map((r) => r.email));
+
+  // Tampoco a quien se haya dado de baja de los correos.
+  const { data: bajas } = await supabase
+    .from("newsletter_contactos")
+    .select("email")
+    .eq("unsubscribed", true)
+    .in("email", reservas.map((r) => r.email));
+  const dadosDeBaja = new Set((bajas ?? []).map((r) => r.email));
+
+  const staleThreshold = new Date(ahora - CANDADO_STALE_MS).toISOString();
+  let enviados = 0;
+
+  for (const reserva of reservas) {
+    if (yaReservaron.has(reserva.email) || dadosDeBaja.has(reserva.email)) continue;
+
+    const { data: claimed, error: claimError } = await supabase
+      .from("hoja_ruta_reservas")
+      .update({ aviso_abandono_enviando_desde: new Date().toISOString() })
+      .eq("id", reserva.id)
+      .eq("aviso_abandono_enviado", false)
+      .or(`aviso_abandono_enviando_desde.is.null,aviso_abandono_enviando_desde.lt.${staleThreshold}`)
+      .select("id");
+    if (claimError) {
+      console.error("cron: error al reclamar el aviso de abandono:", reserva.email, claimError);
+      continue;
+    }
+    if (!claimed?.length) continue; // otra pasada lo tiene cogido
+
+    const html = wrapNurture(mailAbandonoCuerpo(reserva.nombre, reserva.variante), reserva.email, false);
+
+    try {
+      await sendEmail(
+        reserva.nombre ? `${reserva.nombre} <${reserva.email}>` : reserva.email,
+        MAIL_ABANDONO_ASUNTO,
+        html,
+        resolveNewsletterFrom("entrenatzaile@alainzulaika.com")
+      );
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : String(err);
+      console.error("cron: error enviando el aviso de abandono:", reserva.email, err);
+      // Se libera el candado y NO se marca como enviado: la siguiente pasada
+      // lo vuelve a intentar.
+      await supabase
+        .from("hoja_ruta_reservas")
+        .update({ aviso_abandono_enviando_desde: null, aviso_abandono_error: mensaje })
+        .eq("id", reserva.id);
+      continue;
+    }
+
+    await supabase
+      .from("hoja_ruta_reservas")
+      .update({
+        aviso_abandono_enviado: true,
+        aviso_abandono_en: new Date().toISOString(),
+        aviso_abandono_enviando_desde: null,
+        aviso_abandono_error: null,
+      })
+      .eq("id", reserva.id);
+    enviados++;
+  }
+
+  return enviados;
+}
+
 export async function GET(req: Request) {
   // cron-job.org firma las peticiones con Authorization: Bearer <CRON_SECRET>
   const auth = req.headers.get("authorization");
@@ -360,6 +465,14 @@ export async function GET(req: Request) {
   const nurtureEnviados = await procesarNurture();
   const recordatorioEnviados = await procesarRecordatorioValoracion();
   const colaBEnviadas = await procesarColaB(cargarContactos);
+  const abandonosEnviados = await procesarReservasAbandonadas();
 
-  return NextResponse.json({ ok: true, procesadas, nurtureEnviados, recordatorioEnviados, colaBEnviadas });
+  return NextResponse.json({
+    ok: true,
+    procesadas,
+    nurtureEnviados,
+    recordatorioEnviados,
+    colaBEnviadas,
+    abandonosEnviados,
+  });
 }
