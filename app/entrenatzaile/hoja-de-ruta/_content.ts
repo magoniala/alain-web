@@ -313,12 +313,20 @@ export const HOJA_RUTA_CIERRE = {
   } satisfies PorVariante<string>,
 };
 
+export const HOJA_RUTA_PASOS = {
+  datos: "Tus datos",
+  permiso: "Un permiso y ya",
+  dia: "Elige el día",
+  hora: "Elige la hora",
+};
+
 export const HOJA_RUTA_HUECOS = {
-  titulo: "Elige tu hueco",
-  intro: "Estos son los huecos que quedan libres. Elige el que mejor te venga.",
-  cargando: "Cargando huecos…",
-  vacio: "Ahora mismo no quedan huecos abiertos. Escríbeme a contacto@alainzulaika.com y lo cuadramos.",
+  diaIntro: "Estos son los días que tengo abiertos. Hago una llamada al día.",
+  horaIntro: "Todas duran una hora. Elige la que mejor te encaje.",
+  cargando: "Buscando huecos…",
+  vacio: "Ahora mismo no me quedan huecos abiertos. Escríbeme a contacto@alainzulaika.com y lo cuadramos.",
   boton: "Confirmar el hueco",
+  cambiarDia: "← otro día",
   hechoTitulo: "Hueco reservado.",
   hechoTexto: "Te confirmo por WhatsApp en cuanto lo vea, y te mando el enlace de la llamada.",
 };

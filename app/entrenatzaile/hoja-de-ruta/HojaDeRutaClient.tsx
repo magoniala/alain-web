@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Header, Footer, inputStyle, labelStyle, fieldStyle } from "../_ui";
+import { Header, Footer, inputStyle, labelStyle, fieldStyle, cardStyle } from "../_ui";
 import PreviewHojaDeRuta from "../PreviewHojaDeRuta";
 import {
   HOJA_RUTA_BOTON,
   HOJA_RUTA_CIERRE,
   HOJA_RUTA_HERO,
   HOJA_RUTA_HUECOS,
+  HOJA_RUTA_PASOS,
   HOJA_RUTA_SECCIONES,
   type Parrafo,
   type SeccionHR,
@@ -28,6 +29,21 @@ function leerUtm(): Utm {
   return utm;
 }
 
+// Cuatro pantallas. El lead se guarda al terminar la del permiso, ANTES de
+// que elija día y hora: si abandona el calendario, sus datos ya están.
+const PASO_DATOS = 0;
+const PASO_PERMISO = 1;
+const PASO_DIA = 2;
+const PASO_HORA = 3;
+const PASOS_TOTAL = 4;
+
+const ETIQUETAS_PASO = [
+  HOJA_RUTA_PASOS.datos,
+  HOJA_RUTA_PASOS.permiso,
+  HOJA_RUTA_PASOS.dia,
+  HOJA_RUTA_PASOS.hora,
+];
+
 const tituloClase = "font-[family-name:var(--font-lora)] font-medium tracking-[-0.02em]";
 const cuerpoClase = "whitespace-pre-line text-[1.15rem] leading-[1.8] text-[#0F2240]/80 md:text-[1.22rem]";
 const botonClase =
@@ -40,6 +56,38 @@ const pistaStyle: React.CSSProperties = {
   color: "rgba(15,34,64,0.50)",
   marginBottom: "0.7rem",
 };
+
+// Botón de opción (día u hora), con la misma estética que el selector de
+// género de /espalda y el de turno de /valoracion.
+function Opcion({
+  activo,
+  onClick,
+  children,
+}: {
+  activo: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "0.6rem 0.5rem",
+        fontSize: "0.92rem",
+        lineHeight: 1.3,
+        cursor: "pointer",
+        border: `1px solid ${activo ? "#D4860A" : "rgba(28,58,94,0.22)"}`,
+        background: activo ? "rgba(212,134,10,0.12)" : "#fff",
+        color: activo ? "#0F2240" : "rgba(15,34,64,0.72)",
+        transition: "border-color 0.2s, background 0.2s, color 0.2s",
+      }}
+      className="hover:border-[#1C3A5E]/50"
+    >
+      {children}
+    </button>
+  );
+}
 
 function Parrafos({ parrafos }: { parrafos: Parrafo[] }) {
   return (
@@ -59,7 +107,6 @@ function Parrafos({ parrafos }: { parrafos: Parrafo[] }) {
   );
 }
 
-// Marca de verificación de los micro-copys del hero y de los CTA.
 function Checks({ lineas }: { lineas: string[] }) {
   return (
     <ul className="mt-6 space-y-2">
@@ -75,19 +122,41 @@ function Checks({ lineas }: { lineas: string[] }) {
   );
 }
 
+// "2026-08-27" -> "jue 27 ago"
+function etiquetaDia(dia: string) {
+  const [a, m, d] = dia.split("-").map(Number);
+  return new Date(Date.UTC(a, m - 1, d)).toLocaleDateString("es-ES", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+}
+
+// De la etiqueta completa ("jueves, 27 de agosto · 10:30") solo la hora.
+function soloHora(etiqueta: string) {
+  return etiqueta.split("·").pop()?.trim() ?? etiqueta;
+}
+
 export default function HojaDeRutaClient({ variante }: { variante: VarianteHR }) {
   const secciones = HOJA_RUTA_SECCIONES.filter((s: SeccionHR) => !s.soloEn || s.soloEn === variante);
 
-  const [paso, setPaso] = useState<"datos" | "hueco" | "hecho">("datos");
+  const [paso, setPaso] = useState(PASO_DATOS);
   const [datos, setDatos] = useState({ nombre: "", email: "", telefono: "" });
   const [consentDatos, setConsentDatos] = useState(false);
   const [reservaId, setReservaId] = useState<string | null>(null);
   const [huecos, setHuecos] = useState<HuecoDisponible[] | null>(null);
+  const [diaElegido, setDiaElegido] = useState("");
   const [huecoElegido, setHuecoElegido] = useState("");
   const [cuandoReservado, setCuandoReservado] = useState("");
+  const [hecho, setHecho] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+
   const utm = useRef<Utm>({});
+  const tarjetaRef = useRef<HTMLDivElement>(null);
+  const primerCampoRef = useRef<HTMLInputElement>(null);
+  const yaMontado = useRef(false);
 
   useEffect(() => {
     utm.current = leerUtm();
@@ -102,7 +171,29 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
     return () => observer.disconnect();
   }, []);
 
+  // Al cambiar de pantalla, la tarjeta a la vista. En el primer render no,
+  // que el formulario está al final de una página larga.
+  useEffect(() => {
+    if (!yaMontado.current) {
+      yaMontado.current = true;
+      return;
+    }
+    tarjetaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    primerCampoRef.current?.focus({ preventScroll: true });
+  }, [paso, hecho]);
+
+  // Días con hueco, en orden, a partir de la lista plana que da la API.
+  const porDia = new Map<string, HuecoDisponible[]>();
+  for (const h of huecos ?? []) {
+    const dia = h.valor.slice(0, 10);
+    const lista = porDia.get(dia) ?? [];
+    lista.push(h);
+    porDia.set(dia, lista);
+  }
+  const diasDisponibles = Array.from(porDia.keys());
+
   async function cargarHuecos() {
+    setHuecos(null);
     try {
       const res = await fetch("/api/entrenatzaile/hoja-de-ruta", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
@@ -112,40 +203,67 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
     }
   }
 
-  // Paso 1: el lead se guarda ANTES de que elija hueco. Si abandona el
-  // calendario, sus datos ya están.
-  async function guardarLead(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setEnviando(true);
-    try {
-      const res = await fetch("/api/entrenatzaile/hoja-de-ruta", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...datos, consentDatos, variante, utm: utm.current }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(mensajeErrorFormulario(res.status, data.error));
-        return;
-      }
-      setReservaId(data.id);
-      setPaso("hueco");
-      cargarHuecos();
-    } catch {
-      setError(mensajeErrorFormulario(0));
-    } finally {
-      setEnviando(false);
+  function validarPaso(): string | null {
+    if (paso === PASO_DATOS) {
+      if (!datos.nombre.trim()) return "Escribe tu nombre para poder seguir.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.email.trim())) return "Escribe un email válido.";
+      if (datos.telefono.replace(/[\s().+-]/g, "").length < 9) return "Escribe un teléfono válido.";
+      return null;
     }
+    if (paso === PASO_PERMISO && !consentDatos) {
+      return "Marca la casilla de consentimiento para poder reservar.";
+    }
+    if (paso === PASO_DIA && !diaElegido) return "Elige un día para seguir.";
+    if (paso === PASO_HORA && !huecoElegido) return "Elige una hora, por favor.";
+    return null;
   }
 
-  async function confirmarHueco(e: React.FormEvent) {
+  async function avanzar(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    if (!huecoElegido) {
-      setError("Elige un hueco, por favor.");
+    const fallo = validarPaso();
+    if (fallo) {
+      setError(fallo);
       return;
     }
+    setError("");
+
+    if (paso === PASO_DATOS) {
+      setPaso(PASO_PERMISO);
+      return;
+    }
+
+    // Fin del permiso: se guarda el lead ANTES de enseñarle el calendario.
+    if (paso === PASO_PERMISO) {
+      setEnviando(true);
+      try {
+        const res = await fetch("/api/entrenatzaile/hoja-de-ruta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...datos, consentDatos, variante, utm: utm.current }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(mensajeErrorFormulario(res.status, data.error));
+          return;
+        }
+        setReservaId(data.id);
+        setPaso(PASO_DIA);
+        cargarHuecos();
+      } catch {
+        setError(mensajeErrorFormulario(0));
+      } finally {
+        setEnviando(false);
+      }
+      return;
+    }
+
+    if (paso === PASO_DIA) {
+      setHuecoElegido("");
+      setPaso(PASO_HORA);
+      return;
+    }
+
+    // Última pantalla: confirmar el hueco.
     setEnviando(true);
     try {
       const res = await fetch("/api/entrenatzaile/hoja-de-ruta", {
@@ -156,20 +274,162 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(mensajeErrorFormulario(res.status, data.error));
-        // Si el hueco lo acaban de coger, se repinta la lista al vuelo.
+        // Si se lo han quitado entretanto, se repinta el calendario desde el día.
         if (res.status === 409 || res.status === 400) {
           setHuecoElegido("");
+          setDiaElegido("");
+          setPaso(PASO_DIA);
           cargarHuecos();
         }
         return;
       }
       setCuandoReservado(data.cuando ?? "");
-      setPaso("hecho");
+      setHecho(true);
     } catch {
       setError(mensajeErrorFormulario(0));
     } finally {
       setEnviando(false);
     }
+  }
+
+  // Solo se puede volver dentro del calendario. Una vez guardado el lead, no
+  // se vuelve a la pantalla de datos: reenviarla crearía una segunda fila
+  // para la misma persona.
+  const puedeVolver = paso === PASO_PERMISO || paso === PASO_HORA;
+  function volver() {
+    setError("");
+    if (paso === PASO_PERMISO) setPaso(PASO_DATOS);
+    if (paso === PASO_HORA) setPaso(PASO_DIA);
+  }
+
+  const textoBoton =
+    paso === PASO_HORA ? HOJA_RUTA_HUECOS.boton : paso === PASO_PERMISO ? HOJA_RUTA_CIERRE.boton : "Siguiente →";
+
+  function renderPaso() {
+    if (paso === PASO_DATOS) {
+      return (
+        <div key="datos" className="context-fade-in">
+          <div style={fieldStyle}>
+            <label htmlFor="nombre" style={labelStyle}>
+              Nombre
+            </label>
+            <input
+              id="nombre"
+              ref={primerCampoRef}
+              autoComplete="name"
+              placeholder="Tu nombre"
+              value={datos.nombre}
+              onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
+              style={inputStyle}
+              className="placeholder:text-[#1C3A5E]/35"
+            />
+          </div>
+
+          <div style={fieldStyle}>
+            <label htmlFor="email" style={labelStyle}>
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="tu@email.com"
+              value={datos.email}
+              onChange={(e) => setDatos({ ...datos, email: e.target.value })}
+              style={inputStyle}
+              className="placeholder:text-[#1C3A5E]/35"
+            />
+          </div>
+
+          <div style={{ ...fieldStyle, marginBottom: 0 }}>
+            <label htmlFor="telefono" style={labelStyle}>
+              Teléfono
+            </label>
+            <p style={pistaStyle}>{HOJA_RUTA_CIERRE.telefonoPista}</p>
+            <input
+              id="telefono"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+34 600 000 000"
+              value={datos.telefono}
+              onChange={(e) => setDatos({ ...datos, telefono: e.target.value })}
+              style={inputStyle}
+              className="placeholder:text-[#1C3A5E]/35"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (paso === PASO_PERMISO) {
+      return (
+        <div key="permiso" className="context-fade-in">
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "0.6rem",
+              cursor: "pointer",
+              fontSize: "0.95rem",
+              lineHeight: 1.55,
+              color: "rgba(15,34,64,0.72)",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={consentDatos}
+              onChange={(e) => setConsentDatos(e.target.checked)}
+              style={{ marginTop: "0.2rem" }}
+            />
+            {CONSENT_HOJA_RUTA.datos}
+          </label>
+          <p style={{ ...pistaStyle, marginTop: "0.9rem", marginBottom: 0 }}>
+            <a
+              href="/privacidad"
+              className="not-italic underline underline-offset-4 transition-colors hover:text-[#0F2240]"
+            >
+              {HOJA_RUTA_CIERRE.privacidad}
+            </a>
+          </p>
+        </div>
+      );
+    }
+
+    if (paso === PASO_DIA) {
+      if (huecos === null) return <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.cargando}</p>;
+      if (!diasDisponibles.length) return <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.vacio}</p>;
+
+      return (
+        <div key="dia" className="context-fade-in">
+          <p style={{ ...pistaStyle, marginBottom: "1.2rem" }}>{HOJA_RUTA_HUECOS.diaIntro}</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+            {diasDisponibles.map((dia) => (
+              <Opcion key={dia} activo={diaElegido === dia} onClick={() => setDiaElegido(dia)}>
+                <span className="capitalize">{etiquetaDia(dia)}</span>
+              </Opcion>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // PASO_HORA
+    const delDia = porDia.get(diaElegido) ?? [];
+    return (
+      <div key="hora" className="context-fade-in">
+        <p className="mb-1 text-[1.05rem] font-semibold text-[#1C3A5E] capitalize">{etiquetaDia(diaElegido)}</p>
+        <p style={{ ...pistaStyle, marginBottom: "1.2rem" }}>{HOJA_RUTA_HUECOS.horaIntro}</p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+          {delDia.map((h) => (
+            <Opcion key={h.valor} activo={huecoElegido === h.valor} onClick={() => setHuecoElegido(h.valor)}>
+              {soloHora(h.etiqueta)}
+            </Opcion>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -180,9 +440,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
       <section className="w-full bg-[#D4860A] px-6 py-16 md:px-16 md:py-24">
         <div className="mx-auto grid max-w-[1400px] items-center gap-12 md:grid-cols-[1.15fr_1fr]">
           <div>
-            <h1
-              className={`hero-fade-2 text-[clamp(2rem,6.2vw,3.6rem)] leading-[1.1] text-[#0F2240] ${tituloClase}`}
-            >
+            <h1 className={`hero-fade-2 text-[clamp(2rem,6.2vw,3.6rem)] leading-[1.1] text-[#0F2240] ${tituloClase}`}>
               {HOJA_RUTA_HERO.titulo}
             </h1>
             <p className="hero-fade-2 mt-5 text-[1.15rem] leading-[1.6] text-[#0F2240]/85 md:text-[1.25rem]">
@@ -232,7 +490,10 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
       </div>
 
       {/* SECCIÓN 9 — CTA final con el formulario de reserva */}
-      <section id="reserva" className="scroll-mt-8 border-t border-[#1C3A5E]/12 bg-[#1C3A5E]/[0.04] px-6 py-16 md:px-8 md:py-24">
+      <section
+        id="reserva"
+        className="scroll-mt-8 border-t border-[#1C3A5E]/12 bg-[#1C3A5E]/[0.04] px-6 py-16 md:px-8 md:py-24"
+      >
         <div className="mx-auto max-w-[680px]">
           <h2 className={`mb-7 text-[clamp(1.7rem,5.2vw,2.4rem)] leading-[1.2] text-[#1C3A5E] ${tituloClase}`}>
             {HOJA_RUTA_CIERRE.titulo}
@@ -242,179 +503,69 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
 
           <p className={`mt-6 ${cuerpoClase}`}>{HOJA_RUTA_CIERRE.precio[variante]}</p>
 
-          {paso === "hecho" ? (
-            <div className="mt-12">
-              <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
-                {HOJA_RUTA_HUECOS.hechoTitulo}
-              </h3>
-              {cuandoReservado && (
-                <p className={`mb-4 text-[1.2rem] font-semibold text-[#1C3A5E] md:text-[1.3rem] first-letter:uppercase`}>
-                  {cuandoReservado}
-                </p>
-              )}
-              <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.hechoTexto}</p>
-            </div>
-          ) : (
-            <div className="mt-12">
-              <h3 className={`mb-8 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
-                {paso === "datos" ? HOJA_RUTA_CIERRE.formularioTitulo : HOJA_RUTA_HUECOS.titulo}
-              </h3>
+          <div ref={tarjetaRef} className="mt-12 p-6 md:p-10" style={cardStyle}>
+            {hecho ? (
+              <>
+                <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
+                  {HOJA_RUTA_HUECOS.hechoTitulo}
+                </h3>
+                {cuandoReservado && (
+                  <p className="mb-4 text-[1.2rem] font-semibold text-[#1C3A5E] capitalize md:text-[1.3rem]">
+                    {cuandoReservado}
+                  </p>
+                )}
+                <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.hechoTexto}</p>
+              </>
+            ) : (
+              <>
+                <h3 className={`mb-6 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
+                  {HOJA_RUTA_CIERRE.formularioTitulo}
+                </h3>
 
-              {paso === "datos" && (
-                <form onSubmit={guardarLead} noValidate>
-                  <div style={fieldStyle}>
-                    <label htmlFor="nombre" style={labelStyle}>
-                      Nombre
-                    </label>
-                    <input
-                      id="nombre"
-                      autoComplete="name"
-                      placeholder="Tu nombre"
-                      value={datos.nombre}
-                      onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
-                      style={inputStyle}
-                      className="placeholder:text-[#1C3A5E]/35"
-                    />
-                  </div>
-
-                  <div style={fieldStyle}>
-                    <label htmlFor="email" style={labelStyle}>
-                      Email
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      placeholder="tu@email.com"
-                      value={datos.email}
-                      onChange={(e) => setDatos({ ...datos, email: e.target.value })}
-                      style={inputStyle}
-                      className="placeholder:text-[#1C3A5E]/35"
-                    />
-                  </div>
-
-                  <div style={fieldStyle}>
-                    <label htmlFor="telefono" style={labelStyle}>
-                      Teléfono
-                    </label>
-                    <p style={pistaStyle}>{HOJA_RUTA_CIERRE.telefonoPista}</p>
-                    <input
-                      id="telefono"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      placeholder="+34 600 000 000"
-                      value={datos.telefono}
-                      onChange={(e) => setDatos({ ...datos, telefono: e.target.value })}
-                      style={inputStyle}
-                      className="placeholder:text-[#1C3A5E]/35"
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: "2rem" }}>
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "0.6rem",
-                        cursor: "pointer",
-                        fontSize: "0.95rem",
-                        lineHeight: 1.55,
-                        color: "rgba(15,34,64,0.72)",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={consentDatos}
-                        onChange={(e) => setConsentDatos(e.target.checked)}
-                        style={{ marginTop: "0.2rem" }}
+                {/* Cuánto queda */}
+                <div style={{ marginBottom: "2.5rem" }}>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {Array.from({ length: PASOS_TOTAL }).map((_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          height: "2px",
+                          flex: 1,
+                          background: i <= paso ? "#D4860A" : "rgba(28,58,94,0.15)",
+                          transition: "background 0.3s",
+                        }}
                       />
-                      {CONSENT_HOJA_RUTA.datos}
-                    </label>
-                    <p style={{ ...pistaStyle, marginTop: "0.9rem", marginBottom: 0 }}>
-                      <a
-                        href="/privacidad"
-                        className="not-italic underline underline-offset-4 transition-colors hover:text-[#0F2240]"
-                      >
-                        {HOJA_RUTA_CIERRE.privacidad}
-                      </a>
-                    </p>
+                    ))}
                   </div>
-
-                  {error && (
-                    <p style={{ fontSize: "0.92rem", color: "#B3261E", marginBottom: "1.2rem", lineHeight: 1.6 }}>
-                      {error}
-                    </p>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={enviando}
+                  <p
                     style={{
-                      border: "none",
-                      padding: "0.95rem 2.5rem",
-                      fontSize: "0.98rem",
-                      letterSpacing: "0.08em",
-                      cursor: enviando ? "default" : "pointer",
-                      display: "block",
-                      opacity: enviando ? 0.6 : 1,
+                      marginTop: "0.7rem",
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.16em",
+                      color: "rgba(28,58,94,0.55)",
                     }}
-                    className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
                   >
-                    {enviando ? HOJA_RUTA_CIERRE.enviando : HOJA_RUTA_CIERRE.boton}
-                  </button>
-                </form>
-              )}
+                    Paso {paso + 1} de {PASOS_TOTAL} · {ETIQUETAS_PASO[paso]}
+                  </p>
+                </div>
 
-              {paso === "hueco" && (
-                <form onSubmit={confirmarHueco}>
-                  {huecos === null && <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.cargando}</p>}
-
-                  {huecos !== null && huecos.length === 0 && (
-                    <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.vacio}</p>
-                  )}
-
-                  {huecos !== null && huecos.length > 0 && (
-                    <>
-                      <p style={{ ...pistaStyle, marginBottom: "1.4rem" }}>{HOJA_RUTA_HUECOS.intro}</p>
-                      <div className="mb-8 space-y-3">
-                        {huecos.map((h) => (
-                          <label
-                            key={h.valor}
-                            className={`flex cursor-pointer items-center gap-3 border px-4 py-4 transition-colors ${
-                              huecoElegido === h.valor
-                                ? "border-[#D4860A] bg-[#D4860A]/10"
-                                : "border-[#1C3A5E]/20 bg-white hover:border-[#1C3A5E]/45"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="hueco"
-                              value={h.valor}
-                              checked={huecoElegido === h.valor}
-                              onChange={(e) => setHuecoElegido(e.target.value)}
-                            />
-                            <span className="text-[1.05rem] leading-[1.5] text-[#0F2240] first-letter:uppercase">
-                              {h.etiqueta}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                <form onSubmit={avanzar} noValidate>
+                  {renderPaso()}
 
                   {error && (
-                    <p style={{ fontSize: "0.92rem", color: "#B3261E", marginBottom: "1.2rem", lineHeight: 1.6 }}>
+                    <p style={{ fontSize: "0.92rem", color: "#B3261E", marginTop: "1.5rem", lineHeight: 1.6 }}>
                       {error}
                     </p>
                   )}
 
-                  {huecos !== null && huecos.length > 0 && (
+                  {/* Sin huecos no hay nada que confirmar: se oculta el botón. */}
+                  {!(paso === PASO_DIA && huecos !== null && !diasDisponibles.length) && (
                     <button
                       type="submit"
-                      disabled={enviando}
+                      disabled={enviando || (paso === PASO_DIA && huecos === null)}
                       style={{
+                        marginTop: "2.5rem",
                         border: "none",
                         padding: "0.95rem 2.5rem",
                         fontSize: "0.98rem",
@@ -425,13 +576,33 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
                       }}
                       className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
                     >
-                      {enviando ? HOJA_RUTA_CIERRE.enviando : HOJA_RUTA_HUECOS.boton}
+                      {enviando ? HOJA_RUTA_CIERRE.enviando : textoBoton}
                     </button>
                   )}
                 </form>
-              )}
-            </div>
-          )}
+
+                {puedeVolver && (
+                  <button
+                    type="button"
+                    onClick={volver}
+                    style={{
+                      marginTop: "1.2rem",
+                      fontSize: "0.82rem",
+                      letterSpacing: "0.08em",
+                      color: "rgba(15,34,64,0.50)",
+                      background: "none",
+                      cursor: "pointer",
+                      display: "block",
+                      padding: 0,
+                    }}
+                    className="transition-colors duration-200 hover:text-[#0F2240]/75"
+                  >
+                    {paso === PASO_HORA ? HOJA_RUTA_HUECOS.cambiarDia : "← volver"}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
 
           <p className={`mt-10 ${cuerpoClase}`}>{HOJA_RUTA_CIERRE.cierre[variante]}</p>
         </div>
