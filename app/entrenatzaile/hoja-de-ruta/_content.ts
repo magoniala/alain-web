@@ -321,8 +321,12 @@ export const HOJA_RUTA_PASOS = {
 };
 
 export const HOJA_RUTA_HUECOS = {
-  diaIntro: "Estos son los días que tengo abiertos. Hago una llamada al día.",
-  horaIntro: "Todas duran una hora. Elige la que mejor te encaje.",
+  // Sin frase de entrada en el calendario: un calendario ya se explica solo,
+  // y el aviso de "solo cinco plazas" ya está contado en la sección de por
+  // qué es gratis.
+  leyenda: "Días con hueco",
+  sinDisponibilidad: "Sin disponibilidad",
+  horaIntro: "Cada llamada dura una hora.",
   cargando: "Buscando huecos…",
   vacio: "Ahora mismo no me quedan huecos abiertos. Escríbeme a contacto@alainzulaika.com y lo cuadramos.",
   boton: "Confirmar el hueco",

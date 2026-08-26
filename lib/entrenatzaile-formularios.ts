@@ -13,12 +13,18 @@
 
 export const CONSENT_VERSION = "2026-08-24";
 
-// Título de la ficha que se entrega en /espalda.
+// Título real del documento, el que lleva en su portada. Se usa para el
+// nombre del archivo que se descarga, para que lo que baja el lead se llame
+// igual que lo que abre.
+export const FICHA_ESPALDA_TITULO = "Por qué tu espalda vuelve a fallar";
+
+// Cómo se ANUNCIA esa misma ficha en /espalda y en /espalda/gracias.
 //
-// Vive aquí, en un único sitio, porque se usa en tres: el hero de la landing,
-// la frase de antes del formulario y el nombre del archivo que se descarga.
-// Si cambia el documento, se cambia esta línea y ya.
-export const FICHA_ESPALDA_TITULO = "Por qué tu espalda siempre vuelve a fallar";
+// En tercera persona a propósito: Meta revisa la landing y no admite copy que
+// dé por hecho el estado de salud de quien lee. "Tu espalda" afirma que esa
+// persona tiene un problema de espalda; "las espaldas" cuenta un hecho
+// general. Por eso no coincide palabra por palabra con la portada del PDF.
+export const FICHA_ESPALDA_TITULO_PUBLICO = "Por qué las espaldas vuelven a fallar";
 
 export const PREGUNTAS_ESPALDA = [
   "¿Cuántas veces has tenido un lumbago o un tirón en la espalda?",

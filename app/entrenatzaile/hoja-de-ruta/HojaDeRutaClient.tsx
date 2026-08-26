@@ -57,35 +57,146 @@ const pistaStyle: React.CSSProperties = {
   marginBottom: "0.7rem",
 };
 
-// Botón de opción (día u hora), con la misma estética que el selector de
-// género de /espalda y el de turno de /valoracion.
-function Opcion({
-  activo,
-  onClick,
-  children,
+const MESES = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+const CABECERA_SEMANA = ["L", "M", "X", "J", "V", "S", "D"];
+
+// Día de la semana del 1 de ese mes, con el lunes como 0 (aquí las semanas
+// empiezan en lunes, no en domingo).
+function primerDiaSemana(anio: number, mes: number) {
+  const d = new Date(Date.UTC(anio, mes - 1, 1)).getUTCDay();
+  return d === 0 ? 6 : d - 1;
+}
+
+function diasEnMes(anio: number, mes: number) {
+  return new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+}
+
+function sumarMes(mes: string, delta: number) {
+  const [a, m] = mes.split("-").map(Number);
+  const d = new Date(Date.UTC(a, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+// Calendario de mes, con los días sin hueco en gris y tachados. Las flechas
+// solo se mueven entre meses que tienen algo que enseñar: no tiene sentido
+// dejar navegar a diciembre si solo se reserva a 30 días vista.
+function Calendario({
+  dias,
+  elegido,
+  onElegir,
 }: {
-  activo: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  dias: string[];
+  elegido: string;
+  onElegir: (dia: string) => void;
 }) {
+  const primerMes = dias[0].slice(0, 7);
+  const ultimoMes = dias[dias.length - 1].slice(0, 7);
+  const [mes, setMes] = useState(primerMes);
+
+  const disponibles = new Set(dias);
+  const [anio, numMes] = mes.split("-").map(Number);
+  const huecosDelante = primerDiaSemana(anio, numMes);
+  const total = diasEnMes(anio, numMes);
+
+  const celdas: (string | null)[] = [
+    ...Array.from({ length: huecosDelante }, () => null),
+    ...Array.from({ length: total }, (_, i) => `${mes}-${String(i + 1).padStart(2, "0")}`),
+  ];
+
+  const puedeAtras = mes > primerMes;
+  const puedeAlante = mes < ultimoMes;
+
+  const flechaClase =
+    "flex h-9 w-9 items-center justify-center border border-[#1C3A5E]/20 bg-white text-[#1C3A5E] transition-colors hover:border-[#1C3A5E]/45 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#1C3A5E]/20";
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: "0.6rem 0.5rem",
-        fontSize: "0.92rem",
-        lineHeight: 1.3,
-        cursor: "pointer",
-        border: `1px solid ${activo ? "#D4860A" : "rgba(28,58,94,0.22)"}`,
-        background: activo ? "rgba(212,134,10,0.12)" : "#fff",
-        color: activo ? "#0F2240" : "rgba(15,34,64,0.72)",
-        transition: "border-color 0.2s, background 0.2s, color 0.2s",
-      }}
-      className="hover:border-[#1C3A5E]/50"
-    >
-      {children}
-    </button>
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setMes(sumarMes(mes, -1))}
+          disabled={!puedeAtras}
+          aria-label="Mes anterior"
+          className={flechaClase}
+        >
+          ‹
+        </button>
+        <p className="text-[1.02rem] font-semibold text-[#1C3A5E]">
+          <span className="capitalize">{MESES[numMes - 1]}</span> {anio}
+        </p>
+        <button
+          type="button"
+          onClick={() => setMes(sumarMes(mes, 1))}
+          disabled={!puedeAlante}
+          aria-label="Mes siguiente"
+          className={flechaClase}
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {CABECERA_SEMANA.map((d, i) => (
+          <div key={i} className="pb-1 text-[0.7rem] uppercase tracking-[0.1em] text-[#0F2240]/40">
+            {d}
+          </div>
+        ))}
+
+        {celdas.map((dia, i) => {
+          if (!dia) return <div key={`v${i}`} />;
+          const numero = Number(dia.slice(-2));
+          const libre = disponibles.has(dia);
+          const activo = elegido === dia;
+
+          if (!libre) {
+            return (
+              <div
+                key={dia}
+                title={HOJA_RUTA_HUECOS.sinDisponibilidad}
+                aria-disabled="true"
+                className="flex aspect-square items-center justify-center text-[0.95rem] text-[#0F2240]/25 line-through"
+              >
+                {numero}
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={dia}
+              type="button"
+              onClick={() => onElegir(dia)}
+              aria-pressed={activo}
+              className={`flex aspect-square items-center justify-center text-[0.95rem] transition-colors ${
+                activo
+                  ? "bg-[#1C3A5E] font-semibold text-[#FAF3E8]"
+                  : "border border-[#D4860A]/45 bg-[#D4860A]/10 text-[#0F2240] hover:border-[#D4860A] hover:bg-[#D4860A]/20"
+              }`}
+            >
+              {numero}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="mt-4 flex items-center gap-2 text-[0.82rem] text-[#0F2240]/50">
+        <span aria-hidden className="inline-block h-3 w-3 border border-[#D4860A]/45 bg-[#D4860A]/10" />
+        {HOJA_RUTA_HUECOS.leyenda}
+      </p>
+    </div>
   );
 }
 
@@ -403,14 +514,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
 
       return (
         <div key="dia" className="context-fade-in">
-          <p style={{ ...pistaStyle, marginBottom: "1.2rem" }}>{HOJA_RUTA_HUECOS.diaIntro}</p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-            {diasDisponibles.map((dia) => (
-              <Opcion key={dia} activo={diaElegido === dia} onClick={() => setDiaElegido(dia)}>
-                <span className="capitalize">{etiquetaDia(dia)}</span>
-              </Opcion>
-            ))}
-          </div>
+          <Calendario dias={diasDisponibles} elegido={diaElegido} onElegir={setDiaElegido} />
         </div>
       );
     }
@@ -419,14 +523,27 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
     const delDia = porDia.get(diaElegido) ?? [];
     return (
       <div key="hora" className="context-fade-in">
-        <p className="mb-1 text-[1.05rem] font-semibold text-[#1C3A5E] capitalize">{etiquetaDia(diaElegido)}</p>
-        <p style={{ ...pistaStyle, marginBottom: "1.2rem" }}>{HOJA_RUTA_HUECOS.horaIntro}</p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-          {delDia.map((h) => (
-            <Opcion key={h.valor} activo={huecoElegido === h.valor} onClick={() => setHuecoElegido(h.valor)}>
-              {soloHora(h.etiqueta)}
-            </Opcion>
-          ))}
+        <p className="text-[1.05rem] font-semibold text-[#1C3A5E] capitalize">{etiquetaDia(diaElegido)}</p>
+        <p style={{ ...pistaStyle, marginTop: "0.35rem", marginBottom: "1.4rem" }}>{HOJA_RUTA_HUECOS.horaIntro}</p>
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6">
+          {delDia.map((h) => {
+            const activo = huecoElegido === h.valor;
+            return (
+              <button
+                key={h.valor}
+                type="button"
+                onClick={() => setHuecoElegido(h.valor)}
+                aria-pressed={activo}
+                className={`py-2.5 text-center text-[0.95rem] tabular-nums transition-colors ${
+                  activo
+                    ? "bg-[#1C3A5E] font-semibold text-[#FAF3E8]"
+                    : "border border-[#1C3A5E]/20 bg-white text-[#0F2240]/80 hover:border-[#D4860A] hover:text-[#0F2240]"
+                }`}
+              >
+                {soloHora(h.etiqueta)}
+              </button>
+            );
+          })}
         </div>
       </div>
     );

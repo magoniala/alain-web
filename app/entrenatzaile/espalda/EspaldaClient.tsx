@@ -5,7 +5,7 @@ import { Header, Footer, inputStyle, labelStyle, fieldStyle, cardStyle } from ".
 import { ESPALDA_BLOQUES, ESPALDA_FORMULARIO, ESPALDA_HERO } from "./_content";
 import {
   CONSENT_ESPALDA,
-  FICHA_ESPALDA_TITULO,
+  FICHA_ESPALDA_TITULO_PUBLICO,
   GENEROS,
   mensajeErrorFormulario,
   PISTAS_ESPALDA,
@@ -355,7 +355,7 @@ export default function EspaldaClient() {
             {ESPALDA_HERO.cta}
           </a>
           <p className="hero-fade-3 mt-5 max-w-[520px] text-[1rem] leading-[1.6] text-[#0F2240]/75">
-            <span className="font-semibold text-[#0F2240]">«{FICHA_ESPALDA_TITULO}»</span>
+            <span className="font-semibold text-[#0F2240]">«{FICHA_ESPALDA_TITULO_PUBLICO}»</span>
             <br />
             {ESPALDA_HERO.ctaNota}
           </p>
@@ -388,7 +388,7 @@ export default function EspaldaClient() {
           <div ref={tarjetaRef} className="p-6 md:p-10" style={cardStyle}>
             <p className="mb-6 text-[1rem] leading-[1.6] text-[#0F2240]/75">
               {ESPALDA_FORMULARIO.antesDelFormulario}{" "}
-              <span className="font-semibold text-[#1C3A5E]">«{FICHA_ESPALDA_TITULO}»</span>
+              <span className="font-semibold text-[#1C3A5E]">«{FICHA_ESPALDA_TITULO_PUBLICO}»</span>
             </p>
 
             {/* Cuánto queda: los segmentos de un vistazo y el conteo escrito
