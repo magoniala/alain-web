@@ -14,6 +14,10 @@ export const ESPALDA_HERO = {
   titulo: "El problema no es el tirón. Es que vuelve.",
   subtitulo: "Siete de cada diez espaldas vuelven a fallar en menos de un año.",
   cta: "Recibir la ficha",
+  // Debajo del botón, no dentro: el botón tiene que seguir siendo un verbo
+  // corto. Aquí es donde el ojo va a buscar "¿y qué es exactamente lo que me
+  // llevo?". El título sale de FICHA_ESPALDA_TITULO.
+  ctaNota: "Cuatro páginas en PDF. Se lee en cinco minutos.",
 };
 
 export const ESPALDA_BLOQUES: Bloque[] = [
@@ -41,6 +45,11 @@ export const ESPALDA_BLOQUES: Bloque[] = [
 ];
 
 export const ESPALDA_FORMULARIO = {
+  // Justo encima de la primera pregunta: es el momento en que decide si le
+  // compensa ponerse a escribir, así que aquí se le recuerda qué recibe.
+  // No repite "tres preguntas" porque el bloque de arriba ya lo dice y
+  // quedaría dicho dos veces seguidas.
+  antesDelFormulario: "Al terminar te llega, en PDF:",
   emailPista: "Aquí te llega la ficha.",
   telefonoPista:
     "Para confirmar cosas puntuales por WhatsApp. Escribe Alain en persona, uno a uno. No hay envíos masivos.",

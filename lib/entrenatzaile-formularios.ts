@@ -13,6 +13,13 @@
 
 export const CONSENT_VERSION = "2026-08-24";
 
+// Título de la ficha que se entrega en /espalda.
+//
+// Vive aquí, en un único sitio, porque se usa en tres: el hero de la landing,
+// la frase de antes del formulario y el nombre del archivo que se descarga.
+// Si cambia el documento, se cambia esta línea y ya.
+export const FICHA_ESPALDA_TITULO = "Por qué tu espalda siempre vuelve a fallar";
+
 export const PREGUNTAS_ESPALDA = [
   "¿Cuántas veces has tenido un lumbago o un tirón en la espalda?",
   "¿Qué has probado ya y por qué crees que no ha terminado de funcionar?",
