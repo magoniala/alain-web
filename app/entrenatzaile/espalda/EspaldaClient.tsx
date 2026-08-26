@@ -60,6 +60,7 @@ const casillaStyle: React.CSSProperties = {
 };
 
 export default function EspaldaClient() {
+  const [empezado, setEmpezado] = useState(false);
   const [paso, setPaso] = useState(0);
   const [respuestas, setRespuestas] = useState<string[]>(PREGUNTAS_ESPALDA.map(() => ""));
   const [datos, setDatos] = useState({ email: "", telefono: "", edad: "", genero: "" });
@@ -98,7 +99,7 @@ export default function EspaldaClient() {
     }
     tarjetaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     primerCampoRef.current?.focus({ preventScroll: true });
-  }, [paso]);
+  }, [paso, empezado]);
 
   function validarPaso(): string | null {
     if (paso < PASO_CONTACTO) {
@@ -167,9 +168,15 @@ export default function EspaldaClient() {
     }
   }
 
+  // Desde la primera pregunta se vuelve al botón de entrada, como en
+  // /contacto: no se queda uno atrapado dentro del formulario.
   function volver() {
     setError("");
-    setPaso(Math.max(0, paso - 1));
+    if (paso === 0) {
+      setEmpezado(false);
+      return;
+    }
+    setPaso(paso - 1);
   }
 
   function renderPaso() {
@@ -391,6 +398,27 @@ export default function EspaldaClient() {
               <span className="font-semibold text-[#1C3A5E]">«{FICHA_ESPALDA_TITULO_PUBLICO}»</span>
             </p>
 
+            {!empezado ? (
+              /* El formulario vive detrás de un botón, como en /contacto: la
+                 página no se cierra con un muro de campos, y quien pulsa ya
+                 ha decidido que le compensa. */
+              <button
+                type="button"
+                onClick={() => setEmpezado(true)}
+                style={{
+                  border: "none",
+                  padding: "0.95rem 2.5rem",
+                  fontSize: "0.98rem",
+                  letterSpacing: "0.08em",
+                  cursor: "pointer",
+                  display: "block",
+                }}
+                className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+              >
+                {ESPALDA_FORMULARIO.empezar}
+              </button>
+            ) : (
+              <>
             {/* Cuánto queda: los segmentos de un vistazo y el conteo escrito
                 para quien quiera el número exacto. */}
             <div style={{ marginBottom: "2.5rem" }}>
@@ -452,24 +480,24 @@ export default function EspaldaClient() {
               </button>
             </form>
 
-            {paso > 0 && (
-              <button
-                type="button"
-                onClick={volver}
-                style={{
-                  marginTop: "1.2rem",
-                  fontSize: "0.82rem",
-                  letterSpacing: "0.08em",
-                  color: "rgba(15,34,64,0.50)",
-                  background: "none",
-                  cursor: "pointer",
-                  display: "block",
-                  padding: 0,
-                }}
-                className="transition-colors duration-200 hover:text-[#0F2240]/75"
-              >
-                ← volver
-              </button>
+            <button
+              type="button"
+              onClick={volver}
+              style={{
+                marginTop: "1.2rem",
+                fontSize: "0.82rem",
+                letterSpacing: "0.08em",
+                color: "rgba(15,34,64,0.50)",
+                background: "none",
+                cursor: "pointer",
+                display: "block",
+                padding: 0,
+              }}
+              className="transition-colors duration-200 hover:text-[#0F2240]/75"
+            >
+              ← volver
+            </button>
+              </>
             )}
           </div>
         </div>

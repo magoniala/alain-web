@@ -35,7 +35,7 @@ export const ESPALDA_BLOQUES: Bloque[] = [
     ],
   },
   {
-    titulo: "Antes de enviártela, tres preguntas.",
+    titulo: "Antes de recibirla, tres preguntas.",
     parrafos: [
       "Hay que responderlas escribiendo.",
       "No son para clasificar a nadie. Los correos que mando después salen de lo que la gente responde aquí, así que cuanto más concreto, más útil te va a resultar lo que recibas.",
@@ -50,6 +50,10 @@ export const ESPALDA_FORMULARIO = {
   // No repite "tres preguntas" porque el bloque de arriba ya lo dice y
   // quedaría dicho dos veces seguidas.
   antesDelFormulario: "Al terminar te llega, en PDF:",
+  // Botón que abre el formulario. NO dice "recibir la ficha" a propósito: ese
+  // es el texto del botón final, el que envía. Si los dos dijeran lo mismo,
+  // este prometería algo que no pasa al pulsarlo.
+  empezar: "Responder las tres preguntas",
   emailPista: "Aquí te llega la ficha.",
   telefonoPista:
     "Para confirmar cosas puntuales por WhatsApp. Escribe Alain en persona, uno a uno. No hay envíos masivos.",
