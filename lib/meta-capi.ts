@@ -15,6 +15,12 @@ const TOKEN = process.env.META_CAPI_TOKEN;
 // Versión de la Graph API. Conviene comprobar en el Administrador de Eventos
 // cuál es la vigente y actualizarla aquí cuando Meta retire versiones viejas.
 const VERSION = process.env.META_API_VERSION ?? "v21.0";
+// Código de prueba del Administrador de eventos. Mientras esté puesto, los
+// envíos desde el servidor aparecen en la pestaña "Probar eventos" y se
+// pueden comparar con los del navegador para confirmar que se deduplican.
+// Se quita cuando termina la comprobación: si se queda, Meta trata esos
+// eventos como de prueba y NO cuentan como conversiones reales.
+const TEST_CODE = process.env.META_TEST_EVENT_CODE;
 
 /** Sin credenciales configuradas, todo esto se queda quieto y no rompe nada. */
 export function metaConfigurado() {
@@ -76,6 +82,7 @@ export async function enviarEventoMeta(evento: EventoMeta): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         access_token: TOKEN,
+        ...(TEST_CODE ? { test_event_code: TEST_CODE } : {}),
         data: [
           {
             event_name: evento.nombre,
