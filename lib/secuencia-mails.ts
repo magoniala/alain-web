@@ -1,45 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { cuerpoDelMail, sustituirMarcadores } from "@/lib/email-markdown";
+import type { Secuencia } from "@/lib/secuencias";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-
-/** Secuencias que viven en la tabla secuencia_mails. */
-export const SECUENCIAS = [
-  "nurture",
-  "comodin",
-  "mision",
-  "contacto",
-  "belaustegi",
-  "valoracion",
-  "arrogante",
-  "comodin_show",
-  "guias",
-  "entrenatzaile_valoracion",
-] as const;
-export type Secuencia = (typeof SECUENCIAS)[number];
-
-export const SECUENCIA_ETIQUETA: Record<Secuencia, string> = {
-  nurture: "Nurture (leads de ads)",
-  comodin: "Comodín",
-  mision: "Tu misión",
-  contacto: "Contacto",
-  belaustegi: "Belaustegi",
-  valoracion: "Valoración de evento",
-  arrogante: "Arrogante",
-  comodin_show: "Comodín · enlace al show",
-  guias: "Guías gratuitas",
-  entrenatzaile_valoracion: "Entrenatzaile · valoración",
-};
-
-/** Secuencias con contenido en los dos idiomas. Nurture solo va en castellano. */
-export const SECUENCIAS_BILINGUES: Secuencia[] = [
-  "comodin",
-  "mision",
-  "contacto",
-  "belaustegi",
-  "valoracion",
-  "entrenatzaile_valoracion",
-];
 
 export interface MailSecuencia {
   asunto: string;

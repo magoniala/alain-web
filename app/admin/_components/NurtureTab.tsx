@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { cuerpoDelMail } from "@/lib/email-markdown";
-import { SECUENCIAS, SECUENCIA_ETIQUETA, type Secuencia } from "@/lib/secuencia-mails";
+import { SECUENCIAS, SECUENCIA_ETIQUETA, type Secuencia } from "@/lib/secuencias";
 
 interface NurtureContacto {
   id: string;

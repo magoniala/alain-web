@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
-import { cargarMailSecuencia, type Secuencia } from "@/lib/secuencia-mails";
+import { cargarMailSecuencia } from "@/lib/secuencia-mails";
+import type { Secuencia } from "@/lib/secuencias";
 import {
   wrapComodin,
   wrapMision,

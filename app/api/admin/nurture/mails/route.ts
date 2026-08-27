@@ -3,7 +3,7 @@ import { requireAdminAuth } from "@/lib/admin-auth";
 import { wrapNurture } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom, NEWSLETTER_SENDERS } from "@/lib/email-ses";
 import { cuerpoDelMail } from "@/lib/email-markdown";
-import { SECUENCIAS, SECUENCIAS_BILINGUES, type Secuencia } from "@/lib/secuencia-mails";
+import { SECUENCIAS, SECUENCIAS_BILINGUES, type Secuencia } from "@/lib/secuencias";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
