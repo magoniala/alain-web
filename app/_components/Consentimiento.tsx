@@ -96,14 +96,15 @@ fbq('init','${pixelId}');fbq('track','PageView');`}
           className="fixed inset-x-0 bottom-0 z-50 border-t border-white/15 bg-[#0B0B0C]/95 px-5 py-4 backdrop-blur md:px-8"
         >
           <div className="mx-auto flex max-w-[1100px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            {/* Honesto y en primera persona, pero sin trampas: el motivo es
-                real y "no" funciona igual de bien que "sí". Endulzarlo más
-                significaría empezar a esconder cosas, que es justo lo que
-                está sancionado. */}
+            {/* La palabra "anuncios" no es decorativa: son cookies
+                publicitarias de Meta, y describirlas como simple medición
+                ("saber qué atrae gente") es la vaguedad por la que se
+                sanciona a estos banners. Con "anuncios" en la frase, el
+                propósito queda claro sin tener que soltar la etiqueta
+                "cookies de publicidad", que suena a aviso legal. */}
             <p className="text-[0.92rem] leading-relaxed text-[#F2F2F0]/80">
-              Uso cookies <strong className="font-normal text-[#F2F2F0]">de publicidad</strong> para
-              saber qué atrae gente y qué estoy haciendo para nada. Ni te sigo por otras webs, ni
-              vendo tus datos.{" "}
+              Uso cookies para saber qué anuncios traen gente y qué estoy haciendo para nada. Ni te
+              sigo por otras webs, ni vendo tus datos.{" "}
               <Link href="/cookies" className="underline underline-offset-4 hover:text-[#F2F2F0]">
                 Qué guardo exactamente
               </Link>
