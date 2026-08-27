@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { wrapNurture } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom, NEWSLETTER_SENDERS } from "@/lib/email-ses";
+import { cuerpoDelMail } from "@/lib/email-markdown";
+import { SECUENCIAS, SECUENCIAS_BILINGUES, type Secuencia } from "@/lib/secuencia-mails";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -14,12 +16,29 @@ function esPosicionValida(p: unknown): p is number {
   return typeof p === "number" && Number.isInteger(p) && p >= -2 && p <= 99;
 }
 
+// La secuencia y el idioma llegan del panel. Cualquier valor que no esté en
+// la lista se trata como nurture/castellano, que es lo que había antes.
+function leerSecuencia(v: unknown): Secuencia {
+  return SECUENCIAS.includes(v as Secuencia) ? (v as Secuencia) : "nurture";
+}
+
+function leerIdioma(secuencia: Secuencia, v: unknown): string {
+  if (!SECUENCIAS_BILINGUES.includes(secuencia)) return "es";
+  return v === "eu" ? "eu" : "es";
+}
+
 export async function GET(req: Request) {
   if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
 
+  const url = new URL(req.url);
+  const secuencia = leerSecuencia(url.searchParams.get("secuencia"));
+  const idioma = leerIdioma(secuencia, url.searchParams.get("idioma"));
+
   const { data: mails, error } = await supabase
     .from("secuencia_mails")
-    .select("posicion, asunto, cuerpo_html, remitente, activo")
+    .select("posicion, asunto, cuerpo_html, remitente, activo, formato, preheader")
+    .eq("secuencia", secuencia)
+    .eq("idioma", idioma)
     .order("posicion", { ascending: true });
 
   if (error) {
@@ -29,7 +48,10 @@ export async function GET(req: Request) {
 
   // Cuánta gente está parada ahora mismo en cada posición: editar (o desactivar)
   // un mail afecta justo a esas personas, así que se ve al lado de cada uno.
-  const { data: contactos } = await supabase
+  // Solo nurture avanza por posicion_secuencia; en las otras el envío lo
+  // programa una fecha en su propia tabla, así que no hay nadie "esperando"
+  // en una posición.
+  const { data: contactos } = secuencia !== "nurture" ? { data: [] } : await supabase
     .from("newsletter_contactos")
     .select("posicion_secuencia")
     .eq("recibe_secuencia", true)
@@ -43,7 +65,7 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json(
-    { mails: mails ?? [], esperando, remitentes: NEWSLETTER_SENDERS },
+    { mails: mails ?? [], esperando, remitentes: NEWSLETTER_SENDERS, secuencia, idioma, bilingue: SECUENCIAS_BILINGUES.includes(secuencia) },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
@@ -53,7 +75,9 @@ export async function PUT(req: Request) {
   if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { posicion, asunto, cuerpo_html, remitente, activo } = body;
+  const { posicion, asunto, cuerpo_html, remitente, activo, formato, preheader } = body;
+  const secuencia = leerSecuencia(body.secuencia);
+  const idioma = leerIdioma(secuencia, body.idioma);
 
   if (!esPosicionValida(posicion)) {
     return NextResponse.json({ error: "Posición inválida." }, { status: 400 });
@@ -67,13 +91,19 @@ export async function PUT(req: Request) {
 
   const { error } = await supabase.from("secuencia_mails").upsert(
     {
+      secuencia,
+      idioma,
       posicion,
       asunto,
       cuerpo_html,
+      // Solo dos formatos. Cualquier otra cosa se trata como HTML, que es el
+      // comportamiento de siempre y el que no rompe nada.
+      formato: formato === "texto" ? "texto" : "html",
+      preheader: typeof preheader === "string" && preheader.trim() ? preheader.trim() : null,
       remitente: NEWSLETTER_SENDERS.includes(remitente) ? remitente : NEWSLETTER_SENDERS[0],
       activo,
     },
-    { onConflict: "posicion" }
+    { onConflict: "secuencia,posicion,idioma" }
   );
 
   if (error) {
@@ -89,7 +119,7 @@ export async function POST(req: Request) {
   if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { asunto, cuerpo_html, remitente, idioma } = body;
+  const { asunto, cuerpo_html, remitente, idioma, formato, preheader } = body;
   const destinatarios: string[] = Array.isArray(body.test_emails)
     ? body.test_emails.map((e: unknown) => String(e).trim()).filter(Boolean)
     : [];
@@ -104,7 +134,7 @@ export async function POST(req: Request) {
   const from = resolveNewsletterFrom(remitente);
   try {
     for (const email of destinatarios) {
-      await sendEmail(email, `[PRUEBA] ${asunto}`, wrapNurture(cuerpo_html, email, idioma === "eu"), from);
+      await sendEmail(email, `[PRUEBA] ${asunto}`, wrapNurture(cuerpoDelMail(cuerpo_html, formato, preheader), email, idioma === "eu"), from);
     }
   } catch (err) {
     console.error("admin/nurture/mails prueba:", err);
@@ -119,12 +149,17 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
 
-  const { posicion } = await req.json().catch(() => ({}));
+  const cuerpoDelete = await req.json().catch(() => ({}));
+  const { posicion } = cuerpoDelete;
+  const secuencia = leerSecuencia(cuerpoDelete.secuencia);
+  const idioma = leerIdioma(secuencia, cuerpoDelete.idioma);
   if (!esPosicionValida(posicion)) {
     return NextResponse.json({ error: "Posición inválida." }, { status: 400 });
   }
 
-  if (!POSICIONES_ESPECIALES.includes(posicion)) {
+  // Ese bloqueo solo aplica a nurture: en las otras secuencias, borrar una
+  // fila devuelve el control a la versión en código, que sigue enviando.
+  if (secuencia === "nurture" && !POSICIONES_ESPECIALES.includes(posicion)) {
     const { count } = await supabase
       .from("newsletter_contactos")
       .select("id", { count: "exact", head: true })
@@ -141,7 +176,7 @@ export async function DELETE(req: Request) {
     }
   }
 
-  const { error } = await supabase.from("secuencia_mails").delete().eq("posicion", posicion);
+  const { error } = await supabase.from("secuencia_mails").delete().eq("secuencia", secuencia).eq("posicion", posicion).eq("idioma", idioma);
   if (error) {
     console.error("admin/nurture/mails DELETE:", error);
     return NextResponse.json({ error: "Error al borrar." }, { status: 500 });

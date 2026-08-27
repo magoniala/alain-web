@@ -1,10 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
+import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.SUPABASE_SERVICE_KEY!,
 );
 
 export async function POST(req: Request) {
@@ -28,24 +29,32 @@ export async function POST(req: Request) {
   const showUrl = `${BASE_URL}/es/comodin/show`;
   const bajaUrl = `${BASE_URL}/api/comodin/baja?email=${encodeURIComponent(email)}`;
 
-  await sendEmail(
-    email,
-    "El link al show",
+  const mailBD = await cargarMailSecuencia("comodin_show", 1, "es", {
+    show: showUrl,
+  });
+  const cuerpoShow =
+    mailBD?.cuerpo ??
     `
-      <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
-        <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">
           <p style="margin:0 0 1.6rem 0;">Aquí lo tienes.</p>
           <p style="margin:0 0 1.6rem 0;"><a href="${showUrl}" style="color:#2a9d8f;font-weight:bold;">Convierte tu salón en un microteatro — el show completo</a></p>
           <p style="margin:0 0 1.6rem 0;">18 minutos.<br>Disfrútalo.</p>
           <p style="margin:0 0 1.6rem 0;">Y si después de verlo te entran ganas de aprender algún truco,<br>respóndeme a este mail.<br>Me encanta saber cómo llegáis a esto.</p>
-        </div>
+        `;
+
+  // El pie con el enlace de baja se añade aquí, fuera de lo editable.
+  await sendEmail(
+    email,
+    mailBD?.asunto || "El link al show",
+    `
+      <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
+        <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${cuerpoShow}</div>
         <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee;font-size:0.95rem;color:#555;line-height:1.9;">
           <p style="margin:0 0 0.25rem;">Alain Zulaika · <a href="mailto:contacto@alainzulaika.com" style="color:#555;">contacto@alainzulaika.com</a></p>
           <p style="margin:0;"><a href="${bajaUrl}" style="color:#555;">Dejar de recibir estos emails</a></p>
         </div>
       </div>
     `,
-    resolveNewsletterFrom()
+    resolveNewsletterFrom(),
   );
 
   return NextResponse.json({ ok: true });

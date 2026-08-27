@@ -79,3 +79,40 @@ ALTER TABLE newsletter_contactos
 ALTER TABLE leads_ads_duplicados
   ADD COLUMN IF NOT EXISTS mail_enviado boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS mail_error text;
+
+-- ============================================================
+-- Ampliación 2026-08-26: los mails de la secuencia se pueden escribir
+-- como texto desde el panel, sin picar HTML.
+--
+-- `formato` decide cómo se interpreta `cuerpo_html` al enviar:
+--   'html'  -> se usa tal cual (es lo que había: no se toca nada de lo ya escrito)
+--   'texto' -> se convierte con lib/email-markdown.ts
+-- Por eso el DEFAULT es 'html': las filas que ya existen siguen saliendo
+-- exactamente igual que antes.
+-- ============================================================
+
+ALTER TABLE secuencia_mails
+  ADD COLUMN IF NOT EXISTS formato   text DEFAULT 'html',
+  ADD COLUMN IF NOT EXISTS preheader text;
+
+UPDATE secuencia_mails SET formato = 'html' WHERE formato IS NULL;
+
+-- ============================================================
+-- Ampliación 2026-08-26 (2): secuencia_mails deja de ser solo la secuencia
+-- de nurture y pasa a alojar TODAS las secuencias automáticas.
+--
+--   secuencia : 'nurture' | 'comodin' | 'mision'
+--   idioma    : 'es' | 'eu'  (comodin y mision son bilingües)
+--
+-- Las filas que ya existen se quedan como ('nurture', posicion, 'es'), que
+-- es exactamente lo que eran. La clave primaria pasa a ser compuesta, y
+-- TODAS las consultas de nurture filtran ya por secuencia='nurture', para
+-- que no se mezclen los mails de una secuencia con los de otra.
+-- ============================================================
+
+ALTER TABLE secuencia_mails
+  ADD COLUMN IF NOT EXISTS secuencia text NOT NULL DEFAULT 'nurture',
+  ADD COLUMN IF NOT EXISTS idioma    text NOT NULL DEFAULT 'es';
+
+ALTER TABLE secuencia_mails DROP CONSTRAINT IF EXISTS secuencia_mails_pkey;
+ALTER TABLE secuencia_mails ADD PRIMARY KEY (secuencia, posicion, idioma);

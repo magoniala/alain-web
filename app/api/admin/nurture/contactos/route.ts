@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
 
-  const { data: mails } = await supabase.from("secuencia_mails").select("posicion, asunto, activo");
+  const { data: mails } = await supabase.from("secuencia_mails").select("posicion, asunto, activo").eq("secuencia", "nurture").eq("idioma", "es");
   const porPosicion = new Map((mails ?? []).map((m) => [m.posicion, m]));
 
   const result = (contactos ?? []).map((c) => {

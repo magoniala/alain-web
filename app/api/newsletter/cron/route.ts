@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendEmail, sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
 import { wrapNurture, enviarMailSecuencia, CANDADO_STALE_MS, type NurtureContacto } from "@/lib/nurture";
 import { MAIL_ABANDONO_ASUNTO, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
+import { cuerpoDelMail } from "@/lib/email-markdown";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -118,7 +119,8 @@ async function procesarRecordatorioValoracion(): Promise<number> {
 
   const { data: mail } = await supabase
     .from("secuencia_mails")
-    .select("asunto, cuerpo_html, remitente")
+    .select("asunto, cuerpo_html, remitente, formato, preheader")
+    .eq("secuencia", "nurture")
     .eq("posicion", -1)
     .eq("activo", true)
     .maybeSingle();
@@ -155,7 +157,7 @@ async function procesarRecordatorioValoracion(): Promise<number> {
     if (!claimed?.length) continue;
 
     const isEu = contacto.idioma === "eu";
-    const html = wrapNurture(mail.cuerpo_html ?? "", contacto.email, isEu);
+    const html = wrapNurture(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader), contacto.email, isEu);
 
     try {
       await sendEmail(

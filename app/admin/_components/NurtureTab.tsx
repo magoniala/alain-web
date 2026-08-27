@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { cuerpoDelMail } from "@/lib/email-markdown";
+import { SECUENCIAS, SECUENCIA_ETIQUETA, type Secuencia } from "@/lib/secuencia-mails";
 
 interface NurtureContacto {
   id: string;
@@ -19,6 +21,8 @@ interface SecuenciaMail {
   posicion: number;
   asunto: string | null;
   cuerpo_html: string | null;
+  formato?: string | null;
+  preheader?: string | null;
   remitente: string | null;
   activo: boolean;
 }
@@ -61,6 +65,9 @@ export default function NurtureTab() {
   const [loadingMails, setLoadingMails] = useState(true);
   const [borradores, setBorradores] = useState<Record<number, SecuenciaMail>>({});
   const [abierto, setAbierto] = useState<number | null>(null);
+  const [secuencia, setSecuencia] = useState<Secuencia>("nurture");
+  const [idiomaEdicion, setIdiomaEdicion] = useState<"es" | "eu">("es");
+  const [bilingue, setBilingue] = useState(false);
   const [guardando, setGuardando] = useState<number | null>(null);
   const [aviso, setAviso] = useState<{ posicion: number; ok?: string; error?: string } | null>(null);
   const [borrarTarget, setBorrarTarget] = useState<number | null>(null);
@@ -74,9 +81,14 @@ export default function NurtureTab() {
 
   useEffect(() => {
     load();
-    loadMails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Al cambiar de secuencia o de idioma hay que recargar: son mails distintos.
+  useEffect(() => {
+    loadMails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secuencia, idiomaEdicion]);
 
   async function load() {
     setLoading(true);
@@ -87,12 +99,13 @@ export default function NurtureTab() {
 
   async function loadMails() {
     setLoadingMails(true);
-    const data = await fetch("/api/admin/nurture/mails", { headers: authHeaders() }).then(r => r.json());
+    const data = await fetch(`/api/admin/nurture/mails?secuencia=${secuencia}&idioma=${idiomaEdicion}`, { headers: authHeaders() }).then(r => r.json());
     if (Array.isArray(data?.mails)) {
       setMails(data.mails);
       setBorradores(Object.fromEntries(data.mails.map((m: SecuenciaMail) => [m.posicion, { ...m }])));
       setEsperando(data.esperando ?? {});
       if (Array.isArray(data.remitentes) && data.remitentes.length) setRemitentes(data.remitentes);
+      setBilingue(Boolean(data.bilingue));
     }
     setLoadingMails(false);
   }
@@ -120,6 +133,8 @@ export default function NurtureTab() {
     return (
       (original.asunto ?? "") !== (draft.asunto ?? "") ||
       (original.cuerpo_html ?? "") !== (draft.cuerpo_html ?? "") ||
+      (original.formato ?? "html") !== (draft.formato ?? "html") ||
+      (original.preheader ?? "") !== (draft.preheader ?? "") ||
       (original.remitente ?? REMITENTE_FALLBACK) !== (draft.remitente ?? REMITENTE_FALLBACK) ||
       original.activo !== draft.activo
     );
@@ -134,9 +149,13 @@ export default function NurtureTab() {
       method: "PUT",
       headers: authHeaders(),
       body: JSON.stringify({
+        secuencia,
+        idioma: idiomaEdicion,
         posicion,
         asunto: draft.asunto ?? "",
         cuerpo_html: draft.cuerpo_html ?? "",
+        formato: draft.formato ?? "html",
+        preheader: draft.preheader ?? "",
         remitente: draft.remitente ?? REMITENTE_FALLBACK,
         activo: draft.activo,
       }),
@@ -172,7 +191,7 @@ export default function NurtureTab() {
     const res = await fetch("/api/admin/nurture/mails", {
       method: "DELETE",
       headers: authHeaders(),
-      body: JSON.stringify({ posicion }),
+      body: JSON.stringify({ secuencia, idioma: idiomaEdicion, posicion }),
     });
     const data = await res.json().catch(() => ({}));
     setGuardando(null);
@@ -196,9 +215,13 @@ export default function NurtureTab() {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({
+        secuencia,
+        idioma: idiomaEdicion,
         test_emails: lista,
         asunto: draft.asunto ?? "",
         cuerpo_html: draft.cuerpo_html ?? "",
+        formato: draft.formato ?? "html",
+        preheader: draft.preheader ?? "",
         remitente: draft.remitente ?? REMITENTE_FALLBACK,
       }),
     });
@@ -214,7 +237,7 @@ export default function NurtureTab() {
     const siguiente = normales.length ? Math.max(...normales) + 1 : 0;
     setBorradores(prev => ({
       ...prev,
-      [siguiente]: { posicion: siguiente, asunto: "", cuerpo_html: "", remitente: remitentes[0], activo: false },
+      [siguiente]: { posicion: siguiente, asunto: "", cuerpo_html: "", remitente: remitentes[0], activo: false, formato: "texto", preheader: "" },
     }));
     setAbierto(siguiente);
   }
@@ -222,7 +245,7 @@ export default function NurtureTab() {
   function crearEspecial(posicion: number) {
     setBorradores(prev => ({
       ...prev,
-      [posicion]: { posicion, asunto: "", cuerpo_html: "", remitente: remitentes[0], activo: false },
+      [posicion]: { posicion, asunto: "", cuerpo_html: "", remitente: remitentes[0], activo: false, formato: "texto", preheader: "" },
     }));
     setAbierto(posicion);
   }
@@ -405,14 +428,48 @@ export default function NurtureTab() {
             </div>
 
             <div>
-              <p className="text-[0.72rem] text-gray-500 mb-1">Cuerpo (HTML)</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[0.72rem] text-gray-500">Cuerpo</p>
+                {/* Los mails antiguos se guardaron como HTML. Se pueden dejar
+                    así o pasarlos a texto cuando toque reescribirlos. */}
+                <div className="flex border border-gray-300 text-[0.7rem]">
+                  {(["texto", "html"] as const).map(f => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setCampo(posicion, { formato: f })}
+                      className={`px-2.5 py-1 ${(draft.formato ?? "html") === f ? "bg-[#1a1a1a] text-white" : "text-gray-500 hover:text-gray-800"}`}
+                    >
+                      {f === "texto" ? "Texto" : "HTML"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(draft.formato ?? "html") === "texto" ? (
+                <>
+                  <input
+                    type="text"
+                    value={draft.preheader ?? ""}
+                    onChange={e => setCampo(posicion, { preheader: e.target.value })}
+                    placeholder="Preheader: la frase que asoma en la bandeja (opcional)"
+                    className={`${inputClass} mb-2`}
+                  />
+                  <div className="flex flex-wrap gap-1 mb-1">
+                    <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `**${s}**`, "**texto**"); }} title="Negrita"><strong>B</strong></button>
+                    <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `_${s}_`, "_texto_"); }} title="Cursiva"><em>I</em></button>
+                    <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `[${s}](https://)`, "[texto](https://)"); }} title="Enlace">🔗 enlace</button>
+                    <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `[[${s}](https://)]`, "[[Descargar](https://)]"); }} title="Botón con recuadro">▭ botón</button>
+                    <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `- ${s}`, "- punto"); }} title="Punto de lista">• lista</button>
+                  </div>
+                </>
+              ) : (
               <div className="flex flex-wrap gap-1 mb-1">
                 <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `${P_ABRE}${s}</p>`, `${P_ABRE}Texto</p>`); }} title="Párrafo">¶ párrafo</button>
                 <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `<strong>${s}</strong>`, "<strong>texto</strong>"); }} title="Negrita"><strong>B</strong></button>
                 <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `<em>${s}</em>`, "<em>texto</em>"); }} title="Cursiva"><em>I</em></button>
                 <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `<a href="https://" style="color:#2a9d8f;">${s}</a>`, '<a href="https://" style="color:#2a9d8f;">texto</a>'); }} title="Enlace">🔗 enlace</button>
                 <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `${s}<br>`, "<br>"); }} title="Salto de línea">↵ salto</button>
-                <button type="button" className={toolbarBtnClass} onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, s => `${s}<div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>`, '<div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>'); }} title="Separador">— separador</button>
                 <button
                   type="button"
                   className={toolbarBtnClass}
@@ -422,16 +479,19 @@ export default function NurtureTab() {
                   texto → párrafos
                 </button>
               </div>
+              )}
               <textarea
                 id={`nurture-body-${posicion}`}
                 value={draft.cuerpo_html ?? ""}
                 onChange={e => setCampo(posicion, { cuerpo_html: e.target.value })}
                 rows={14}
-                placeholder={`${P_ABRE}Escribe aquí…</p>`}
+                placeholder={(draft.formato ?? "html") === "texto" ? "Escribe aquí.\n\nUn salto de línea deja hueco pequeño.\nUna línea en blanco, hueco grande." : `${P_ABRE}Escribe aquí…</p>`}
                 className={`${inputClass} resize-y font-mono text-[0.78rem] leading-relaxed`}
               />
               <p className="text-[0.68rem] text-gray-400 mt-1">
-                La cabecera, el pie con el contacto y los enlaces de baja e idioma se añaden solos al enviar.
+                {(draft.formato ?? "html") === "texto"
+                  ? "Salto de línea = hueco pequeño · línea en blanco = hueco grande. La cabecera, el pie y los enlaces de baja e idioma se añaden solos."
+                  : "La cabecera, el pie con el contacto y los enlaces de baja e idioma se añaden solos al enviar."}
               </p>
             </div>
 
@@ -444,7 +504,7 @@ export default function NurtureTab() {
                   </p>
                   <div
                     style={{ fontSize: "0.95rem", lineHeight: 1.9 }}
-                    dangerouslySetInnerHTML={{ __html: draft.cuerpo_html ?? "" }}
+                    dangerouslySetInnerHTML={{ __html: cuerpoDelMail(draft.cuerpo_html, draft.formato, draft.preheader) }}
                   />
                   <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                     <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@alainzulaika.com</p>
@@ -560,14 +620,48 @@ export default function NurtureTab() {
 
       {subTab === "Mails" && (
         <section className="bg-white border border-gray-200 p-5 md:p-6 space-y-8">
+          {/* Todas las secuencias automáticas viven en la misma tabla; aquí
+              se elige cuál se está editando. Las bilingües traen además el
+              selector de idioma, porque cada idioma es una fila distinta. */}
+          <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 pb-4">
+            <div className="flex border border-gray-300 text-[0.75rem]">
+              {SECUENCIAS.map(sq => (
+                <button
+                  key={sq}
+                  type="button"
+                  onClick={() => { setSecuencia(sq); setIdiomaEdicion("es"); }}
+                  className={`px-3 py-1.5 ${secuencia === sq ? "bg-[#1a1a1a] text-white" : "text-gray-500 hover:text-gray-800"}`}
+                >
+                  {SECUENCIA_ETIQUETA[sq]}
+                </button>
+              ))}
+            </div>
+            {bilingue && (
+              <div className="flex border border-gray-300 text-[0.75rem]">
+                {(["es", "eu"] as const).map(l => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setIdiomaEdicion(l)}
+                    className={`px-3 py-1.5 ${idiomaEdicion === l ? "bg-[#D4860A] text-white" : "text-gray-500 hover:text-gray-800"}`}
+                  >
+                    {l === "es" ? "Castellano" : "Euskera"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div>
             <div className="flex items-center justify-between gap-4 mb-2">
               <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a]">
-                Secuencia de leads de Meta Ads
+                {secuencia === "nurture" ? "Secuencia de leads de Meta Ads" : SECUENCIA_ETIQUETA[secuencia]}
               </p>
-              <button onClick={nuevoMail} className="px-3 py-1.5 text-xs border border-gray-300 hover:border-gray-500">
-                + Añadir mail al final
-              </button>
+              {secuencia === "nurture" && (
+                <button onClick={nuevoMail} className="px-3 py-1.5 text-xs border border-gray-300 hover:border-gray-500">
+                  + Añadir mail al final
+                </button>
+              )}
             </div>
             <p className="text-[0.72rem] text-gray-500 mb-5">
               Los cambios afectan solo a los mails que aún no se han enviado. Un mail inactivo o vacío detiene la

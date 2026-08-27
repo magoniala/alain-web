@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
+import { cuerpoDelMail } from "@/lib/email-markdown";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
@@ -203,7 +204,8 @@ export async function enviarMailSecuencia(
 ): Promise<{ enviado: boolean; motivo?: "sin-contenido" | "raced" | "error-envio" | "error-db" }> {
   const { data: mail } = await supabase
     .from("secuencia_mails")
-    .select("posicion, asunto, cuerpo_html, remitente")
+    .select("posicion, asunto, cuerpo_html, remitente, formato, preheader")
+    .eq("secuencia", "nurture")
     .eq("posicion", contacto.posicion_secuencia)
     .eq("activo", true)
     .maybeSingle();
@@ -228,7 +230,7 @@ export async function enviarMailSecuencia(
   if (!claimed?.length) return { enviado: false, motivo: "raced" };
 
   const isEu = contacto.idioma === "eu";
-  const html = wrapNurture(mail.cuerpo_html ?? "", contacto.email, isEu);
+  const html = wrapNurture(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader), contacto.email, isEu);
 
   try {
     await sendEmail(
@@ -250,6 +252,7 @@ export async function enviarMailSecuencia(
   const { count: quedan } = await supabase
     .from("secuencia_mails")
     .select("posicion", { count: "exact", head: true })
+    .eq("secuencia", "nurture")
     .gte("posicion", siguientePosicion)
     .eq("activo", true);
 

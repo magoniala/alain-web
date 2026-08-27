@@ -1,10 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
+import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.SUPABASE_SERVICE_KEY!,
 );
 
 export async function POST(req: Request) {
@@ -37,24 +38,39 @@ export async function POST(req: Request) {
 
   if (dbError) {
     console.error("Supabase error:", JSON.stringify(dbError));
-    return NextResponse.json({ error: "Error al guardar los datos." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al guardar los datos." },
+      { status: 500 },
+    );
   }
 
+  const mailBD = await cargarMailSecuencia(
+    "valoracion",
+    1,
+    isEu ? "eu" : "es",
+    { nombre },
+  );
   await sendEmail(
     email,
-    isEu ? "Eskerrik asko zure balorazioagatik" : "Gracias por tu valoración",
-    isEu ? `
+    mailBD?.asunto ||
+      (isEu
+        ? "Eskerrik asko zure balorazioagatik"
+        : "Gracias por tu valoración"),
+    mailBD?.cuerpo ??
+      (isEu
+        ? `
       <p>Kaixo ${nombre},</p>
       <p>Zure balorazioa jaso dut. Eskerrik asko denbora hartzeagatik.</p>
       <br />
       <p>Alain Zulaika</p>
-    ` : `
+    `
+        : `
       <p>Hola ${nombre},</p>
       <p>Gracias por tomarte el tiempo de compartir tu experiencia. Tu opinión me ayuda a seguir mejorando.</p>
       <br />
       <p>Alain Zulaika</p>
-    `,
-    ALAIN_FROM
+    `),
+    ALAIN_FROM,
   );
 
   const estrellas = "★".repeat(valoracion) + "☆".repeat(5 - valoracion);
@@ -73,7 +89,7 @@ export async function POST(req: Request) {
       ${permisoCita ? `<p><strong>Permiso para usar testimonio:</strong> ${permisoCita}</p>` : ""}
       ${firmaCita ? `<p><strong>Firma:</strong> ${firmaCita}</p>` : ""}
     `,
-    "Web <alain@alainzulaika.com>"
+    "Web <alain@alainzulaika.com>",
   );
 
   return NextResponse.json({ ok: true });

@@ -1,49 +1,74 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
+import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.SUPABASE_SERVICE_KEY!,
 );
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { tipoEvento, fechaAproximada, personas, momentos, notas, nombre, email, telefono, lang } = body;
-  const isEu = lang === "eu";
-
-  const { error: dbError } = await supabase.from("belaustegi_consultas").insert({
-    tipo_evento: tipoEvento,
-    fecha_aproximada: fechaAproximada,
+  const {
+    tipoEvento,
+    fechaAproximada,
     personas,
     momentos,
-    notas: notas || null,
+    notas,
     nombre,
     email,
     telefono,
     lang,
-  });
+  } = body;
+  const isEu = lang === "eu";
+
+  const { error: dbError } = await supabase
+    .from("belaustegi_consultas")
+    .insert({
+      tipo_evento: tipoEvento,
+      fecha_aproximada: fechaAproximada,
+      personas,
+      momentos,
+      notas: notas || null,
+      nombre,
+      email,
+      telefono,
+      lang,
+    });
 
   if (dbError) {
     console.error("Supabase error:", JSON.stringify(dbError));
-    return NextResponse.json({ error: "Error al guardar los datos." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al guardar los datos." },
+      { status: 500 },
+    );
   }
 
+  const mailBD = await cargarMailSecuencia(
+    "belaustegi",
+    1,
+    isEu ? "eu" : "es",
+    { nombre },
+  );
   await sendEmail(
     email,
-    isEu ? "Formularioa jasota" : "Formulario recibido",
-    isEu ? `
+    mailBD?.asunto || (isEu ? "Formularioa jasota" : "Formulario recibido"),
+    mailBD?.cuerpo ??
+      (isEu
+        ? `
       <p>Kaixo ${nombre},</p>
       <p>Zure eskaera jaso dut. Ahalik eta azkarren bidaliko dizut ekitaldira egokitutako proposamena.</p>
       <br />
       <p>Alain Zulaika</p>
-    ` : `
+    `
+        : `
       <p>Hola ${nombre},</p>
       <p>He recibido tu consulta. En cuanto pueda te haré llegar una propuesta adaptada a tu evento.</p>
       <br />
       <p>Alain Zulaika</p>
-    `,
-    ALAIN_FROM
+    `),
+    ALAIN_FROM,
   );
 
   await sendEmail(
@@ -60,7 +85,7 @@ export async function POST(req: Request) {
       <p><strong>Momentos:</strong> ${Array.isArray(momentos) ? momentos.join(", ") : momentos}</p>
       ${notas ? `<p><strong>Notas:</strong> ${notas}</p>` : ""}
     `,
-    "Web <alain@alainzulaika.com>"
+    "Web <alain@alainzulaika.com>",
   );
 
   return NextResponse.json({ ok: true });
