@@ -4,6 +4,7 @@ import { ESPALDA_GRACIAS } from "../_content";
 // Mismo bloque que el above the fold de /hoja-de-ruta: enseña el documento
 // real justo donde se le propone reservarlo.
 import PreviewHojaDeRuta from "../../PreviewHojaDeRuta";
+import CtaHojaDeRuta from "./CtaHojaDeRuta";
 
 // URL propia, no un estado de la landing anterior: se puede volver a ella,
 // enlazarla y medirla por separado.
@@ -65,12 +66,12 @@ export default function GraciasPage() {
 
           {/* Acaba de entrar, así que está dentro de su ventana de 8 días:
               va a la versión "ventana" de la Hoja de Ruta. */}
-          <a
+          <CtaHojaDeRuta
             href="/hoja-de-ruta?ventana=1"
             className={`${botonClase} mt-10 bg-[#1C3A5E] text-[#FAF3E8] hover:bg-[#0F2240]`}
           >
             {ESPALDA_GRACIAS.ctaBoton}
-          </a>
+          </CtaHojaDeRuta>
         </div>
       </section>
 

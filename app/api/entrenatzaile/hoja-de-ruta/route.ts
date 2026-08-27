@@ -16,6 +16,11 @@ import {
   huecosDisponibles,
   type Bloqueo,
 } from "@/lib/entrenatzaile-huecos";
+import {
+  datosDeLaPeticion,
+  enviarEventoMeta,
+  haAceptadoSeguimiento,
+} from "@/lib/meta-capi";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -183,7 +188,7 @@ export async function POST(req: Request) {
 // con el estado de elegibilidad en el asunto.
 export async function PATCH(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { id, hueco } = body;
+  const { id, hueco, eventId } = body;
 
   if (typeof id !== "string" || !id) {
     return NextResponse.json({ error: ERROR_GENERICO }, { status: 400 });
@@ -250,6 +255,20 @@ export async function PATCH(req: Request) {
       </table>
     </div>
   `;
+
+  // Reserva confirmada: es la conversión más profunda del embudo. Como el
+  // resto, va con su identificador compartido y solo si aceptó el
+  // seguimiento.
+  if (haAceptadoSeguimiento(req) && typeof eventId === "string" && eventId) {
+    await enviarEventoMeta({
+      nombre: "Schedule",
+      eventId,
+      url: req.headers.get("referer") ?? "https://entrenatzaile.alainzulaika.com/hoja-de-ruta",
+      email: reserva.email as string,
+      telefono: (reserva.telefono as string) ?? undefined,
+      ...datosDeLaPeticion(req),
+    });
+  }
 
   // Confirmación al lead: le queda por escrito el día y la hora. Va antes que
   // el aviso interno pero en su propio try, porque un fallo aquí no debe

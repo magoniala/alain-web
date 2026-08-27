@@ -46,7 +46,16 @@ export default function CookiesPage() {
               </p>
               <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>
-                  Este sitio web utiliza únicamente cookies técnicas necesarias para su funcionamiento correcto. No se utilizan cookies de seguimiento, publicidad ni analítica de terceros.
+                  <span className="text-[#F2F2F0]/90">Cookies técnicas.</span> Necesarias para que el sitio funcione: recuerdan tu idioma y tu decisión sobre esta misma política. No requieren tu permiso y no se pueden desactivar.
+                </p>
+                <p>
+                  <span className="text-[#F2F2F0]/90">Cookies de Meta (Facebook e Instagram).</span> Solo si las aceptas. Sirven para medir qué anuncios traen visitas y qué hacen después, y para que Meta pueda mostrar los anuncios a personas parecidas a quienes ya han contactado. Las instala Meta Platforms Ireland Limited.
+                </p>
+                <p>
+                  Junto a esas cookies, cuando aceptas, enviamos a Meta desde nuestro servidor el hecho de que has rellenado un formulario o reservado una llamada, con tu correo y tu teléfono <span className="text-[#F2F2F0]/90">cifrados</span> para que puedan reconocerte sin que viajen en claro. Nunca se envían las respuestas que escribes en los formularios.
+                </p>
+                <p>
+                  Si rechazas, no se carga nada de Meta y no se le envía ningún dato. Puedes cambiar de opinión borrando las cookies de este sitio en tu navegador.
                 </p>
                 <div className="mt-4 border border-white/10 p-5 space-y-4">
                   <div>

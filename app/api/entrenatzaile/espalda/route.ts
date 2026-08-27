@@ -9,6 +9,11 @@ import {
   PREGUNTAS_ESPALDA,
   limpiarUtm,
 } from "@/lib/entrenatzaile-formularios";
+import {
+  datosDeLaPeticion,
+  enviarEventoMeta,
+  haAceptadoSeguimiento,
+} from "@/lib/meta-capi";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -28,7 +33,7 @@ function escapar(texto: string) {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { respuestas, email, telefono, edad, genero, consentDatos, consentWhatsapp } = body;
+  const { respuestas, email, telefono, edad, genero, consentDatos, consentWhatsapp, eventId } = body;
 
   const r = Array.isArray(respuestas) ? respuestas.map((x) => (typeof x === "string" ? x.trim() : "")) : [];
   if (r.length !== PREGUNTAS_ESPALDA.length || r.some((x) => !x)) {
@@ -139,7 +144,23 @@ export async function POST(req: Request) {
       })
       .eq("id", lead.id);
 
-    await avisarme({
+    // Conversión a Meta. Va DESPUÉS de guardar y con su propio try dentro:
+  // un fallo de medición no puede afectar al lead, que ya está a salvo.
+  //
+  // Solo se envían el email y el teléfono, cifrados, y nunca las respuestas:
+  // esa es la regla dura del formulario y aquí también se cumple.
+  if (haAceptadoSeguimiento(req) && typeof eventId === "string" && eventId) {
+    await enviarEventoMeta({
+      nombre: "Lead",
+      eventId,
+      url: req.headers.get("referer") ?? "https://entrenatzaile.alainzulaika.com/espalda",
+      email: emailLower,
+      telefono: telefonoTrim,
+      ...datosDeLaPeticion(req),
+    });
+  }
+
+  await avisarme({
       email: emailLower,
       telefono: telefonoTrim,
       edad: edadNum,

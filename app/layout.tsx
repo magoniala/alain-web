@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
 import type { Metadata } from "next";
+import Consentimiento from "./_components/Consentimiento";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -43,6 +44,9 @@ export default function RootLayout({
     <html lang="eu" className={dmSans.variable}>
       <body className={inter.className}>
         {children}
+        {/* Banner de consentimiento + píxel de Meta. El píxel no se carga
+            hasta que la persona acepta. */}
+        <Consentimiento pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
         <Analytics />
         <SpeedInsights />
       </body>

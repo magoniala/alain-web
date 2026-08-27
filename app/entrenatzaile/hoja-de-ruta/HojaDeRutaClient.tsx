@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Header, Footer, inputStyle, labelStyle, fieldStyle, cardStyle } from "../_ui";
 import PreviewHojaDeRuta from "../PreviewHojaDeRuta";
+import { eventoPixel } from "@/app/_components/Consentimiento";
 import {
   HOJA_RUTA_BOTON,
   HOJA_RUTA_CIERRE,
@@ -376,11 +377,13 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
 
     // Última pantalla: confirmar el hueco.
     setEnviando(true);
+    const eventId = crypto.randomUUID();
+
     try {
       const res = await fetch("/api/entrenatzaile/hoja-de-ruta", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: reservaId, hueco: huecoElegido }),
+        body: JSON.stringify({ id: reservaId, hueco: huecoElegido, eventId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -394,6 +397,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
         }
         return;
       }
+      eventoPixel("Schedule", eventId);
       setCuandoReservado(data.cuando ?? "");
       setHecho(true);
     } catch {
