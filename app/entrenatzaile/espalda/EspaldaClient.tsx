@@ -64,7 +64,7 @@ export default function EspaldaClient() {
   const [empezado, setEmpezado] = useState(false);
   const [paso, setPaso] = useState(0);
   const [respuestas, setRespuestas] = useState<string[]>(PREGUNTAS_ESPALDA.map(() => ""));
-  const [datos, setDatos] = useState({ email: "", telefono: "", edad: "", genero: "" });
+  const [datos, setDatos] = useState({ nombre: "", email: "", telefono: "", edad: "", genero: "" });
   const [consentWhatsapp, setConsentWhatsapp] = useState(false);
   const [consentDatos, setConsentDatos] = useState(false);
   const [generoHover, setGeneroHover] = useState<string | null>(null);
@@ -107,6 +107,7 @@ export default function EspaldaClient() {
       return respuestas[paso].trim() ? null : "Escribe tu respuesta para poder seguir.";
     }
     if (paso === PASO_CONTACTO) {
+      if (!datos.nombre.trim()) return "Escribe tu nombre para poder seguir.";
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.email.trim())) return "Escribe un email válido.";
       if (datos.telefono.replace(/[\s().+-]/g, "").length < 9) return "Escribe un teléfono válido.";
       return null;
@@ -150,6 +151,7 @@ export default function EspaldaClient() {
           // cuente dos veces la misma conversión.
           eventId,
           respuestas,
+          nombre: datos.nombre,
           email: datos.email,
           telefono: datos.telefono,
           edad: datos.edad,
@@ -217,13 +219,29 @@ export default function EspaldaClient() {
       return (
         <div key={paso} className="context-fade-in">
           <div style={fieldStyle}>
+            <label htmlFor="nombre" style={labelStyle}>
+              Nombre
+            </label>
+            <p style={pistaStyle}>{ESPALDA_FORMULARIO.nombrePista}</p>
+            <input
+              id="nombre"
+              ref={primerCampoRef as React.RefObject<HTMLInputElement>}
+              autoComplete="given-name"
+              placeholder="Tu nombre"
+              value={datos.nombre}
+              onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
+              style={inputStyle}
+              className="placeholder:text-[#1C3A5E]/35"
+            />
+          </div>
+
+          <div style={fieldStyle}>
             <label htmlFor="email" style={labelStyle}>
               Correo electrónico
             </label>
             <p style={pistaStyle}>{ESPALDA_FORMULARIO.emailPista}</p>
             <input
               id="email"
-              ref={primerCampoRef as React.RefObject<HTMLInputElement>}
               type="email"
               inputMode="email"
               autoComplete="email"

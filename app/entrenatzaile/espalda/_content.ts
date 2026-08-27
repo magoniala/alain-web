@@ -54,6 +54,7 @@ export const ESPALDA_FORMULARIO = {
   // es el texto del botón final, el que envía. Si los dos dijeran lo mismo,
   // este prometería algo que no pasa al pulsarlo.
   empezar: "Responder las tres preguntas",
+  nombrePista: "Para saber cómo llamarte.",
   emailPista: "Aquí te llega la ficha.",
   telefonoPista:
     "Para confirmar cosas puntuales por WhatsApp. Escribe Alain en persona, uno a uno. No hay envíos masivos.",

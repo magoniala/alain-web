@@ -187,3 +187,6 @@ CREATE INDEX IF NOT EXISTS hoja_ruta_bloqueos_dia_idx ON hoja_ruta_bloqueos (dia
 
 ALTER TABLE espalda_leads       ADD COLUMN IF NOT EXISTS meta_evento text;
 ALTER TABLE hoja_ruta_reservas  ADD COLUMN IF NOT EXISTS meta_evento text;
+
+-- Nombre del lead: el formulario de /espalda no lo pedía al principio.
+ALTER TABLE espalda_leads ADD COLUMN IF NOT EXISTS nombre text;

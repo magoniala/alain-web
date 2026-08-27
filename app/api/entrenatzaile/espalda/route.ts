@@ -33,11 +33,15 @@ function escapar(texto: string) {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { respuestas, email, telefono, edad, genero, consentDatos, consentWhatsapp, eventId } = body;
+  const { respuestas, nombre, email, telefono, edad, genero, consentDatos, consentWhatsapp, eventId } = body;
 
   const r = Array.isArray(respuestas) ? respuestas.map((x) => (typeof x === "string" ? x.trim() : "")) : [];
   if (r.length !== PREGUNTAS_ESPALDA.length || r.some((x) => !x)) {
     return NextResponse.json({ error: "Contesta a las tres preguntas, por favor." }, { status: 400 });
+  }
+  const nombreTrim = typeof nombre === "string" ? nombre.trim() : "";
+  if (!nombreTrim) {
+    return NextResponse.json({ error: "Escribe tu nombre, por favor." }, { status: 400 });
   }
   if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return NextResponse.json({ error: "El email no es válido." }, { status: 400 });
@@ -75,6 +79,7 @@ export async function POST(req: Request) {
     .from("espalda_leads")
     .insert({
       email: emailLower,
+      nombre: nombreTrim,
       telefono: telefonoTrim,
       edad: edadNum,
       genero: generoTrim,
@@ -112,6 +117,7 @@ export async function POST(req: Request) {
     // solo cambia la puerta de entrada y el origen.
     const alta = await altaEnSecuencia({
       email: emailLower,
+      nombre: nombreTrim,
       origen: ORIGEN,
       idioma: "es",
       tags: TAGS,
@@ -168,6 +174,7 @@ export async function POST(req: Request) {
 
   await avisarme({
       email: emailLower,
+      nombre: nombreTrim,
       telefono: telefonoTrim,
       edad: edadNum,
       genero: generoTrim,
@@ -192,6 +199,7 @@ export async function POST(req: Request) {
 // asunto ni en ninguna URL.
 async function avisarme(d: {
   email: string;
+  nombre: string;
   telefono: string;
   edad: number;
   genero: string;
@@ -223,6 +231,7 @@ async function avisarme(d: {
     <div style="font-family:monospace;max-width:620px;margin:0 auto;padding:1.5rem;color:#1a1a1a;background:#f8f8f8;border:1px solid #ddd;font-size:0.88rem;">
       <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:#999;margin:0 0 1rem 0;">ENTRENATZAILE · TIRADA 02 · /ESPALDA</p>
       <table style="width:100%;border-collapse:collapse;">
+        ${fila("Nombre", escapar(d.nombre))}
         ${fila("Email", escapar(d.email))}
         ${fila("Teléfono", telefonoCelda)}
         ${fila("Edad", String(d.edad))}
@@ -238,7 +247,7 @@ async function avisarme(d: {
 
   await sendEmail(
     "newsletter@alainzulaika.com",
-    `Entrenatzaile — Nuevo lead /espalda: ${d.email}`,
+    `Entrenatzaile — Nuevo lead /espalda: ${d.nombre}`,
     html,
     "Entrenatzaile <alain@alainzulaika.com>"
   );
