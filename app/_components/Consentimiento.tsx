@@ -81,11 +81,16 @@ fbq('init','${pixelId}');fbq('track','PageView');`}
           className="fixed inset-x-0 bottom-0 z-50 border-t border-white/15 bg-[#0B0B0C]/95 px-5 py-4 backdrop-blur md:px-8"
         >
           <div className="mx-auto flex max-w-[1100px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {/* Honesto y en primera persona, pero sin trampas: el motivo es
+                real y "no" funciona igual de bien que "sí". Endulzarlo más
+                significaría empezar a esconder cosas, que es justo lo que
+                está sancionado. */}
             <p className="text-[0.92rem] leading-relaxed text-[#F2F2F0]/80">
-              Uso cookies de <strong className="font-medium text-[#F2F2F0]">Meta</strong> para medir
-              qué anuncios funcionan. Sin tu permiso no se cargan.{" "}
+              Uso cookies de publicidad para saber qué anuncios traen gente y cuáles estoy pagando
+              para nada. Nada más: ni te sigo por otras webs, ni vendo tus datos. Si dices que no, la
+              página funciona exactamente igual.{" "}
               <Link href="/cookies" className="underline underline-offset-4 hover:text-[#F2F2F0]">
-                Más detalles
+                Qué guardo exactamente
               </Link>
               .
             </p>
@@ -95,14 +100,14 @@ fbq('init','${pixelId}');fbq('track','PageView');`}
                 onClick={() => decidir("rechazado")}
                 className="border border-white/25 px-5 py-2.5 text-[0.88rem] text-[#F2F2F0]/85 transition-colors hover:border-white/50"
               >
-                Rechazar
+                No, gracias
               </button>
               <button
                 type="button"
                 onClick={() => decidir("aceptado")}
                 className="border border-white/25 bg-[#F2F2F0] px-5 py-2.5 text-[0.88rem] text-[#0B0B0C] transition-colors hover:bg-white"
               >
-                Aceptar
+                Vale
               </button>
             </div>
           </div>
