@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Lora } from "next/font/google";
+import Consentimiento from "../../_components/Consentimiento";
 import { ESPALDA_HERO } from "./_content";
 
 // Lora solo para los titulares de esta landing (y de la página de gracias,
@@ -27,5 +28,13 @@ export const metadata: Metadata = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <div className={lora.variable}>{children}</div>;
+  return (
+    <div className={lora.variable}>
+      {children}
+      {/* La única página que pregunta: es por donde entra el tráfico de
+          anuncios. Quien decide aquí no vuelve a ver el banner en el resto
+          del embudo. */}
+      <Consentimiento pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} preguntar />
+    </div>
+  );
 }

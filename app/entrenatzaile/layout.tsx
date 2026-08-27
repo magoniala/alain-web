@@ -1,11 +1,13 @@
 import Consentimiento from "../_components/Consentimiento";
 
-// Banner de consentimiento y píxel de Meta, SOLO en Entrenatzaile.
+// Píxel de Meta en Entrenatzaile, sin preguntar nada.
 //
-// Los anuncios apuntan a entrenatzaile.alainzulaika.com, así que es aquí
-// donde hay algo que medir. En las páginas de magia el píxel no aportaría
-// nada y el banner sería una molestia gratuita — y además guardar datos que
-// no se usan es justo lo que la ley pide no hacer.
+// Aquí el componente solo sirve para cargar el píxel a quien YA aceptó en la
+// landing de entrada, de forma que se le pueda medir la reserva. Preguntar,
+// se pregunta una sola vez y en /espalda.
+//
+// En las páginas de magia no va nada de esto: el píxel no mediría nada y el
+// banner sería una molestia gratuita.
 export default function EntrenatzaileLayout({ children }: { children: React.ReactNode }) {
   return (
     <>

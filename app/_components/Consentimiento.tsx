@@ -30,7 +30,22 @@ function guardarDecision(valor: Exclude<Decision, null>) {
   document.cookie = `${COOKIE}=${valor}; path=/; max-age=${UN_ANIO}; SameSite=Lax`;
 }
 
-export default function Consentimiento({ pixelId }: { pixelId?: string }) {
+export default function Consentimiento({
+  pixelId,
+  preguntar = false,
+}: {
+  pixelId?: string;
+  /**
+   * Si es true, se pregunta a quien no haya decidido todavía.
+   *
+   * Solo se pregunta en la landing de entrada, que es por donde llega el
+   * tráfico de anuncios. En el resto de páginas el componente sigue puesto
+   * —para cargar el píxel a quien YA aceptó— pero no vuelve a preguntar:
+   * quien viene del embudo ya respondió, y a quien llega por otra vía no se
+   * le mide nada, que es justo lo que debe pasar sin permiso.
+   */
+  preguntar?: boolean;
+}) {
   // Un solo estado: hasta que no se ha leído la cookie no se sabe nada, y
   // las dos cosas cambian a la vez.
   const [estado, setEstado] = useState<{ montado: boolean; decision: Decision }>({
@@ -74,7 +89,7 @@ fbq('init','${pixelId}');fbq('track','PageView');`}
         </Script>
       )}
 
-      {estado.decision === null && (
+      {preguntar && estado.decision === null && (
         <div
           role="dialog"
           aria-label="Consentimiento de cookies"
@@ -86,9 +101,9 @@ fbq('init','${pixelId}');fbq('track','PageView');`}
                 significaría empezar a esconder cosas, que es justo lo que
                 está sancionado. */}
             <p className="text-[0.92rem] leading-relaxed text-[#F2F2F0]/80">
-              Uso cookies de publicidad para saber qué anuncios traen gente y cuáles estoy pagando
-              para nada. Nada más: ni te sigo por otras webs, ni vendo tus datos. Si dices que no, la
-              página funciona exactamente igual.{" "}
+              Uso cookies <strong className="font-normal text-[#F2F2F0]">de publicidad</strong> para
+              saber qué atrae gente y qué estoy haciendo para nada. Ni te sigo por otras webs, ni
+              vendo tus datos.{" "}
               <Link href="/cookies" className="underline underline-offset-4 hover:text-[#F2F2F0]">
                 Qué guardo exactamente
               </Link>
