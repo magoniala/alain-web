@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { cuerpoDelMail } from "@/lib/email-markdown";
+import { cuerpoDelMail, sustituirMarcadores } from "@/lib/email-markdown";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
@@ -13,6 +13,8 @@ export const SECUENCIAS = [
   "valoracion",
   "arrogante",
   "comodin_show",
+  "guias",
+  "entrenatzaile_valoracion",
 ] as const;
 export type Secuencia = (typeof SECUENCIAS)[number];
 
@@ -25,10 +27,19 @@ export const SECUENCIA_ETIQUETA: Record<Secuencia, string> = {
   valoracion: "Valoración de evento",
   arrogante: "Arrogante",
   comodin_show: "Comodín · enlace al show",
+  guias: "Guías gratuitas",
+  entrenatzaile_valoracion: "Entrenatzaile · valoración",
 };
 
 /** Secuencias con contenido en los dos idiomas. Nurture solo va en castellano. */
-export const SECUENCIAS_BILINGUES: Secuencia[] = ["comodin", "mision", "contacto", "belaustegi", "valoracion"];
+export const SECUENCIAS_BILINGUES: Secuencia[] = [
+  "comodin",
+  "mision",
+  "contacto",
+  "belaustegi",
+  "valoracion",
+  "entrenatzaile_valoracion",
+];
 
 export interface MailSecuencia {
   asunto: string;
@@ -56,6 +67,17 @@ export const MARCADORES: Partial<Record<Secuencia, Array<{ clave: string; descri
   valoracion: [{ clave: "nombre", descripcion: "Nombre de quien valora" }],
   arrogante: [{ clave: "tiktok", descripcion: "Enlace al TikTok" }],
   comodin_show: [{ clave: "show", descripcion: "Enlace al show completo" }],
+  guias: [
+    { clave: "nombre", descripcion: "Nombre de pila" },
+    { clave: "guias", descripcion: "Lista de las guías que se adjuntan" },
+    { clave: "sorpresa", descripcion: "Párrafo de la guía de regalo (vacío si no hay)" },
+    { clave: "extra_asunto", descripcion: "Coletilla del asunto cuando hay guía de regalo" },
+  ],
+  entrenatzaile_valoracion: [
+    { clave: "nombre", descripcion: "Nombre de quien reserva" },
+    { clave: "cambiar_idioma", descripcion: "Enlace para recibirlos en el otro idioma" },
+    { clave: "contacto", descripcion: "Página de contacto" },
+  ],
 };
 
 /**
@@ -87,7 +109,9 @@ export async function cargarMailSecuencia(
   if (!data) return null;
 
   return {
-    asunto: data.asunto ?? "",
+    // Los marcadores también valen en el asunto: hay correos cuyo asunto
+    // cambia según el caso (por ejemplo, si hay guía sorpresa o no).
+    asunto: valores ? sustituirMarcadores(data.asunto ?? "", valores) : (data.asunto ?? ""),
     cuerpo: cuerpoDelMail(data.cuerpo_html, data.formato, data.preheader, valores),
     remitente: data.remitente,
   };

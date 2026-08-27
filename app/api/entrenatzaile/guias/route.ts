@@ -9,6 +9,7 @@ import {
   GUIA_INFO,
   type GuiaArchivo,
 } from "@/lib/entrenatzaile-variantes";
+import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -132,10 +133,22 @@ export async function POST(req: Request) {
 
   try {
     const attachments = await loadAttachments(archivos);
+
+    // La lista de guías y el párrafo de la sorpresa se calculan aquí porque
+    // dependen de la variante activa; el correo solo los coloca donde toque.
+    const mailBD = await cargarMailSecuencia("guias", 1, "es", {
+      nombre: nombreTrim.split(" ")[0],
+      guias: listaAnunciadas,
+      sorpresa: sorpresaHtml,
+      extra_asunto: sorpresa ? " (+1 de regalo)" : "",
+    });
+
     await sendEmail(
       `${nombreTrim} <${emailLower}>`,
-      sorpresa ? "Aquí tienes tus guías (+1 de regalo)" : "Aquí tienes tus guías",
-      wrap(`
+      mailBD?.asunto || (sorpresa ? "Aquí tienes tus guías (+1 de regalo)" : "Aquí tienes tus guías"),
+      wrap(
+        mailBD?.cuerpo ??
+          `
         <p style="${pStyle}">Hola, ${nombreTrim.split(" ")[0]}.</p>
         <p style="${pStyle}">Aquí tienes las tres guías, adjuntas a este email:</p>
         <p style="${pStyle}">
@@ -145,8 +158,9 @@ export async function POST(req: Request) {
         <p style="${pStyle}">Además de las guías, te voy a escribir un correo diario sobre entrenamiento y salud para gente de tu edad: útil, breve y sin relleno. Si en algún momento no te aporta, te das de baja abajo en un clic.</p>
         <div style="border-top:1px solid #eee;margin:1.5rem 0;"></div>
         <p style="font-size:1.15rem;color:#1a1a1a;line-height:2.1;margin-top:0.5rem;"><strong>Pd:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.</p>
-      `),
-      resolveNewsletterFrom(),
+      `
+      ),
+      resolveNewsletterFrom(mailBD?.remitente),
       attachments
     );
   } catch (err) {

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
+import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -133,11 +134,19 @@ export async function POST(req: Request) {
       </div>
     `;
 
+    const mailBD = await cargarMailSecuencia("entrenatzaile_valoracion", 1, isEu ? "eu" : "es", {
+      nombre: nombre.trim(),
+      cambiar_idioma: idiomaUrl,
+      contacto: contactoUrl,
+    });
+
     await sendEmail(
       nombre.trim() ? `${nombre.trim()} <${emailLower}>` : emailLower,
-      isEu ? "Ongi etorri — jada jaso dut zure balorazioa" : "Bienvenido/a — ya tengo tu valoración",
-      isEu
-        ? wrap(`
+      mailBD?.asunto || (isEu ? "Ongi etorri — jada jaso dut zure balorazioa" : "Bienvenido/a — ya tengo tu valoración"),
+      wrap(
+        mailBD?.cuerpo ??
+          (isEu
+            ? `
           <p style="${pStyle}">Kaixo, Alain naiz.</p>
           <p style="${pStyle}">Jada jaso dut formularioan bidali didazun informazioa. 48 ordu baino gutxiagoan zurekin harremanetan jarriko naiz 90 minutuko balorazio-deia antolatzeko.</p>
           <p style="${pStyle}">Bitartean, hau da nire mezuetatik espero dezakezuna: magoa eszenatoki gainean, entrenatzaile pertsonala online, eta kuriosoa jaiotzaz eta hazkundez.</p>
@@ -149,8 +158,8 @@ export async function POST(req: Request) {
           <p style="${pdStyle}"><strong>Pd2:</strong> Nahiago gazteleraz jasotzea? <a href="${idiomaUrl}" style="${linkStyle}">Egin klik hemen</a></p>
           <p style="${pdStyle}"><strong>Pd3:</strong> Ekitaldi berezi bat antolatzen ari zara? <a href="${contactoUrl}" style="${linkStyle}">Egin klik hemen eta hitz egin dezagun.</a> Enpresa-ekitaldiak, kultur ekitaldiak, festa pribatuak… Hamar minutuko solasaldia nahikoa izaten da magiak zentzua duen ala ez ikusteko.</p>
           <p style="${pdStyle}"><strong>Pd4:</strong> Mezu honi "kaixo" soil batekin erantzuten badiozu, Gmaili lagunduko diozu hau spam ez dela ulertzen — eskerrik asko.<br>Eta nor zaren, nola aurkitu nauzun eta nire mezuetatik zer jasotzea espero duzun kontatzen badidazu... eguna alaituko didazu.</p>
-        `)
-        : wrap(`
+        `
+            : `
           <p style="${pStyle}">Hola, soy Alain.</p>
           <p style="${pStyle}">Ya tengo la información que me has enviado en el formulario. Te contacto en menos de 48h para agendar la llamada de valoración de 90 minutos.</p>
           <p style="${pStyle}">Mientras tanto, esto es lo que puedes esperar de mis mails: mago en los escenarios, entrenador personal online, y curioso de nacimiento y crecimiento.</p>
@@ -162,8 +171,9 @@ export async function POST(req: Request) {
           <p style="${pdStyle}"><strong>Pd2:</strong> ¿Prefieres recibirlos en euskera? <a href="${idiomaUrl}" style="${linkStyle}">Clic aquí</a></p>
           <p style="${pdStyle}"><strong>Pd3:</strong> ¿Tienes un evento que hacer especial? <a href="${contactoUrl}" style="${linkStyle}">Haz clic aquí y hablemos.</a> Eventos de empresa, eventos culturales, fiestas privadas… Diez minutos de conversación suelen aclarar si tiene sentido.</p>
           <p style="${pdStyle}"><strong>Pd4:</strong> Si respondes a este mail con un "hola" me ayudas a que gmail entienda que esto no es spam, gracias.<br>Si encima me cuentas quien eres, como me has conocido, que esperas recibir en mis mails... me alegras el día.</p>
-        `),
-      resolveNewsletterFrom()
+        `)
+      ),
+      resolveNewsletterFrom(mailBD?.remitente)
     );
   }
 
