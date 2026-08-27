@@ -81,6 +81,8 @@ export async function POST(req: Request) {
         <p>Alain Zulaika</p>
       `),
       ALAIN_FROM,
+      undefined,
+      { campana: "contacto", customId: email }
     );
   } catch (emailErr) {
     console.error("SES error (client email):", emailErr);

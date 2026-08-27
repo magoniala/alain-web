@@ -79,7 +79,9 @@ async function enviarMailDuplicado(
       contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
       mail.asunto ?? "",
       html,
-      resolveNewsletterFrom(mail.remitente)
+      resolveNewsletterFrom(mail.remitente),
+      undefined,
+      { campana: "nurture-duplicado", customId: contacto.id }
     );
   } catch (err) {
     const mensaje = err instanceof Error ? err.message : String(err);

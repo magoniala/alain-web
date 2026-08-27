@@ -237,7 +237,11 @@ export async function enviarMailSecuencia(
       contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
       mail.asunto ?? "",
       html,
-      resolveNewsletterFrom(mail.remitente)
+      resolveNewsletterFrom(mail.remitente),
+      undefined,
+      // La etiqueta agrupa en Mailjet a TODO el que pase por este mail, sin
+      // importar la fecha: así se pueden comparar M0, M1, M2… entre sí.
+      { campana: `nurture-m${contacto.posicion_secuencia}`, customId: contacto.id }
     );
   } catch (err) {
     console.error("nurture send error:", contacto.email, err);

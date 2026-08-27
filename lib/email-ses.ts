@@ -40,12 +40,29 @@ export interface EmailAttachment {
   base64Content: string;
 }
 
+/**
+ * Seguimiento de un envío.
+ *
+ * `campana` es lo que permite sacar estadísticas POR MAIL: Mailjet agrupa
+ * bajo esa etiqueta todos los envíos que la lleven, así que "nurture-m0"
+ * junta a todo el que haya pasado por el M0, sin importar cuándo. Sin ella,
+ * Mailjet solo sabe de mensajes sueltos y hay que mirarlos de uno en uno.
+ *
+ * `customId` identifica al destinatario dentro de esa campaña, para poder
+ * cruzar un evento concreto con la persona.
+ */
+export interface SeguimientoEmail {
+  campana?: string;
+  customId?: string;
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
   html: string,
   from = ALAIN_FROM,
-  attachments?: EmailAttachment[]
+  attachments?: EmailAttachment[],
+  seguimiento?: SeguimientoEmail
 ) {
   const fromParsed = parseAddress(from);
   await getClient().post("send", { version: "v3.1" }).request({
@@ -56,6 +73,12 @@ export async function sendEmail(
         Subject: subject,
         HTMLPart: html,
         ReplyTo: { Email: "newsletter@alainzulaika.com" },
+        // Sin esto Mailjet no registra ni aperturas ni clics, y no hay
+        // estadísticas que sacar después.
+        TrackOpens: "enabled",
+        TrackClicks: "enabled",
+        ...(seguimiento?.campana ? { CustomCampaign: seguimiento.campana } : {}),
+        ...(seguimiento?.customId ? { CustomID: seguimiento.customId } : {}),
         ...(attachments?.length
           ? {
               Attachments: attachments.map((a) => ({

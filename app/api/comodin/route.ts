@@ -70,7 +70,9 @@ export async function POST(req: Request) {
     email,
     deLaTabla?.asunto || enCodigo.subject,
     wrap(deLaTabla ? deLaTabla.cuerpo : enCodigo.cuerpo),
-    resolveNewsletterFrom(deLaTabla?.remitente)
+    resolveNewsletterFrom(deLaTabla?.remitente),
+    undefined,
+    { campana: "comodin-m1", customId: email }
   );
 
   const mail2SendAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();

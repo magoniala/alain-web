@@ -69,6 +69,8 @@ export async function POST(req: Request) {
       <p>Alain Zulaika</p>
     `),
     ALAIN_FROM,
+    undefined,
+    { campana: "belaustegi", customId: email }
   );
 
   await sendEmail(

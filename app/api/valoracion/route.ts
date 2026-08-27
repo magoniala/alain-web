@@ -71,6 +71,8 @@ export async function POST(req: Request) {
       <p>Alain Zulaika</p>
     `),
     ALAIN_FROM,
+    undefined,
+    { campana: "valoracion-evento", customId: email }
   );
 
   const estrellas = "★".repeat(valoracion) + "☆".repeat(5 - valoracion);

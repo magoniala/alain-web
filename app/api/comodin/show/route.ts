@@ -55,6 +55,8 @@ export async function POST(req: Request) {
       </div>
     `,
     resolveNewsletterFrom(),
+    undefined,
+    { campana: "comodin-show", customId: email }
   );
 
   return NextResponse.json({ ok: true });

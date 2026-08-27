@@ -70,7 +70,10 @@ async function procesar(cfg: Programado, ahora: Date): Promise<{ enviados: numbe
       : cfg.enCodigo(row.email, isEu);
 
     try {
-      await sendEmail(row.email, subject, html, resolveNewsletterFrom(deLaTabla?.remitente));
+      await sendEmail(row.email, subject, html, resolveNewsletterFrom(deLaTabla?.remitente), undefined, {
+        campana: `${cfg.secuencia}-m${cfg.posicion}`,
+        customId: row.email,
+      });
     } catch (err) {
       // Antes, un fallo aquí abortaba el cron entero y dejaba sin correo a
       // todos los que venían detrás. Ahora se anota y se sigue: la marca de

@@ -164,7 +164,9 @@ async function procesarRecordatorioValoracion(): Promise<number> {
         contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
         mail.asunto ?? "",
         html,
-        resolveNewsletterFrom(mail.remitente)
+        resolveNewsletterFrom(mail.remitente),
+        undefined,
+        { campana: "nurture-recordatorio", customId: contacto.id }
       );
     } catch (err) {
       console.error("recordatorio send error:", contacto.email, err);
