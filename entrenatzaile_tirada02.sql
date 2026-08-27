@@ -176,3 +176,14 @@ CREATE TABLE IF NOT EXISTS hoja_ruta_bloqueos (
 );
 
 CREATE INDEX IF NOT EXISTS hoja_ruta_bloqueos_dia_idx ON hoja_ruta_bloqueos (dia);
+
+-- ============================================================
+-- Ampliación 2026-08-27: qué pasó de verdad con el evento de Meta.
+--
+-- Sin esto, un envío omitido por falta de consentimiento y uno rechazado por
+-- Meta son igual de invisibles: los dos "no aparecen" y no hay forma de
+-- distinguirlos sin acceso a los logs.
+-- ============================================================
+
+ALTER TABLE espalda_leads       ADD COLUMN IF NOT EXISTS meta_evento text;
+ALTER TABLE hoja_ruta_reservas  ADD COLUMN IF NOT EXISTS meta_evento text;

@@ -259,8 +259,13 @@ export async function PATCH(req: Request) {
   // Reserva confirmada: es la conversión más profunda del embudo. Como el
   // resto, va con su identificador compartido y solo si aceptó el
   // seguimiento.
-  if (haAceptadoSeguimiento(req) && typeof eventId === "string" && eventId) {
-    await enviarEventoMeta({
+  let metaEvento: string;
+  if (!haAceptadoSeguimiento(req)) {
+    metaEvento = "omitido: no aceptó las cookies";
+  } else if (typeof eventId !== "string" || !eventId) {
+    metaEvento = "omitido: el navegador no mandó eventId";
+  } else {
+    metaEvento = await enviarEventoMeta({
       nombre: "Schedule",
       eventId,
       url: req.headers.get("referer") ?? "https://entrenatzaile.alainzulaika.com/hoja-de-ruta",
@@ -269,6 +274,7 @@ export async function PATCH(req: Request) {
       ...datosDeLaPeticion(req),
     });
   }
+  await supabase.from("hoja_ruta_reservas").update({ meta_evento: metaEvento }).eq("id", id);
 
   // Confirmación al lead: le queda por escrito el día y la hora. Va antes que
   // el aviso interno pero en su propio try, porque un fallo aquí no debe

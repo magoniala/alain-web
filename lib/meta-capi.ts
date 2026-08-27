@@ -62,10 +62,12 @@ export interface EventoMeta {
  * Manda un evento a Meta. No lanza nunca: una conversión no registrada es un
  * problema de medición, pero reventar aquí dejaría al lead sin su respuesta.
  *
- * Devuelve true solo si Meta lo aceptó, para poder registrarlo.
+ * Devuelve un texto con lo que pasó de verdad, para guardarlo junto al lead.
+ * Sin esto, un envío omitido y uno rechazado son igual de invisibles: los dos
+ * "no aparecen en Meta" y no hay forma de saber cuál fue.
  */
-export async function enviarEventoMeta(evento: EventoMeta): Promise<boolean> {
-  if (!metaConfigurado()) return false;
+export async function enviarEventoMeta(evento: EventoMeta): Promise<string> {
+  if (!metaConfigurado()) return "sin configurar: faltan META_PIXEL_ID o META_CAPI_TOKEN";
 
   const userData: Record<string, unknown> = {};
   if (evento.email) userData.em = [hash(evento.email)];
@@ -97,13 +99,15 @@ export async function enviarEventoMeta(evento: EventoMeta): Promise<boolean> {
     });
 
     if (!res.ok) {
-      console.error("meta-capi: Meta rechazó el evento", evento.nombre, await res.text());
-      return false;
+      const detalle = await res.text();
+      console.error("meta-capi: Meta rechazó el evento", evento.nombre, detalle);
+      return `rechazado por Meta: ${detalle.slice(0, 400)}`;
     }
-    return true;
+    return `enviado (${evento.nombre})${TEST_CODE ? ` [prueba ${TEST_CODE}]` : ""}`;
   } catch (err) {
+    const mensaje = err instanceof Error ? err.message : String(err);
     console.error("meta-capi: no se pudo enviar el evento", evento.nombre, err);
-    return false;
+    return `error de red: ${mensaje}`;
   }
 }
 

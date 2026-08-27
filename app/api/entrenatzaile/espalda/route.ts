@@ -149,8 +149,13 @@ export async function POST(req: Request) {
   //
   // Solo se envían el email y el teléfono, cifrados, y nunca las respuestas:
   // esa es la regla dura del formulario y aquí también se cumple.
-  if (haAceptadoSeguimiento(req) && typeof eventId === "string" && eventId) {
-    await enviarEventoMeta({
+  let metaEvento: string;
+  if (!haAceptadoSeguimiento(req)) {
+    metaEvento = "omitido: no aceptó las cookies";
+  } else if (typeof eventId !== "string" || !eventId) {
+    metaEvento = "omitido: el navegador no mandó eventId";
+  } else {
+    metaEvento = await enviarEventoMeta({
       nombre: "Lead",
       eventId,
       url: req.headers.get("referer") ?? "https://entrenatzaile.alainzulaika.com/espalda",
@@ -159,6 +164,7 @@ export async function POST(req: Request) {
       ...datosDeLaPeticion(req),
     });
   }
+  await supabase.from("espalda_leads").update({ meta_evento: metaEvento }).eq("id", lead.id);
 
   await avisarme({
       email: emailLower,
