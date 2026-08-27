@@ -98,12 +98,17 @@ export async function enviarEventoMeta(evento: EventoMeta): Promise<string> {
       }),
     });
 
+    const detalle = (await res.text()).slice(0, 400);
+
     if (!res.ok) {
-      const detalle = await res.text();
       console.error("meta-capi: Meta rechazó el evento", evento.nombre, detalle);
-      return `rechazado por Meta: ${detalle.slice(0, 400)}`;
+      return `rechazado por Meta: ${detalle}`;
     }
-    return `enviado (${evento.nombre})${TEST_CODE ? ` [prueba ${TEST_CODE}]` : ""}`;
+
+    // Se guarda también la respuesta de un envío correcto: Meta devuelve 200
+    // aunque no procese el evento como esperamos (por ejemplo, con un código
+    // de prueba caducado), y sin ver lo que contesta no hay forma de saberlo.
+    return `enviado (${evento.nombre})${TEST_CODE ? ` [prueba ${TEST_CODE}]` : ""} → ${detalle}`;
   } catch (err) {
     const mensaje = err instanceof Error ? err.message : String(err);
     console.error("meta-capi: no se pudo enviar el evento", evento.nombre, err);

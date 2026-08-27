@@ -274,7 +274,7 @@ export async function PATCH(req: Request) {
       ...datosDeLaPeticion(req),
     });
   }
-  await supabase.from("hoja_ruta_reservas").update({ meta_evento: metaEvento }).eq("id", id);
+  await supabase.from("hoja_ruta_reservas").update({ meta_evento: metaEvento.slice(0, 600) }).eq("id", id);
 
   // Confirmación al lead: le queda por escrito el día y la hora. Va antes que
   // el aviso interno pero en su propio try, porque un fallo aquí no debe

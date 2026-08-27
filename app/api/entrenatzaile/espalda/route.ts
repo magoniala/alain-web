@@ -164,7 +164,7 @@ export async function POST(req: Request) {
       ...datosDeLaPeticion(req),
     });
   }
-  await supabase.from("espalda_leads").update({ meta_evento: metaEvento }).eq("id", lead.id);
+  await supabase.from("espalda_leads").update({ meta_evento: metaEvento.slice(0, 600) }).eq("id", lead.id);
 
   await avisarme({
       email: emailLower,
