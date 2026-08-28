@@ -149,6 +149,10 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
         nota: "(Ficha extra)",
         texto: "Qué hacer las primeras 48 horas, qué no, y cómo volver a entrenar.",
       },
+      {
+        texto:
+          "Si además de la espalda te preocupa otra cosa —la rodilla, el hombro, sentirte más fuerte en general—, también entra.\nLa Hoja de Ruta no va solo de tu espalda: va de en qué estado está tu cuerpo y qué te toca priorizar.",
+      },
       { texto: "Recibes todo por escrito en 24 o 48 horas después de la llamada." },
       {
         destacado: "Y es tuya.",
@@ -173,24 +177,18 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
     soloEn: "ventana",
     titulo: "Por qué te la regalo.",
     parrafos: [
-      { texto: "Esta valoración vale 90 €.\nEs lo que cobro por ella al resto de la gente." },
       {
         texto:
-          "A ti no te la cobro, y prefiero explicarte por qué antes de que te lo preguntes.\nHago cinco valoraciones a la semana.\nUna al día, no más, porque cada una me lleva una hora de llamada y un par de horas de trabajo escribiendo tu Hoja de Ruta.",
-      },
-      { texto: "Esas cinco plazas las reservo para gente que acaba de llegar." },
-      {
-        texto:
-          "Porque es así como consigo clientes.\nAlgunos, después de leer su Hoja de Ruta, me piden que les acompañe.\nMuchos no. Y me sale a cuenta igual.",
+          "Te lo digo sin secretismos:\nAsí es como consigo clientes.\nAlgunos, después de leer su Hoja de Ruta, me piden que les acompañe. Otros muchos no.",
       },
       {
         texto:
-          "Es una apuesta mía, no tuya.\nSi no quieres seguir, te has llevado gratis un trabajo por el que otros pagan.\nEse es el trato.",
+          "Es una apuesta que yo hago.\nSi tú luego no quieres seguir, te has llevado gratis un trabajo por el que otros pagan 90 euros.\nMe parece un trato honesto donde todos salimos ganando.",
       },
       {
-        destacado: "Pasados esos ocho días, vuelve a costar 90 €.",
+        destacado: "¿Y por qué deja de ser gratis en unos días?",
         texto:
-          "Lo que cuenta es cuándo reservas, no cuándo hacemos la llamada.\nNo es un truco para meterte prisa.\nEs que solo son cinco a la semana. Si la dejara abierta para todo el mundo, no llegaría.",
+          "Porque es una oferta de bienvenida.\nSolo puedo hacer cinco a la semana, y quiero que si acabas de conocerme veas cómo trabajo cuanto antes.\nPasados 8 días, reservar la Hoja de Ruta vale lo que vale.",
       },
     ],
     cta: {
@@ -263,7 +261,7 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
     parrafos: [
       {
         texto:
-          "Cuando empezamos, Jorge A. no se atrevía a coger nada del suelo.\nLlevaba años evitándolo.\nLas molestias y dolores en la espalda eran constantes.",
+          "Cuando empezamos, Jorge A. no se atrevía a coger nada del suelo.\nLlevaba años evitándolo.\nLas molestias y dolores en la espalda eran constantes debido a su escoliosis.",
       },
       {
         texto:
