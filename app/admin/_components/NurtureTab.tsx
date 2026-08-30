@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { cuerpoDelMail, marcadoresDeFecha, marcadoresDeNombre, sustituirMarcadores } from "@/lib/email-markdown";
+import { cuerpoDelMail, marcadoresDeMuestra, sustituirMarcadores } from "@/lib/email-markdown";
 import { MARCADORES, SECUENCIAS, SECUENCIA_ETIQUETA, type Secuencia } from "@/lib/secuencias";
 
-// Valores con los que se resuelven los marcadores EN EL PREVIEW. En el envío
-// real los pone el servidor: el nombre, el de cada contacto; las fechas, las
-// del día en que salga el correo. Aquí se usa un nombre de muestra y las
-// fechas de hoy, para ver el mail escrito y no un {{fecha_7}} suelto.
-const EJEMPLO_MARCADORES = { ...marcadoresDeNombre("Ane"), ...marcadoresDeFecha() };
+// En el envío real los marcadores los resuelve el servidor con los datos de
+// cada contacto; aquí, con los de muestra.
+const EJEMPLO_MARCADORES = marcadoresDeMuestra();
 
 interface NurtureContacto {
   id: string;

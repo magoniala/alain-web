@@ -209,3 +209,17 @@ export function marcadoresDeNombre(nombre: string | null | undefined): Record<st
     saludo: primero ? `Hola, ${primero}` : "Hola",
   };
 }
+
+/**
+ * Valores con los que se resuelven los marcadores cuando NO hay un contacto
+ * detrás: el preview del panel y el "Enviar prueba". Nombre de muestra y
+ * fechas de hoy, para ver la frase acabada en vez de un {{fecha_7}} suelto.
+ *
+ * Vive aquí, y no en cada sitio que la necesita, para que la prueba que le
+ * llega al buzón diga exactamente lo mismo que el preview de al lado.
+ */
+export const NOMBRE_DE_MUESTRA = "Ane";
+
+export function marcadoresDeMuestra(): Record<string, string> {
+  return { ...marcadoresDeNombre(NOMBRE_DE_MUESTRA), ...marcadoresDeFecha() };
+}

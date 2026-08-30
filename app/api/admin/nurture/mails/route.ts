@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { wrapNurture } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom, NEWSLETTER_SENDERS } from "@/lib/email-ses";
-import { cuerpoDelMail } from "@/lib/email-markdown";
+import { cuerpoDelMail, marcadoresDeMuestra, sustituirMarcadores } from "@/lib/email-markdown";
 import { SECUENCIAS, SECUENCIAS_BILINGUES, type Secuencia } from "@/lib/secuencias";
 import { NextResponse } from "next/server";
 
@@ -132,9 +132,19 @@ export async function POST(req: Request) {
   }
 
   const from = resolveNewsletterFrom(remitente);
+  // La prueba no tiene contacto detrás, así que los marcadores se resuelven
+  // con los valores de muestra: los mismos que enseña el preview. Sin esto,
+  // al buzón le llegaría un {{nombre}} en crudo y la prueba no valdría para
+  // comprobar cómo queda la frase.
+  const valores = marcadoresDeMuestra();
   try {
     for (const email of destinatarios) {
-      await sendEmail(email, `[PRUEBA] ${asunto}`, wrapNurture(cuerpoDelMail(cuerpo_html, formato, preheader), email, idioma === "eu"), from);
+      await sendEmail(
+        email,
+        `[PRUEBA] ${sustituirMarcadores(asunto, valores)}`,
+        wrapNurture(cuerpoDelMail(cuerpo_html, formato, preheader, valores), email, idioma === "eu"),
+        from
+      );
     }
   } catch (err) {
     console.error("admin/nurture/mails prueba:", err);
