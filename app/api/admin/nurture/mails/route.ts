@@ -1,8 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminAuth } from "@/lib/admin-auth";
-import { wrapNurture } from "@/lib/nurture";
+import { wrapNurture, normalizarEmail } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom, NEWSLETTER_SENDERS } from "@/lib/email-ses";
-import { cuerpoDelMail, marcadoresDeMuestra, sustituirMarcadores } from "@/lib/email-markdown";
+import {
+  cuerpoDelMail,
+  marcadoresDeFecha,
+  marcadoresDeMuestra,
+  marcadoresDeNombre,
+  sustituirMarcadores,
+} from "@/lib/email-markdown";
 import { SECUENCIAS, SECUENCIAS_BILINGUES, type Secuencia } from "@/lib/secuencias";
 import { NextResponse } from "next/server";
 
@@ -132,13 +138,25 @@ export async function POST(req: Request) {
   }
 
   const from = resolveNewsletterFrom(remitente);
-  // La prueba no tiene contacto detrás, así que los marcadores se resuelven
-  // con los valores de muestra: los mismos que enseña el preview. Sin esto,
-  // al buzón le llegaría un {{nombre}} en crudo y la prueba no valdría para
-  // comprobar cómo queda la frase.
-  const valores = marcadoresDeMuestra();
+  // Los marcadores hay que resolverlos también aquí: sin esto, al buzón le
+  // llegaría un {{nombre}} en crudo y la prueba no valdría para ver cómo
+  // queda la frase.
+  //
+  // Si el destinatario está en la lista, se usa SU nombre: así la prueba se
+  // parece a lo que va a recibir de verdad. Si no está (un buzón cualquiera
+  // para echar un ojo), se cae al nombre de muestra del preview.
+  const fechas = marcadoresDeFecha();
   try {
     for (const email of destinatarios) {
+      const { data: contacto } = await supabase
+        .from("newsletter_contactos")
+        .select("nombre")
+        .eq("email", normalizarEmail(email))
+        .maybeSingle();
+      const valores = contacto
+        ? { ...marcadoresDeNombre(contacto.nombre), ...fechas }
+        : marcadoresDeMuestra();
+
       await sendEmail(
         email,
         `[PRUEBA] ${sustituirMarcadores(asunto, valores)}`,
