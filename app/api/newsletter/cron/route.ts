@@ -3,17 +3,11 @@ import { sendEmail, sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-se
 import { wrapNurture, enviarMailSecuencia, CANDADO_STALE_MS, type NurtureContacto } from "@/lib/nurture";
 import { MAIL_ABANDONO_ASUNTO, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
 import { cuerpoDelMail } from "@/lib/email-markdown";
+import { processText } from "@/lib/newsletter-texto";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
-
-function processText(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;">$1</strong>')
-    .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
-    .replace(/\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
-}
 
 const IMG_RE = /^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/;
 

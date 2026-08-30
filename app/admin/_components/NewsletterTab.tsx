@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { processText } from "@/lib/newsletter-texto";
 
 interface Contacto {
   id: string;
@@ -530,19 +531,12 @@ export default function NewsletterTab() {
 
   const IMG_PREVIEW_RE = /^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/;
 
-  function processPreview(text: string) {
-    return text
-      .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;">$1</strong>')
-      .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
-      .replace(/\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)]+)\)/g, '<a href="$2" style="color:#2ED3E6;text-decoration:underline;">$1</a>');
-  }
-
   function renderPreviewLine(line: string, i: number) {
     const t = line.trim();
     if (!t) return <p key={i} style={{ margin: "0 0 0.8rem" }}>&nbsp;</p>;
     const img = t.match(IMG_PREVIEW_RE);
     if (img) return <img key={i} src={img[2]} alt={img[1]} style={{ maxWidth: "100%", height: "auto", display: "block", margin: "1.2rem 0" }} />;
-    return <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: processPreview(t) }} />;
+    return <p key={i} style={{ margin: "0 0 1.2rem" }} dangerouslySetInnerHTML={{ __html: processText(t) }} />;
   }
 
   const toolbarBtnClass = "px-2 py-1 text-[0.72rem] border border-gray-200 hover:border-gray-400 transition-colors bg-white text-gray-600 hover:text-gray-900 select-none";
