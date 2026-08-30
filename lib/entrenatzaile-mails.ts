@@ -27,19 +27,45 @@ export const MAIL_ABANDONO_ASUNTO = "Te quedaste a medias con tu Hoja de Ruta";
 // Confirmación al lead en cuanto reserva su hueco. La landing le promete que
 // Alain le escribe por WhatsApp, pero conviene que le quede también por
 // escrito el día y la hora, que es lo que se olvida.
+//
+// Cambia según la versión que vio: en la ventana de bienvenida la llamada es
+// gratis y el hueco queda cogido sin más, mientras que en la evergreen hay
+// que pagarla, así que el hueco solo queda APARTADO hasta que llegue el pago.
 // ---------------------------------------------------------------------------
 
-export const MAIL_RESERVA_ASUNTO = "Tu Hoja de Ruta: hueco reservado";
+const PAGO_VALORACION_URL = "https://buy.stripe.com/7sY9AS9iBad8g3ef6F7bW00";
 
-export function mailReservaCuerpo(nombre: string | null, cuando: string): string {
+export function mailReservaAsunto(variante: string | null): string {
+  return variante === "ventana"
+    ? "Tu Hoja de Ruta: hueco reservado (falta un paso)"
+    : "Tu Hoja de Ruta: hueco apartado (falta un paso)";
+}
+
+export function mailReservaCuerpo(nombre: string | null, cuando: string, variante: string | null): string {
   const p = "margin:0 0 1.6rem 0;";
   const saludo = nombre ? `Hola, ${nombre.split(" ")[0]}.` : "Hola.";
+  const videollamada = `<p style="${p}">Es una videollamada de una hora. No necesitas gimnasio, ni material, ni estar en forma: solo un sitio donde puedas moverte un poco delante de la cámara.</p>`;
+
+  if (variante !== "ventana") {
+    return `
+    <p style="${p}">${saludo}</p>
+    <p style="${p}">Te he apartado este hueco:</p>
+    <p style="${p}"><strong>${cuando}</strong></p>
+    ${videollamada}
+    <p style="${p}">Para dejarlo confirmado, solo queda reservar la plaza con el pago (90€):</p>
+    <p style="${p}"><a href="${PAGO_VALORACION_URL}" style="color:#2a9d8f;">Pagar la valoración y confirmar mi hueco</a></p>
+    <p style="${p}">Te guardo el hueco 24 horas.<br>Si en ese plazo no está el pago, lo libero para dejarlo disponible en el calendario.</p>
+    <p style="${p}">En cuanto lo tenga, te confirmo por WhatsApp y te paso el enlace de la videollamada.</p>
+    <p style="${p}">Si te surge cualquier duda o no puedes con esa fecha, respóndeme a este correo y lo vemos sin problema.</p>
+    <p style="margin:0;">Alain</p>
+  `;
+  }
 
   return `
     <p style="${p}">${saludo}</p>
     <p style="${p}">Tu hueco está cogido:</p>
     <p style="${p}"><strong>${cuando}</strong></p>
-    <p style="${p}">Es una videollamada de una hora. No necesitas gimnasio, ni material, ni estar en forma: solo un sitio donde puedas moverte un poco delante de la cámara.</p>
+    ${videollamada}
     <p style="${p}">Te escribo por WhatsApp para confirmarte y mandarte el enlace.</p>
     <p style="${p}">Si te surge algo y no puedes, respóndeme a este correo y lo cambiamos sin problema.</p>
     <p style="margin:0;">Alain</p>

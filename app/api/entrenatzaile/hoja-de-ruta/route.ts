@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { altaEnSecuencia, enviarMailSecuencia, normalizarEmail, wrapNurture } from "@/lib/nurture";
+import { altaEnSecuencia, normalizarEmail, wrapNurture } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
-import { MAIL_RESERVA_ASUNTO, mailReservaCuerpo } from "@/lib/entrenatzaile-mails";
+import { mailReservaAsunto, mailReservaCuerpo } from "@/lib/entrenatzaile-mails";
 import {
   CONSENT_HOJA_RUTA,
   CONSENT_VERSION,
@@ -154,31 +154,33 @@ export async function POST(req: Request) {
   // fallo, volvería a enviar el formulario y se duplicaría a sí mismo. Lo que
   // salga mal se registra y se sigue.
   try {
-    // Esta landing es la segunda puerta de entrada al mismo sistema de
-    // nurture: misma tabla, mismas columnas y misma función de envío que los
-    // leads de Meta Ads, solo cambia el origen. Quien ya estaba en la lista
-    // (lo normal: viene de /espalda) sale como "existente" y no se le
-    // reinicia nada; quien llega en frío desde la evergreen entra desde cero.
+    // Alta en la lista, pero FUERA de la secuencia de nurture. Quien llega
+    // aquí ya ha pedido la Hoja de Ruta: la secuencia está escrita para
+    // convencer de pedirla, empezando por un M0 que le entrega la guía de
+    // /espalda que este no ha pedido y le manda a otra agenda distinta.
+    //
+    // recibeSecuencia:false no le deja fuera de la newsletter diaria, que se
+    // envía justamente a quien NO está en mitad de una secuencia
+    // (/api/newsletter/send). Simplemente entra en la lista y no recibe
+    // ningún correo de bienvenida.
+    //
+    // Quien ya estaba en la lista (lo normal: viene de /espalda) sale como
+    // "existente" y no se le toca nada: ni la posición, ni recibe_secuencia.
+    // Sigue su secuencia donde estuviera.
     //
     // La casilla de consentimiento nombra el alta en la newsletter de forma
     // expresa: sin eso, esto no se podría hacer.
-    const alta = await altaEnSecuencia({
+    await altaEnSecuencia({
       email: emailLower,
       origen: "landing_hoja_ruta",
       nombre: nombreTrim,
       idioma: "es",
       tags: ["entrenamiento", "tirada02", "hoja_de_ruta"],
       telefono: telefonoTrim,
-      recibeSecuencia: true,
+      recibeSecuencia: false,
     });
-
-    if (alta.contacto) {
-      // Igual que en /api/leads/entrada: si el envío falla no se revierte ni
-      // se marca nada, y el cron lo recoge en su próxima pasada.
-      await enviarMailSecuencia(alta.contacto);
-    }
   } catch (err) {
-    console.error("hoja-de-ruta: reserva guardada, pero falló el alta o el M0:", emailLower, err);
+    console.error("hoja-de-ruta: reserva guardada, pero falló el alta en la lista:", emailLower, err);
   }
 
   return NextResponse.json({ ok: true, id: reserva.id });
@@ -282,8 +284,12 @@ export async function PATCH(req: Request) {
   try {
     await sendEmail(
       reserva.nombre ? `${reserva.nombre} <${reserva.email}>` : (reserva.email as string),
-      MAIL_RESERVA_ASUNTO,
-      wrapNurture(mailReservaCuerpo(reserva.nombre, formatearHueco(huecoTrim)), reserva.email as string, false),
+      mailReservaAsunto(reserva.variante),
+      wrapNurture(
+        mailReservaCuerpo(reserva.nombre, formatearHueco(huecoTrim), reserva.variante),
+        reserva.email as string,
+        false
+      ),
       resolveNewsletterFrom("entrenatzaile@alainzulaika.com")
     );
   } catch (err) {
