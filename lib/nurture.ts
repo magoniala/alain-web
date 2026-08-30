@@ -1,6 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
-import { cuerpoDelMail } from "@/lib/email-markdown";
+import {
+  cuerpoDelMail,
+  marcadoresDeFecha,
+  marcadoresDeNombre,
+  sustituirMarcadores,
+} from "@/lib/email-markdown";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
@@ -230,12 +235,21 @@ export async function enviarMailSecuencia(
   if (!claimed?.length) return { enviado: false, motivo: "raced" };
 
   const isEu = contacto.idioma === "eu";
-  const html = wrapNurture(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader), contacto.email, isEu);
+  // Los marcadores se resuelven AQUÍ, en el momento del envío: el nombre sale
+  // de esta fila y las fechas se cuentan desde hoy, así que un mismo mail de
+  // la secuencia dice una fecha distinta según el día en que le toque a cada
+  // uno. Valen tanto en el cuerpo como en el asunto.
+  const valores = { ...marcadoresDeNombre(contacto.nombre), ...marcadoresDeFecha() };
+  const html = wrapNurture(
+    cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores),
+    contacto.email,
+    isEu
+  );
 
   try {
     await sendEmail(
       contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
-      mail.asunto ?? "",
+      sustituirMarcadores(mail.asunto ?? "", valores),
       html,
       resolveNewsletterFrom(mail.remitente),
       undefined,

@@ -150,3 +150,62 @@ export function cuerpoDelMail(
   const html = formato === "texto" ? preheaderHtml(preheader) + textoAHtml(cuerpo) : cuerpo;
   return valores ? sustituirMarcadores(html, valores) : html;
 }
+
+// ============================================================
+// Marcadores de fecha
+// ============================================================
+//
+// Las fechas se calculan SIEMPRE en el momento del envío, no al escribir el
+// mail: así un correo de la secuencia que sale hoy dice una fecha y el que
+// sale mañana dice otra, sin tocar nada en el panel.
+//
+//   {{fecha_7}}        -> "domingo 6 de septiembre"  (hoy + 7 días)
+//   {{fecha_corta_7}}  -> "6 de septiembre"
+//   {{fecha_0}}        -> hoy
+//
+// Hay claves de 0 a 30 días. Se generan todas de golpe (son 62 cadenas, no
+// cuesta nada) en vez de resolverlas al vuelo, para que sustituirMarcadores
+// siga siendo lo que es: un reemplazo tonto de {{clave}} por su valor.
+
+/** Zona en la que se leen los correos: las fechas se cuentan en Madrid. */
+const ZONA_CORREOS = "Europe/Madrid";
+const DIAS_MARCADOR_FECHA = 30;
+
+function etiquetaFecha(fecha: Date, conDiaDeLaSemana: boolean): string {
+  // timeZone UTC porque la fecha se construye ya como mediodía UTC del día
+  // natural que toca: sin esto, el formateo podría correrla un día.
+  const dia = fecha.toLocaleDateString("es-ES", { day: "numeric", month: "long", timeZone: "UTC" });
+  if (!conDiaDeLaSemana) return dia;
+  const semana = fecha.toLocaleDateString("es-ES", { weekday: "long", timeZone: "UTC" });
+  return `${semana} ${dia}`;
+}
+
+export function marcadoresDeFecha(ahora: Date = new Date()): Record<string, string> {
+  const hoyMadrid = new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZONA_CORREOS,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(ahora);
+  const [anio, mes, dia] = hoyMadrid.split("-").map(Number);
+
+  const valores: Record<string, string> = {};
+  for (let n = 0; n <= DIAS_MARCADOR_FECHA; n++) {
+    // Date.UTC normaliza solo el desbordamiento de mes y de año.
+    const fecha = new Date(Date.UTC(anio, mes - 1, dia + n, 12));
+    valores[`fecha_${n}`] = etiquetaFecha(fecha, true);
+    valores[`fecha_corta_${n}`] = etiquetaFecha(fecha, false);
+  }
+  return valores;
+}
+
+/** Nombre de pila y saludo, a partir del nombre que haya dado el contacto. */
+export function marcadoresDeNombre(nombre: string | null | undefined): Record<string, string> {
+  const primero = (nombre ?? "").trim().split(" ")[0] ?? "";
+  return {
+    nombre: primero,
+    // Muchos contactos entran sin nombre: {{saludo}} existe para que la
+    // primera línea aguante igual ("Hola" a secas) en vez de quedar "Hola, .".
+    saludo: primero ? `Hola, ${primero}` : "Hola",
+  };
+}

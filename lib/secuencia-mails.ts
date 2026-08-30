@@ -10,39 +10,6 @@ export interface MailSecuencia {
   remitente: string | null;
 }
 
-// Marcadores que puede usar cada secuencia en el cuerpo. Se le enseñan a
-// Alain en el editor, para que sepa qué puede escribir sin adivinarlo.
-export const MARCADORES: Partial<Record<Secuencia, Array<{ clave: string; descripcion: string }>>> = {
-  comodin: [
-    { clave: "tutorial", descripcion: "Enlace al tutorial del truco" },
-    { clave: "cambiar_idioma", descripcion: "Enlace para recibirlos en el otro idioma" },
-    { clave: "contacto", descripcion: "Página de contacto" },
-    { clave: "entrenamiento", descripcion: "Mailto preguntando por entrenamiento" },
-  ],
-  mision: [
-    { clave: "tutorial", descripcion: "Enlace al tutorial del truco" },
-    { clave: "cambiar_idioma", descripcion: "Enlace para recibirlos en el otro idioma" },
-    { clave: "contacto", descripcion: "Página de contacto" },
-    { clave: "entrenamiento", descripcion: "Mailto preguntando por entrenamiento" },
-  ],
-  contacto: [{ clave: "nombre", descripcion: "Nombre de quien escribe" }],
-  belaustegi: [{ clave: "nombre", descripcion: "Nombre de quien escribe" }],
-  valoracion: [{ clave: "nombre", descripcion: "Nombre de quien valora" }],
-  arrogante: [{ clave: "tiktok", descripcion: "Enlace al TikTok" }],
-  comodin_show: [{ clave: "show", descripcion: "Enlace al show completo" }],
-  guias: [
-    { clave: "nombre", descripcion: "Nombre de pila" },
-    { clave: "guias", descripcion: "Lista de las guías que se adjuntan" },
-    { clave: "sorpresa", descripcion: "Párrafo de la guía de regalo (vacío si no hay)" },
-    { clave: "extra_asunto", descripcion: "Coletilla del asunto cuando hay guía de regalo" },
-  ],
-  entrenatzaile_valoracion: [
-    { clave: "nombre", descripcion: "Nombre de quien reserva" },
-    { clave: "cambiar_idioma", descripcion: "Enlace para recibirlos en el otro idioma" },
-    { clave: "contacto", descripcion: "Página de contacto" },
-  ],
-};
-
 /**
  * Carga un mail de una secuencia y devuelve el cuerpo ya convertido a HTML.
  *

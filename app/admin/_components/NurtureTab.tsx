@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { cuerpoDelMail } from "@/lib/email-markdown";
-import { SECUENCIAS, SECUENCIA_ETIQUETA, type Secuencia } from "@/lib/secuencias";
+import { cuerpoDelMail, marcadoresDeFecha, marcadoresDeNombre, sustituirMarcadores } from "@/lib/email-markdown";
+import { MARCADORES, SECUENCIAS, SECUENCIA_ETIQUETA, type Secuencia } from "@/lib/secuencias";
+
+// Valores con los que se resuelven los marcadores EN EL PREVIEW. En el envío
+// real los pone el servidor: el nombre, el de cada contacto; las fechas, las
+// del día en que salga el correo. Aquí se usa un nombre de muestra y las
+// fechas de hoy, para ver el mail escrito y no un {{fecha_7}} suelto.
+const EJEMPLO_MARCADORES = { ...marcadoresDeNombre("Ane"), ...marcadoresDeFecha() };
 
 interface NurtureContacto {
   id: string;
@@ -480,6 +486,22 @@ export default function NurtureTab() {
                 </button>
               </div>
               )}
+              {(MARCADORES[secuencia] ?? []).length > 0 && (
+                <div className="flex flex-wrap items-center gap-1 mb-1">
+                  <span className="text-[0.68rem] text-gray-400 mr-1">Marcadores:</span>
+                  {(MARCADORES[secuencia] ?? []).map(m => (
+                    <button
+                      key={m.clave}
+                      type="button"
+                      className={toolbarBtnClass}
+                      title={m.descripcion}
+                      onMouseDown={e => { e.preventDefault(); editarSeleccion(posicion, () => `{{${m.clave}}}`, `{{${m.clave}}}`); }}
+                    >
+                      {`{{${m.clave}}}`}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
                 id={`nurture-body-${posicion}`}
                 value={draft.cuerpo_html ?? ""}
@@ -500,11 +522,11 @@ export default function NurtureTab() {
                 <p className="text-[0.7rem] uppercase tracking-wider text-gray-400 mb-2">Preview</p>
                 <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a", background: "#fff", padding: "1.5rem", border: "1px solid #eee", maxWidth: 580 }}>
                   <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>
-                    {draft.asunto?.trim() || "—"}
+                    {sustituirMarcadores(draft.asunto?.trim() || "—", EJEMPLO_MARCADORES)}
                   </p>
                   <div
                     style={{ fontSize: "0.95rem", lineHeight: 1.9 }}
-                    dangerouslySetInnerHTML={{ __html: cuerpoDelMail(draft.cuerpo_html, draft.formato, draft.preheader) }}
+                    dangerouslySetInnerHTML={{ __html: cuerpoDelMail(draft.cuerpo_html, draft.formato, draft.preheader, EJEMPLO_MARCADORES) }}
                   />
                   <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                     <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@alainzulaika.com</p>
