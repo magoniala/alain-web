@@ -52,6 +52,11 @@ export const MARCADORES: Partial<Record<Secuencia, Array<{ clave: string; descri
     { clave: "nombre", descripcion: "Nombre de pila del lead (vacío si no lo dio)" },
     { clave: "saludo", descripcion: '"Hola, Ane" o "Hola" a secas si no dio nombre' },
     {
+      clave: "#si_ventana}} … {{/si_ventana",
+      descripcion:
+        "Todo lo que pongas entre esas dos marcas SOLO lo lee quien aún tiene la Hoja de Ruta gratis. A quien ya se le pasó, desaparece. Úsalo para los párrafos que prometen el regalo. Existe también {{#si_no_ventana}} … {{/si_no_ventana}} para lo contrario.",
+    },
+    {
       clave: "fin_ventana",
       descripcion:
         'El último día que ESA persona tiene la Hoja de Ruta gratis: "domingo 6 de septiembre". Para hablar de la ventana, usa este y no fecha_7: sale de su fecha de alta, así que dice lo mismo que la landing aunque el correo salga con retraso.',

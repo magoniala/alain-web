@@ -140,13 +140,56 @@ export function sustituirMarcadores(html: string, valores: Record<string, string
  * tal cual. Los mails que ya existían siguen así, intactos.
  * 'texto' es el nuevo: se escribe en el panel con la sintaxis de arriba.
  */
+/**
+ * Trozos de correo que solo salen si se cumple una condición.
+ *
+ *   {{#si_ventana}}  …esto solo lo lee quien aún la tiene gratis…  {{/si_ventana}}
+ *   {{#si_no_ventana}}  …y esto, quien ya no.  {{/si_no_ventana}}
+ *
+ * Hace falta porque un mismo correo le llega a gente en situaciones
+ * distintas. El M0 es el caso claro: lleva la ficha que la persona acaba de
+ * pedir, así que tiene que salir siempre, pero su párrafo de "la tienes
+ * gratis 8 días" es falso para quien se dio de baja hace meses y vuelve a
+ * apuntarse. Sin esto habría que elegir entre no mandarle la ficha o
+ * prometerle algo que la landing le va a cobrar.
+ *
+ * Se resuelve sobre el texto ORIGINAL, antes de convertirlo a HTML, para que
+ * al quitar un bloque no queden líneas en blanco de más.
+ *
+ * Una condición que nadie ha definido se trata como falsa y el bloque
+ * desaparece: al revés —dejarlo visible, como se hace con los {{marcadores}}
+ * sueltos— acabaría enseñando una promesa a quien no le corresponde, que es
+ * justo lo que esto viene a evitar.
+ */
+// Dos formas, y se resuelven por separado a propósito.
+//
+// La de líneas enteras (las marcas solas en su línea) se lleva también los
+// saltos, para que al quitar el bloque no quede un hueco donde estaba. La de
+// dentro de una frase respeta los espacios de alrededor tal cual. Con una
+// sola regex para las dos, quitar un trozo en mitad de una frase pegaba las
+// palabras de los lados.
+const RE_BLOQUE_LINEAS = /^[ \t]*\{\{#(\w+)\}\}[ \t]*\n([\s\S]*?)\n[ \t]*\{\{\/\1\}\}[ \t]*\n?/gm;
+const RE_BLOQUE_EN_LINEA = /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+
+export function resolverBloques(texto: string, condiciones: Record<string, boolean>): string {
+  return texto
+    .replace(RE_BLOQUE_LINEAS, (_, clave: string, dentro: string) =>
+      condiciones[clave] ? `${dentro}\n` : ""
+    )
+    .replace(RE_BLOQUE_EN_LINEA, (_, clave: string, dentro: string) =>
+      condiciones[clave] ? dentro : ""
+    );
+}
+
 export function cuerpoDelMail(
   contenido: string | null | undefined,
   formato: string | null | undefined,
   preheader?: string | null,
-  valores?: Record<string, string>
+  valores?: Record<string, string>,
+  condiciones?: Record<string, boolean>
 ): string {
-  const cuerpo = contenido ?? "";
+  let cuerpo = contenido ?? "";
+  if (condiciones) cuerpo = resolverBloques(cuerpo, condiciones);
   const html = formato === "texto" ? preheaderHtml(preheader) + textoAHtml(cuerpo) : cuerpo;
   return valores ? sustituirMarcadores(html, valores) : html;
 }

@@ -13,7 +13,7 @@ import {
   marcadoresDeNombre,
   sustituirMarcadores,
 } from "@/lib/email-markdown";
-import { marcadoresDeVentana } from "@/lib/entrenatzaile-ventana";
+import { calcularVentana, marcadoresDeVentana } from "@/lib/entrenatzaile-ventana";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -100,8 +100,12 @@ async function enviarMailDuplicado(
     ...marcadoresDeFecha(),
     ...marcadoresDeVentana(contacto.fecha_alta),
   };
+  const enVentana = calcularVentana(contacto.fecha_alta).elegibilidad === "elegible";
   const html = wrapNurture(
-    cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores),
+    cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores, {
+      si_ventana: enVentana,
+      si_no_ventana: !enVentana,
+    }),
     contacto.email,
     isEu
   );

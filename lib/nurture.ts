@@ -283,6 +283,7 @@ export async function enviarMailSecuencia(
   if (!claimed?.length) return { enviado: false, motivo: "raced" };
 
   const isEu = contacto.idioma === "eu";
+  const enVentana = calcularVentana(contacto.fecha_alta).elegibilidad === "elegible";
   // Los marcadores se resuelven AQUÍ, en el momento del envío: el nombre sale
   // de esta fila y las fechas se cuentan desde hoy, así que un mismo mail de
   // la secuencia dice una fecha distinta según el día en que le toque a cada
@@ -292,9 +293,12 @@ export async function enviarMailSecuencia(
     ...marcadoresDeFecha(),
     ...marcadoresDeVentana(contacto.fecha_alta),
   };
+  // Misma condición que decide si el enlace lleva token, para que el texto y
+  // el enlace del mismo correo no puedan contar cosas distintas.
+  const condiciones = { si_ventana: enVentana, si_no_ventana: !enVentana };
   const html = wrapNurture(
     enlacesDeVentana(
-      cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores),
+      cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores, condiciones),
       contacto,
       contacto.posicion_secuencia
     ),

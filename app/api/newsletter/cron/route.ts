@@ -182,10 +182,12 @@ async function procesarRecordatorioValoracion(): Promise<number> {
       ...marcadoresDeFecha(),
       ...marcadoresDeVentana(contacto.fecha_alta),
     };
+    const enVentana = calcularVentana(contacto.fecha_alta).elegibilidad === "elegible";
+    const condiciones = { si_ventana: enVentana, si_no_ventana: !enVentana };
     // -1 no está en POSICIONES_SIN_VENTANA: el recordatorio es justo el
     // correo que más falta hace que lleve a la versión gratuita.
     const html = wrapNurture(
-      enlacesDeVentana(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores), contacto, -1),
+      enlacesDeVentana(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores, condiciones), contacto, -1),
       contacto.email,
       isEu
     );
