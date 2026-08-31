@@ -4,6 +4,8 @@ import {
   wrapNurture,
   enviarMailSecuencia,
   enlacesDeVentana,
+  posicionAlDia,
+  saltarHasta,
   CANDADO_STALE_MS,
   CAMPOS_CONTACTO as CAMPOS_CONTACTO_NURTURE,
   type NurtureContacto,
@@ -91,6 +93,7 @@ async function procesarNurture(): Promise<number> {
   const dentroVentanaDiaria = enVentana(minutosAhora, HORA_ENVIO_DIARIO_MIN);
 
   let enviados = 0;
+  let saltados = 0;
 
   const { data: contactos } = await supabase
     .from("newsletter_contactos")
@@ -103,6 +106,17 @@ async function procesarNurture(): Promise<number> {
     .eq("unsubscribed", false);
 
   for (const contacto of (contactos ?? []) as NurtureContacto[]) {
+    // Un correo de la cuenta atrás cuyo día ya pasó no se manda tarde: se
+    // salta y el contacto avanza hasta el que le toca hoy. Va antes que
+    // cualquier otra comprobación, y fuera de la ventana horaria, porque
+    // saltar no es enviar: ponerse al día no tiene que esperar a las 14:30.
+    const alDia = posicionAlDia(contacto);
+    if (alDia !== contacto.posicion_secuencia) {
+      await saltarHasta(contacto, alDia);
+      saltados += alDia - contacto.posicion_secuencia;
+      contacto.posicion_secuencia = alDia;
+    }
+
     const esPrimerMail = contacto.posicion_secuencia === 0;
 
     if (!esPrimerMail) {
@@ -118,6 +132,7 @@ async function procesarNurture(): Promise<number> {
     if (enviado) enviados++;
   }
 
+  if (saltados) console.warn(`nurture: ${saltados} correos saltados por llegar fuera de su día`);
   return enviados;
 }
 

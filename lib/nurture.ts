@@ -221,17 +221,71 @@ export async function altaEnSecuencia({
 export const CANDADO_STALE_MS = 5 * 60 * 1000; // 5 min: si un intento se quedó a medias (crash), se puede reclamar de nuevo
 
 /**
- * Posición del correo que lleva la ficha y nada más.
+ * Última posición atada a un día concreto de la ventana.
  *
- * Para quien rellena /espalda estando ya en la lista, o volviendo tras
- * haberse dado de baja. Ha venido a por la ficha, así que la ficha se le
- * manda; lo que no se le manda es la secuencia de bienvenida entera, que ya
- * conoce y que además le prometería un regalo que no le corresponde.
+ * El calendario de la secuencia es exacto: el M0 sale el día del alta y cada
+ * uno de los siguientes al día siguiente, así que al mail de la posición N le
+ * toca el día N contado desde el alta. El M7 cae en el octavo día, el último,
+ * y por eso dice "hoy a las 23:59 deja de ser gratis".
  *
- * Va en negativo como el resto de correos que viven fuera de la progresión
- * normal: -1 recordatorio, -2 cortesía a duplicados de ads, -3 este.
+ * Del 8 en adelante ya no hay cuenta atrás y da igual un día más o menos.
  */
-export const POSICION_MAIL_FICHA = -3;
+export const ULTIMA_POSICION_VENTANA = 7;
+
+/**
+ * A qué posición debería ir este contacto hoy.
+ *
+ * Los correos de la cuenta atrás caducan. Si el cron se cae un día, el M6
+ * ("Mañana cierra") saldría el día en que en realidad cierra, y el M7 ("Hoy
+ * a las 23:59") cuando ya se ha pasado. Con la fecha corregida seguirían
+ * siendo incoherentes: el asunto y media docena de frases dicen "mañana".
+ * El problema no es la fecha, es que ese correo ya no sirve.
+ *
+ * Así que no se mandan tarde: se saltan, y el contacto avanza hasta el que le
+ * toca hoy. Pierde un correo, pero los que reciba dirán la verdad.
+ *
+ * El M0 NUNCA se salta, y esa es la excepción importante: lleva la ficha que
+ * la persona acaba de pedir. Si Mailjet estuviera caído dos días, saltárselo
+ * dejaría a un lead sin lo único que vino a buscar.
+ */
+export function posicionAlDia(contacto: NurtureContacto): number {
+  const actual = contacto.posicion_secuencia;
+  if (actual < 1 || actual > ULTIMA_POSICION_VENTANA) return actual;
+  const { dias_desde_alta } = calcularVentana(contacto.fecha_alta);
+  if (dias_desde_alta === null || dias_desde_alta <= actual) return actual;
+  return Math.min(dias_desde_alta, ULTIMA_POSICION_VENTANA + 1);
+}
+
+/**
+ * Adelanta al contacto hasta la posición que le toca hoy, sin mandar nada.
+ *
+ * El .eq() sobre la posición actual es el que evita pisar a un envío que
+ * estuviera ocurriendo a la vez: si otra pasada ya lo movió, esto no hace
+ * nada. Y NO se toca fecha_ultimo_mail_secuencia a propósito — no se ha
+ * enviado ningún correo, así que el de hoy todavía puede salir.
+ */
+export async function saltarHasta(contacto: NurtureContacto, posicion: number): Promise<void> {
+  await supabase
+    .from("newsletter_contactos")
+    .update({ posicion_secuencia: posicion })
+    .eq("id", contacto.id)
+    .eq("posicion_secuencia", contacto.posicion_secuencia);
+}
+
+/**
+ * "Ya estabas aquí": le vuelve a mandar la ficha a quien la pide estando ya
+ * en la lista, sin darle de alta otra vez ni reiniciarle nada.
+ *
+ * Lo usan los dos caminos que se topan con ese caso: los leads duplicados de
+ * Meta Ads (/api/leads/entrada) y quien rellena /espalda estando ya activo o
+ * volviendo tras haberse dado de baja. Es el mismo correo a propósito: en
+ * los tres casos la persona te conoce, acaba de pedir la ficha, y le toca lo
+ * mismo — la ficha, sin repetirle la presentación.
+ *
+ * Va en negativo como el resto de correos fuera de la progresión normal:
+ * -1 recordatorio, -2 este.
+ */
+export const POSICION_MAIL_FICHA = -2;
 
 /**
  * Manda un correo concreto de secuencia_mails sin tocar la posición del

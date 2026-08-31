@@ -5,6 +5,7 @@ import {
   normalizarEmail,
   CANDADO_STALE_MS,
   CAMPOS_CONTACTO,
+  POSICION_MAIL_FICHA,
 } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import {
@@ -19,9 +20,10 @@ import { NextResponse } from "next/server";
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 // Mail de cortesía para quien ya estaba en la lista antes de rellenar el
-// formulario de ads — vive en secuencia_mails con posicion=-2 (fuera del
-// rango normal, igual que el recordatorio en -1).
-const POSICION_MAIL_DUPLICADO = -2;
+// formulario. Vive en secuencia_mails con posicion=-2 y lo comparte con
+// /api/entrenatzaile/espalda, que se topa con el mismo caso: se importa de
+// lib/nurture para que no haya dos números sueltos que puedan separarse.
+const POSICION_MAIL_DUPLICADO = POSICION_MAIL_FICHA;
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
