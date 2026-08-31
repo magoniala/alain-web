@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { cargarMailSecuencia } from "@/lib/secuencia-mails";
-import { comodinMail1, type UrlsMail1 } from "@/lib/secuencias-legacy";
+import { comodinMail1, type UrlsMail1, urlsSecuencia } from "@/lib/secuencias-legacy";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -32,13 +32,6 @@ export async function POST(req: Request) {
   await supabase.from("newsletter_contactos")
     .upsert({ email, origen: "comodin" }, { onConflict: "email", ignoreDuplicates: true });
 
-  const tutorialUrl = isEu
-    ? `${BASE_URL}/comodin/tutorial`
-    : `${BASE_URL}/es/comodin/tutorial`;
-  const euskeraUrl = `${BASE_URL}/api/comodin/idioma?email=${encodeURIComponent(email)}&idioma=eu`;
-  const castellanoUrl = `${BASE_URL}/api/comodin/idioma?email=${encodeURIComponent(email)}&idioma=es`;
-  const contactoUrl = isEu ? `${BASE_URL}/contacto` : `${BASE_URL}/es/contacto`;
-  const entrenamientoUrl = `mailto:${contactEmail}?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`;
   const bajaUrl = `${BASE_URL}/api/comodin/baja?email=${encodeURIComponent(email)}`;
   const unsubscribeText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
 
@@ -57,12 +50,10 @@ export async function POST(req: Request) {
 
   // El contenido vive en secuencia_mails (editable desde /admin). Si no hay
   // fila activa se usa la versión en código, que sigue en lib/secuencias-legacy.
-  const urlsMail1: UrlsMail1 = {
-    tutorial: tutorialUrl,
-    cambiar_idioma: isEu ? castellanoUrl : euskeraUrl,
-    contacto: contactoUrl,
-    entrenamiento: entrenamientoUrl,
-  };
+  // Las mismas que usa el cron para los mails 2 y 3, desde un solo sitio:
+  // repetidas aquí, un cambio de enlace se aplicaba al mail 1 y no a los
+  // siguientes.
+  const urlsMail1: UrlsMail1 = urlsSecuencia("comodin", email, isEu);
   const deLaTabla = await cargarMailSecuencia("comodin", 1, isEu ? "eu" : "es", urlsMail1);
   const enCodigo = comodinMail1(isEu, urlsMail1);
 

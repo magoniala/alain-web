@@ -106,12 +106,36 @@ export function misionMail3(email: string, isEu: boolean) {
   return { subject, html };
 }
 
-/** URLs que el mail 1 de Comodín y Misión inserta en su cuerpo. */
+/** URLs que los mails de Comodín y Misión insertan en su cuerpo. */
 export interface UrlsMail1 extends Record<string, string> {
   tutorial: string;
   cambiar_idioma: string;
   contacto: string;
   entrenamiento: string;
+}
+
+/**
+ * Los valores de {{tutorial}}, {{cambiar_idioma}}, {{contacto}} y
+ * {{entrenamiento}} para una persona concreta.
+ *
+ * Vive aquí y no repetido en cada ruta porque lo necesitan tres sitios: el
+ * envío del mail 1 de Comodín, el de Misión, y el cron que manda los mails 2
+ * y 3. Ese último no los pasaba, así que un mail 2 escrito desde el panel
+ * con un {{tutorial}} habría salido con el marcador literal en la bandeja
+ * —el mismo fallo que tenía el mail de cortesía—. Hoy no hay ninguno escrito
+ * ahí, así que era una trampa esperando, no un correo roto.
+ */
+export function urlsSecuencia(secuencia: "comodin" | "mision", email: string, isEu: boolean): UrlsMail1 {
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
+  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  const camino = secuencia === "comodin" ? "comodin" : "tumision";
+  const otroIdioma = isEu ? "es" : "eu";
+  return {
+    tutorial: isEu ? `${base}/${camino}/tutorial` : `${base}/es/${camino}/tutorial`,
+    cambiar_idioma: `${base}/api/${secuencia}/idioma?email=${encodeURIComponent(email)}&idioma=${otroIdioma}`,
+    contacto: isEu ? `${base}/contacto` : `${base}/es/contacto`,
+    entrenamiento: `mailto:${contactEmail}?subject=Entrenamiento&body=Hola%20Alain%2C%20inf%C3%B3rmame%20sobre%20c%C3%B3mo%20trabajas.`,
+  };
 }
 
 export function comodinMail1(isEu: boolean, u: UrlsMail1) {

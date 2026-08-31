@@ -9,6 +9,7 @@ import {
   comodinMail3,
   misionMail2,
   misionMail3,
+  urlsSecuencia,
 } from "@/lib/secuencias-legacy";
 import { NextResponse } from "next/server";
 
@@ -31,7 +32,10 @@ interface FilaProgramada {
 // esto sin haber migrado todavía el contenido: si la tabla está vacía, sale
 // exactamente lo mismo que salía antes.
 interface Programado {
-  secuencia: Secuencia;
+  // Solo estas dos, no cualquier Secuencia: urlsSecuencia() construye enlaces
+  // propios de comodin/mision, y el tipo lo deja dicho en vez de confiarlo a
+  // que nadie añada aquí otra secuencia por error.
+  secuencia: Extract<Secuencia, "comodin" | "mision">;
   tabla: string;
   columna: "mail2_id" | "mail3_id";
   posicion: number;
@@ -65,7 +69,11 @@ async function procesar(cfg: Programado, ahora: Date): Promise<{ enviados: numbe
     if (isNaN(cuando.getTime()) || cuando > ahora) continue;
 
     const isEu = row.idioma === "eu";
-    const deLaTabla = await cargarMailSecuencia(cfg.secuencia, cfg.posicion, isEu ? "eu" : "es");
+    // Los marcadores, también aquí. Este envío tiene camino propio y no los
+    // pasaba: un mail 2 escrito desde el panel con un {{tutorial}} habría
+    // salido con el marcador literal.
+    const urls = urlsSecuencia(cfg.secuencia, row.email, isEu);
+    const deLaTabla = await cargarMailSecuencia(cfg.secuencia, cfg.posicion, isEu ? "eu" : "es", urls);
     const { subject, html } = deLaTabla
       ? { subject: deLaTabla.asunto, html: cfg.envoltorio(deLaTabla.cuerpo, row.email, isEu) }
       : cfg.enCodigo(row.email, isEu);
