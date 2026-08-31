@@ -74,7 +74,11 @@ export function mailReservaCuerpo(nombre: string | null, cuando: string, variant
 
 export function mailAbandonoCuerpo(nombre: string | null, variante: string | null): string {
   const p = "margin:0 0 1.6rem 0;";
-  const enlace = variante === "ventana" ? `${BASE_ENTRENATZAILE}/hoja-de-ruta?ventana=1` : `${BASE_ENTRENATZAILE}/hoja-de-ruta`;
+  // Enlace limpio siempre. Quien lo llama le pasa después el correo por
+  // personalizarEnlacesHojaDeRuta(), que le añade el token si esa persona
+  // sigue dentro de su ventana. Poner "?ventana=1" a mano aquí no serviría:
+  // desde el token de ventana, ese parámetro por sí solo ya no regala nada.
+  const enlace = `${BASE_ENTRENATZAILE}/hoja-de-ruta`;
   const saludo = nombre ? `Hola, ${nombre.split(" ")[0]}.` : "Hola.";
 
   const lineaVentana =

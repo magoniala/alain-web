@@ -1,6 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
-import { wrapNurture, enviarMailSecuencia, CANDADO_STALE_MS, type NurtureContacto } from "@/lib/nurture";
+import {
+  wrapNurture,
+  enviarMailSecuencia,
+  enlacesDeVentana,
+  CANDADO_STALE_MS,
+  CAMPOS_CONTACTO as CAMPOS_CONTACTO_NURTURE,
+  type NurtureContacto,
+} from "@/lib/nurture";
+import { calcularVentana, personalizarEnlacesHojaDeRuta } from "@/lib/entrenatzaile-ventana";
 import { MAIL_ABANDONO_ASUNTO, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
 import { cuerpoDelMail } from "@/lib/email-markdown";
 import { processText } from "@/lib/newsletter-texto";
@@ -77,7 +85,10 @@ async function procesarNurture(): Promise<number> {
 
   const { data: contactos } = await supabase
     .from("newsletter_contactos")
-    .select("id, email, nombre, idioma, posicion_secuencia, fecha_ultimo_mail_secuencia")
+    // Lista de campos compartida con lib/nurture.ts: al añadir uno nuevo
+    // (como el token de ventana) llega solo aquí, sin que este select se
+    // quede corto y falle de forma silenciosa.
+    .select(CAMPOS_CONTACTO_NURTURE)
     .eq("recibe_secuencia", true)
     .eq("secuencia_completada", false)
     .eq("unsubscribed", false);
@@ -122,7 +133,9 @@ async function procesarRecordatorioValoracion(): Promise<number> {
 
   const { data: contactos } = await supabase
     .from("newsletter_contactos")
-    .select("id, email, nombre, idioma, fecha_ultimo_mail_secuencia")
+    // Mismos campos que el resto de la secuencia: el recordatorio también
+    // enlaza a la Hoja de Ruta y necesita el token y la fecha de alta.
+    .select(CAMPOS_CONTACTO_NURTURE)
     .eq("recibe_secuencia", true)
     .eq("posicion_secuencia", 8)
     .eq("recordatorio_valoracion_enviado", false);
@@ -130,7 +143,7 @@ async function procesarRecordatorioValoracion(): Promise<number> {
   let enviados = 0;
   const staleThreshold = new Date(Date.now() - CANDADO_STALE_MS).toISOString();
 
-  for (const contacto of contactos ?? []) {
+  for (const contacto of (contactos ?? []) as NurtureContacto[]) {
     if (!contacto.fecha_ultimo_mail_secuencia) continue;
     if (madridDate(contacto.fecha_ultimo_mail_secuencia) !== ahora.date) continue; // el mail 7 no fue hoy
 
@@ -151,7 +164,13 @@ async function procesarRecordatorioValoracion(): Promise<number> {
     if (!claimed?.length) continue;
 
     const isEu = contacto.idioma === "eu";
-    const html = wrapNurture(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader), contacto.email, isEu);
+    // -1 no está en POSICIONES_SIN_VENTANA: el recordatorio es justo el
+    // correo que más falta hace que lleve a la versión gratuita.
+    const html = wrapNurture(
+      enlacesDeVentana(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader), contacto, -1),
+      contacto.email,
+      isEu
+    );
 
     try {
       await sendEmail(
@@ -370,6 +389,16 @@ async function procesarReservasAbandonadas(): Promise<number> {
     .in("email", reservas.map((r) => r.email));
   const dadosDeBaja = new Set((bajas ?? []).map((r) => r.email));
 
+  // Token y fecha de alta de cada uno, para que el enlace de "retomarlo" lleve
+  // a la versión que de verdad le corresponde. Antes este correo mandaba un
+  // "?ventana=1" fijo según lo que el lead hubiera VISTO; ahora ese parámetro
+  // por sí solo no regala nada, así que hay que resolver su token.
+  const { data: contactos } = await supabase
+    .from("newsletter_contactos")
+    .select("email, token, fecha_alta")
+    .in("email", reservas.map((r) => r.email));
+  const porEmail = new Map((contactos ?? []).map((c) => [c.email, c]));
+
   const staleThreshold = new Date(ahora - CANDADO_STALE_MS).toISOString();
   let enviados = 0;
 
@@ -389,7 +418,14 @@ async function procesarReservasAbandonadas(): Promise<number> {
     }
     if (!claimed?.length) continue; // otra pasada lo tiene cogido
 
-    const html = wrapNurture(mailAbandonoCuerpo(reserva.nombre, reserva.variante), reserva.email, false);
+    // La línea "sigues dentro de tus ocho días" y el enlace con token van
+    // juntos: los dos salen de la ventana real de esta persona, no de la
+    // versión de la landing que llegó a ver.
+    const contacto = porEmail.get(reserva.email);
+    const enVentana = calcularVentana(contacto?.fecha_alta ?? null).elegibilidad === "elegible";
+    let html = mailAbandonoCuerpo(reserva.nombre, enVentana ? "ventana" : "evergreen");
+    if (enVentana && contacto?.token) html = personalizarEnlacesHojaDeRuta(html, contacto.token);
+    html = wrapNurture(html, reserva.email, false);
 
     try {
       await sendEmail(

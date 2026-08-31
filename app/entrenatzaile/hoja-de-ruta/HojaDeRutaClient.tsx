@@ -6,11 +6,9 @@ import PreviewHojaDeRuta from "../PreviewHojaDeRuta";
 import { eventoPixel } from "@/app/_components/Consentimiento";
 import {
   HOJA_RUTA_BOTON,
-  HOJA_RUTA_CIERRE,
-  HOJA_RUTA_HERO,
   HOJA_RUTA_HUECOS,
   HOJA_RUTA_PASOS,
-  HOJA_RUTA_SECCIONES,
+  type ContenidoHR,
   type Parrafo,
   type SeccionHR,
   type VarianteHR,
@@ -250,8 +248,47 @@ function soloHora(etiqueta: string) {
   return etiqueta.split("·").pop()?.trim() ?? etiqueta;
 }
 
-export default function HojaDeRutaClient({ variante }: { variante: VarianteHR }) {
-  const secciones = HOJA_RUTA_SECCIONES.filter((s: SeccionHR) => !s.soloEn || s.soloEn === variante);
+export interface HojaDeRutaClientProps {
+  contenido: ContenidoHR;
+  variante: VarianteHR;
+  /**
+   * Último día de la ventana gratuita de ESTE lead, ya formateado
+   * ("domingo 6 de septiembre"). Solo viene cuando variante es "ventana":
+   * lo calcula el servidor a partir del token del enlace.
+   */
+  finVentana?: string;
+  /**
+   * Lo que se guarda en la columna `variante` de la reserva. Por defecto, la
+   * variante que se está pintando. /capacidades manda la suya para que en
+   * Supabase se vea de qué página salió cada reserva: pinta la de pago igual
+   * que la evergreen, pero es otra landing y conviene poder distinguirlas.
+   */
+  etiquetaVariante?: string;
+}
+
+export default function HojaDeRutaClient({
+  contenido,
+  variante,
+  finVentana,
+  etiquetaVariante,
+}: HojaDeRutaClientProps) {
+  const { hero: HERO, cierre: CIERRE } = contenido;
+
+  // Las secciones y los párrafos marcados con `soloEn` salen únicamente en su
+  // versión. El filtro de párrafos va aquí y no dentro de <Parrafos> para que
+  // una sección que se quede sin ninguno no pinte un hueco vacío.
+  const secciones = contenido.secciones
+    .filter((s: SeccionHR) => !s.soloEn || s.soloEn === variante)
+    .map((s: SeccionHR) => ({
+      ...s,
+      parrafos: s.parrafos.filter((p: Parrafo) => !p.soloEn || p.soloEn === variante),
+    }));
+
+  // El check de la versión gratuita lleva la fecha exacta en que deja de
+  // serlo. Si por lo que sea no hubiera fecha, se cae a "tus primeros 8
+  // días": es menos concreto, pero nunca deja un "{fecha}" a la vista.
+  const conFecha = (linea: string) =>
+    linea.replace("{fecha}", finVentana ?? "el último de tus primeros 8 días");
 
   const [paso, setPaso] = useState(PASO_DATOS);
   const [datos, setDatos] = useState({ nombre: "", email: "", telefono: "" });
@@ -351,7 +388,12 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
         const res = await fetch("/api/entrenatzaile/hoja-de-ruta", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...datos, consentDatos, variante, utm: utm.current }),
+          body: JSON.stringify({
+            ...datos,
+            consentDatos,
+            variante: etiquetaVariante ?? variante,
+            utm: utm.current,
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -418,7 +460,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
   }
 
   const textoBoton =
-    paso === PASO_HORA ? HOJA_RUTA_HUECOS.boton : paso === PASO_PERMISO ? HOJA_RUTA_CIERRE.boton : "Siguiente →";
+    paso === PASO_HORA ? HOJA_RUTA_HUECOS.boton : paso === PASO_PERMISO ? CIERRE.boton : "Siguiente →";
 
   function renderPaso() {
     if (paso === PASO_DATOS) {
@@ -461,7 +503,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
             <label htmlFor="telefono" style={labelStyle}>
               Teléfono
             </label>
-            <p style={pistaStyle}>{HOJA_RUTA_CIERRE.telefonoPista}</p>
+            <p style={pistaStyle}>{CIERRE.telefonoPista}</p>
             <input
               id="telefono"
               type="tel"
@@ -505,7 +547,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
               href="/privacidad"
               className="not-italic underline underline-offset-4 transition-colors hover:text-[#0F2240]"
             >
-              {HOJA_RUTA_CIERRE.privacidad}
+              {CIERRE.privacidad}
             </a>
           </p>
         </div>
@@ -562,24 +604,29 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
         <div className="mx-auto grid max-w-[1400px] items-center gap-12 md:grid-cols-[1.15fr_1fr]">
           <div>
             <h1 className={`hero-fade-2 text-[clamp(2rem,6.2vw,3.6rem)] leading-[1.1] text-[#0F2240] ${tituloClase}`}>
-              {HOJA_RUTA_HERO.titulo}
+              {HERO.titulo}
             </h1>
             <p className="hero-fade-2 mt-5 text-[1.15rem] leading-[1.6] text-[#0F2240]/85 md:text-[1.25rem]">
-              {HOJA_RUTA_HERO.subtitulo}
+              {HERO.subtitulo}
             </p>
             <p className="hero-fade-3 mt-7 max-w-[600px] text-[1.08rem] leading-[1.75] text-[#0F2240]/80 md:text-[1.15rem]">
-              {HOJA_RUTA_HERO.entradilla}
+              {HERO.entradilla[variante]}
             </p>
             <a href="#reserva" className={`hero-fade-3 mt-9 ${botonClase}`}>
-              {HOJA_RUTA_HERO.boton}
+              {HERO.boton}
             </a>
             <div className="hero-fade-3">
-              <Checks lineas={[HOJA_RUTA_HERO.bulletPrecio[variante], ...HOJA_RUTA_HERO.bullets]} />
+              <Checks lineas={[conFecha(HERO.bulletPrecio[variante]), ...HERO.bullets]} />
             </div>
           </div>
 
           {/* El objeto real que se lleva el cliente, no un mockup genérico. */}
-          <PreviewHojaDeRuta className="hero-fade-3" />
+          <div className="hero-fade-3">
+            <PreviewHojaDeRuta />
+            {HERO.pieVisual && (
+              <p className="mt-4 text-[0.88rem] leading-[1.55] text-[#0F2240]/60 italic">{HERO.pieVisual}</p>
+            )}
+          </div>
         </div>
       </section>
 
@@ -601,7 +648,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
                     <a href="#reserva" className={botonClase}>
                       {HOJA_RUTA_BOTON}
                     </a>
-                    {micro && <Checks lineas={[micro]} />}
+                    {micro && <Checks lineas={[conFecha(micro)]} />}
                   </div>
                 )}
               </section>
@@ -617,12 +664,12 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
       >
         <div className="mx-auto max-w-[680px]">
           <h2 className={`mb-7 text-[clamp(1.7rem,5.2vw,2.4rem)] leading-[1.2] text-[#1C3A5E] ${tituloClase}`}>
-            {HOJA_RUTA_CIERRE.titulo}
+            {CIERRE.titulo}
           </h2>
 
-          <Parrafos parrafos={HOJA_RUTA_CIERRE.parrafos} />
+          <Parrafos parrafos={CIERRE.parrafos} />
 
-          <p className={`mt-6 ${cuerpoClase}`}>{HOJA_RUTA_CIERRE.precio[variante]}</p>
+          <p className={`mt-6 ${cuerpoClase}`}>{CIERRE.precio[variante]}</p>
 
           <div ref={tarjetaRef} className="mt-12 p-6 md:p-10" style={cardStyle}>
             {hecho ? (
@@ -640,7 +687,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
             ) : (
               <>
                 <h3 className={`mb-6 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
-                  {HOJA_RUTA_CIERRE.formularioTitulo}
+                  {CIERRE.formularioTitulo}
                 </h3>
 
                 {/* Cuánto queda */}
@@ -697,7 +744,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
                       }}
                       className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
                     >
-                      {enviando ? HOJA_RUTA_CIERRE.enviando : textoBoton}
+                      {enviando ? CIERRE.enviando : textoBoton}
                     </button>
                   )}
                 </form>
@@ -725,7 +772,7 @@ export default function HojaDeRutaClient({ variante }: { variante: VarianteHR })
             )}
           </div>
 
-          <p className={`mt-10 ${cuerpoClase}`}>{HOJA_RUTA_CIERRE.cierre[variante]}</p>
+          <p className={`mt-10 ${cuerpoClase}`}>{CIERRE.cierre[variante]}</p>
         </div>
       </section>
 

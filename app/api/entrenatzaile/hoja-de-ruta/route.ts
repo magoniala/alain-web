@@ -6,10 +6,10 @@ import {
   CONSENT_HOJA_RUTA,
   CONSENT_VERSION,
   ELEGIBILIDAD_ETIQUETA,
-  VENTANA_DIAS,
   limpiarUtm,
   type Elegibilidad,
 } from "@/lib/entrenatzaile-formularios";
+import { calcularVentana } from "@/lib/entrenatzaile-ventana";
 import {
   esHuecoOfrecido,
   formatearHueco,
@@ -26,6 +26,14 @@ import { NextResponse } from "next/server";
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 const ERROR_GENERICO = "Ha ocurrido un error. Inténtalo de nuevo.";
+
+const VARIANTES_GUARDABLES: ReadonlySet<unknown> = new Set(["ventana", "evergreen", "capacidades"]);
+
+const NOMBRE_VARIANTE: Record<string, string> = {
+  ventana: "ventana (gratis 8 días)",
+  evergreen: "evergreen (90 €)",
+  capacidades: "capacidades (90 €)",
+};
 
 // Todo lo que hace falta para calcular la agenda. Se traen las reservas
 // enteras, sin filtrar por fecha: son cinco a la semana como mucho, así que
@@ -64,15 +72,13 @@ function escapar(texto: string) {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Elegibilidad calculada en servidor contra la lista de suscriptores. No se
-// le muestra al lead, no bifurca la landing y no bloquea la reserva: solo
-// viaja en el asunto del aviso que me llega a mí.
-async function calcularElegibilidad(emailLower: string): Promise<{
-  elegibilidad: Elegibilidad;
-  dias_desde_alta: number | null;
-  fecha_alta_contacto: string | null;
-  ventana_dia: number | null;
-}> {
+// Elegibilidad calculada en servidor contra la lista de suscriptores. No
+// bloquea la reserva: viaja en el asunto del aviso que me llega a mí.
+//
+// El cálculo en sí vive en lib/entrenatzaile-ventana.ts, que es el mismo que
+// usa la landing para decidir qué versión enseñar. Así el aviso no puede
+// decir "NO GRATIS" de alguien a quien la página acaba de prometerle que sí.
+async function calcularElegibilidad(emailLower: string) {
   // Solo fecha_alta: newsletter_contactos no tiene created_at. Pedirla haría
   // fallar el select entero y todo el mundo saldría como "no_en_lista".
   const { data: contacto, error } = await supabase
@@ -85,20 +91,11 @@ async function calcularElegibilidad(emailLower: string): Promise<{
     console.error("hoja-de-ruta: error consultando elegibilidad:", emailLower, error);
   }
 
-  const alta = contacto?.fecha_alta ?? null;
-  if (!contacto || !alta) {
-    return { elegibilidad: "no_en_lista", dias_desde_alta: null, fecha_alta_contacto: null, ventana_dia: null };
-  }
-
-  const dias = Math.floor((Date.now() - new Date(alta).getTime()) / 86_400_000);
-  const dentro = dias >= 0 && dias < VENTANA_DIAS;
-  return {
-    elegibilidad: dentro ? "elegible" : "fuera_ventana",
-    dias_desde_alta: dias,
-    fecha_alta_contacto: alta,
-    // Día de su ventana: 1 = mismo día del alta, 8 = último.
-    ventana_dia: dentro ? dias + 1 : null,
-  };
+  // ultimo_dia solo sirve para pintar la fecha en la landing; en la fila de
+  // la reserva no se guarda, así que se descarta aquí.
+  const { ultimo_dia, ...ventana } = calcularVentana(contacto?.fecha_alta ?? null);
+  void ultimo_dia;
+  return ventana;
 }
 
 // Paso 1: se guarda el lead ANTES de que elija hueco. Si abandona el
@@ -132,7 +129,11 @@ export async function POST(req: Request) {
       nombre: nombreTrim,
       email: emailLower,
       telefono: telefonoTrim,
-      variante: variante === "ventana" ? "ventana" : "evergreen",
+      // Qué landing vio, no lo que le corresponde: eso es `elegibilidad`.
+      // Lista cerrada para que el navegador no pueda escribir aquí lo que
+      // quiera. "capacidades" es /hoja-de-ruta/capacidades, que se pinta
+      // igual que la evergreen pero es otra página y conviene distinguirla.
+      variante: VARIANTES_GUARDABLES.has(variante) ? variante : "evergreen",
       consent_datos: true,
       consent_datos_en: ahora,
       consent_datos_texto: CONSENT_HOJA_RUTA.datos,
@@ -250,7 +251,7 @@ export async function PATCH(req: Request) {
         ${fila("Email", escapar(reserva.email ?? ""))}
         ${fila("Teléfono", escapar(reserva.telefono ?? ""))}
         ${fila("Hueco", escapar(formatearHueco(huecoTrim)))}
-        ${fila("Vio la versión", reserva.variante === "ventana" ? "ventana (gratis 8 días)" : "evergreen (90 €)")}
+        ${fila("Vio la versión", NOMBRE_VARIANTE[reserva.variante ?? ""] ?? "evergreen (90 €)")}
         ${fila("Elegibilidad", ELEGIBILIDAD_ETIQUETA[estado])}
         ${fila("Días desde el alta", reserva.dias_desde_alta ?? "—")}
         ${fila("Día de su ventana", reserva.ventana_dia ?? "—")}

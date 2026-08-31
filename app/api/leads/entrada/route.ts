@@ -1,5 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import { enviarMailSecuencia, wrapNurture, normalizarEmail, CANDADO_STALE_MS } from "@/lib/nurture";
+import {
+  enviarMailSecuencia,
+  wrapNurture,
+  normalizarEmail,
+  CANDADO_STALE_MS,
+  CAMPOS_CONTACTO,
+} from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { cuerpoDelMail } from "@/lib/email-markdown";
 import { NextResponse } from "next/server";
@@ -157,7 +163,7 @@ export async function POST(req: Request) {
         fecha_alta: fecha,
       })
       .eq("id", existente.id)
-      .select("id, email, nombre, idioma, posicion_secuencia, fecha_ultimo_mail_secuencia")
+      .select(CAMPOS_CONTACTO)
       .single();
 
     if (reactivarError) {
@@ -221,7 +227,7 @@ export async function POST(req: Request) {
       secuencia_completada: false,
       unsubscribed: false,
     })
-    .select("id, email, nombre, idioma, posicion_secuencia, fecha_ultimo_mail_secuencia")
+    .select(CAMPOS_CONTACTO)
     .single();
 
   if (error) {

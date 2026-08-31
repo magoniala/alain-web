@@ -6,6 +6,11 @@ import {
   marcadoresDeNombre,
   sustituirMarcadores,
 } from "@/lib/email-markdown";
+import {
+  POSICIONES_SIN_VENTANA,
+  calcularVentana,
+  personalizarEnlacesHojaDeRuta,
+} from "@/lib/entrenatzaile-ventana";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://alainzulaika.com";
@@ -34,6 +39,13 @@ export interface NurtureContacto {
   idioma: string | null;
   posicion_secuencia: number;
   fecha_ultimo_mail_secuencia: string | null;
+  // Identificador propio de cada contacto, que viaja en los enlaces a la
+  // Hoja de Ruta de sus correos. Lo rellena la base de datos al insertar
+  // (DEFAULT gen_random_uuid()), así que vale para todas las puertas de
+  // entrada sin que ninguna tenga que acordarse de generarlo.
+  token: string | null;
+  // Punto de partida de la ventana de 8 días.
+  fecha_alta: string | null;
 }
 
 // Gmail (y su alias googlemail.com) ignora los puntos en la parte local y
@@ -49,7 +61,11 @@ export function normalizarEmail(email: string): string {
   return `${sinPuntos}@gmail.com`;
 }
 
-const CAMPOS_CONTACTO = "id, email, nombre, idioma, posicion_secuencia, fecha_ultimo_mail_secuencia";
+// Exportado porque el cron carga los mismos contactos por su cuenta: con la
+// lista repetida a mano, añadir una columna aquí dejaba al cron enviando sin
+// ella y sin dar ningún error.
+export const CAMPOS_CONTACTO =
+  "id, email, nombre, idioma, posicion_secuencia, fecha_ultimo_mail_secuencia, token, fecha_alta";
 
 export interface AltaSecuenciaInput {
   email: string;
@@ -190,6 +206,30 @@ export async function altaEnSecuencia({
 
 export const CANDADO_STALE_MS = 5 * 60 * 1000; // 5 min: si un intento se quedó a medias (crash), se puede reclamar de nuevo
 
+/**
+ * Deja los enlaces a la Hoja de Ruta apuntando a la versión que le toca a
+ * este contacto: la gratuita con su token si está dentro de sus 8 días, y el
+ * enlace limpio (versión de pago) si no.
+ *
+ * Las dos condiciones para tocar el enlace son deliberadas:
+ *
+ *  - Solo dentro de ventana. A quien ya se le pasó no se le manda un
+ *    ?ventana=1 que la propia página va a rechazar: vería la de pago igual,
+ *    pero después de haber pinchado en algo que parecía prometerle otra cosa.
+ *  - Solo en los correos que no contradicen la oferta. El M8 y el de
+ *    cortesía dicen expresamente que ya cuesta 90 €, así que se quedan como
+ *    están (POSICIONES_SIN_VENTANA).
+ *
+ * Se hace al enviar y no escribiendo el enlace a mano en el panel para que
+ * valga también para los correos que se escriban en el futuro.
+ */
+export function enlacesDeVentana(html: string, contacto: NurtureContacto, posicion: number): string {
+  if (POSICIONES_SIN_VENTANA.has(posicion)) return html;
+  if (!contacto.token) return html;
+  if (calcularVentana(contacto.fecha_alta).elegibilidad !== "elegible") return html;
+  return personalizarEnlacesHojaDeRuta(html, contacto.token);
+}
+
 // Envía a `contacto` el mail que le toca según su posicion_secuencia.
 //
 // Regla dura: posicion_secuencia y fecha_ultimo_mail_secuencia NUNCA se
@@ -241,7 +281,11 @@ export async function enviarMailSecuencia(
   // uno. Valen tanto en el cuerpo como en el asunto.
   const valores = { ...marcadoresDeNombre(contacto.nombre), ...marcadoresDeFecha() };
   const html = wrapNurture(
-    cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores),
+    enlacesDeVentana(
+      cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores),
+      contacto,
+      contacto.posicion_secuencia
+    ),
     contacto.email,
     isEu
   );

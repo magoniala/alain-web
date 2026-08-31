@@ -75,10 +75,14 @@ export type Elegibilidad = "elegible" | "fuera_ventana" | "no_en_lista";
 // en dinero y no en jerga ("GRATIS" en vez de "ELEGIBLE") porque lo que hay
 // que decidir al leer el asunto es si esa persona paga o no.
 //
-// Ojo: esto dice lo que le CORRESPONDE según la lista, no lo que se le
-// prometió en la página. El ?ventana=1 es un parámetro de URL, así que
-// alguien puede haber visto la versión gratuita y salir aquí como NO GRATIS.
-// Por eso el cuerpo del aviso lleva además la fila "Vio la versión".
+// Ojo: esto dice lo que le CORRESPONDE según la lista en el momento de
+// reservar, no lo que se le prometió en la página. Desde el token de ventana
+// las dos cosas se calculan igual (lib/entrenatzaile-ventana.ts), así que ya
+// no pueden discrepar por escribir "?ventana=1" a mano — pero sí en un caso
+// real: quien abre el correo el último día, lo deja abierto y reserva pasada
+// la medianoche. Por eso el cuerpo del aviso sigue llevando la fila "Vio la
+// versión", y por eso la elegibilidad no bloquea nada: la decisión de
+// cobrarle o no es tuya, no del sistema.
 export const ELEGIBILIDAD_ETIQUETA: Record<Elegibilidad, string> = {
   elegible: "GRATIS",
   fuera_ventana: "NO GRATIS (fuera de secuencia)",

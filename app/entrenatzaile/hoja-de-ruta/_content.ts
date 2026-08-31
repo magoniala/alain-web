@@ -1,13 +1,18 @@
 // Copy de la landing /hoja-de-ruta.
 //
 // UNA sola plantilla para las dos versiones. Todo el copy es común salvo lo
-// que está explícitamente partido por variante: los micro-copys de precio,
-// el párrafo de precio del cierre, su última línea, y la sección "Por qué te
-// la regalo" (marcada con soloEn: "ventana").
+// que está explícitamente partido por variante: la entradilla del hero, los
+// micro-copys de precio, el párrafo de precio del cierre, su última línea,
+// la sección "Por qué te la regalo" (soloEn: "ventana") y el párrafo del
+// precio del acompañamiento (también soloEn: "ventana").
 //
 // Regla: si tocas una frase, se toca en las dos versiones a la vez porque
 // solo existe una vez. Lo único que hay que tocar dos veces es lo que está
 // dentro de un objeto con claves `ventana` / `evergreen`.
+//
+// Cuál de las dos ve cada persona NO lo decide la URL: lo decide el token
+// que lleva su enlace (ver lib/entrenatzaile-ventana.ts). Escribir
+// "?ventana=1" a mano no regala nada.
 
 export type VarianteHR = "ventana" | "evergreen";
 
@@ -20,6 +25,10 @@ export interface Parrafo {
   nota?: string;
   // Cuerpo. Los saltos de línea se respetan al pintar.
   texto?: string;
+  // Sin `soloEn`, el párrafo sale en las dos versiones. Se usa para los dos
+  // o tres párrafos sueltos que solo tienen sentido en una de ellas, sin
+  // tener que partir la sección entera.
+  soloEn?: VarianteHR;
 }
 
 export interface SeccionHR {
@@ -36,20 +45,132 @@ export const HOJA_RUTA_BOTON = "Reservar mi Hoja de Ruta";
 const BULLET_ENTREGA = "La recibes por escrito en 24-48 h, garantizado.";
 const BULLET_PROPIEDAD = "Es tuya: la ejecutas solo, conmigo o con otro entrenador.";
 
+// Check de precio de la versión gratuita. El {fecha} lo sustituye el
+// componente con el último día real de la ventana de ESE lead, que sale de
+// su fecha de alta (lib/entrenatzaile-ventana.ts). Aquí no puede calcularse:
+// este módulo lo importa el navegador y no sabe quién está leyendo.
+//
+// Dice una fecha y no "tus 8 primeros días" porque quien recibe el enlace no
+// tiene por qué acordarse de qué día se apuntó.
+export const CHECK_VENTANA = "Gratis para ti hasta el {fecha} a las 23:59. Después, 90 €.";
+
+// Precio de la versión de pago. Sin mención al descuento del primer
+// trimestre: ya no existe.
+const CHECK_PAGO = "Vale 90 €.";
+
 export const HOJA_RUTA_HERO = {
   titulo: "El dolor de espalda se cura solo. Que no vuelva, no.",
   // Unificado: la versión de la ventana decía "7 de cada 10 recaen antes de
   // un año" y la evergreen esto. Se queda esta, que es la misma frase que
   // abre /espalda.
   subtitulo: "Siete de cada diez espaldas vuelven a fallar en menos de un año.",
-  entradilla:
-    "Una hora por videollamada conmigo y te llevas por escrito tu Hoja de Ruta: en qué estado están de verdad tu fuerza y tu movilidad, qué tienes que trabajar primero, y qué hacer el día que el dolor vuelva. Sin gimnasio, sin estar en forma, sin compromiso de seguir conmigo.",
+  // Partida por variante solo por su última frase: la de pago no promete
+  // "sin compromiso de seguir conmigo" y la gratuita sí. El resto es idéntico
+  // en las dos, y hay que tocarlo en las dos.
+  entradilla: {
+    ventana:
+      "Una hora por videollamada conmigo y te llevas por escrito tu Hoja de Ruta: en qué estado están de verdad tu fuerza y tu movilidad, qué tienes que trabajar primero, y qué hacer el día que el dolor vuelva. Sin gimnasio, sin estar en forma, sin compromiso de seguir conmigo.",
+    evergreen:
+      "Una hora por videollamada conmigo y te llevas por escrito tu Hoja de Ruta: en qué estado están de verdad tu fuerza y tu movilidad, qué tienes que trabajar primero, y qué hacer el día que el dolor vuelva. Sin gimnasio, sin estar en forma.",
+  } satisfies PorVariante<string>,
   boton: HOJA_RUTA_BOTON,
   bulletPrecio: {
-    ventana: "Vale 90 €. Gratis durante tus 8 primeros días conmigo.",
-    evergreen: "90 €, deducibles del primer trimestre si decides seguir.",
+    ventana: CHECK_VENTANA,
+    evergreen: CHECK_PAGO,
   } satisfies PorVariante<string>,
   bullets: [BULLET_ENTREGA, BULLET_PROPIEDAD],
+};
+
+// Las tres últimas secciones son comunes con /hoja-de-ruta/capacidades, que
+// vende exactamente el mismo servicio a otro público. Van con nombre propio
+// y no sueltas dentro del array para que la otra página las reutilice sin
+// depender de en qué posición estén: si un día se reordena esta landing, la
+// otra no se rompe ni se queda con una versión vieja del texto.
+
+export const SECCION_TRES_PASOS: SeccionHR = {
+  titulo: "Tres pasos. Nada más.",
+  parrafos: [
+    {
+      destacado: "1. Reservas tu hora.",
+      texto: "Eliges día y hora.\nTe escribo por WhatsApp para confirmar y te mando el enlace.",
+    },
+    {
+      destacado: "2. Hablamos y te veo moverte. Una hora.",
+      texto:
+        "Empezamos por un cuestionario de seguridad.\nEs el estándar que usamos los entrenadores para saber si alguien puede entrenar sin riesgo.\nSi algo indica que necesitas ver a un médico antes que a mí, te lo digo y no seguimos.",
+    },
+    { texto: "Después, tu historia: cuántos episodios, qué te dijeron, qué has probado, cómo es tu día a día." },
+    {
+      texto:
+        "Y por último te pido unos movimientos delante de la cámara. Ahí veo cómo te mueves y mido tu fuerza y tu movilidad.",
+    },
+    {
+      texto:
+        "No necesitas gimnasio, ni material, ni estar en forma.\nCuanto menos en forma estés, más claro se ve por dónde empezar.",
+    },
+    { destacado: "3. Recibes tu Hoja de Ruta.", texto: "En 24 o 48 horas, por escrito." },
+  ],
+};
+
+export const SECCION_POR_QUE_ME_DEDICO: SeccionHR = {
+  titulo: "Por qué me dedico a esto.",
+  parrafos: [
+    {
+      texto:
+        "Me llamo Alain Zulaika.\nSoy entrenador titulado y llevo años entrenando a gente, primero en sala y luego online.",
+    },
+    { texto: "Mi madre fue el motivo por el que empecé a hacer esto de otra manera." },
+    {
+      texto:
+        "Había pasado su segundo cáncer y varios lumbagos agudos.\nLa típica situación en la que todo el mundo te dice que tengas cuidado.\nHoy va sola al gimnasio varias veces por semana y sigue progresando.\nEmpezó en casa, por pánico a entrar en un gimnasio.",
+    },
+    {
+      texto:
+        "A mi padre le acaban de operar de la cadera.\nY mi abuela de 80 años está encamada y necesita ayuda hasta para ducharse.",
+    },
+    {
+      texto:
+        "Ninguno de los tres llegó ahí de golpe.\nFue una vida que se fue haciendo un poco más pequeña cada año.\nSin ruido. Sin un día concreto en el que pasara.",
+    },
+    {
+      texto:
+        "Por eso hago esto y por eso trabajo con gente de tu edad.\nPorque sé que lo que hagas hoy decide qué podrás hacer a los 80.\nLas operaciones y los sustos de salud, a cierta edad, son casi inevitables.\nLo que decide cómo sales de ellos es la fuerza con la que llegas.",
+    },
+    { texto: "Mi abuela llegó con poca.\nMi padre está a tiempo, y tú también." },
+    {
+      texto:
+        "No trabajo para que te veas bien en la playa.\nTrabajo para que a los 75 puedas subir a tu casa cargado con la compra y bajar a tu nieto del columpio.",
+    },
+  ],
+};
+
+export const SECCION_JORGE: SeccionHR = {
+  titulo: "De no atreverse a coger peso del suelo a levantar 140 kg.",
+  parrafos: [
+    {
+      texto:
+        "Cuando empezamos, Jorge A. no se atrevía a coger nada del suelo.\nLlevaba años evitándolo.\nLas molestias y dolores en la espalda eran constantes debido a su escoliosis.",
+    },
+    {
+      texto:
+        "No le quité el miedo hablando.\nSe lo quitó él, confiando en mi palabra, pero sobre todo levantando cada semana un poco más de lo que levantaba la semana anterior, con criterio detrás.",
+    },
+    {
+      texto:
+        "Terminó haciendo 140 kilos desde el suelo.\n«Nunca me habría imaginado poder levantar esto, y encima sin dolor.»\nY sin miedo: le tuve que frenar las ganas de intentar 145.",
+    },
+    { texto: "Hoy tiene un cuerpo que aguanta un tropiezo, un mal gesto o un empujón sin que le pase factura." },
+    {
+      texto:
+        "No te enseño esto para decirte que vas a levantar 140 kilos.\nA lo mejor no te hace falta, ni te interesa.",
+    },
+    {
+      texto:
+        "Te lo enseño porque el punto de partida probablemente te suene: una espalda en la que no confías y un cuerpo que has ido metiendo en una caja cada vez más pequeña.",
+    },
+    { texto: "De ahí se sale. Pero no evitando cosas." },
+  ],
+  cta: {},
 };
 
 export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
@@ -96,7 +217,7 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
       { texto: "No soy médico ni fisioterapeuta. No diagnostico, no receto y no interpreto resonancias." },
       {
         texto:
-          "Entreno a gente con hernias, con ciática y con años de dolor a la espalda.\nEs decir, trabajo con la lesión, no la trato.",
+          "Entreno a gente con hernias, con ciática, con escoliosis y con años de dolor a la espalda.\nEs decir, trabajo con la lesión, no la trato.",
       },
       { texto: "Lo que sí hago es esto:" },
       {
@@ -160,15 +281,18 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
           "Puedes ejecutarla por tu cuenta. Puedes llevártela a tu gimnasio y dársela a tu entrenador. O puedes pedirme que te acompañe yo.",
       },
       {
+        // Solo en la gratuita: uno de los correos de la secuencia enlaza
+        // aquí precisamente para responder a la duda de cuánto cuesta
+        // seguir. En la de pago sobra, y alarga el bloque sin necesidad.
+        soloEn: "ventana",
         texto:
           "Si eso último te interesa, dentro va también lo que cuesta trabajar conmigo, sin que tengas que preguntarlo ni escuchar ninguna presentación de ventas. Lo lees en casa y decides. Si no vuelves a saber de mí, la Hoja de Ruta sigue siendo tuya y sigue sirviéndote igual.",
       },
     ],
     cta: {
-      micro: {
-        ventana: "Gratis durante tus primeros 8 días.",
-        evergreen: "90 €, deducibles del primer trimestre si decides seguir.",
-      },
+      // La de pago va con el botón solo: el precio ya está dicho arriba y
+      // repetirlo aquí no añadía nada.
+      micro: { ventana: CHECK_VENTANA, evergreen: null },
     },
   },
 
@@ -192,98 +316,13 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
       },
     ],
     cta: {
-      micro: {
-        ventana: "Gratis durante tus primeros 8 días conmigo. Después 90 €.",
-        evergreen: null,
-      },
+      micro: { ventana: CHECK_VENTANA, evergreen: null },
     },
   },
 
-  {
-    titulo: "Tres pasos. Nada más.",
-    parrafos: [
-      {
-        destacado: "1. Reservas tu hora.",
-        texto: "Eliges día y hora.\nTe escribo por WhatsApp para confirmar y te mando el enlace.",
-      },
-      {
-        destacado: "2. Hablamos y te veo moverte. Una hora.",
-        texto:
-          "Empezamos por un cuestionario de seguridad.\nEs el estándar que usamos los entrenadores para saber si alguien puede entrenar sin riesgo.\nSi algo indica que necesitas ver a un médico antes que a mí, te lo digo y no seguimos.",
-      },
-      { texto: "Después, tu historia: cuántos episodios, qué te dijeron, qué has probado, cómo es tu día a día." },
-      {
-        texto:
-          "Y por último te pido unos movimientos delante de la cámara. Ahí veo cómo te mueves y mido tu fuerza y tu movilidad.",
-      },
-      {
-        texto:
-          "No necesitas gimnasio, ni material, ni estar en forma.\nCuanto menos en forma estés, más claro se ve por dónde empezar.",
-      },
-      { destacado: "3. Recibes tu Hoja de Ruta.", texto: "En 24 o 48 horas, por escrito." },
-    ],
-  },
-
-  {
-    titulo: "Por qué me dedico a esto.",
-    parrafos: [
-      {
-        texto:
-          "Me llamo Alain Zulaika.\nSoy entrenador titulado y llevo años entrenando a gente, primero en sala y luego online.",
-      },
-      { texto: "Mi madre fue el motivo por el que empecé a hacer esto de otra manera." },
-      {
-        texto:
-          "Había pasado su segundo cáncer y varios lumbagos agudos.\nLa típica situación en la que todo el mundo te dice que tengas cuidado.\nHoy va sola al gimnasio varias veces por semana y sigue progresando.\nEmpezó en casa, por pánico a entrar en un gimnasio.",
-      },
-      {
-        texto:
-          "A mi padre le acaban de operar de la cadera.\nY mi abuela de 80 años está encamada y necesita ayuda hasta para ducharse.",
-      },
-      {
-        texto:
-          "Ninguno de los tres llegó ahí de golpe.\nFue una vida que se fue haciendo un poco más pequeña cada año.\nSin ruido. Sin un día concreto en el que pasara.",
-      },
-      {
-        texto:
-          "Por eso hago esto y por eso trabajo con gente de tu edad.\nPorque sé que lo que hagas hoy decide qué podrás hacer a los 80.\nLas operaciones y los sustos de salud, a cierta edad, son casi inevitables.\nLo que decide cómo sales de ellos es la fuerza con la que llegas.",
-      },
-      { texto: "Mi abuela llegó con poca.\nMi padre está a tiempo, y tú también." },
-      {
-        texto:
-          "No trabajo para que te veas bien en la playa.\nTrabajo para que a los 75 puedas subir a tu casa cargado con la compra y bajar a tu nieto del columpio.",
-      },
-    ],
-  },
-
-  {
-    titulo: "De no atreverse a coger peso del suelo a levantar 140 kg.",
-    parrafos: [
-      {
-        texto:
-          "Cuando empezamos, Jorge A. no se atrevía a coger nada del suelo.\nLlevaba años evitándolo.\nLas molestias y dolores en la espalda eran constantes debido a su escoliosis.",
-      },
-      {
-        texto:
-          "No le quité el miedo hablando.\nSe lo quitó él, confiando en mi palabra, pero sobre todo levantando cada semana un poco más de lo que levantaba la semana anterior, con criterio detrás.",
-      },
-      {
-        texto:
-          "Terminó haciendo 140 kilos desde el suelo.\n«Nunca me habría imaginado poder levantar esto, y encima sin dolor.»\nY sin miedo: le tuve que frenar las ganas de intentar 145.",
-      },
-      { texto: "Hoy tiene un cuerpo que aguanta un tropiezo, un mal gesto o un empujón sin que le pase factura." },
-      {
-        texto:
-          "No te enseño esto para decirte que vas a levantar 140 kilos.\nA lo mejor no te hace falta, ni te interesa.",
-      },
-      {
-        texto:
-          "Te lo enseño porque el punto de partida probablemente te suene: una espalda en la que no confías y un cuerpo que has ido metiendo en una caja cada vez más pequeña.",
-      },
-      { texto: "De ahí se sale. Pero no evitando cosas." },
-    ],
-    cta: {},
-  },
+  SECCION_TRES_PASOS,
+  SECCION_POR_QUE_ME_DEDICO,
+  SECCION_JORGE,
 ];
 
 export const HOJA_RUTA_CIERRE = {
@@ -297,8 +336,7 @@ export const HOJA_RUTA_CIERRE = {
   precio: {
     ventana:
       "Vale 90 €. Si reservas en tus primeros 8 días conmigo, no lo pagas.\nAunque la llamada la hagamos el mes que viene.",
-    evergreen:
-      "90 €. Si después decides que te acompañe, se descuentan del primer trimestre.\nNo hay descuentos ni ofertas: cuesta lo mismo todo el año.",
+    evergreen: "90 €.\nNo hay descuentos ni ofertas: cuesta lo mismo todo el año.",
   } satisfies PorVariante<string>,
   formularioTitulo: "Elige tu hueco",
   telefonoPista: "Para confirmarte y mandarte el enlace de la llamada.",
@@ -336,3 +374,43 @@ export const HOJA_RUTA_HUECOS = {
 // El visual del entregable ya no es una imagen suelta: vive en el componente
 // PreviewHojaDeRuta (app/entrenatzaile/PreviewHojaDeRuta.tsx), que se usa
 // tanto en el hero de esta landing como en la página de gracias de /espalda.
+
+// ============================================================
+// Contenido completo de la página
+// ============================================================
+//
+// HojaDeRutaClient no importa el copy: lo recibe. Así la misma plantilla,
+// con el mismo formulario y el mismo comportamiento, sirve para esta landing
+// y para /hoja-de-ruta/capacidades, que cuenta otra historia arriba y
+// reutiliza las tres secciones de abajo.
+
+export interface ContenidoHR {
+  hero: {
+    titulo: string;
+    subtitulo: string;
+    entradilla: PorVariante<string>;
+    boton: string;
+    bulletPrecio: PorVariante<string>;
+    bullets: string[];
+    // Pie del visual del entregable. Opcional: esta landing no lo lleva.
+    pieVisual?: string;
+  };
+  secciones: SeccionHR[];
+  cierre: {
+    titulo: string;
+    parrafos: Parrafo[];
+    precio: PorVariante<string>;
+    formularioTitulo: string;
+    telefonoPista: string;
+    privacidad: string;
+    boton: string;
+    enviando: string;
+    cierre: PorVariante<string>;
+  };
+}
+
+export const HOJA_RUTA_CONTENIDO: ContenidoHR = {
+  hero: HOJA_RUTA_HERO,
+  secciones: HOJA_RUTA_SECCIONES,
+  cierre: HOJA_RUTA_CIERRE,
+};

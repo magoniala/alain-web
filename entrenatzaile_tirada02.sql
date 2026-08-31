@@ -190,3 +190,34 @@ ALTER TABLE hoja_ruta_reservas  ADD COLUMN IF NOT EXISTS meta_evento text;
 
 -- Nombre del lead: el formulario de /espalda no lo pedía al principio.
 ALTER TABLE espalda_leads ADD COLUMN IF NOT EXISTS nombre text;
+
+-- ============================================================
+-- Ampliación 2026-08-31: token de ventana.
+--
+-- Hasta ahora, ver la Hoja de Ruta gratis dependía de escribir "?ventana=1"
+-- en la URL. Es decir, de nada: cualquiera podía. A partir de aquí, cada
+-- contacto lleva un identificador aleatorio propio, los correos de la
+-- secuencia lo incluyen en su enlace, y la landing decide qué versión
+-- enseñar mirando la fecha de alta de ESE contacto.
+--
+-- Va en newsletter_contactos y no en espalda_leads a propósito: es la tabla
+-- desde la que salen los correos y la única que tiene fecha_alta, que es lo
+-- que define la ventana. Una persona tiene varias filas en espalda_leads si
+-- rellena el formulario dos veces, pero un solo contacto.
+--
+-- No se usa el id de la fila como token: el id aparece en otros sitios
+-- (customId de Mailjet, avisos internos) y un identificador que da acceso no
+-- debe ser el mismo que uno que solo identifica.
+-- ============================================================
+
+ALTER TABLE newsletter_contactos
+  ADD COLUMN IF NOT EXISTS token uuid DEFAULT gen_random_uuid();
+
+-- Los contactos que ya existían no tienen ninguno. Sin esto, los 600 y pico
+-- de antes de hoy nunca verían la versión gratuita aunque estén en ventana.
+UPDATE newsletter_contactos SET token = gen_random_uuid() WHERE token IS NULL;
+
+-- Es una búsqueda por token en cada carga de la landing, y además dos
+-- contactos no pueden compartirlo.
+CREATE UNIQUE INDEX IF NOT EXISTS newsletter_contactos_token_key
+  ON newsletter_contactos (token);
