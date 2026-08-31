@@ -91,6 +91,9 @@ export interface AltaSecuenciaResultado {
   // sin volver a consultar la tabla. Quién ve la versión gratuita lo sigue
   // decidiendo la landing a partir de la fecha de alta, no esto.
   token: string | null;
+  // Su fecha de alta, por el mismo motivo: quien llama puede necesitar saber
+  // si sigue dentro de la ventana sin volver a consultar la tabla.
+  fecha_alta: string | null;
   // Solo viene relleno cuando procede disparar el M0 (alta nueva o
   // reactivación con la casilla marcada). Si ya estaba en la lista, va null:
   // no se le reinicia la secuencia por rellenar otro formulario.
@@ -129,6 +132,7 @@ export async function altaEnSecuencia({
     edad: number | null;
     unsubscribed: boolean;
     token: string | null;
+    fecha_alta: string | null;
   }): Promise<AltaSecuenciaResultado> => {
     const tagsFusionadas = Array.from(
       new Set([...(fila.tags ?? []).map((t) => t.toLowerCase()), ...tagsNuevas])
@@ -141,29 +145,31 @@ export async function altaEnSecuencia({
     };
 
     if (fila.unsubscribed && recibeSecuencia) {
-      // Estaba dado de baja y vuelve a marcar la casilla: es una señal de
-      // interés renovado, así que se reactiva y entra en la secuencia desde
-      // cero, igual que hace /api/leads/entrada con los leads de ads.
-      const { data, error } = await supabase
+      // Estaba dado de baja y vuelve a apuntarse: se le devuelve a la
+      // newsletter, pero NO se le reinicia la secuencia de bienvenida.
+      //
+      // Se hacía antes y estaba mal por dos motivos. Uno: le volvían a caer
+      // diez correos que probablemente ya leyó. Y dos, el importante: esa
+      // secuencia le promete la Hoja de Ruta gratis durante 8 días, y su
+      // ventana se cuenta desde su fecha de alta original, que no se toca. Si
+      // se reiniciara la fecha, bastaría con darse de baja y alta para
+      // recuperar el regalo tantas veces como uno quisiera.
+      //
+      // Quien vuelve recibe, en su lugar, un solo correo con lo que ha venido
+      // a buscar (ver enviarMailSuelto), igual que quien ya estaba activo.
+      //
+      // Ojo: /api/leads/entrada SÍ reinicia la secuencia en su reactivación,
+      // y es a propósito — ahí el lead viene de un anuncio pagado y cuenta
+      // como alta nueva a todos los efectos.
+      const { error } = await supabase
         .from("newsletter_contactos")
-        .update({
-          ...completar,
-          unsubscribed: false,
-          recibe_secuencia: true,
-          posicion_secuencia: 0,
-          secuencia_completada: false,
-          fecha_ultimo_mail_secuencia: null,
-          enviando_secuencia_desde: null,
-          origen,
-        })
-        .eq("id", fila.id)
-        .select(CAMPOS_CONTACTO)
-        .single();
+        .update({ ...completar, unsubscribed: false, origen })
+        .eq("id", fila.id);
       if (error) {
         console.error("altaEnSecuencia: error reactivando", emailLower, error);
-        return { estado: "error", contactoId: fila.id, contacto: null, token: fila.token, error: error.message };
+        return { estado: "error", contactoId: fila.id, contacto: null, token: fila.token, fecha_alta: fila.fecha_alta, error: error.message };
       }
-      return { estado: "reactivado", contactoId: fila.id, contacto: data, token: data.token };
+      return { estado: "reactivado", contactoId: fila.id, contacto: null, token: fila.token, fecha_alta: fila.fecha_alta };
     }
 
     // Ya estaba en la lista: no le tocamos recibe_secuencia ni la posición.
@@ -172,9 +178,9 @@ export async function altaEnSecuencia({
     const { error } = await supabase.from("newsletter_contactos").update(completar).eq("id", fila.id);
     if (error) {
       console.error("altaEnSecuencia: error fusionando datos", emailLower, error);
-      return { estado: "error", contactoId: fila.id, contacto: null, token: fila.token, error: error.message };
+      return { estado: "error", contactoId: fila.id, contacto: null, token: fila.token, fecha_alta: fila.fecha_alta, error: error.message };
     }
-    return { estado: "existente", contactoId: fila.id, contacto: null, token: fila.token };
+    return { estado: "existente", contactoId: fila.id, contacto: null, token: fila.token, fecha_alta: fila.fecha_alta };
   };
 
   const { data: existente } = await seleccionar();
@@ -206,13 +212,85 @@ export async function altaEnSecuencia({
       if (carrera) return fusionar(carrera);
     }
     console.error("altaEnSecuencia: error insertando", emailLower, error);
-    return { estado: "error", contactoId: null, contacto: null, token: null, error: error.message };
+    return { estado: "error", contactoId: null, contacto: null, token: null, fecha_alta: null, error: error.message };
   }
 
-  return { estado: "nuevo", contactoId: creado.id, contacto: recibeSecuencia ? creado : null, token: creado.token };
+  return { estado: "nuevo", contactoId: creado.id, contacto: recibeSecuencia ? creado : null, token: creado.token, fecha_alta: creado.fecha_alta };
 }
 
 export const CANDADO_STALE_MS = 5 * 60 * 1000; // 5 min: si un intento se quedó a medias (crash), se puede reclamar de nuevo
+
+/**
+ * Posición del correo que lleva la ficha y nada más.
+ *
+ * Para quien rellena /espalda estando ya en la lista, o volviendo tras
+ * haberse dado de baja. Ha venido a por la ficha, así que la ficha se le
+ * manda; lo que no se le manda es la secuencia de bienvenida entera, que ya
+ * conoce y que además le prometería un regalo que no le corresponde.
+ *
+ * Va en negativo como el resto de correos que viven fuera de la progresión
+ * normal: -1 recordatorio, -2 cortesía a duplicados de ads, -3 este.
+ */
+export const POSICION_MAIL_FICHA = -3;
+
+/**
+ * Manda un correo concreto de secuencia_mails sin tocar la posición del
+ * contacto ni su progreso.
+ *
+ * enviarMailSecuencia() no vale para esto: lee la posición del contacto y la
+ * avanza al confirmar el envío, que es justo lo que aquí no debe pasar. Este
+ * envío lo dispara una acción de la persona (rellenar un formulario), no el
+ * calendario, así que no hay candado: si rellena el formulario dos veces,
+ * recibe la ficha dos veces, que es lo que ha pedido.
+ */
+export async function enviarMailSuelto(
+  contacto: { id: string; email: string; nombre: string | null; idioma: string | null; fecha_alta: string | null; token: string | null },
+  posicion: number,
+  campana: string
+): Promise<{ enviado: boolean; motivo?: string }> {
+  const { data: mail } = await supabase
+    .from("secuencia_mails")
+    .select("asunto, cuerpo_html, remitente, formato, preheader")
+    .eq("secuencia", "nurture")
+    .eq("posicion", posicion)
+    .eq("activo", true)
+    .maybeSingle();
+
+  if (!mail) return { enviado: false, motivo: `sin contenido activo en la posición ${posicion}` };
+
+  const enVentana = calcularVentana(contacto.fecha_alta).elegibilidad === "elegible";
+  const valores = {
+    ...marcadoresDeNombre(contacto.nombre),
+    ...marcadoresDeFecha(),
+    ...marcadoresDeVentana(contacto.fecha_alta),
+  };
+  const cuerpo = cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores, {
+    si_ventana: enVentana,
+    si_no_ventana: !enVentana,
+  });
+  // Normalmente estas personas están fuera de ventana y el enlace se queda
+  // limpio. Pero alguien que se apuntó anteayer y hoy rellena el formulario
+  // de /espalda sigue dentro, y entonces sí le corresponde su token.
+  const conEnlaces = enVentana && contacto.token
+    ? personalizarEnlacesHojaDeRuta(cuerpo, contacto.token)
+    : cuerpo;
+
+  try {
+    await sendEmail(
+      contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
+      sustituirMarcadores(mail.asunto ?? "", valores),
+      wrapNurture(conEnlaces, contacto.email, contacto.idioma === "eu"),
+      resolveNewsletterFrom(mail.remitente),
+      undefined,
+      { campana, customId: contacto.id }
+    );
+  } catch (err) {
+    const mensaje = err instanceof Error ? err.message : String(err);
+    console.error("nurture: error enviando el mail suelto", posicion, contacto.email, err);
+    return { enviado: false, motivo: mensaje };
+  }
+  return { enviado: true };
+}
 
 /**
  * Deja los enlaces a la Hoja de Ruta apuntando a la versión que le toca a

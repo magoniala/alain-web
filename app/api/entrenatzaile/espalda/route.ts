@@ -1,5 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import { altaEnSecuencia, enviarMailSecuencia, normalizarEmail } from "@/lib/nurture";
+import {
+  POSICION_MAIL_FICHA,
+  altaEnSecuencia,
+  enviarMailSecuencia,
+  enviarMailSuelto,
+  normalizarEmail,
+} from "@/lib/nurture";
 import { sendEmail } from "@/lib/email-ses";
 import { enlaceWhatsapp } from "@/lib/entrenatzaile-mails";
 import {
@@ -135,18 +141,41 @@ export async function POST(req: Request) {
     });
     token = alta.token;
 
-    // Intento inmediato del M0. Si falla (Mailjet caído, etc.) no revertimos
-    // nada: el cron de /api/newsletter/cron recoge en su próxima pasada a
-    // cualquiera con posicion_secuencia=0 sin fecha de envío, con la misma
-    // función. La posición solo avanza tras confirmación de Mailjet.
+    // Quien llega por primera vez entra en la secuencia y recibe el M0. Si
+    // falla (Mailjet caído, etc.) no revertimos nada: el cron de
+    // /api/newsletter/cron recoge en su próxima pasada a cualquiera con
+    // posicion_secuencia=0 sin fecha de envío, con la misma función. La
+    // posición solo avanza tras confirmación de Mailjet.
+    //
+    // Quien ya estaba en la lista, o vuelve tras haberse dado de baja, NO
+    // entra en la secuencia: ha venido a por la ficha, así que se le manda
+    // solo la ficha. Antes, el que ya estaba activo no recibía ningún correo
+    // —había pedido la ficha y no le llegaba— y al que volvía se le
+    // reiniciaban los diez correos con la promesa de un regalo que su fecha
+    // de alta ya no le daba.
     let m0Enviado = false;
     let m0Error: string | null = alta.error ?? null;
     if (alta.contacto) {
       const envio = await enviarMailSecuencia(alta.contacto);
       m0Enviado = envio.enviado;
       if (!envio.enviado) m0Error = `M0 no enviado: ${envio.motivo}`;
-    } else if (alta.estado === "existente") {
-      m0Error = "omitido: ya estaba en la lista, no se le reinicia la secuencia";
+    } else if (alta.contactoId && (alta.estado === "existente" || alta.estado === "reactivado")) {
+      const envio = await enviarMailSuelto(
+        {
+          id: alta.contactoId,
+          email: emailLower,
+          nombre: nombreTrim,
+          idioma: "es",
+          fecha_alta: alta.fecha_alta,
+          token,
+        },
+        POSICION_MAIL_FICHA,
+        "espalda-ficha-suelta"
+      );
+      m0Enviado = envio.enviado;
+      m0Error = envio.enviado
+        ? `ficha suelta enviada (${alta.estado}): no se le reinicia la secuencia`
+        : `ficha suelta no enviada (${alta.estado}): ${envio.motivo}`;
     }
 
     await supabase
