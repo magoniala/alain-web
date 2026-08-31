@@ -85,6 +85,12 @@ export interface AltaSecuenciaInput {
 export interface AltaSecuenciaResultado {
   estado: "nuevo" | "reactivado" | "existente" | "error";
   contactoId: string | null;
+  // Token de ventana de este contacto, exista ya o se acabe de crear. Lo
+  // devolvemos siempre (también cuando `contacto` va a null por estar ya en
+  // la lista) para que quien llame pueda montar su enlace a la Hoja de Ruta
+  // sin volver a consultar la tabla. Quién ve la versión gratuita lo sigue
+  // decidiendo la landing a partir de la fecha de alta, no esto.
+  token: string | null;
   // Solo viene relleno cuando procede disparar el M0 (alta nueva o
   // reactivación con la casilla marcada). Si ya estaba en la lista, va null:
   // no se le reinicia la secuencia por rellenar otro formulario.
@@ -122,6 +128,7 @@ export async function altaEnSecuencia({
     telefono: string | null;
     edad: number | null;
     unsubscribed: boolean;
+    token: string | null;
   }): Promise<AltaSecuenciaResultado> => {
     const tagsFusionadas = Array.from(
       new Set([...(fila.tags ?? []).map((t) => t.toLowerCase()), ...tagsNuevas])
@@ -154,9 +161,9 @@ export async function altaEnSecuencia({
         .single();
       if (error) {
         console.error("altaEnSecuencia: error reactivando", emailLower, error);
-        return { estado: "error", contactoId: fila.id, contacto: null, error: error.message };
+        return { estado: "error", contactoId: fila.id, contacto: null, token: fila.token, error: error.message };
       }
-      return { estado: "reactivado", contactoId: fila.id, contacto: data };
+      return { estado: "reactivado", contactoId: fila.id, contacto: data, token: data.token };
     }
 
     // Ya estaba en la lista: no le tocamos recibe_secuencia ni la posición.
@@ -165,9 +172,9 @@ export async function altaEnSecuencia({
     const { error } = await supabase.from("newsletter_contactos").update(completar).eq("id", fila.id);
     if (error) {
       console.error("altaEnSecuencia: error fusionando datos", emailLower, error);
-      return { estado: "error", contactoId: fila.id, contacto: null, error: error.message };
+      return { estado: "error", contactoId: fila.id, contacto: null, token: fila.token, error: error.message };
     }
-    return { estado: "existente", contactoId: fila.id, contacto: null };
+    return { estado: "existente", contactoId: fila.id, contacto: null, token: fila.token };
   };
 
   const { data: existente } = await seleccionar();
@@ -199,10 +206,10 @@ export async function altaEnSecuencia({
       if (carrera) return fusionar(carrera);
     }
     console.error("altaEnSecuencia: error insertando", emailLower, error);
-    return { estado: "error", contactoId: null, contacto: null, error: error.message };
+    return { estado: "error", contactoId: null, contacto: null, token: null, error: error.message };
   }
 
-  return { estado: "nuevo", contactoId: creado.id, contacto: recibeSecuencia ? creado : null };
+  return { estado: "nuevo", contactoId: creado.id, contacto: recibeSecuencia ? creado : null, token: creado.token };
 }
 
 export const CANDADO_STALE_MS = 5 * 60 * 1000; // 5 min: si un intento se quedó a medias (crash), se puede reclamar de nuevo

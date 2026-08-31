@@ -31,6 +31,12 @@ function escapar(texto: string) {
     .replace(/\n/g, "<br>");
 }
 
+// Token de ventana del lead, para que la página de gracias pueda enlazarle a
+// SU versión de la Hoja de Ruta. Se rellena dentro del try de más abajo.
+//
+// Esto no rompe la regla dura del formulario: lo que nunca viaja por la URL
+// son las RESPUESTAS. Un token es un identificador opaco, el mismo que ya
+// llevan los enlaces de los correos, y no dice nada de nadie.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const { respuestas, nombre, email, telefono, edad, genero, consentDatos, consentWhatsapp, eventId } = body;
@@ -108,6 +114,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: ERROR_GENERICO }, { status: 500 });
   }
 
+  let token: string | null = null;
+
   // A partir de aquí las respuestas YA están guardadas, así que nada de lo
   // que venga puede convertirse en un error para el lead: si le devolviéramos
   // un fallo, volvería a rellenar el formulario entero y se duplicaría a sí
@@ -125,6 +133,7 @@ export async function POST(req: Request) {
       telefono: telefonoTrim,
       recibeSecuencia: true,
     });
+    token = alta.token;
 
     // Intento inmediato del M0. Si falla (Mailjet caído, etc.) no revertimos
     // nada: el cron de /api/newsletter/cron recoge en su próxima pasada a
@@ -192,7 +201,7 @@ export async function POST(req: Request) {
       .eq("id", lead.id);
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, t: token });
 }
 
 // Aviso interno. Las respuestas van en el cuerpo del email, nunca en el

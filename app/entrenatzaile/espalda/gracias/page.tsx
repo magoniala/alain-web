@@ -18,7 +18,11 @@ const cuerpoClase = "whitespace-pre-line text-[1.15rem] leading-[1.8] text-[#0F2
 const botonClase =
   "inline-block scale-100 px-10 py-4 text-[0.98rem] tracking-[0.08em] shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg";
 
-export default function GraciasPage() {
+type Busqueda = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default async function GraciasPage({ searchParams }: { searchParams: Busqueda }) {
+  const { t } = await searchParams;
+  const token = Array.isArray(t) ? t[0] : t;
   return (
     <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
       <Header current="es" showLangSwitch={false} />
@@ -64,10 +68,17 @@ export default function GraciasPage() {
 
           <PreviewHojaDeRuta className="mt-12" />
 
-          {/* Acaba de entrar, así que está dentro de su ventana de 8 días:
-              va a la versión "ventana" de la Hoja de Ruta. */}
+          {/* Acaba de entrar, así que está dentro de su ventana de 8 días y
+              le corresponde la versión gratuita. Pero eso no se afirma desde
+              aquí: se le pasa su token y lo decide la propia Hoja de Ruta a
+              partir de su fecha de alta, igual que con los enlaces de los
+              correos. Así, quien rellena el formulario estando ya en la lista
+              desde hace meses ve la de pago, que es la que le toca.
+
+              Sin token (por ejemplo, si alguien llega a esta URL a pelo) el
+              enlace va limpio: versión de pago. */}
           <CtaHojaDeRuta
-            href="/hoja-de-ruta?ventana=1"
+            href={token ? `/hoja-de-ruta?ventana=1&t=${encodeURIComponent(token)}` : "/hoja-de-ruta"}
             className={`${botonClase} mt-10 bg-[#1C3A5E] text-[#FAF3E8] hover:bg-[#0F2240]`}
           >
             {ESPALDA_GRACIAS.ctaBoton}

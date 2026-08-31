@@ -168,10 +168,14 @@ export default function EspaldaClient() {
       }
       eventoPixel("Lead", eventId);
 
-      // Sin parámetros en la URL de destino: nada de lo que ha escrito
-      // viaja hasta la página de gracias.
+      // De lo que ha escrito, nada viaja hasta la página de gracias: la regla
+      // dura se mantiene. Lo único que va es su token de ventana, un
+      // identificador opaco que no dice nada de nadie y que es lo que permite
+      // que el botón de gracias le lleve a SU versión de la Hoja de Ruta, con
+      // su fecha límite, en vez de a la de 90 €.
       const base = window.location.pathname.replace(/\/$/, "");
-      window.location.assign(`${base}/gracias`);
+      const destino = typeof data.t === "string" && data.t ? `${base}/gracias?t=${data.t}` : `${base}/gracias`;
+      window.location.assign(destino);
     } catch {
       setError(mensajeErrorFormulario(0));
     } finally {
