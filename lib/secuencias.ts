@@ -51,6 +51,11 @@ export const MARCADORES: Partial<Record<Secuencia, Array<{ clave: string; descri
   nurture: [
     { clave: "nombre", descripcion: "Nombre de pila del lead (vacío si no lo dio)" },
     { clave: "saludo", descripcion: '"Hola, Ane" o "Hola" a secas si no dio nombre' },
+    {
+      clave: "fin_ventana",
+      descripcion:
+        'El último día que ESA persona tiene la Hoja de Ruta gratis: "domingo 6 de septiembre". Para hablar de la ventana, usa este y no fecha_7: sale de su fecha de alta, así que dice lo mismo que la landing aunque el correo salga con retraso.',
+    },
     { clave: "fecha_7", descripcion: 'Hoy + 7 días: "domingo 6 de septiembre". Vale cualquier número de 0 a 30: fecha_3, fecha_14…' },
     { clave: "fecha_corta_7", descripcion: 'Lo mismo sin el día de la semana: "6 de septiembre"' },
   ],

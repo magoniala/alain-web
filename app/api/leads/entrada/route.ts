@@ -7,7 +7,13 @@ import {
   CAMPOS_CONTACTO,
 } from "@/lib/nurture";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
-import { cuerpoDelMail } from "@/lib/email-markdown";
+import {
+  cuerpoDelMail,
+  marcadoresDeFecha,
+  marcadoresDeNombre,
+  sustituirMarcadores,
+} from "@/lib/email-markdown";
+import { marcadoresDeVentana } from "@/lib/entrenatzaile-ventana";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -33,7 +39,14 @@ async function marcarResultadoToque(touchId: string | null, mailEnviado: boolean
 }
 
 async function enviarMailDuplicado(
-  contacto: { id: string; email: string; nombre: string | null; idioma: string | null; unsubscribed: boolean },
+  contacto: {
+    id: string;
+    email: string;
+    nombre: string | null;
+    idioma: string | null;
+    unsubscribed: boolean;
+    fecha_alta: string | null;
+  },
   touchId: string | null
 ) {
   if (contacto.unsubscribed) {
@@ -78,12 +91,25 @@ async function enviarMailDuplicado(
   }
 
   const isEu = contacto.idioma === "eu";
-  const html = wrapNurture(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader), contacto.email, isEu);
+  // Este correo usa {{saludo}} y antes no se sustituía: salía el marcador tal
+  // cual en la bandeja de quien lo recibía. Los enlaces NO se personalizan a
+  // propósito (la posición -2 está en POSICIONES_SIN_VENTANA): este mail dice
+  // expresamente que la Hoja de Ruta cuesta 90 €.
+  const valores = {
+    ...marcadoresDeNombre(contacto.nombre),
+    ...marcadoresDeFecha(),
+    ...marcadoresDeVentana(contacto.fecha_alta),
+  };
+  const html = wrapNurture(
+    cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores),
+    contacto.email,
+    isEu
+  );
 
   try {
     await sendEmail(
       contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
-      mail.asunto ?? "",
+      sustituirMarcadores(mail.asunto ?? "", valores),
       html,
       resolveNewsletterFrom(mail.remitente),
       undefined,
@@ -137,7 +163,7 @@ export async function POST(req: Request) {
 
   const { data: existente } = await supabase
     .from("newsletter_contactos")
-    .select("id, email, nombre, idioma, unsubscribed, mail_duplicado_ads_enviado")
+    .select("id, email, nombre, idioma, unsubscribed, mail_duplicado_ads_enviado, fecha_alta")
     .eq("email", emailLower)
     .maybeSingle();
 

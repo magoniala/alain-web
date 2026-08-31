@@ -8,9 +8,18 @@ import {
   CAMPOS_CONTACTO as CAMPOS_CONTACTO_NURTURE,
   type NurtureContacto,
 } from "@/lib/nurture";
-import { calcularVentana, personalizarEnlacesHojaDeRuta } from "@/lib/entrenatzaile-ventana";
+import {
+  calcularVentana,
+  marcadoresDeVentana,
+  personalizarEnlacesHojaDeRuta,
+} from "@/lib/entrenatzaile-ventana";
 import { MAIL_ABANDONO_ASUNTO, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
-import { cuerpoDelMail } from "@/lib/email-markdown";
+import {
+  cuerpoDelMail,
+  marcadoresDeFecha,
+  marcadoresDeNombre,
+  sustituirMarcadores,
+} from "@/lib/email-markdown";
 import { processText } from "@/lib/newsletter-texto";
 import { NextResponse } from "next/server";
 
@@ -164,10 +173,19 @@ async function procesarRecordatorioValoracion(): Promise<number> {
     if (!claimed?.length) continue;
 
     const isEu = contacto.idioma === "eu";
+    // Los marcadores también aquí: este envío tiene su propio camino y antes
+    // no los sustituía. Hoy el recordatorio no usa ninguno, pero se edita
+    // desde el panel como cualquier otro y escribir un {{nombre}} no puede
+    // acabar mandándolo tal cual.
+    const valores = {
+      ...marcadoresDeNombre(contacto.nombre),
+      ...marcadoresDeFecha(),
+      ...marcadoresDeVentana(contacto.fecha_alta),
+    };
     // -1 no está en POSICIONES_SIN_VENTANA: el recordatorio es justo el
     // correo que más falta hace que lleve a la versión gratuita.
     const html = wrapNurture(
-      enlacesDeVentana(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader), contacto, -1),
+      enlacesDeVentana(cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores), contacto, -1),
       contacto.email,
       isEu
     );
@@ -175,7 +193,7 @@ async function procesarRecordatorioValoracion(): Promise<number> {
     try {
       await sendEmail(
         contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
-        mail.asunto ?? "",
+        sustituirMarcadores(mail.asunto ?? "", valores),
         html,
         resolveNewsletterFrom(mail.remitente),
         undefined,

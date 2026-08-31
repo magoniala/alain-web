@@ -9,6 +9,7 @@ import {
 import {
   POSICIONES_SIN_VENTANA,
   calcularVentana,
+  marcadoresDeVentana,
   personalizarEnlacesHojaDeRuta,
 } from "@/lib/entrenatzaile-ventana";
 
@@ -279,7 +280,11 @@ export async function enviarMailSecuencia(
   // de esta fila y las fechas se cuentan desde hoy, así que un mismo mail de
   // la secuencia dice una fecha distinta según el día en que le toque a cada
   // uno. Valen tanto en el cuerpo como en el asunto.
-  const valores = { ...marcadoresDeNombre(contacto.nombre), ...marcadoresDeFecha() };
+  const valores = {
+    ...marcadoresDeNombre(contacto.nombre),
+    ...marcadoresDeFecha(),
+    ...marcadoresDeVentana(contacto.fecha_alta),
+  };
   const html = wrapNurture(
     enlacesDeVentana(
       cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores),

@@ -90,6 +90,26 @@ export function etiquetaFechaVentana(dia: string): string {
   return `${semana} ${resto}`;
 }
 
+/**
+ * Marcador {{fin_ventana}} para los correos: el último día en que esa
+ * persona la tiene gratis, escrito igual que en la landing.
+ *
+ * Existe para que el correo y la página no puedan decir cosas distintas. La
+ * alternativa —contar los días en el propio texto con {{fecha_7}}, {{fecha_6}}…—
+ * da la fecha correcta solo si la secuencia va exactamente al día: sale de
+ * "hoy + N", no de la fecha de alta de esa persona. En cuanto un envío se
+ * retrasa (Mailjet caído, un reintento del cron al día siguiente), el correo
+ * promete una fecha en la que la landing ya cobra.
+ *
+ * Si no se puede calcular, se devuelve vacío a propósito: sustituirMarcadores
+ * deja entonces el {{fin_ventana}} a la vista, que es preferible a que
+ * desaparezca en silencio y nadie note que faltaba la fecha.
+ */
+export function marcadoresDeVentana(fechaAlta: string | null | undefined): Record<string, string> {
+  const { ultimo_dia } = calcularVentana(fechaAlta);
+  return ultimo_dia ? { fin_ventana: etiquetaFechaVentana(ultimo_dia) } : {};
+}
+
 // ============================================================
 // Enlaces personalizados en los correos de la secuencia
 // ============================================================
