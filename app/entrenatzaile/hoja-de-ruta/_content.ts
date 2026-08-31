@@ -336,7 +336,7 @@ export const HOJA_RUTA_CIERRE = {
   precio: {
     ventana:
       "Vale 90 €. Si reservas en tus primeros 8 días conmigo, no lo pagas.\nAunque la llamada la hagamos el mes que viene.",
-    evergreen: "90 €.\nNo hay descuentos ni ofertas: cuesta lo mismo todo el año.",
+    evergreen: "90 €",
   } satisfies PorVariante<string>,
   formularioTitulo: "Elige tu hueco",
   telefonoPista: "Para confirmarte y mandarte el enlace de la llamada.",

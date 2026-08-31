@@ -153,7 +153,7 @@ const CIERRE: ContenidoHR["cierre"] = {
         "Una hora por videollamada.\nTu Hoja de Ruta por escrito en 24 o 48 horas.\nEl protocolo por si el dolor vuelve, si tu caso es de espalda.",
     },
   ],
-  precio: igualEnLasDos("90 €.\nNo hay descuentos ni ofertas: cuesta lo mismo todo el año."),
+  precio: igualEnLasDos("90 €"),
   formularioTitulo: "Elige tu hueco",
   telefonoPista: "Para confirmarte y mandarte el enlace de la llamada.",
   privacidad: "Política de privacidad",
