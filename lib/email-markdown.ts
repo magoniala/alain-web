@@ -271,5 +271,13 @@ export function marcadoresDeNombre(nombre: string | null | undefined): Record<st
 export const NOMBRE_DE_MUESTRA = "Ane";
 
 export function marcadoresDeMuestra(): Record<string, string> {
-  return { ...marcadoresDeNombre(NOMBRE_DE_MUESTRA), ...marcadoresDeFecha() };
+  const fechas = marcadoresDeFecha();
+  return {
+    ...marcadoresDeNombre(NOMBRE_DE_MUESTRA),
+    ...fechas,
+    // De muestra, la ventana de alguien que se apuntara hoy: su último día
+    // sería dentro de 7. Sin esto, previsualizar el M0 enseñaba un
+    // "{{fin_ventana}}" suelto justo en la frase del regalo.
+    fin_ventana: fechas.fecha_7,
+  };
 }

@@ -2,11 +2,25 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { cuerpoDelMail, marcadoresDeMuestra, sustituirMarcadores } from "@/lib/email-markdown";
-import { MARCADORES, SECUENCIAS, SECUENCIA_ETIQUETA, type Secuencia } from "@/lib/secuencias";
+import {
+  CONDICIONES_DE_MUESTRA,
+  MARCADORES,
+  SECUENCIAS,
+  SECUENCIA_ETIQUETA,
+  VALORES_DE_MUESTRA,
+  type Secuencia,
+} from "@/lib/secuencias";
 
 // En el envío real los marcadores los resuelve el servidor con los datos de
 // cada contacto; aquí, con los de muestra.
-const EJEMPLO_MARCADORES = marcadoresDeMuestra();
+const EJEMPLO_BASE = marcadoresDeMuestra();
+
+// Nombre y fechas de muestra, más los marcadores propios de la secuencia que
+// se esté editando. Antes solo iban los primeros, así que previsualizar un
+// correo de Comodín enseñaba un "{{tutorial}}" suelto en mitad de la frase.
+function ejemploDe(secuencia: Secuencia): Record<string, string> {
+  return { ...EJEMPLO_BASE, ...(VALORES_DE_MUESTRA[secuencia] ?? {}) };
+}
 
 interface NurtureContacto {
   id: string;
@@ -520,11 +534,22 @@ export default function NurtureTab() {
                 <p className="text-[0.7rem] uppercase tracking-wider text-gray-400 mb-2">Preview</p>
                 <div style={{ fontFamily: "Georgia, serif", color: "#1a1a1a", background: "#fff", padding: "1.5rem", border: "1px solid #eee", maxWidth: 580 }}>
                   <p style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", marginBottom: "0.75rem" }}>
-                    {sustituirMarcadores(draft.asunto?.trim() || "—", EJEMPLO_MARCADORES)}
+                    {sustituirMarcadores(draft.asunto?.trim() || "—", ejemploDe(secuencia))}
                   </p>
                   <div
                     style={{ fontSize: "0.95rem", lineHeight: 1.9 }}
-                    dangerouslySetInnerHTML={{ __html: cuerpoDelMail(draft.cuerpo_html, draft.formato, draft.preheader, EJEMPLO_MARCADORES) }}
+                    dangerouslySetInnerHTML={{
+                      __html: cuerpoDelMail(
+                        draft.cuerpo_html,
+                        draft.formato,
+                        draft.preheader,
+                        ejemploDe(secuencia),
+                        // Los bloques resueltos por su rama "sí": sin esto, la
+                        // vista previa enseñaba los {{#si_ventana}} como si
+                        // fueran párrafos del correo.
+                        CONDICIONES_DE_MUESTRA
+                      ),
+                    }}
                   />
                   <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
                     <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · contacto@alainzulaika.com</p>

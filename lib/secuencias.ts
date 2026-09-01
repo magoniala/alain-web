@@ -47,6 +47,55 @@ export const SECUENCIAS_BILINGUES: Secuencia[] = [
   "entrenatzaile_valoracion",
 ];
 
+// Valores de mentira para la previsualización y el "Enviar prueba".
+//
+// El nombre y las fechas los pone marcadoresDeMuestra(); aquí van los que son
+// propios de cada secuencia. Sin esto, previsualizar un correo de Comodín
+// enseñaba "{{tutorial}}" y la prueba llegaba al buzón con el marcador en
+// crudo, que es justo lo que la prueba tenía que servir para detectar.
+//
+// Las URLs son reconocibles a simple vista (/ejemplo/…) para que nadie las
+// confunda con las de verdad si le da por pinchar en la prueba.
+export const VALORES_DE_MUESTRA: Partial<Record<Secuencia, Record<string, string>>> = {
+  nurture: {},
+  hoja_ruta_abandono: {
+    hoja_ruta: "https://entrenatzaile.alainzulaika.com/hoja-de-ruta?ejemplo=1",
+  },
+  comodin: {
+    tutorial: "https://alainzulaika.com/ejemplo/tutorial",
+    cambiar_idioma: "https://alainzulaika.com/ejemplo/idioma",
+    contacto: "https://alainzulaika.com/ejemplo/contacto",
+    entrenamiento: "mailto:contacto@alainzulaika.com?subject=Entrenamiento",
+  },
+  // Los mismos cuatro que Comodín: las dos secuencias comparten marcadores.
+  mision: {
+    tutorial: "https://alainzulaika.com/ejemplo/tutorial",
+    cambiar_idioma: "https://alainzulaika.com/ejemplo/idioma",
+    contacto: "https://alainzulaika.com/ejemplo/contacto",
+    entrenamiento: "mailto:contacto@alainzulaika.com?subject=Entrenamiento",
+  },
+  comodin_show: { show: "https://alainzulaika.com/ejemplo/show" },
+  arrogante: { tiktok: "https://alainzulaika.com/ejemplo/tiktok" },
+  guias: {
+    guias: "la guía de la espalda y la de las rodillas",
+    sorpresa: "Y te meto una tercera de regalo, que no esperabas.",
+    extra_asunto: " (+1 de regalo)",
+  },
+  entrenatzaile_valoracion: {
+    cambiar_idioma: "https://alainzulaika.com/ejemplo/idioma",
+    contacto: "https://alainzulaika.com/ejemplo/contacto",
+  },
+};
+
+// Los bloques {{#si_...}} se previsualizan por su rama "sí": es la que tiene
+// contenido, y ver el correo sin ella no diría nada. La otra se comprueba
+// cambiando esto a mano, pero lo importante es que la prueba NO llegue con
+// los {{#si_ventana}} a la vista.
+export const CONDICIONES_DE_MUESTRA: Record<string, boolean> = {
+  si_ventana: true,
+  si_no_ventana: false,
+};
+
 // Marcadores que puede usar cada secuencia en el cuerpo. Se le enseñan a
 // Alain en el editor, para que sepa qué puede escribir sin adivinarlo.
 export const MARCADORES: Partial<Record<Secuencia, Array<{ clave: string; descripcion: string }>>> = {

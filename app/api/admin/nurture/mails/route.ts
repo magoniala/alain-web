@@ -9,7 +9,13 @@ import {
   marcadoresDeNombre,
   sustituirMarcadores,
 } from "@/lib/email-markdown";
-import { SECUENCIAS, SECUENCIAS_BILINGUES, type Secuencia } from "@/lib/secuencias";
+import {
+  CONDICIONES_DE_MUESTRA,
+  SECUENCIAS,
+  SECUENCIAS_BILINGUES,
+  VALORES_DE_MUESTRA,
+  type Secuencia,
+} from "@/lib/secuencias";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -126,6 +132,9 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const { asunto, cuerpo_html, remitente, idioma, formato, preheader } = body;
+  // Pasa por leerSecuencia() como en el resto: decide qué valores de muestra
+  // se usan, así que no puede ser lo que el navegador diga sin más.
+  const secuencia = leerSecuencia(body.secuencia);
   const destinatarios: string[] = Array.isArray(body.test_emails)
     ? body.test_emails.map((e: unknown) => String(e).trim()).filter(Boolean)
     : [];
@@ -153,14 +162,24 @@ export async function POST(req: Request) {
         .select("nombre")
         .eq("email", normalizarEmail(email))
         .maybeSingle();
-      const valores = contacto
-        ? { ...marcadoresDeNombre(contacto.nombre), ...fechas }
-        : marcadoresDeMuestra();
+      const valores = {
+        ...(contacto ? { ...marcadoresDeNombre(contacto.nombre), ...fechas, fin_ventana: fechas.fecha_7 } : marcadoresDeMuestra()),
+        // Los propios de esta secuencia ({{tutorial}}, {{hoja_ruta}}…). Sin
+        // ellos, la prueba llegaba al buzón con el marcador en crudo, que es
+        // justo lo que la prueba sirve para detectar.
+        ...(VALORES_DE_MUESTRA[secuencia as Secuencia] ?? {}),
+      };
 
       await sendEmail(
         email,
         `[PRUEBA] ${sustituirMarcadores(asunto, valores)}`,
-        wrapNurture(cuerpoDelMail(cuerpo_html, formato, preheader, valores), email, idioma === "eu"),
+        wrapNurture(
+          // Y los bloques condicionales resueltos, o el correo de prueba
+          // llegaría con los {{#si_ventana}} a la vista.
+          cuerpoDelMail(cuerpo_html, formato, preheader, valores, CONDICIONES_DE_MUESTRA),
+          email,
+          idioma === "eu"
+        ),
         from
       );
     }
