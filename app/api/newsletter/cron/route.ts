@@ -15,7 +15,8 @@ import {
   marcadoresDeVentana,
   personalizarEnlacesHojaDeRuta,
 } from "@/lib/entrenatzaile-ventana";
-import { MAIL_ABANDONO_ASUNTO, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
+import { MAIL_ABANDONO_ASUNTO, enlaceHojaDeRuta, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
+import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import {
   cuerpoDelMail,
   marcadoresDeFecha,
@@ -453,21 +454,42 @@ async function procesarReservasAbandonadas(): Promise<number> {
     }
     if (!claimed?.length) continue; // otra pasada lo tiene cogido
 
-    // La línea "sigues dentro de tus ocho días" y el enlace con token van
-    // juntos: los dos salen de la ventana real de esta persona, no de la
-    // versión de la landing que llegó a ver.
+    // Lo que promete el texto y a dónde lleva el enlace salen los dos de la
+    // ventana REAL de esta persona, no de la versión de la landing que llegó
+    // a ver: así no pueden contradecirse.
     const contacto = porEmail.get(reserva.email);
     const enVentana = calcularVentana(contacto?.fecha_alta ?? null).elegibilidad === "elegible";
-    let html = mailAbandonoCuerpo(reserva.nombre, enVentana ? "ventana" : "evergreen");
-    if (enVentana && contacto?.token) html = personalizarEnlacesHojaDeRuta(html, contacto.token);
-    html = wrapNurture(html, reserva.email, false);
+
+    // Contenido desde el panel; si no hay fila activa, la versión en código,
+    // igual que en comodin y mision. La reserva existe para que quitar o
+    // vaciar la fila por accidente no deje a nadie sin este correo.
+    const marcadores = {
+      ...marcadoresDeNombre(reserva.nombre),
+      ...marcadoresDeVentana(contacto?.fecha_alta ?? null),
+      ...marcadoresDeFecha(),
+      hoja_ruta: enlaceHojaDeRuta(enVentana ? contacto?.token ?? null : null),
+    };
+    const delPanel = await cargarMailSecuencia(
+      "hoja_ruta_abandono",
+      1,
+      "es",
+      marcadores,
+      { si_ventana: enVentana, si_no_ventana: !enVentana }
+    );
+
+    let cuerpo = delPanel
+      ? delPanel.cuerpo
+      : mailAbandonoCuerpo(reserva.nombre, enVentana ? "ventana" : "evergreen");
+    // Por si el texto trae un enlace escrito a mano en vez del {{hoja_ruta}}.
+    if (enVentana && contacto?.token) cuerpo = personalizarEnlacesHojaDeRuta(cuerpo, contacto.token);
+    const html = wrapNurture(cuerpo, reserva.email, false);
 
     try {
       await sendEmail(
         reserva.nombre ? `${reserva.nombre} <${reserva.email}>` : reserva.email,
-        MAIL_ABANDONO_ASUNTO,
+        delPanel?.asunto || MAIL_ABANDONO_ASUNTO,
         html,
-        resolveNewsletterFrom("entrenatzaile@alainzulaika.com")
+        resolveNewsletterFrom(delPanel?.remitente ?? "entrenatzaile@alainzulaika.com")
       );
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : String(err);

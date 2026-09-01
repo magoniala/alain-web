@@ -19,6 +19,7 @@ export const SECUENCIAS = [
   "comodin_show",
   "guias",
   "entrenatzaile_valoracion",
+  "hoja_ruta_abandono",
 ] as const;
 export type Secuencia = (typeof SECUENCIAS)[number];
 
@@ -33,6 +34,7 @@ export const SECUENCIA_ETIQUETA: Record<Secuencia, string> = {
   comodin_show: "Comodín · enlace al show",
   guias: "Guías gratuitas",
   entrenatzaile_valoracion: "Entrenatzaile · valoración",
+  hoja_ruta_abandono: "Hoja de Ruta · reserva a medias",
 };
 
 /** Secuencias con contenido en los dos idiomas. Nurture solo va en castellano. */
@@ -91,5 +93,24 @@ export const MARCADORES: Partial<Record<Secuencia, Array<{ clave: string; descri
     { clave: "nombre", descripcion: "Nombre de quien reserva" },
     { clave: "cambiar_idioma", descripcion: "Enlace para recibirlos en el otro idioma" },
     { clave: "contacto", descripcion: "Página de contacto" },
+  ],
+  hoja_ruta_abandono: [
+    { clave: "saludo", descripcion: '"Hola, Ane" o "Hola" a secas si no dio nombre' },
+    { clave: "nombre", descripcion: "Nombre de pila (vacío si no lo dio)" },
+    {
+      clave: "#si_ventana}} … {{/si_ventana",
+      descripcion:
+        "Lo que pongas entre esas dos marcas SOLO lo lee quien aún tiene la Hoja de Ruta gratis. A quien ya se le pasó, desaparece. Existe también {{#si_no_ventana}} … {{/si_no_ventana}} para lo contrario.",
+    },
+    {
+      clave: "fin_ventana",
+      descripcion:
+        'El último día que ESA persona la tiene gratis: "domingo 6 de septiembre". Solo tiene sentido dentro de un bloque {{#si_ventana}}.',
+    },
+    {
+      clave: "hoja_ruta",
+      descripcion:
+        "Enlace para terminar la reserva. Lleva su token si sigue en ventana, y va a la versión de pago si no: no hace falta que decidas tú a cuál mandarle.",
+    },
   ],
 };

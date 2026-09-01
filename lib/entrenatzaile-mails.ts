@@ -23,6 +23,25 @@ export function enlaceWhatsapp(telefono: string): string | null {
 
 export const MAIL_ABANDONO_ASUNTO = "Te quedaste a medias con tu Hoja de Ruta";
 
+/**
+ * Valor del marcador {{hoja_ruta}}: el enlace para terminar la reserva.
+ *
+ * Con token, lleva a la versión gratuita de esa persona; sin él, a la de
+ * pago. Se le pasa ya resuelto para que quien escribe el correo en el panel
+ * no tenga que decidir a cuál mandar a cada uno: pone {{hoja_ruta}} y ya.
+ */
+export function enlaceHojaDeRuta(token: string | null): string {
+  const url = new URL(`${BASE_ENTRENATZAILE}/hoja-de-ruta`);
+  url.searchParams.set("utm_source", "abandono");
+  url.searchParams.set("utm_medium", "email");
+  url.searchParams.set("utm_campaign", "espalda_t02");
+  if (token) {
+    url.searchParams.set("ventana", "1");
+    url.searchParams.set("t", token);
+  }
+  return url.toString();
+}
+
 // ---------------------------------------------------------------------------
 // Confirmación al lead en cuanto reserva su hueco. La landing le promete que
 // Alain le escribe por WhatsApp, pero conviene que le quede también por

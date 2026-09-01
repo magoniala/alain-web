@@ -28,6 +28,13 @@ function escaparHtml(texto: string) {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Destino admitido en un enlace: una URL escrita a pelo, o un {{marcador}}
+// que la traiga puesta al enviar. Lo segundo hace falta para los enlaces que
+// cambian según quién los recibe —como {{hoja_ruta}}, que lleva el token de
+// esa persona—. Sin admitirlo, "[texto]({{marcador}})" no se reconocía como
+// enlace y salía en el correo tal cual, con los corchetes a la vista.
+const DESTINO = String.raw`(?:https?:\/\/|mailto:)[^)]+|\{\{\w+\}\}`;
+
 // Formato dentro de una línea. Se escapa primero y se aplican los marcadores
 // después, para que nadie pueda colar etiquetas escribiendo en el panel.
 export function formatoEnLinea(texto: string): string {
@@ -35,12 +42,12 @@ export function formatoEnLinea(texto: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;">$1</strong>')
     .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
     .replace(
-      /\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)]+)\)/g,
+      new RegExp(String.raw`\[([^\]]+)\]\((${DESTINO})\)`, "g"),
       `<a href="$2" style="color:${COLOR_ENLACE};">$1</a>`
     );
 }
 
-const RE_BOTON = /^\[\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)]+)\)\]$/;
+const RE_BOTON = new RegExp(String.raw`^\[\[([^\]]+)\]\((${DESTINO})\)\]$`);
 
 function boton(etiqueta: string, url: string, ultimoDelBloque: boolean) {
   const margen = ultimoDelBloque ? MARGEN_PARRAFO : MARGEN_FRASE;

@@ -22,7 +22,10 @@ export async function cargarMailSecuencia(
   secuencia: Secuencia,
   posicion: number,
   idioma: string = "es",
-  valores?: Record<string, string>
+  valores?: Record<string, string>,
+  // Bloques {{#si_algo}} … {{/si_algo}} que solo salen si se cumplen. Ver
+  // resolverBloques() en lib/email-markdown.
+  condiciones?: Record<string, boolean>
 ): Promise<MailSecuencia | null> {
   const buscar = async (lang: string) =>
     supabase
@@ -42,7 +45,7 @@ export async function cargarMailSecuencia(
     // Los marcadores también valen en el asunto: hay correos cuyo asunto
     // cambia según el caso (por ejemplo, si hay guía sorpresa o no).
     asunto: valores ? sustituirMarcadores(data.asunto ?? "", valores) : (data.asunto ?? ""),
-    cuerpo: cuerpoDelMail(data.cuerpo_html, data.formato, data.preheader, valores),
+    cuerpo: cuerpoDelMail(data.cuerpo_html, data.formato, data.preheader, valores, condiciones),
     remitente: data.remitente,
   };
 }
