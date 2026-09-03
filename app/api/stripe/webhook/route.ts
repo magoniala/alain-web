@@ -30,15 +30,57 @@ export async function POST(req: Request) {
   // clave y la verificación fallaría siempre.
   const cuerpo = await req.text();
   const firma = req.headers.get("stripe-signature");
+  const secreto = process.env.STRIPE_WEBHOOK_SECRET;
+
+  // El cliente se pide FUERA del try de la firma. Antes estaba dentro, y eso
+  // hacía que cualquier fallo al construirlo —una STRIPE_SECRET_KEY ausente,
+  // el guardia de clave de live fuera de producción— se informara como "firma
+  // inválida", que es una pista falsa cara de seguir.
+  let stripe: Stripe;
+  try {
+    stripe = getStripe();
+  } catch (err) {
+    console.error("stripe webhook: no se pudo crear el cliente de Stripe:", err);
+    return NextResponse.json({ error: "Configuración de Stripe incompleta" }, { status: 500 });
+  }
 
   let evento: Stripe.Event;
   try {
-    evento = getStripe().webhooks.constructEvent(cuerpo, firma!, process.env.STRIPE_WEBHOOK_SECRET!);
+    if (!firma) throw new Error("la petición no trae cabecera stripe-signature");
+    if (!secreto) throw new Error("STRIPE_WEBHOOK_SECRET no está definida en este entorno");
+    evento = stripe.webhooks.constructEvent(cuerpo, firma, secreto);
   } catch (err) {
     // 400 y punto: sin firma válida esto no es Stripe, y Stripe no reintenta
     // los 400. Un 500 aquí haría que se reintentara para siempre algo que
     // nunca va a verificar.
-    console.error("stripe webhook: firma inválida:", err);
+    //
+    // El detalle se escribe entero porque el mensaje de la propia librería es
+    // lo que distingue las tres causas posibles, y son muy distintas:
+    //
+    //   "No signatures found matching the expected signature for payload"
+    //        -> el secreto no es el de ESTE destino, o el cuerpo llegó alterado
+    //   "Unable to extract timestamp and signatures from header"
+    //        -> la cabecera no es la que manda Stripe
+    //   "Timestamp outside the tolerance zone"
+    //        -> el reloj del servidor está desviado más de 5 minutos
+    //
+    // La huella del secreto es para poder compararla con la que enseña el
+    // panel de Stripe sin tener que revelarla entera.
+    const huella = secreto
+      ? `${secreto.slice(0, 10)}…${secreto.slice(-4)} (${secreto.length} car.)`
+      : "AUSENTE";
+    console.error(
+      "stripe webhook: RECHAZADO · " +
+        [
+          `motivo=${err instanceof Error ? err.message : String(err)}`,
+          `bytes=${Buffer.byteLength(cuerpo, "utf8")}`,
+          `firma=${firma ? firma.slice(0, 28) + "…" : "AUSENTE"}`,
+          `secreto=${huella}`,
+          `host=${req.headers.get("host") ?? "?"}`,
+          `ct=${req.headers.get("content-type") ?? "?"}`,
+          `enc=${req.headers.get("content-encoding") ?? "ninguno"}`,
+        ].join(" · ")
+    );
     return NextResponse.json({ error: "Firma inválida" }, { status: 400 });
   }
 
