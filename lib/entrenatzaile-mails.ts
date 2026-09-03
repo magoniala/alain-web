@@ -1,5 +1,8 @@
 // Piezas de correo de las landings de Tirada 02.
 
+import { ESTILO_ENLACE } from "@/lib/newsletter-texto";
+import { stripeEsLive } from "@/lib/stripe";
+
 const BASE_ENTRENATZAILE = "https://entrenatzaile.alainzulaika.com";
 
 // Convierte el teléfono tal y como lo escribe el lead en un enlace de
@@ -47,33 +50,63 @@ export function enlaceHojaDeRuta(token: string | null): string {
 // Alain le escribe por WhatsApp, pero conviene que le quede también por
 // escrito el día y la hora, que es lo que se olvida.
 //
-// Cambia según la versión que vio: en la ventana de bienvenida la llamada es
-// gratis y el hueco queda cogido sin más, mientras que en la evergreen hay
-// que pagarla, así que el hueco solo queda APARTADO hasta que llegue el pago.
+// Cambia según SE LE COBRE O NO, y esa distinción no es la misma que la
+// variante de la landing que vio. Normalmente coinciden, pero no siempre:
+// quien abre el correo el último día de su ventana, deja la página abierta y
+// reserva pasada la medianoche vio la versión gratuita y sin embargo paga.
+// Si este correo mirase `variante`, a esa persona le llegaría un "tu hueco
+// está cogido" sin enlace de pago justo después de haber pagado en Stripe.
 // ---------------------------------------------------------------------------
 
+// Payment Link de LIVE. Es el respaldo de cuando no se ha podido crear la
+// sesión de Checkout (una clave mal puesta, un price_ que no existe, un fallo
+// de la API). Solo se usa si estamos apuntando a Stripe de verdad: en modo
+// de pruebas, mandar esto sería pedirle a alguien 90 € reales por un pago que
+// estábamos ensayando.
 const PAGO_VALORACION_URL = "https://buy.stripe.com/7sY9AS9iBad8g3ef6F7bW00";
 
-export function mailReservaAsunto(variante: string | null): string {
-  return variante === "ventana"
-    ? "Tu Hoja de Ruta: hueco reservado (falta un paso)"
-    : "Tu Hoja de Ruta: hueco apartado (falta un paso)";
+function enlacePagoRespaldo(): string | null {
+  return stripeEsLive() ? PAGO_VALORACION_URL : null;
 }
 
-export function mailReservaCuerpo(nombre: string | null, cuando: string, variante: string | null): string {
+export function mailReservaAsunto(cobra: boolean): string {
+  return cobra
+    ? "Tu Hoja de Ruta: hueco apartado (falta un paso)"
+    : "Tu Hoja de Ruta: hueco reservado (falta un paso)";
+}
+
+/**
+ * @param pagoUrl Sesión de Checkout de esta persona. Null si no se ha podido
+ *                crear: entonces se cae al Payment Link, y si tampoco lo hay
+ *                (modo de pruebas) el correo dice que le escribe Alain, que
+ *                es verdad — el aviso interno lleva el error.
+ */
+export function mailReservaCuerpo(
+  nombre: string | null,
+  cuando: string,
+  cobra: boolean,
+  pagoUrl: string | null
+): string {
   const p = "margin:0 0 1.6rem 0;";
   const saludo = nombre ? `Hola, ${nombre.split(" ")[0]}.` : "Hola.";
   const videollamada = `<p style="${p}">Es una videollamada de una hora. No necesitas gimnasio, ni material, ni estar en forma: solo un sitio donde puedas moverte un poco delante de la cámara.</p>`;
 
-  if (variante !== "ventana") {
+  if (cobra) {
+    const enlace = pagoUrl ?? enlacePagoRespaldo();
+    const comoPagar = enlace
+      ? `
+    <p style="${p}">Para dejarlo confirmado, solo queda reservar la plaza con el pago (90€):</p>
+    <p style="${p}"><a href="${enlace}" style="color:#2a9d8f;">Pagar la valoración y confirmar mi hueco</a></p>
+    <p style="${p}">Te guardo el hueco 24 horas.<br>Si en ese plazo no está el pago, lo libero para dejarlo disponible en el calendario.</p>`
+      : `
+    <p style="${p}">Para dejarlo confirmado queda el pago de la plaza (90€). Te escribo yo con el enlace en cuanto lea este correo.</p>
+    <p style="${p}">Te guardo el hueco mientras tanto.</p>`;
+
     return `
     <p style="${p}">${saludo}</p>
     <p style="${p}">Te he apartado este hueco:</p>
     <p style="${p}"><strong>${cuando}</strong></p>
-    ${videollamada}
-    <p style="${p}">Para dejarlo confirmado, solo queda reservar la plaza con el pago (90€):</p>
-    <p style="${p}"><a href="${PAGO_VALORACION_URL}" style="color:#2a9d8f;">Pagar la valoración y confirmar mi hueco</a></p>
-    <p style="${p}">Te guardo el hueco 24 horas.<br>Si en ese plazo no está el pago, lo libero para dejarlo disponible en el calendario.</p>
+    ${videollamada}${comoPagar}
     <p style="${p}">En cuanto lo tenga, te confirmo por WhatsApp y te paso el enlace de la videollamada.</p>
     <p style="${p}">Si te surge cualquier duda o no puedes con esa fecha, respóndeme a este correo y lo vemos sin problema.</p>
     <p style="margin:0;">Alain</p>
@@ -87,6 +120,53 @@ export function mailReservaCuerpo(nombre: string | null, cuando: string, variant
     ${videollamada}
     <p style="${p}">Te escribo por WhatsApp para confirmarte y mandarte el enlace.</p>
     <p style="${p}">Si te surge algo y no puedes, respóndeme a este correo y lo cambiamos sin problema.</p>
+    <p style="margin:0;">Alain</p>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// El hueco apartado ha vencido sin pago y se ha liberado.
+//
+// Sale del cron (procesarHuecosCaducados en /api/newsletter/cron), una sola
+// vez por reserva, con su marca en base de datos igual que el resto.
+//
+// Es el correo que cierra la promesa que hizo el de la reserva ("te guardo el
+// hueco 24 horas; si no está el pago, lo libero"). Sin él, esa frase se
+// cumple en la base de datos y no se cumple de cara a la persona, que se
+// queda pensando que tiene una llamada el jueves.
+//
+// Sin reproche y sin recuperación agresiva a propósito: no pagó, y lo único
+// que hay que decirle es qué ha pasado y que la puerta sigue abierta.
+// ---------------------------------------------------------------------------
+
+export const MAIL_LIBERADO_ASUNTO = "He liberado tu hueco";
+
+export function mailLiberadoCuerpo(nombre: string | null, variante: string | null): string {
+  const p = "margin:0 0 1.6rem 0;";
+  const saludo = nombre ? `Hola, ${nombre.split(" ")[0]}.` : "Hola.";
+
+  // A la landing de la que salió. Quien vino por /capacidades vuelve a
+  // /capacidades: es la misma Hoja de Ruta contada de otra forma, y devolverlo
+  // a la otra le cambiaría el texto por el que se interesó.
+  //
+  // Enlace limpio, sin token: esta persona estaba pagando, así que le toca la
+  // versión de pago. Y este correo NO pasa por personalizarEnlacesHojaDeRuta,
+  // de modo que tampoco se le puede añadir uno por detrás.
+  const url = new URL(
+    variante === "capacidades"
+      ? `${BASE_ENTRENATZAILE}/hoja-de-ruta/capacidades`
+      : `${BASE_ENTRENATZAILE}/hoja-de-ruta`
+  );
+  url.searchParams.set("utm_source", "hueco_liberado");
+  url.searchParams.set("utm_medium", "email");
+  url.searchParams.set("utm_campaign", "espalda_t02");
+
+  return `
+    <p style="${p}">${saludo}</p>
+    <p style="${p}">He liberado el hueco que tenías apartado.</p>
+    <p style="${p}">Pasaron las 24 horas y no me llegó el pago, así que lo he puesto otra vez disponible para otra persona.</p>
+    <p style="${p}">Si sigues interesado, puedes elegir uno nuevo aquí: <a href="${url.toString()}" style="${ESTILO_ENLACE}">elegir un hueco nuevo</a></p>
+    <p style="${p}">Y si te ha surgido alguna duda antes de decidir, respóndeme a este correo y te la resuelvo.</p>
     <p style="margin:0;">Alain</p>
   `;
 }

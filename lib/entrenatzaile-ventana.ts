@@ -43,7 +43,11 @@ function diasEntre(desde: string, hasta: string): number {
 }
 
 /**
- * Estado de la ventana de un contacto a partir de su fecha de alta.
+ * Cuenta los días de la ventana a partir de la fecha de alta. Nada más.
+ *
+ * OJO: esto NO decide quién tiene derecho a la gratuita. Para eso está
+ * ventanaDeContacto(), que además exige haber estado en la secuencia. Aquí se
+ * cuentan días; allí se conceden permisos. Ver el comentario de esa función.
  *
  * Se cuenta por DÍAS NATURALES de Madrid, no por bloques de 24 horas desde
  * la hora exacta del alta. Es la única forma de que la promesa que se le
@@ -72,6 +76,44 @@ export function calcularVentana(fechaAlta: string | null | undefined, ahora: Dat
     ventana_dia: dentro ? dias + 1 : null,
     ultimo_dia: sumarDias(diaAlta, VENTANA_DIAS - 1),
   };
+}
+
+/**
+ * La ventana de UN CONTACTO. Es lo que hay que preguntar para decidir si a
+ * alguien le corresponde la Hoja de Ruta gratis.
+ *
+ * Además de los 8 días, exige `recibe_secuencia = true`, y esa segunda
+ * condición no es cosmética: tapa un agujero real.
+ *
+ * De todas las puertas de entrada a newsletter_contactos, la ÚNICA que crea
+ * contactos con recibe_secuencia=false es el propio formulario de reserva de
+ * la Hoja de Ruta (/api/entrenatzaile/hoja-de-ruta). O sea: quien tiene ese
+ * campo a false vino a pagar y nunca recibió la secuencia, así que nadie le
+ * prometió nada gratis. Pero su fecha_alta es la del día que rellenó el
+ * formulario, de modo que solo con contar días salía "elegible" durante ocho.
+ *
+ * Y había un camino que le ponía el token en las manos: si abandonaba antes
+ * de elegir hueco, el correo de rescate le llegaba una hora después con el
+ * enlace de la versión gratuita. Empezar, abandonar y esperar una hora era
+ * un procedimiento para no pagar los 90 €.
+ *
+ * Sale como "fuera_ventana", que es literalmente lo que dice su etiqueta en
+ * el aviso interno: NO GRATIS (fuera de secuencia). No como "no_en_lista",
+ * porque en la lista sí está.
+ */
+export function ventanaDeContacto(
+  contacto: { fecha_alta?: string | null; recibe_secuencia?: boolean | null } | null | undefined,
+  ahora: Date = new Date()
+): Ventana {
+  if (!contacto) return FUERA_DE_LISTA;
+
+  const ventana = calcularVentana(contacto.fecha_alta, ahora);
+  if (contacto.recibe_secuencia !== false || ventana.elegibilidad === "no_en_lista") return ventana;
+
+  // Se conservan dias_desde_alta y ultimo_dia (son hechos sobre su fecha de
+  // alta, y el aviso interno los imprime), pero ventana_dia se anula: ese
+  // campo significa "va por el día N de SU ventana", y esta persona no tiene.
+  return { ...ventana, elegibilidad: "fuera_ventana", ventana_dia: null };
 }
 
 /**
@@ -196,9 +238,9 @@ export async function contactoDeToken(token: string | null | undefined): Promise
 
   const { data, error } = await supabase()
     .from("newsletter_contactos")
-    .select("id, email, fecha_alta")
+    .select("id, email, fecha_alta, recibe_secuencia")
     .eq("token", token)
-    .maybeSingle<{ id: string; email: string; fecha_alta: string | null }>();
+    .maybeSingle<{ id: string; email: string; fecha_alta: string | null; recibe_secuencia: boolean | null }>();
 
   if (error) {
     console.error("hoja-de-ruta: error resolviendo el token de ventana:", error);
@@ -206,5 +248,5 @@ export async function contactoDeToken(token: string | null | undefined): Promise
   }
   if (!data) return null;
 
-  return { id: data.id, email: data.email, ventana: calcularVentana(data.fecha_alta) };
+  return { id: data.id, email: data.email, ventana: ventanaDeContacto(data) };
 }

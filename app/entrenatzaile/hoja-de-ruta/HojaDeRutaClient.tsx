@@ -299,6 +299,12 @@ export default function HojaDeRutaClient({
   const [huecoElegido, setHuecoElegido] = useState("");
   const [cuandoReservado, setCuandoReservado] = useState("");
   const [hecho, setHecho] = useState(false);
+  // Sesión de Checkout de esta reserva, cuando toca cobrar. Solo se guarda en
+  // el estado si hay que enseñarle algo antes de mandarlo a Stripe; en el
+  // caso normal se redirige directamente y no llega a pintarse nada.
+  const [pagoUrl, setPagoUrl] = useState<string | null>(null);
+  const [avisoPlazoVencido, setAvisoPlazoVencido] = useState(false);
+  const [yendoAPago, setYendoAPago] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -441,10 +447,34 @@ export default function HojaDeRutaClient({
       }
       eventoPixel("Schedule", eventId);
       setCuandoReservado(data.cuando ?? "");
+
+      // El hueco ya está apartado pase lo que pase de aquí en adelante. Lo
+      // único que queda por decidir es a dónde va esta persona.
+      //
+      // Sin pagoUrl (la gratuita, o un fallo al crear la sesión) se queda en
+      // la pantalla de siempre: el correo que acaba de salir lleva lo que
+      // haga falta.
+      if (data.avisoPlazoVencido) {
+        // Su plazo gratuito venció mientras reservaba. No se le manda a pagar
+        // sin avisar: lo lee, y pulsa él si le sigue interesando.
+        setPagoUrl(data.pagoUrl ?? null);
+        setAvisoPlazoVencido(true);
+        setHecho(true);
+        return;
+      }
+      if (data.pagoUrl) {
+        // A Stripe. Se deja `yendoAPago` puesto para que la tarjeta no
+        // parpadee a "Hueco reservado." durante la navegación: todavía no lo
+        // está, está apartado.
+        setYendoAPago(true);
+        window.location.href = data.pagoUrl;
+        return;
+      }
       setHecho(true);
     } catch {
       setError(mensajeErrorFormulario(0));
     } finally {
+      // Si estamos navegando a Stripe no se reactiva nada: la página se va.
       setEnviando(false);
     }
   }
@@ -672,7 +702,29 @@ export default function HojaDeRutaClient({
           <p className={`mt-6 ${cuerpoClase}`}>{CIERRE.precio[variante]}</p>
 
           <div ref={tarjetaRef} className="mt-12 p-6 md:p-10" style={cardStyle}>
-            {hecho ? (
+            {yendoAPago ? (
+              <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.llevandoAPago}</p>
+            ) : hecho && avisoPlazoVencido ? (
+              <>
+                <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
+                  {HOJA_RUTA_HUECOS.plazoVencidoTitulo}
+                </h3>
+                {cuandoReservado && (
+                  <p className="mb-4 text-[1.2rem] font-semibold text-[#1C3A5E] capitalize md:text-[1.3rem]">
+                    {cuandoReservado}
+                  </p>
+                )}
+                <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.plazoVencidoTexto}</p>
+                {/* Sin enlace de pago (no se pudo crear la sesión) se queda
+                    solo la explicación: el correo que acaba de salir le dice
+                    cómo pagar. Lo que no puede pasar es que no se le cuente. */}
+                {pagoUrl && (
+                  <a href={pagoUrl} className={`mt-9 ${botonClase}`}>
+                    {HOJA_RUTA_HUECOS.plazoVencidoBoton}
+                  </a>
+                )}
+              </>
+            ) : hecho ? (
               <>
                 <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
                   {HOJA_RUTA_HUECOS.hechoTitulo}

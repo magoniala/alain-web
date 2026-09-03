@@ -369,6 +369,23 @@ export const HOJA_RUTA_HUECOS = {
   cambiarDia: "← otro día",
   hechoTitulo: "Hueco reservado.",
   hechoTexto: "Te confirmo por WhatsApp en cuanto lo vea, y te mando el enlace de la llamada.",
+
+  // Paso al pago. Sale un instante, entre que se aparta el hueco y carga
+  // Stripe: es un cartel de tránsito, no una pantalla.
+  llevandoAPago: "Hueco apartado. Te llevo al pago…",
+
+  // Su plazo gratuito se acabó entre que abrió la página y terminó de
+  // reservar. Se le cobra, pero no en silencio: lo lee aquí, con el precio
+  // delante, y decide él si sigue.
+  //
+  // Sin prisa y sin cuenta atrás a propósito. No es una oferta que se escapa:
+  // es una fecha que ya pasó, y lo único que queda por decidir es si le
+  // interesa igual a 90 €. Meterle urgencia encima sería aprovecharse de un
+  // mal momento.
+  plazoVencidoTitulo: "Tu hueco está apartado. Y hay algo que contarte.",
+  plazoVencidoTexto:
+    "Cuando abriste esta página seguías dentro de tus primeros ocho días, que es cuando la Hoja de Ruta no se paga. Ese plazo ha terminado mientras la reservabas, así que vuelve a su precio de siempre: 90 €.\n\nTe he guardado el hueco igual. Si te interesa a ese precio, sigue abajo; te mando también el enlace por correo, por si prefieres pensarlo.\n\nY si crees que esto no te cuadra, respóndeme al correo y lo miramos: prefiero eso a que lo pagues a disgusto.",
+  plazoVencidoBoton: "Pagar los 90 € y confirmar",
 };
 
 // El visual del entregable ya no es una imagen suelta: vive en el componente

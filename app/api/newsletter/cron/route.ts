@@ -14,8 +14,16 @@ import {
   calcularVentana,
   marcadoresDeVentana,
   personalizarEnlacesHojaDeRuta,
+  ventanaDeContacto,
 } from "@/lib/entrenatzaile-ventana";
-import { MAIL_ABANDONO_ASUNTO, enlaceHojaDeRuta, mailAbandonoCuerpo } from "@/lib/entrenatzaile-mails";
+import {
+  MAIL_ABANDONO_ASUNTO,
+  MAIL_LIBERADO_ASUNTO,
+  enlaceHojaDeRuta,
+  mailAbandonoCuerpo,
+  mailLiberadoCuerpo,
+} from "@/lib/entrenatzaile-mails";
+import { getStripe } from "@/lib/stripe";
 import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import {
   cuerpoDelMail,
@@ -398,6 +406,13 @@ async function procesarReservasAbandonadas(): Promise<number> {
     // filtro, al anularla le llegaría al lead un correo diciéndole que dejó
     // la reserva a medias, que es justo lo contrario de lo que pasó.
     .is("cancelada_en", null)
+    // Y lo mismo con las que se han liberado por no llegar el pago: también
+    // se quedan sin hueco, pero esa persona SÍ eligió día y hora. Decirle
+    // que "se quedó sin elegir fecha" justo después de mandarle el correo de
+    // "he liberado tu hueco" sería contarle dos historias distintas del mismo
+    // día. Las reservas que de verdad se quedaron a medias nunca llegaron al
+    // pago, así que su pago_estado es NULL.
+    .is("pago_estado", null)
     .eq("aviso_abandono_enviado", false)
     .lt("creado_en", limiteSuperior)
     .gt("creado_en", limiteInferior);
@@ -429,9 +444,14 @@ async function procesarReservasAbandonadas(): Promise<number> {
   // a la versión que de verdad le corresponde. Antes este correo mandaba un
   // "?ventana=1" fijo según lo que el lead hubiera VISTO; ahora ese parámetro
   // por sí solo no regala nada, así que hay que resolver su token.
+  //
+  // recibe_secuencia va en el select porque este correo es el único camino por
+  // el que un contacto creado por el propio formulario de la Hoja de Ruta
+  // (que nace con recibe_secuencia=false) podía recibir un enlace tokenizado
+  // y llevarse gratis lo que venía a pagar. Ver ventanaDeContacto().
   const { data: contactos } = await supabase
     .from("newsletter_contactos")
-    .select("email, token, fecha_alta")
+    .select("email, token, fecha_alta, recibe_secuencia")
     .in("email", reservas.map((r) => r.email));
   const porEmail = new Map((contactos ?? []).map((c) => [c.email, c]));
 
@@ -458,7 +478,7 @@ async function procesarReservasAbandonadas(): Promise<number> {
     // ventana REAL de esta persona, no de la versión de la landing que llegó
     // a ver: así no pueden contradecirse.
     const contacto = porEmail.get(reserva.email);
-    const enVentana = calcularVentana(contacto?.fecha_alta ?? null).elegibilidad === "elegible";
+    const enVentana = ventanaDeContacto(contacto).elegibilidad === "elegible";
 
     // Contenido desde el panel; si no hay fila activa, la versión en código,
     // igual que en comodin y mision. La reserva existe para que quitar o
@@ -518,6 +538,178 @@ async function procesarReservasAbandonadas(): Promise<number> {
   return enviados;
 }
 
+// ============================================================
+// Huecos apartados que vencieron sin pago
+// ============================================================
+//
+// El correo de reserva promete "te guardo el hueco 24 horas; si en ese plazo
+// no está el pago, lo libero". Esto es lo que cumple esa frase. Hasta ahora no
+// la cumplía nadie: el hueco se quedaba cogido para siempre.
+//
+// El camino principal es este cron, no el webhook checkout.session.expired.
+// El webhook adelanta el estado cuando llega, pero puede tardar o no llegar,
+// y si la liberación viviera en los dos sitios habría dos caminos compitiendo
+// por el mismo correo. Aquí ocurre siempre y ocurre una vez.
+//
+// Va en dos pasadas a propósito:
+//
+//   1. Liberar. El update condicionado sobre pago_estado='pendiente' es el
+//      candado: solo una ejecución se queda cada fila.
+//   2. Avisar, leyendo las ya liberadas que aún no tienen correo. Si Mailjet
+//      está caído, el hueco se libera igual (que es lo urgente: hay que poder
+//      vendérselo a otro) y el correo sale en la pasada siguiente. Juntarlo
+//      todo en un paso haría que un fallo de correo dejara el hueco cogido.
+
+async function liberarHuecosVencidos(): Promise<number> {
+  const { data: vencidas, error } = await supabase
+    .from("hoja_ruta_reservas")
+    .select("id, hueco, stripe_session_id")
+    .eq("pago_estado", "pendiente")
+    .lt("stripe_session_expira_en", new Date().toISOString());
+
+  if (error) {
+    console.error("cron: error buscando huecos vencidos (¿falta la columna?):", error);
+    return 0;
+  }
+  if (!vencidas?.length) return 0;
+
+  let liberados = 0;
+
+  for (const reserva of vencidas) {
+    // Expirar la sesión en Stripe ANTES de soltar el hueco. Si no, entre que
+    // se libera y se le da a otra persona, esta podría pagar una sesión que
+    // sigue viva y aparecer un cobro sin llamada.
+    if (reserva.stripe_session_id) {
+      try {
+        await getStripe().checkout.sessions.expire(reserva.stripe_session_id);
+      } catch {
+        // Stripe se niega a expirar una sesión que ya está completada o
+        // expirada. Lo primero es justo la carrera que hay que respetar:
+        // acaba de pagar mientras mirábamos. Se comprueba, y si pagó no se
+        // le toca el hueco — el webhook lo confirmará.
+        try {
+          const sesion = await getStripe().checkout.sessions.retrieve(reserva.stripe_session_id);
+          if (sesion.status === "complete" || sesion.payment_status === "paid") {
+            console.warn("cron: no se libera, pagó mientras expiraba:", reserva.id);
+            continue;
+          }
+        } catch (err) {
+          // Ni expirar ni consultar. Se deja para la pasada siguiente en vez
+          // de liberar a ciegas un hueco que podría estar pagado.
+          console.error("cron: no se pudo comprobar la sesión, se pospone:", reserva.id, err);
+          continue;
+        }
+      }
+    }
+
+    // El candado. Si otra pasada (o el webhook) ya movió el estado, esto no
+    // devuelve fila y aquí no se hace nada.
+    //
+    // El hueco se guarda en hueco_liberado antes de soltarlo: si esta persona
+    // acaba pagando un segundo después, el aviso de "cobro sin hueco" tiene
+    // que poder decir qué llamada tenía apartada para poder recolocarla.
+    const { data: liberada } = await supabase
+      .from("hoja_ruta_reservas")
+      .update({
+        pago_estado: "expirado",
+        hueco_liberado: reserva.hueco,
+        hueco: null,
+        hueco_en: null,
+      })
+      .eq("id", reserva.id)
+      .eq("pago_estado", "pendiente")
+      .select("id")
+      .maybeSingle();
+
+    if (liberada) liberados++;
+  }
+
+  return liberados;
+}
+
+async function avisarHuecosLiberados(): Promise<number> {
+  const staleThreshold = new Date(Date.now() - CANDADO_STALE_MS).toISOString();
+
+  const { data: pendientes, error } = await supabase
+    .from("hoja_ruta_reservas")
+    .select("id, nombre, email, variante")
+    .eq("pago_estado", "expirado")
+    .eq("aviso_liberado_enviado", false);
+
+  if (error) {
+    console.error("cron: error buscando avisos de liberación (¿falta la columna?):", error);
+    return 0;
+  }
+  if (!pendientes?.length) return 0;
+
+  // A quien se haya dado de baja no se le escribe, igual que en el aviso de
+  // abandono.
+  const { data: bajas } = await supabase
+    .from("newsletter_contactos")
+    .select("email")
+    .eq("unsubscribed", true)
+    .in("email", pendientes.map((r) => r.email));
+  const dadosDeBaja = new Set((bajas ?? []).map((r) => r.email));
+
+  let enviados = 0;
+
+  for (const reserva of pendientes) {
+    if (dadosDeBaja.has(reserva.email)) continue;
+
+    const { data: claimed, error: claimError } = await supabase
+      .from("hoja_ruta_reservas")
+      .update({ aviso_liberado_enviando_desde: new Date().toISOString() })
+      .eq("id", reserva.id)
+      .eq("aviso_liberado_enviado", false)
+      .or(`aviso_liberado_enviando_desde.is.null,aviso_liberado_enviando_desde.lt.${staleThreshold}`)
+      .select("id");
+
+    if (claimError) {
+      console.error("cron: error al reclamar el aviso de liberación:", reserva.email, claimError);
+      continue;
+    }
+    if (!claimed?.length) continue; // otra pasada lo tiene cogido
+
+    // Sin personalizarEnlacesHojaDeRuta: esta persona estaba pagando, así que
+    // el enlace va limpio a la versión de pago. Pasarlo por ahí sería el
+    // camino por el que un impago acaba en un acceso gratis.
+    const html = wrapNurture(mailLiberadoCuerpo(reserva.nombre, reserva.variante), reserva.email, false);
+
+    try {
+      await sendEmail(
+        reserva.nombre ? `${reserva.nombre} <${reserva.email}>` : reserva.email,
+        MAIL_LIBERADO_ASUNTO,
+        html,
+        resolveNewsletterFrom("entrenatzaile@alainzulaika.com")
+      );
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : String(err);
+      console.error("cron: error enviando el aviso de liberación:", reserva.email, err);
+      // Candado liberado y NO marcado como enviado: la pasada siguiente lo
+      // reintenta. Igual que en el resto del sistema, "enviado de verdad" solo
+      // se pone después de que Mailjet lo confirme.
+      await supabase
+        .from("hoja_ruta_reservas")
+        .update({ aviso_liberado_enviando_desde: null, aviso_liberado_error: mensaje.slice(0, 600) })
+        .eq("id", reserva.id);
+      continue;
+    }
+
+    await supabase
+      .from("hoja_ruta_reservas")
+      .update({
+        aviso_liberado_enviado: true,
+        aviso_liberado_en: new Date().toISOString(),
+        aviso_liberado_enviando_desde: null,
+        aviso_liberado_error: null,
+      })
+      .eq("id", reserva.id);
+    enviados++;
+  }
+
+  return enviados;
+}
+
 export async function GET(req: Request) {
   // cron-job.org firma las peticiones con Authorization: Bearer <CRON_SECRET>
   const auth = req.headers.get("authorization");
@@ -556,6 +748,11 @@ export async function GET(req: Request) {
   const nurtureEnviados = await procesarNurture();
   const recordatorioEnviados = await procesarRecordatorioValoracion();
   const colaBEnviadas = await procesarColaB(cargarContactos);
+  // Antes del aviso de abandono: liberar primero deja el pago_estado a
+  // 'expirado', y ese es justo el filtro que impide que a quien se le acaba
+  // de liberar el hueco le llegue además el "te quedaste a medias".
+  const huecosLiberados = await liberarHuecosVencidos();
+  const avisosLiberados = await avisarHuecosLiberados();
   const abandonosEnviados = await procesarReservasAbandonadas();
 
   return NextResponse.json({
@@ -564,6 +761,8 @@ export async function GET(req: Request) {
     nurtureEnviados,
     recordatorioEnviados,
     colaBEnviadas,
+    huecosLiberados,
+    avisosLiberados,
     abandonosEnviados,
   });
 }

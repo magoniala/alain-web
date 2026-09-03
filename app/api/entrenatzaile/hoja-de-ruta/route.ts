@@ -9,7 +9,7 @@ import {
   limpiarUtm,
   type Elegibilidad,
 } from "@/lib/entrenatzaile-formularios";
-import { calcularVentana } from "@/lib/entrenatzaile-ventana";
+import { ventanaDeContacto } from "@/lib/entrenatzaile-ventana";
 import {
   esHuecoOfrecido,
   formatearHueco,
@@ -21,6 +21,7 @@ import {
   enviarEventoMeta,
   haAceptadoSeguimiento,
 } from "@/lib/meta-capi";
+import { getStripe, PRECIO_HOJA_RUTA_CENT } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -79,11 +80,15 @@ function escapar(texto: string) {
 // usa la landing para decidir qué versión enseñar. Así el aviso no puede
 // decir "NO GRATIS" de alguien a quien la página acaba de prometerle que sí.
 async function calcularElegibilidad(emailLower: string) {
-  // Solo fecha_alta: newsletter_contactos no tiene created_at. Pedirla haría
-  // fallar el select entero y todo el mundo saldría como "no_en_lista".
+  // Solo fecha_alta y recibe_secuencia: newsletter_contactos no tiene
+  // created_at. Pedirla haría fallar el select entero y todo el mundo saldría
+  // como "no_en_lista".
+  //
+  // recibe_secuencia hace falta porque de este cálculo depende ahora el
+  // cobro, no solo el asunto de un aviso: ver ventanaDeContacto().
   const { data: contacto, error } = await supabase
     .from("newsletter_contactos")
-    .select("fecha_alta")
+    .select("fecha_alta, recibe_secuencia")
     .eq("email", emailLower)
     .maybeSingle();
 
@@ -93,7 +98,7 @@ async function calcularElegibilidad(emailLower: string) {
 
   // ultimo_dia solo sirve para pintar la fecha en la landing; en la fila de
   // la reserva no se guarda, así que se descarta aquí.
-  const { ultimo_dia, ...ventana } = calcularVentana(contacto?.fecha_alta ?? null);
+  const { ultimo_dia, ...ventana } = ventanaDeContacto(contacto);
   void ultimo_dia;
   return ventana;
 }
@@ -187,6 +192,113 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, id: reserva.id });
 }
 
+const BASE_ENTRENATZAILE = "https://entrenatzaile.alainzulaika.com";
+
+// Ventana de Stripe para pagar. 24 h es el máximo que admite expires_at, y
+// coincide con lo que el correo de reserva lleva prometiendo desde siempre
+// ("te guardo el hueco 24 horas").
+const HORAS_PARA_PAGAR = 24;
+
+/**
+ * ¿Se le cobra a esta reserva?
+ *
+ * Se cobra SIEMPRE salvo que se cumplan las dos condiciones a la vez:
+ *
+ *   variante === "ventana"       lo que la landing le pintó
+ *   elegibilidad === "elegible"  lo que la lista dice de verdad
+ *
+ * Hacen falta las dos porque cada una tapa un agujero distinto. `variante`
+ * la manda el navegador: sin la segunda condición, un fetch a mano con
+ * variante:"ventana" se saltaría el cobro. Y `elegibilidad` no basta sola:
+ * quien entra por /capacidades estando dentro de su ventana vio 90 € en toda
+ * la página, y regalárselo en silencio sería tan raro como cobrarle de más.
+ *
+ * `elegibilidad` es la que se calculó y se guardó en el POST, no una nueva:
+ * recalcularla aquí abriría de nuevo el hueco de la medianoche, esta vez con
+ * los minutos que tarda alguien en elegir día y hora en el calendario.
+ */
+function decidirCobro(variante: string | null, elegibilidad: string | null) {
+  const gratis = variante === "ventana" && elegibilidad === "elegible";
+  // La página le dijo gratis y la lista dice que no: se le cobra, pero el
+  // cliente tiene que avisarle antes de llevarlo a Stripe y esperar a que lo
+  // confirme él. Y a mí me tiene que llegar marcado en el asunto.
+  const discrepancia = variante === "ventana" && elegibilidad !== "elegible";
+  return { cobra: !gratis, discrepancia };
+}
+
+/**
+ * Crea la sesión de Checkout de esta reserva y la guarda en su fila.
+ *
+ * Devuelve la URL, o null si algo falla. Nunca lanza: cuando llega aquí el
+ * hueco YA está apartado en la base de datos, y un fallo de Stripe no puede
+ * convertirse en un error en la cara del lead — volvería a enviar el
+ * formulario y se duplicaría. Lo que salga mal queda en pago_error y en el
+ * aviso interno, y el correo se cae al enlace de respaldo.
+ */
+async function crearSesionDePago(args: {
+  reservaId: string;
+  email: string;
+  hueco: string;
+  variante: string | null;
+}): Promise<{ url: string | null; error: string | null }> {
+  const expiraEn = new Date(Date.now() + HORAS_PARA_PAGAR * 3600_000);
+
+  try {
+    const session = await getStripe().checkout.sessions.create({
+      mode: "payment",
+      line_items: [{ price: process.env.STRIPE_PRICE_ID_HOJA_RUTA!, quantity: 1 }],
+      customer_email: args.email,
+      // El webhook resuelve la reserva por aquí. Va también el hueco, para
+      // poder cuadrar a mano un pago descolocado sin salir del dashboard.
+      metadata: {
+        reserva_id: args.reservaId,
+        hueco: args.hueco,
+        variante: args.variante ?? "",
+      },
+      expires_at: Math.floor(expiraEn.getTime() / 1000),
+      // Las páginas viven en el subdominio: /hoja-de-ruta no existe en el
+      // apex, y el proxy mandaría a un visitante no vascófono a /es/... que
+      // tampoco existe. Aquí NO vale NEXT_PUBLIC_BASE_URL.
+      success_url: `${BASE_ENTRENATZAILE}/hoja-de-ruta/gracias`,
+      cancel_url:
+        args.variante === "capacidades"
+          ? `${BASE_ENTRENATZAILE}/hoja-de-ruta/capacidades`
+          : `${BASE_ENTRENATZAILE}/hoja-de-ruta`,
+      locale: "es",
+    });
+
+    await supabase
+      .from("hoja_ruta_reservas")
+      .update({
+        pago_estado: "pendiente",
+        pago_importe_cent: PRECIO_HOJA_RUTA_CENT,
+        stripe_session_id: session.id,
+        stripe_session_url: session.url,
+        stripe_session_expira_en: expiraEn.toISOString(),
+        pago_error: null,
+      })
+      .eq("id", args.reservaId);
+
+    return { url: session.url, error: null };
+  } catch (err) {
+    const mensaje = err instanceof Error ? err.message : String(err);
+    console.error("hoja-de-ruta: no se pudo crear la sesión de pago:", args.reservaId, err);
+    // pago_estado se queda a 'pendiente' igual: hay un hueco apartado
+    // esperando dinero, y el cron tiene que poder liberarlo aunque no haya
+    // sesión que expirar.
+    await supabase
+      .from("hoja_ruta_reservas")
+      .update({
+        pago_estado: "pendiente",
+        pago_importe_cent: PRECIO_HOJA_RUTA_CENT,
+        stripe_session_expira_en: expiraEn.toISOString(),
+        pago_error: mensaje.slice(0, 600),
+      })
+      .eq("id", args.reservaId);
+    return { url: null, error: mensaje };
+  }
+}
+
 // Paso 2: el hueco elegido en el calendario. Solo entonces sale el aviso,
 // con el estado de elegibilidad en el asunto.
 export async function PATCH(req: Request) {
@@ -233,12 +345,41 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: ERROR_GENERICO }, { status: 500 });
   }
 
+  // El hueco ya está apartado (lo impone el índice único, no este código).
+  // A partir de aquí se decide el dinero.
+  const { cobra, discrepancia } = decidirCobro(reserva.variante, reserva.elegibilidad);
+
+  const pago = cobra
+    ? await crearSesionDePago({
+        reservaId: id,
+        email: reserva.email as string,
+        hueco: huecoTrim,
+        variante: reserva.variante,
+      })
+    : { url: null, error: null };
+
   const estado = (reserva.elegibilidad ?? "no_en_lista") as Elegibilidad;
   const detalle =
     reserva.dias_desde_alta === null || reserva.dias_desde_alta === undefined
       ? ""
       : ` · día ${reserva.dias_desde_alta} desde el alta`;
-  const asunto = `Entrenatzaile — Reserva Hoja de Ruta: ${reserva.nombre} [${ELEGIBILIDAD_ETIQUETA[estado]}${detalle}]`;
+
+  // El asunto tiene que poder leerse de un vistazo en el móvil y decir si esa
+  // llamada trae dinero o no. Los dos casos raros van delante del resto,
+  // porque son los únicos que piden que Alain haga algo:
+  //
+  //   PLAZO VENCIDO  vio la versión gratuita y se le ha cobrado igual. Si
+  //                  escribe diciendo que estaba rellenándolo cuando venció,
+  //                  hay que poder devolverle los 90 € sabiendo de qué habla.
+  //   SIN ENLACE     se le cobra pero no hubo forma de crear la sesión.
+  //                  Ese correo salió sin enlace de pago o con el de respaldo.
+  const sinEnlace = cobra && !pago.url;
+  const marca = discrepancia
+    ? `PLAZO VENCIDO — PAGA (vio la gratuita)${sinEnlace ? " · SIN ENLACE" : ""}`
+    : sinEnlace
+      ? "PAGA · SIN ENLACE DE PAGO"
+      : ELEGIBILIDAD_ETIQUETA[estado];
+  const asunto = `Entrenatzaile — Reserva Hoja de Ruta: ${reserva.nombre} [${marca}${detalle}]`;
 
   const celda = "padding:0.35rem 0.6rem;border-bottom:1px solid #eee;vertical-align:top;";
   const fila = (k: string, v: string) =>
@@ -246,6 +387,16 @@ export async function PATCH(req: Request) {
   const html = `
     <div style="font-family:monospace;max-width:620px;margin:0 auto;padding:1.5rem;color:#1a1a1a;background:#f8f8f8;border:1px solid #ddd;font-size:0.88rem;">
       <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:#999;margin:0 0 1rem 0;">ENTRENATZAILE · HOJA DE RUTA</p>
+      ${
+        discrepancia
+          ? `<p style="margin:0 0 1rem 0;padding:0.7rem 0.9rem;background:#fff4e5;border-left:3px solid #D4860A;line-height:1.5;">
+              <strong>Su plazo venció mientras reservaba.</strong> La página le enseñó la versión
+              gratuita y el sistema le ha pedido los 90 €. Antes de mandarlo a Stripe se le
+              explicó en pantalla, con el precio delante, y el paso al pago lo da él. Si escribe
+              reclamándolo, es este caso.
+            </p>`
+          : ""
+      }
       <table style="width:100%;border-collapse:collapse;">
         ${fila("Nombre", escapar(reserva.nombre ?? ""))}
         ${fila("Email", escapar(reserva.email ?? ""))}
@@ -253,6 +404,15 @@ export async function PATCH(req: Request) {
         ${fila("Hueco", escapar(formatearHueco(huecoTrim)))}
         ${fila("Vio la versión", NOMBRE_VARIANTE[reserva.variante ?? ""] ?? "evergreen (90 €)")}
         ${fila("Elegibilidad", ELEGIBILIDAD_ETIQUETA[estado])}
+        ${fila("Cobro", cobra ? "90 € — pendiente de pago" : "gratis (ventana)")}
+        ${fila(
+          "Enlace de pago",
+          !cobra
+            ? "—"
+            : pago.url
+              ? "sesión de Checkout creada"
+              : `NO SE PUDO CREAR: ${escapar(pago.error ?? "motivo desconocido")}`
+        )}
         ${fila("Días desde el alta", reserva.dias_desde_alta ?? "—")}
         ${fila("Día de su ventana", reserva.ventana_dia ?? "—")}
       </table>
@@ -285,9 +445,9 @@ export async function PATCH(req: Request) {
   try {
     await sendEmail(
       reserva.nombre ? `${reserva.nombre} <${reserva.email}>` : (reserva.email as string),
-      mailReservaAsunto(reserva.variante),
+      mailReservaAsunto(cobra),
       wrapNurture(
-        mailReservaCuerpo(reserva.nombre, formatearHueco(huecoTrim), reserva.variante),
+        mailReservaCuerpo(reserva.nombre, formatearHueco(huecoTrim), cobra, pago.url),
         reserva.email as string,
         false
       ),
@@ -313,5 +473,23 @@ export async function PATCH(req: Request) {
     await supabase.from("hoja_ruta_reservas").update({ aviso_enviado: false, aviso_error: mensaje }).eq("id", id);
   }
 
-  return NextResponse.json({ ok: true, cuando: formatearHueco(huecoTrim) });
+  // `pagoUrl` es lo que hace que el navegador lleve al lead a Stripe. Si va
+  // null, la reserva se comporta como siempre: pantalla de "hueco reservado"
+  // y a esperar el WhatsApp. Eso pasa tanto en la gratuita como cuando no se
+  // ha podido crear la sesión — en ese segundo caso el correo lleva el enlace
+  // de respaldo y a Alain le ha llegado el aviso marcado.
+  return NextResponse.json({
+    ok: true,
+    cuando: formatearHueco(huecoTrim),
+    pagoUrl: pago.url,
+    // Que la página tenga que avisarle de que su plazo venció y esperar a que
+    // lo confirme él, en vez de mandarlo a Stripe sin más.
+    //
+    // No se condiciona a que haya pagoUrl a propósito. Si la sesión no se ha
+    // podido crear, esta persona vio la versión gratuita y va a recibir un
+    // correo pidiéndole 90 €: enterarse por ese correo es exactamente la
+    // sorpresa que este aviso existe para evitar. Se le explica igual, sin
+    // botón, y el correo le dirá cómo pagar.
+    avisoPlazoVencido: discrepancia,
+  });
 }
