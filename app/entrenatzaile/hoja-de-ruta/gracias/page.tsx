@@ -13,14 +13,16 @@ import { Header, Footer, cardStyle } from "../../_ui";
 // Tampoco lee el session_id: no se le pasa a propósito. Un dato que no se usa
 // para nada es una tentación de usarlo mal más adelante.
 //
-// De ahí el texto: no dice "pago confirmado", dice que se está confirmando.
-// Es lo único que esta página sabe de verdad.
+// De ahí el matiz del texto: dice que el pago ha entrado —a esta página solo
+// se llega si Stripe cobró y devolvió al navegador— pero no dice que esté
+// verificado, porque esta página no ha verificado nada. Lo que confirma es el
+// correo, y ese sale del webhook.
 
 const TITULO = "Gracias — Hoja de Ruta";
 
 export const metadata: Metadata = {
   title: TITULO,
-  description: "Tu pago se está confirmando.",
+  description: "Pago recibido.",
   // Es una página de paso a la que solo se llega volviendo de Stripe: no
   // tiene nada que hacer en Google.
   robots: { index: false, follow: false },
@@ -37,13 +39,13 @@ export default function GraciasHojaDeRutaPage() {
       <section className="px-6 py-20 md:px-8 md:py-28">
         <div className="mx-auto max-w-[680px]">
           <h1 className={`text-[clamp(1.8rem,5.5vw,2.6rem)] leading-[1.15] text-[#1C3A5E] ${tituloClase}`}>
-            Gracias. Ya está.
+            Gracias. Pago recibido.
           </h1>
 
           <div className="mt-10 space-y-6 p-6 md:p-10" style={cardStyle}>
             <p className={cuerpoClase}>
-              Tu pago se está confirmando. En cuanto lo tenga —suele ser cuestión de segundos— te llega un
-              correo con tu hueco confirmado.
+              Tu pago ha entrado. En cuanto termine de registrarse —suele ser cuestión de segundos— te
+              llega un correo con tu hueco ya confirmado.
             </p>
             <p className={cuerpoClase}>
               Después te escribo por WhatsApp para presentarme y mandarte el enlace de la videollamada. No

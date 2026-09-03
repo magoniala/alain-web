@@ -194,6 +194,31 @@ export async function POST(req: Request) {
 
 const BASE_ENTRENATZAILE = "https://entrenatzaile.alainzulaika.com";
 
+/**
+ * A dónde devuelve Stripe al navegador.
+ *
+ * En producción, las páginas se sirven en el subdominio y el rewrite de
+ * proxy.ts las va a buscar a /entrenatzaile/...: la URL pública es
+ * entrenatzaile.alainzulaika.com/hoja-de-ruta/gracias, sin prefijo.
+ *
+ * En local no hay subdominio, así que no hay rewrite y esa URL no existe:
+ * localhost:3000/hoja-de-ruta/gracias ni siquiera llega a dar 404 con
+ * sentido, porque el propio proxy lo manda a /es/hoja-de-ruta/gracias. La
+ * página vive en su ruta de fichero, con el prefijo delante.
+ *
+ * Se resuelve por el Origin de la petición y solo se acepta localhost: es una
+ * cabecera que manda el navegador, y una URL de retorno construida con lo que
+ * diga el cliente es exactamente el tipo de cosa que no debe existir en el
+ * lado del dinero. Cualquier otro origen —o ninguno— cae en producción.
+ */
+function baseDeRetorno(req: Request): { base: string; prefijo: string } {
+  const origen = req.headers.get("origin") ?? "";
+  if (/^http:\/\/localhost:\d+$/.test(origen)) {
+    return { base: origen, prefijo: "/entrenatzaile" };
+  }
+  return { base: BASE_ENTRENATZAILE, prefijo: "" };
+}
+
 // Ventana de Stripe para pagar. 24 h es el máximo que admite expires_at, y
 // coincide con lo que el correo de reserva lleva prometiendo desde siempre
 // ("te guardo el hueco 24 horas").
@@ -240,7 +265,9 @@ async function crearSesionDePago(args: {
   email: string;
   hueco: string;
   variante: string | null;
+  retorno: { base: string; prefijo: string };
 }): Promise<{ url: string | null; error: string | null }> {
+  const { base, prefijo } = args.retorno;
   const expiraEn = new Date(Date.now() + HORAS_PARA_PAGAR * 3600_000);
 
   try {
@@ -258,12 +285,12 @@ async function crearSesionDePago(args: {
       expires_at: Math.floor(expiraEn.getTime() / 1000),
       // Las páginas viven en el subdominio: /hoja-de-ruta no existe en el
       // apex, y el proxy mandaría a un visitante no vascófono a /es/... que
-      // tampoco existe. Aquí NO vale NEXT_PUBLIC_BASE_URL.
-      success_url: `${BASE_ENTRENATZAILE}/hoja-de-ruta/gracias`,
+      // tampoco existe. Aquí NO vale NEXT_PUBLIC_BASE_URL. Ver baseDeRetorno().
+      success_url: `${base}${prefijo}/hoja-de-ruta/gracias`,
       cancel_url:
         args.variante === "capacidades"
-          ? `${BASE_ENTRENATZAILE}/hoja-de-ruta/capacidades`
-          : `${BASE_ENTRENATZAILE}/hoja-de-ruta`,
+          ? `${base}${prefijo}/hoja-de-ruta/capacidades`
+          : `${base}${prefijo}/hoja-de-ruta`,
       locale: "es",
     });
 
@@ -355,6 +382,7 @@ export async function PATCH(req: Request) {
         email: reserva.email as string,
         hueco: huecoTrim,
         variante: reserva.variante,
+        retorno: baseDeRetorno(req),
       })
     : { url: null, error: null };
 
@@ -364,21 +392,38 @@ export async function PATCH(req: Request) {
       ? ""
       : ` · día ${reserva.dias_desde_alta} desde el alta`;
 
-  // El asunto tiene que poder leerse de un vistazo en el móvil y decir si esa
-  // llamada trae dinero o no. Los dos casos raros van delante del resto,
-  // porque son los únicos que piden que Alain haga algo:
+  // El asunto dice si esa llamada trae dinero, y lo dice a partir de `cobra`,
+  // NO de la elegibilidad.
   //
-  //   PLAZO VENCIDO  vio la versión gratuita y se le ha cobrado igual. Si
-  //                  escribe diciendo que estaba rellenándolo cuando venció,
-  //                  hay que poder devolverle los 90 € sabiendo de qué habla.
-  //   SIN ENLACE     se le cobra pero no hubo forma de crear la sesión.
-  //                  Ese correo salió sin enlace de pago o con el de respaldo.
+  // La diferencia importa y antes estaba mal: la etiqueta de elegibilidad dice
+  // "GRATIS" de quien está dentro de su ventana, pero a esa persona se le
+  // cobra igual si entró por la landing de pago (sin token en el enlace, la
+  // página no puede reconocerla y le pinta los 90 €). El asunto llegaba
+  // diciendo GRATIS de una reserva que estaba esperando un pago.
+  //
+  // Cuatro casos, y los tres primeros piden que Alain haga algo:
+  //
+  //   PLAZO VENCIDO  vio la gratuita y se le ha cobrado. Si escribe diciendo
+  //                  que estaba rellenándolo cuando venció, hay que poder
+  //                  devolverle los 90 € sabiendo de qué habla.
+  //   SIN ENLACE     se le cobra pero no hubo forma de crear la sesión: ese
+  //                  correo salió sin enlace o con el de respaldo.
+  //   EN VENTANA     paga, pero le habría tocado gratis y entró por la de
+  //                  pago sin saberlo. El sistema cobra —es lo que vio— pero
+  //                  la decisión de regalárselo es de Alain, no del código.
   const sinEnlace = cobra && !pago.url;
-  const marca = discrepancia
-    ? `PLAZO VENCIDO — PAGA (vio la gratuita)${sinEnlace ? " · SIN ENLACE" : ""}`
-    : sinEnlace
-      ? "PAGA · SIN ENLACE DE PAGO"
-      : ELEGIBILIDAD_ETIQUETA[estado];
+  const avisoSinEnlace = sinEnlace ? " · SIN ENLACE" : "";
+
+  let marca: string;
+  if (!cobra) {
+    marca = "GRATIS (ventana)";
+  } else if (discrepancia) {
+    marca = `PLAZO VENCIDO — PAGA 90 € (vio la gratuita)${avisoSinEnlace}`;
+  } else if (estado === "elegible") {
+    marca = `PAGA 90 € · EN VENTANA, entró por la de pago${avisoSinEnlace}`;
+  } else {
+    marca = `PAGA 90 € · ${ELEGIBILIDAD_ETIQUETA[estado]}${avisoSinEnlace}`;
+  }
   const asunto = `Entrenatzaile — Reserva Hoja de Ruta: ${reserva.nombre} [${marca}${detalle}]`;
 
   const celda = "padding:0.35rem 0.6rem;border-bottom:1px solid #eee;vertical-align:top;";
