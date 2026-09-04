@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Header, Footer, inputStyle, labelStyle, fieldStyle, cardStyle } from "../_ui";
 import { eventoPixel } from "@/app/_components/Consentimiento";
 import { ESPALDA_BLOQUES, ESPALDA_FORMULARIO, ESPALDA_HERO } from "./_content";
@@ -29,6 +29,18 @@ function leerUtm(): Utm {
   }
   if (document.referrer) utm.referrer = document.referrer;
   return utm;
+}
+
+// Identificador de sesión para la medición del embudo. Vive en memoria y
+// muere al cerrar la pestaña. crypto.randomUUID() no existe fuera de un
+// contexto seguro, y la medición no puede tumbar la página por eso: si
+// falta, vale cualquier cadena aleatoria.
+function nuevaSesion(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
 }
 
 // Una pantalla por pregunta (son el grueso y piden escribir), y luego tres
@@ -76,9 +88,66 @@ export default function EspaldaClient() {
   const primerCampoRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const yaMontado = useRef(false);
 
+  // Medición del embudo: en qué paso se queda la gente, y nada más. Lo que
+  // escribe no viaja aquí —eso son datos de salud y van a su tabla con su
+  // consentimiento—; solo el nombre del paso que ha completado.
+  //
+  // El identificador de sesión se genera en memoria al cargar la página: no
+  // hay cookie ni localStorage, se pierde al cerrar la pestaña y no sirve
+  // para reconocer a nadie entre visitas. Por eso es medición técnica
+  // anónima y se dispara sin depender del banner.
+  const sesion = useRef("");
+  const marcados = useRef<Set<string>>(new Set());
+
+  const marcar = useCallback((evento: string, detalle?: string) => {
+    if (!sesion.current) return;
+    // Cada paso cuenta una sola vez por sesión. El error de envío es la
+    // excepción: si alguien lo intenta tres veces, quiero verlas las tres.
+    if (evento !== "submit_error") {
+      if (marcados.current.has(evento)) return;
+      marcados.current.add(evento);
+    }
+    // A ciegas y sin esperar: un fallo de medición no puede frenar ni
+    // romper el formulario. keepalive para que el último evento salga
+    // aunque el navegador ya esté yéndose a la página de gracias.
+    try {
+      fetch("/api/entrenatzaile/eventos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          landing: "espalda",
+          sesion: sesion.current,
+          evento,
+          detalle,
+          utm: utm.current,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // Silencio absoluto. Aquí no hay nada que salvar.
+    }
+  }, []);
+
   useEffect(() => {
     utm.current = leerUtm();
-  }, []);
+    sesion.current = nuevaSesion();
+    marcar("page_view");
+  }, [marcar]);
+
+  // El formulario está al final de la página: saber cuántos llegan a verlo
+  // es lo que separa "no les interesa" de "no bajaron hasta allí".
+  useEffect(() => {
+    const tarjeta = tarjetaRef.current;
+    if (!tarjeta) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        marcar("form_visible");
+        observer.disconnect();
+      }
+    });
+    observer.observe(tarjeta);
+    return () => observer.disconnect();
+  }, [marcar]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -133,6 +202,12 @@ export default function EspaldaClient() {
     }
     setError("");
 
+    // El paso ha validado, así que está completo. Se cuenta aquí y no en el
+    // clic: pulsar "Siguiente" con un campo vacío no es haberlo rellenado.
+    if (paso < PASO_CONTACTO) marcar(`q${paso + 1}_done`);
+    else if (paso === PASO_CONTACTO) marcar("datos_done");
+    else if (paso === PASO_PERFIL) marcar("perfil_done");
+
     if (paso < PASO_PERMISO) {
       setPaso(paso + 1);
       return;
@@ -163,9 +238,11 @@ export default function EspaldaClient() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        marcar("submit_error", String(res.status));
         setError(mensajeErrorFormulario(res.status, data.error));
         return;
       }
+      marcar("submit_ok");
       eventoPixel("Lead", eventId);
 
       // De lo que ha escrito, nada viaja hasta la página de gracias: la regla
@@ -177,6 +254,7 @@ export default function EspaldaClient() {
       const destino = typeof data.t === "string" && data.t ? `${base}/gracias?t=${data.t}` : `${base}/gracias`;
       window.location.assign(destino);
     } catch {
+      marcar("submit_error", "red");
       setError(mensajeErrorFormulario(0));
     } finally {
       setEnviando(false);
@@ -211,6 +289,9 @@ export default function EspaldaClient() {
               onChange={(e) =>
                 setRespuestas((prev) => prev.map((r, j) => (j === paso ? e.target.value : r)))
               }
+              onBlur={() => {
+                if (respuestas[paso].trim()) marcar(`q${paso + 1}_done`);
+              }}
               style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
               className="placeholder:text-[#1C3A5E]/35"
             />
@@ -355,7 +436,10 @@ export default function EspaldaClient() {
           <input
             type="checkbox"
             checked={consentDatos}
-            onChange={(e) => setConsentDatos(e.target.checked)}
+            onChange={(e) => {
+              setConsentDatos(e.target.checked);
+              if (e.target.checked) marcar("consent_done");
+            }}
             style={{ marginTop: "0.2rem" }}
           />
           {CONSENT_ESPALDA.datos}
@@ -435,7 +519,10 @@ export default function EspaldaClient() {
                  ha decidido que le compensa. */
               <button
                 type="button"
-                onClick={() => setEmpezado(true)}
+                onClick={() => {
+                  marcar("form_open");
+                  setEmpezado(true);
+                }}
                 style={{
                   border: "none",
                   padding: "0.95rem 2.5rem",
@@ -479,7 +566,12 @@ export default function EspaldaClient() {
               </p>
             </div>
 
-            <form onSubmit={avanzar} noValidate>
+            <form
+              onSubmit={avanzar}
+              onFocus={() => marcar("form_start")}
+              onChange={() => marcar("form_start")}
+              noValidate
+            >
               {renderPaso()}
 
               {error && (
