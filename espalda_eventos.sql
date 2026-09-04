@@ -1,6 +1,8 @@
 -- ============================================================
 -- Entrenatzaile · Embudo de /espalda (2026-09-04)
--- Ejecutar a mano en el SQL editor de Supabase.
+-- Ejecutar a mano en el SQL editor de Supabase. El fichero entero se
+-- puede volver a pasar sin miedo: crea lo que falte y reemplaza las
+-- vistas, sin tocar los datos ya registrados.
 -- ============================================================
 --
 -- Mide EN QUÉ PASO se cae la gente, y nada más. Aquí no entra jamás el
@@ -53,7 +55,14 @@ CREATE INDEX IF NOT EXISTS espalda_eventos_sesion_idx
 -- ============================================================
 -- Es el ladrillo de las otras dos. Se puede consultar sola para mirar
 -- sesiones concretas ("¿quién llegó al consentimiento y no envió?").
-CREATE OR REPLACE VIEW espalda_embudo_sesiones AS
+--
+-- Las tres vistas van con security_invoker: por defecto una vista se
+-- ejecuta con los permisos de quien la creó, lo que la convierte en una
+-- puerta trasera a la tabla para quien no tendría acceso a ella. Con esto
+-- se ejecutan con los permisos de quien consulta, y quien consulta es
+-- siempre el panel de /admin con la service key.
+CREATE OR REPLACE VIEW espalda_embudo_sesiones
+WITH (security_invoker = true) AS
 SELECT
   e.sesion,
   e.landing,
@@ -93,7 +102,8 @@ GROUP BY e.sesion, e.landing;
 -- ============================================================
 -- Compacta a propósito: una fila por día y anuncio. Es la que consume el
 -- panel de /admin, y la que conviene si quieres exportar a una hoja.
-CREATE OR REPLACE VIEW espalda_embudo AS
+CREATE OR REPLACE VIEW espalda_embudo
+WITH (security_invoker = true) AS
 SELECT
   dia,
   landing,
@@ -124,7 +134,8 @@ GROUP BY dia, landing, utm_content;
 --   select * from espalda_embudo_pct
 --   where dia >= current_date - 14
 --   order by dia desc, utm_content, orden;
-CREATE OR REPLACE VIEW espalda_embudo_pct AS
+CREATE OR REPLACE VIEW espalda_embudo_pct
+WITH (security_invoker = true) AS
 WITH largo AS (
   SELECT
     b.dia,
