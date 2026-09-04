@@ -93,10 +93,14 @@ export function mailReservaCuerpo(
 
   if (cobra) {
     const enlace = pagoUrl ?? enlacePagoRespaldo();
+    // "Si ya lo has hecho, genial" no es un adorno: este correo sale en el
+    // mismo momento en que se redirige a Stripe, así que a quien paga en
+    // treinta segundos le llega después de haber pagado. Sin esa línea, el
+    // correo le reclama algo que ya hizo y le hace dudar de si el pago entró.
     const comoPagar = enlace
       ? `
-    <p style="${p}">Para dejarlo confirmado, solo queda reservar la plaza con el pago (90€):</p>
-    <p style="${p}"><a href="${enlace}" style="color:#2a9d8f;">Pagar la valoración y confirmar mi hueco</a></p>
+    <p style="${p}">Para dejarlo confirmado, solo queda reservar la plaza con el pago (90€).<br>Si ya lo has hecho, genial (habrás recibido otro mail de confirmación). Si aún no:</p>
+    <p style="${p}"><a href="${enlace}" style="${ESTILO_ENLACE}">Pagar la valoración y confirmar mi hueco</a></p>
     <p style="${p}">Te guardo el hueco 24 horas.<br>Si en ese plazo no está el pago, lo libero para dejarlo disponible en el calendario.</p>`
       : `
     <p style="${p}">Para dejarlo confirmado queda el pago de la plaza (90€). Te escribo yo con el enlace en cuanto lea este correo.</p>
