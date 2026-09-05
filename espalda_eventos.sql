@@ -1,8 +1,13 @@
 -- ============================================================
--- Entrenatzaile · Embudo de /espalda (2026-09-04)
+-- Entrenatzaile · Embudo de /espalda (2026-09-04, ampliado el 2026-09-05)
 -- Ejecutar a mano en el SQL editor de Supabase. El fichero entero se
 -- puede volver a pasar sin miedo: crea lo que falte y reemplaza las
 -- vistas, sin tocar los datos ya registrados.
+--
+-- Ampliación del 2026-09-05: tiempo en la página (3, 10 y 30 segundos con
+-- la pestaña delante), clic en el botón del hero y clic hacia la Hoja de
+-- Ruta desde /gracias. Este último ocurre en otra página pero con la misma
+-- sesión, que viaja en la URL: por eso cae dentro del mismo embudo.
 -- ============================================================
 --
 -- Mide EN QUÉ PASO se cae la gente, y nada más. Aquí no entra jamás el
@@ -92,7 +97,17 @@ SELECT
   bool_or(e.evento = 'submit_error') AS submit_error,
 
   -- Códigos de los envíos que fallaron, si hubo alguno.
-  string_agg(DISTINCT e.detalle, ',') FILTER (WHERE e.evento = 'submit_error') AS errores
+  string_agg(DISTINCT e.detalle, ',') FILTER (WHERE e.evento = 'submit_error') AS errores,
+
+  -- Los pasos añadidos después van al final, aunque en el embudo se lean
+  -- antes: CREATE OR REPLACE VIEW solo admite columnas nuevas por la cola,
+  -- y así este fichero se sigue pudiendo pasar entero sin borrar nada. El
+  -- orden de lectura lo pone PASOS_EMBUDO en el código, y la vista 3.
+  bool_or(e.evento = 'time_3s')         AS time_3s,
+  bool_or(e.evento = 'time_10s')        AS time_10s,
+  bool_or(e.evento = 'time_30s')        AS time_30s,
+  bool_or(e.evento = 'hero_cta_click')  AS hero_cta_click,
+  bool_or(e.evento = 'hoja_ruta_click') AS hoja_ruta_click
 FROM espalda_eventos e
 GROUP BY e.sesion, e.landing;
 
@@ -119,7 +134,13 @@ SELECT
   count(*) FILTER (WHERE perfil_done)::int           AS perfil_done,
   count(*) FILTER (WHERE consent_done)::int          AS consent_done,
   count(*) FILTER (WHERE submit_ok)::int             AS submit_ok,
-  count(*) FILTER (WHERE submit_error)::int          AS submit_error
+  count(*) FILTER (WHERE submit_error)::int          AS submit_error,
+  -- Igual que arriba: por la cola para no romper el CREATE OR REPLACE.
+  count(*) FILTER (WHERE time_3s)::int               AS time_3s,
+  count(*) FILTER (WHERE time_10s)::int              AS time_10s,
+  count(*) FILTER (WHERE time_30s)::int              AS time_30s,
+  count(*) FILTER (WHERE hero_cta_click)::int        AS hero_cta_click,
+  count(*) FILTER (WHERE hoja_ruta_click)::int       AS hoja_ruta_click
 FROM espalda_embudo_sesiones
 GROUP BY dia, landing, utm_content;
 
@@ -146,18 +167,26 @@ WITH largo AS (
     p.paso,
     p.llegan
   FROM espalda_embudo b
+  -- Aquí los pasos son FILAS, no columnas, así que el orden es el de
+  -- verdad: primero cuánta gente aguanta en la página, luego el formulario,
+  -- y al final el salto a la Hoja de Ruta desde /gracias.
   CROSS JOIN LATERAL (VALUES
-    ( 1, 'page_view',    b.sesiones),
-    ( 2, 'form_visible', b.form_visible),
-    ( 3, 'form_open',    b.form_open),
-    ( 4, 'form_start',   b.form_start),
-    ( 5, 'q1_done',      b.q1_done),
-    ( 6, 'q2_done',      b.q2_done),
-    ( 7, 'q3_done',      b.q3_done),
-    ( 8, 'datos_done',   b.datos_done),
-    ( 9, 'perfil_done',  b.perfil_done),
-    (10, 'consent_done', b.consent_done),
-    (11, 'submit_ok',    b.submit_ok)
+    ( 1, 'page_view',       b.sesiones),
+    ( 2, 'time_3s',         b.time_3s),
+    ( 3, 'time_10s',        b.time_10s),
+    ( 4, 'time_30s',        b.time_30s),
+    ( 5, 'hero_cta_click',  b.hero_cta_click),
+    ( 6, 'form_visible',    b.form_visible),
+    ( 7, 'form_open',       b.form_open),
+    ( 8, 'form_start',      b.form_start),
+    ( 9, 'q1_done',         b.q1_done),
+    (10, 'q2_done',         b.q2_done),
+    (11, 'q3_done',         b.q3_done),
+    (12, 'datos_done',      b.datos_done),
+    (13, 'perfil_done',     b.perfil_done),
+    (14, 'consent_done',    b.consent_done),
+    (15, 'submit_ok',       b.submit_ok),
+    (16, 'hoja_ruta_click', b.hoja_ruta_click)
   ) AS p(orden, paso, llegan)
 )
 SELECT

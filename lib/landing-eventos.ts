@@ -8,6 +8,10 @@
 // es lo que impide que por este endpoint entre texto arbitrario.
 export const EVENTOS_EMBUDO = [
   "page_view",
+  "time_3s",
+  "time_10s",
+  "time_30s",
+  "hero_cta_click",
   "form_visible",
   "form_open",
   "form_start",
@@ -19,6 +23,7 @@ export const EVENTOS_EMBUDO = [
   "consent_done",
   "submit_ok",
   "submit_error",
+  "hoja_ruta_click",
 ] as const;
 
 export type EventoEmbudo = (typeof EVENTOS_EMBUDO)[number];
@@ -31,6 +36,14 @@ export function esEventoEmbudo(v: unknown): v is EventoEmbudo {
 // a propósito: no es un paso, es una salida lateral.
 export const PASOS_EMBUDO: { clave: EventoEmbudo; etiqueta: string }[] = [
   { clave: "page_view", etiqueta: "Entran a la página" },
+  // Los tres de tiempo van aquí, antes de que el formulario entre en juego:
+  // separan "no les convence" de "no llegaron ni a leer". Cuentan solo el
+  // tiempo con la pestaña delante, así que una pestaña abierta y olvidada no
+  // suma.
+  { clave: "time_3s", etiqueta: "Siguen a los 3 s" },
+  { clave: "time_10s", etiqueta: "Siguen a los 10 s" },
+  { clave: "time_30s", etiqueta: "Siguen a los 30 s" },
+  { clave: "hero_cta_click", etiqueta: "Pulsan el botón de arriba" },
   { clave: "form_visible", etiqueta: "Ven el formulario" },
   { clave: "form_open", etiqueta: "Pulsan «Empezar»" },
   { clave: "form_start", etiqueta: "Tocan un campo" },
@@ -41,6 +54,9 @@ export const PASOS_EMBUDO: { clave: EventoEmbudo; etiqueta: string }[] = [
   { clave: "perfil_done", etiqueta: "Edad y género" },
   { clave: "consent_done", etiqueta: "Marcan el permiso" },
   { clave: "submit_ok", etiqueta: "Envían" },
+  // Ocurre ya en /gracias, pero es la misma sesión: la lleva la URL a la que
+  // se redirige después de enviar.
+  { clave: "hoja_ruta_click", etiqueta: "Van a la Hoja de Ruta" },
 ];
 
 // Filtro anti-bot mínimo: descarta user-agents evidentes de crawlers,

@@ -133,6 +133,35 @@ export default function EspaldaClient() {
     marcar("page_view");
   }, [marcar]);
 
+  // Cuánto aguantan con la página delante. Separa "no les convence" de "no
+  // llegaron a leerla": quien se va a los tres segundos no ha rechazado
+  // nada, ni siquiera lo ha visto.
+  //
+  // Se cuenta en segundos enteros y SOLO con la pestaña visible, así que un
+  // intervalo que ignora los ticks de fondo hace de contador y de pausa a la
+  // vez: si se van a otra pestaña, el reloj se queda donde estaba y sigue
+  // cuando vuelven. Una pestaña abierta y olvidada no suma nada.
+  useEffect(() => {
+    const HITOS: [number, string][] = [
+      [3, "time_3s"],
+      [10, "time_10s"],
+      [30, "time_30s"],
+    ];
+    const ultimo = HITOS[HITOS.length - 1][0];
+    let visibles = 0;
+    const id = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      visibles += 1;
+      const hito = HITOS.find(([segundos]) => segundos === visibles);
+      // marcar() ya descarta los repetidos, así que cada hito sale una vez
+      // por sesión aunque el intervalo se reinicie.
+      if (hito) marcar(hito[1]);
+      // Pasado el último no queda nada que contar.
+      if (visibles >= ultimo) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [marcar]);
+
   // El formulario está al final de la página: saber cuántos llegan a verlo
   // es lo que separa "no les interesa" de "no bajaron hasta allí".
   useEffect(() => {
@@ -239,13 +268,18 @@ export default function EspaldaClient() {
       marcar("submit_ok");
 
       // De lo que ha escrito, nada viaja hasta la página de gracias: la regla
-      // dura se mantiene. Lo único que va es su token de ventana, un
-      // identificador opaco que no dice nada de nadie y que es lo que permite
-      // que el botón de gracias le lleve a SU versión de la Hoja de Ruta, con
-      // su fecha límite, en vez de a la de 90 €.
+      // dura se mantiene. Van solo dos identificadores opacos que no dicen
+      // nada de nadie: su token de ventana —lo que permite que el botón de
+      // gracias le lleve a SU versión de la Hoja de Ruta, con su fecha
+      // límite, en vez de a la de 90 €— y la sesión del embudo, para que el
+      // clic hacia la Hoja de Ruta se cosa a este mismo recorrido en lugar
+      // de aparecer como una visita suelta.
       const base = window.location.pathname.replace(/\/$/, "");
-      const destino = typeof data.t === "string" && data.t ? `${base}/gracias?t=${data.t}` : `${base}/gracias`;
-      window.location.assign(destino);
+      const params = new URLSearchParams();
+      if (typeof data.t === "string" && data.t) params.set("t", data.t);
+      if (sesion.current) params.set("s", sesion.current);
+      const query = params.toString();
+      window.location.assign(query ? `${base}/gracias?${query}` : `${base}/gracias`);
     } catch {
       marcar("submit_error", "red");
       setError(mensajeErrorFormulario(0));
@@ -465,6 +499,7 @@ export default function EspaldaClient() {
           </p>
           <a
             href="#formulario"
+            onClick={() => marcar("hero_cta_click")}
             className="hero-fade-3 mt-10 inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
           >
             {ESPALDA_HERO.cta}

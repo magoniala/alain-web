@@ -43,6 +43,11 @@ interface Dia {
 // El embudo dibujado: una barra por paso, ancha en proporción al total, y
 // a la derecha lo único que importa de verdad — cuánta gente se ha caído
 // desde el paso anterior. El peor escalón se marca en rojo.
+//
+// No todos los pasos encogen: al formulario se llega bajando, sin pasar por
+// el botón de arriba, así que ese escalón suele ganar gente en vez de
+// perderla. Cuando pasa se enseña con un «+», que es lo que es. En rojo solo
+// entran las caídas de verdad.
 function Embudo({ pasos }: { pasos: Paso[] }) {
   const total = pasos[0]?.sesiones ?? 0;
   const peor = Math.max(0, ...pasos.map((p) => p.caida ?? 0));
@@ -86,7 +91,7 @@ function Embudo({ pasos }: { pasos: Paso[] }) {
                 fontWeight: esPeor ? 600 : 400,
               }}
             >
-              {p.caida !== null ? `−${p.caida}%` : ""}
+              {p.caida === null ? "" : p.caida >= 0 ? `−${p.caida}%` : `+${Math.abs(p.caida)}%`}
             </span>
           </div>
         );
