@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Header, Footer, inputStyle, labelStyle, fieldStyle, cardStyle } from "../_ui";
-import { eventoPixel } from "@/app/_components/Consentimiento";
 import { ESPALDA_BLOQUES, ESPALDA_FORMULARIO, ESPALDA_HERO } from "./_content";
 import {
   CONSENT_ESPALDA,
@@ -214,17 +213,12 @@ export default function EspaldaClient() {
     }
 
     setEnviando(true);
-    // Identificador compartido con el envío desde el servidor.
-    const eventId = crypto.randomUUID();
 
     try {
       const res = await fetch("/api/entrenatzaile/espalda", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // Identificador compartido con el píxel: es lo que evita que Meta
-          // cuente dos veces la misma conversión.
-          eventId,
           respuestas,
           nombre: datos.nombre,
           email: datos.email,
@@ -243,7 +237,6 @@ export default function EspaldaClient() {
         return;
       }
       marcar("submit_ok");
-      eventoPixel("Lead", eventId);
 
       // De lo que ha escrito, nada viaja hasta la página de gracias: la regla
       // dura se mantiene. Lo único que va es su token de ventana, un

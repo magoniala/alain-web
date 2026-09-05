@@ -15,11 +15,6 @@ import {
   PREGUNTAS_ESPALDA,
   limpiarUtm,
 } from "@/lib/entrenatzaile-formularios";
-import {
-  datosDeLaPeticion,
-  enviarEventoMeta,
-  haAceptadoSeguimiento,
-} from "@/lib/meta-capi";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -45,7 +40,7 @@ function escapar(texto: string) {
 // llevan los enlaces de los correos, y no dice nada de nadie.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { respuestas, nombre, email, telefono, edad, genero, consentDatos, consentWhatsapp, eventId } = body;
+  const { respuestas, nombre, email, telefono, edad, genero, consentDatos, consentWhatsapp } = body;
 
   const r = Array.isArray(respuestas) ? respuestas.map((x) => (typeof x === "string" ? x.trim() : "")) : [];
   if (r.length !== PREGUNTAS_ESPALDA.length || r.some((x) => !x)) {
@@ -188,29 +183,7 @@ export async function POST(req: Request) {
       })
       .eq("id", lead.id);
 
-    // Conversión a Meta. Va DESPUÉS de guardar y con su propio try dentro:
-  // un fallo de medición no puede afectar al lead, que ya está a salvo.
-  //
-  // Solo se envían el email y el teléfono, cifrados, y nunca las respuestas:
-  // esa es la regla dura del formulario y aquí también se cumple.
-  let metaEvento: string;
-  if (!haAceptadoSeguimiento(req)) {
-    metaEvento = "omitido: no aceptó las cookies";
-  } else if (typeof eventId !== "string" || !eventId) {
-    metaEvento = "omitido: el navegador no mandó eventId";
-  } else {
-    metaEvento = await enviarEventoMeta({
-      nombre: "Lead",
-      eventId,
-      url: req.headers.get("referer") ?? "https://entrenatzaile.alainzulaika.com/espalda",
-      email: emailLower,
-      telefono: telefonoTrim,
-      ...datosDeLaPeticion(req),
-    });
-  }
-  await supabase.from("espalda_leads").update({ meta_evento: metaEvento.slice(0, 600) }).eq("id", lead.id);
-
-  await avisarme({
+    await avisarme({
       email: emailLower,
       nombre: nombreTrim,
       telefono: telefonoTrim,

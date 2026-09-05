@@ -111,7 +111,7 @@ export default function PrivacidadEntrenatzailePage() {
                   Si empiezas una reserva y no llegas a elegir hueco, te escribimos una sola vez por correo para que puedas retomarla o proponernos otro momento. Es un único mensaje: si no respondes, no insistimos.
                 </p>
                 <p>
-                  Si aceptas las cookies, comunicamos a Meta que has rellenado un formulario o reservado una llamada, con tu correo y tu teléfono cifrados, para medir qué anuncios funcionan. <span className="text-[#0F2240]/90">Nunca se le envían las respuestas de los formularios</span>, ni ninguna información sobre tu estado físico o de salud. Si rechazas las cookies, no se le envía absolutamente nada.
+                  Para saber qué anuncios funcionan no usamos cookies ni píxeles de seguimiento: medimos en nuestro propio servidor cuántas personas llegan a cada paso del formulario, con un identificador temporal que se borra al cerrar la pestaña. <span className="text-[#0F2240]/90">No comunicamos a Meta, ni a ninguna otra plataforma publicitaria, que hayas rellenado un formulario o reservado una llamada.</span>
                 </p>
               </div>
             </div>
@@ -162,7 +162,6 @@ export default function PrivacidadEntrenatzailePage() {
                   <p><span className="text-[#0F2240]/40 mr-4">Meta Platforms, Inc.</span>formularios instantáneos de anuncios (Facebook/Instagram Ads)</p>
                   <p><span className="text-[#0F2240]/40 mr-4">Calendly LLC</span>gestión de la agenda de citas</p>
                   <p><span className="text-[#0F2240]/40 mr-4">WhatsApp Ireland Ltd.</span>mensajería, si has consentido este canal</p>
-                  <p><span className="text-[#0F2240]/40 mr-4">Meta Platforms Ireland Ltd.</span>medición de anuncios, solo si aceptas las cookies</p>
                   <p><span className="text-[#0F2240]/40 mr-4">Google LLC</span>videollamadas (Meet) y gestión de calendario (Calendar)</p>
                 </div>
                 <p>

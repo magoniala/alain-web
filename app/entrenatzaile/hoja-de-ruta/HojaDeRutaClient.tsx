@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Header, Footer, inputStyle, labelStyle, fieldStyle, cardStyle } from "../_ui";
 import PreviewHojaDeRuta from "../PreviewHojaDeRuta";
-import { eventoPixel } from "@/app/_components/Consentimiento";
 import {
   HOJA_RUTA_BOTON,
   HOJA_RUTA_HUECOS,
@@ -425,13 +424,12 @@ export default function HojaDeRutaClient({
 
     // Última pantalla: confirmar el hueco.
     setEnviando(true);
-    const eventId = crypto.randomUUID();
 
     try {
       const res = await fetch("/api/entrenatzaile/hoja-de-ruta", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: reservaId, hueco: huecoElegido, eventId }),
+        body: JSON.stringify({ id: reservaId, hueco: huecoElegido }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -445,7 +443,6 @@ export default function HojaDeRutaClient({
         }
         return;
       }
-      eventoPixel("Schedule", eventId);
       setCuandoReservado(data.cuando ?? "");
 
       // El hueco ya está apartado pase lo que pase de aquí en adelante. Lo

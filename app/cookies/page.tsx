@@ -46,23 +46,17 @@ export default function CookiesPage() {
               </p>
               <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>
-                  <span className="text-[#F2F2F0]/90">Cookies técnicas.</span> Necesarias para que el sitio funcione: recuerdan tu idioma y tu decisión sobre esta misma política. No requieren tu permiso y no se pueden desactivar.
+                  <span className="text-[#F2F2F0]/90">Ninguna.</span> Este sitio no instala cookies en tu dispositivo, ni propias ni de terceros. Tampoco guarda nada en el almacenamiento local de tu navegador. No hay píxeles de publicidad, ni cookies de Meta, Google o cualquier otra plataforma, y por eso tampoco hay ningún banner que te pida permiso.
                 </p>
                 <p>
-                  <span className="text-[#F2F2F0]/90">Cookies de Meta (Facebook e Instagram).</span> Solo si las aceptas. Sirven para medir qué anuncios traen visitas y qué hacen después, y para que Meta pueda mostrar los anuncios a personas parecidas a quienes ya han contactado. Las instala Meta Platforms Ireland Limited.
+                  <span className="text-[#F2F2F0]/90">Qué medimos entonces.</span> Sabemos cuántas personas visitan cada página y, en los formularios, hasta qué paso llegan antes de irse. Esa medición ocurre en nuestro servidor: se apoya en un identificador temporal que se crea al abrir la página, vive solo en la memoria de esa pestaña y desaparece al cerrarla. No permite reconocerte en una visita posterior, no te sigue por otras webs y no se cruza con tu nombre ni con tu correo.
                 </p>
                 <p>
-                  Junto a esas cookies, cuando aceptas, enviamos a Meta desde nuestro servidor el hecho de que has rellenado un formulario o reservado una llamada, con tu correo y tu teléfono <span className="text-[#F2F2F0]/90">cifrados</span> para que puedan reconocerte sin que viajen en claro. Nunca se envían las respuestas que escribes en los formularios.
+                  De cada visita registramos, además, los parámetros de campaña de la dirección desde la que llegaste (UTM) y el tipo de dispositivo y navegador. <span className="text-[#F2F2F0]/90">Lo que escribes en un formulario no viaja por ahí</span>: tus respuestas solo llegan si envías el formulario, y entonces se tratan como explica la <Link href="/privacidad" className="underline underline-offset-4 hover:text-[#F2F2F0]">política de privacidad</Link>.
                 </p>
                 <p>
-                  Si rechazas, no se carga nada de Meta y no se le envía ningún dato. Puedes cambiar de opinión borrando las cookies de este sitio en tu navegador.
+                  El alojamiento (Vercel) recoge estadísticas agregadas de visitas y de velocidad de carga sin usar cookies y sin identificar a nadie.
                 </p>
-                <div className="mt-4 border border-white/10 p-5 space-y-4">
-                  <div>
-                    <p className="text-[#F2F2F0]/85 mb-1">Cookies de sesión</p>
-                    <p className="text-[0.92rem] text-[#F2F2F0]/50">Necesarias para el funcionamiento básico del sitio. Se eliminan al cerrar el navegador. No recogen información personal.</p>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -72,7 +66,7 @@ export default function CookiesPage() {
               </p>
               <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>
-                  Puedes configurar tu navegador para rechazar o eliminar cookies en cualquier momento. Ten en cuenta que deshabilitar las cookies técnicas puede afectar al funcionamiento del sitio.
+                  Como aquí no se instala ninguna, no hay nada que aceptar ni que rechazar. Aun así, puedes configurar tu navegador para bloquear o eliminar cookies de cualquier sitio en cualquier momento.
                 </p>
                 <div className="mt-2 space-y-2 text-[#F2F2F0]/55">
                   <p><span className="text-[#F2F2F0]/38 mr-3">Chrome</span>Configuración → Privacidad y seguridad → Cookies</p>

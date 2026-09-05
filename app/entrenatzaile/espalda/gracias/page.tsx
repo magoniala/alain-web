@@ -4,7 +4,6 @@ import { ESPALDA_GRACIAS } from "../_content";
 // Mismo bloque que el above the fold de /hoja-de-ruta: enseña el documento
 // real justo donde se le propone reservarlo.
 import PreviewHojaDeRuta from "../../PreviewHojaDeRuta";
-import CtaHojaDeRuta from "./CtaHojaDeRuta";
 
 // URL propia, no un estado de la landing anterior: se puede volver a ella,
 // enlazarla y medirla por separado.
@@ -77,12 +76,12 @@ export default async function GraciasPage({ searchParams }: { searchParams: Busq
 
               Sin token (por ejemplo, si alguien llega a esta URL a pelo) el
               enlace va limpio: versión de pago. */}
-          <CtaHojaDeRuta
+          <a
             href={token ? `/hoja-de-ruta?ventana=1&t=${encodeURIComponent(token)}` : "/hoja-de-ruta"}
             className={`${botonClase} mt-10 bg-[#1C3A5E] text-[#FAF3E8] hover:bg-[#0F2240]`}
           >
             {ESPALDA_GRACIAS.ctaBoton}
-          </CtaHojaDeRuta>
+          </a>
         </div>
       </section>
 

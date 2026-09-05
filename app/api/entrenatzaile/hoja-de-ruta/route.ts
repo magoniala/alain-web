@@ -16,11 +16,6 @@ import {
   huecosDisponibles,
   type Bloqueo,
 } from "@/lib/entrenatzaile-huecos";
-import {
-  datosDeLaPeticion,
-  enviarEventoMeta,
-  haAceptadoSeguimiento,
-} from "@/lib/meta-capi";
 import { getStripe, PRECIO_HOJA_RUTA_CENT } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 
@@ -330,7 +325,7 @@ async function crearSesionDePago(args: {
 // con el estado de elegibilidad en el asunto.
 export async function PATCH(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { id, hueco, eventId } = body;
+  const { id, hueco } = body;
 
   if (typeof id !== "string" || !id) {
     return NextResponse.json({ error: ERROR_GENERICO }, { status: 400 });
@@ -463,26 +458,6 @@ export async function PATCH(req: Request) {
       </table>
     </div>
   `;
-
-  // Reserva confirmada: es la conversión más profunda del embudo. Como el
-  // resto, va con su identificador compartido y solo si aceptó el
-  // seguimiento.
-  let metaEvento: string;
-  if (!haAceptadoSeguimiento(req)) {
-    metaEvento = "omitido: no aceptó las cookies";
-  } else if (typeof eventId !== "string" || !eventId) {
-    metaEvento = "omitido: el navegador no mandó eventId";
-  } else {
-    metaEvento = await enviarEventoMeta({
-      nombre: "Schedule",
-      eventId,
-      url: req.headers.get("referer") ?? "https://entrenatzaile.alainzulaika.com/hoja-de-ruta",
-      email: reserva.email as string,
-      telefono: (reserva.telefono as string) ?? undefined,
-      ...datosDeLaPeticion(req),
-    });
-  }
-  await supabase.from("hoja_ruta_reservas").update({ meta_evento: metaEvento.slice(0, 600) }).eq("id", id);
 
   // Confirmación al lead: le queda por escrito el día y la hora. Va antes que
   // el aviso interno pero en su propio try, porque un fallo aquí no debe
