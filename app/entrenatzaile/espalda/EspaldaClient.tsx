@@ -1,15 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Header, Footer, inputStyle, labelStyle, fieldStyle, cardStyle } from "../_ui";
-import { ESPALDA_BLOQUES, ESPALDA_FORMULARIO, ESPALDA_HERO } from "./_content";
+import { useCallback, useEffect, useRef } from "react";
+import { Header, Footer } from "../_ui";
+import FormularioEspalda from "./FormularioEspalda";
+import { ESPALDA_CUERPO, ESPALDA_HERO, ESPALDA_PUENTE } from "./_content";
 import {
-  CONSENT_ESPALDA,
   FICHA_ESPALDA_TITULO_PUBLICO,
-  GENEROS,
-  mensajeErrorFormulario,
-  PISTAS_ESPALDA,
-  PREGUNTAS_ESPALDA,
   UTM_KEYS,
   type Utm,
 } from "@/lib/entrenatzaile-formularios";
@@ -42,50 +38,31 @@ function nuevaSesion(): string {
   }
 }
 
-// Una pantalla por pregunta (son el grueso y piden escribir), y luego tres
-// más: contacto, quién eres, y el permiso.
-const PASO_CONTACTO = PREGUNTAS_ESPALDA.length; // 3
-const PASO_PERFIL = PASO_CONTACTO + 1; // 4
-const PASO_PERMISO = PASO_PERFIL + 1; // 5
-const PASOS_TOTAL = PASO_PERMISO + 1; // 6
-
 const tituloClase = "font-[family-name:var(--font-lora)] font-medium tracking-[-0.02em]";
 const cuerpoClase = "text-[1.15rem] leading-[1.8] text-[#0F2240]/80 md:text-[1.22rem]";
 
-// Aclaración pequeña bajo una etiqueta o junto a una casilla.
-const pistaStyle: React.CSSProperties = {
-  fontSize: "0.88rem",
-  fontStyle: "italic",
-  lineHeight: 1.55,
-  color: "rgba(15,34,64,0.50)",
-  marginBottom: "0.7rem",
-};
-
-const casillaStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: "0.6rem",
-  cursor: "pointer",
-  fontSize: "0.95rem",
-  lineHeight: 1.55,
-  color: "rgba(15,34,64,0.72)",
-};
+// Un bloque de lectura: titular opcional y sus párrafos.
+function BloqueTexto({ titulo, parrafos }: { titulo?: string; parrafos: string[] }) {
+  return (
+    <div className="fade-in">
+      {titulo && (
+        <h2 className={`mb-6 text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] text-[#1C3A5E] ${tituloClase}`}>
+          {titulo}
+        </h2>
+      )}
+      <div className="space-y-5">
+        {parrafos.map((p, j) => (
+          <p key={j} className={cuerpoClase}>
+            {p}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function EspaldaClient() {
-  const [empezado, setEmpezado] = useState(false);
-  const [paso, setPaso] = useState(0);
-  const [respuestas, setRespuestas] = useState<string[]>(PREGUNTAS_ESPALDA.map(() => ""));
-  const [datos, setDatos] = useState({ nombre: "", email: "", telefono: "", edad: "", genero: "" });
-  const [consentWhatsapp, setConsentWhatsapp] = useState(false);
-  const [consentDatos, setConsentDatos] = useState(false);
-  const [generoHover, setGeneroHover] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [enviando, setEnviando] = useState(false);
-
   const utm = useRef<Utm>({});
-  const tarjetaRef = useRef<HTMLDivElement>(null);
-  const primerCampoRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
-  const yaMontado = useRef(false);
 
   // Medición del embudo: en qué paso se queda la gente, y nada más. Lo que
   // escribe no viaja aquí —eso son datos de salud y van a su tabla con su
@@ -100,8 +77,11 @@ export default function EspaldaClient() {
 
   const marcar = useCallback((evento: string, detalle?: string) => {
     if (!sesion.current) return;
-    // Cada paso cuenta una sola vez por sesión. El error de envío es la
-    // excepción: si alguien lo intenta tres veces, quiero verlas las tres.
+    // Cada paso cuenta una sola vez por sesión. Con el formulario duplicado
+    // en la página, esto es también lo que hace que "lo ve" y "lo empieza"
+    // se cuenten en el primero de los dos donde ocurran, y no dos veces.
+    // El error de envío es la excepción: si alguien lo intenta tres veces,
+    // quiero verlas las tres.
     if (evento !== "submit_error") {
       if (marcados.current.has(evento)) return;
       marcados.current.add(evento);
@@ -125,6 +105,24 @@ export default function EspaldaClient() {
     } catch {
       // Silencio absoluto. Aquí no hay nada que salvar.
     }
+  }, []);
+
+  const origenActual = useCallback(() => utm.current, []);
+
+  // De lo que ha escrito, nada viaja hasta la página de gracias: la regla
+  // dura se mantiene. Van solo dos identificadores opacos que no dicen nada
+  // de nadie: su token de ventana —lo que permite que el botón de gracias le
+  // lleve a SU versión de la Hoja de Ruta, con su fecha límite, en vez de a
+  // la de 90 €— y la sesión del embudo, para que el clic hacia la Hoja de
+  // Ruta se cosa a este mismo recorrido en lugar de aparecer como una visita
+  // suelta. Ni cuál de los dos formularios usó: eso ya viaja en su evento.
+  const irAGracias = useCallback((token: unknown) => {
+    const base = window.location.pathname.replace(/\/$/, "");
+    const params = new URLSearchParams();
+    if (typeof token === "string" && token) params.set("t", token);
+    if (sesion.current) params.set("s", sesion.current);
+    const query = params.toString();
+    window.location.assign(query ? `${base}/gracias?${query}` : `${base}/gracias`);
   }, []);
 
   useEffect(() => {
@@ -162,21 +160,6 @@ export default function EspaldaClient() {
     return () => clearInterval(id);
   }, [marcar]);
 
-  // El formulario está al final de la página: saber cuántos llegan a verlo
-  // es lo que separa "no les interesa" de "no bajaron hasta allí".
-  useEffect(() => {
-    const tarjeta = tarjetaRef.current;
-    if (!tarjeta) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        marcar("form_visible");
-        observer.disconnect();
-      }
-    });
-    observer.observe(tarjeta);
-    return () => observer.disconnect();
-  }, [marcar]);
-
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add("visible")),
@@ -185,303 +168,6 @@ export default function EspaldaClient() {
     document.querySelectorAll(".fade-in").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
-
-  // Al cambiar de pantalla: la tarjeta a la vista y el cursor en el primer
-  // campo. En el primer render no se hace nada — el formulario está al final
-  // de la página y enfocarlo al cargar arrastraría al visitante hasta abajo
-  // sin haber leído nada.
-  useEffect(() => {
-    if (!yaMontado.current) {
-      yaMontado.current = true;
-      return;
-    }
-    tarjetaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    primerCampoRef.current?.focus({ preventScroll: true });
-  }, [paso, empezado]);
-
-  function validarPaso(): string | null {
-    if (paso < PASO_CONTACTO) {
-      return respuestas[paso].trim() ? null : "Escribe tu respuesta para poder seguir.";
-    }
-    if (paso === PASO_CONTACTO) {
-      if (!datos.nombre.trim()) return "Escribe tu nombre para poder seguir.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.email.trim())) return "Escribe un email válido.";
-      if (datos.telefono.replace(/[\s().+-]/g, "").length < 9) return "Escribe un teléfono válido.";
-      return null;
-    }
-    if (paso === PASO_PERFIL) {
-      const edad = Number(datos.edad);
-      if (!Number.isFinite(edad) || edad < 14 || edad > 100) return "Escribe una edad válida.";
-      if (!datos.genero) return "Elige una opción para seguir.";
-      return null;
-    }
-    if (paso === PASO_PERMISO && !consentDatos) {
-      return "Necesito tu permiso para tratar las respuestas antes de poder enviarte nada.";
-    }
-    return null;
-  }
-
-  async function avanzar(e: React.FormEvent) {
-    e.preventDefault();
-    const fallo = validarPaso();
-    if (fallo) {
-      setError(fallo);
-      return;
-    }
-    setError("");
-
-    // El paso ha validado, así que está completo. Se cuenta aquí y no en el
-    // clic: pulsar "Siguiente" con un campo vacío no es haberlo rellenado.
-    if (paso < PASO_CONTACTO) marcar(`q${paso + 1}_done`);
-    else if (paso === PASO_CONTACTO) marcar("datos_done");
-    else if (paso === PASO_PERFIL) marcar("perfil_done");
-
-    if (paso < PASO_PERMISO) {
-      setPaso(paso + 1);
-      return;
-    }
-
-    setEnviando(true);
-
-    try {
-      const res = await fetch("/api/entrenatzaile/espalda", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          respuestas,
-          nombre: datos.nombre,
-          email: datos.email,
-          telefono: datos.telefono,
-          edad: datos.edad,
-          genero: datos.genero,
-          consentDatos,
-          consentWhatsapp,
-          utm: utm.current,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        marcar("submit_error", String(res.status));
-        setError(mensajeErrorFormulario(res.status, data.error));
-        return;
-      }
-      marcar("submit_ok");
-
-      // De lo que ha escrito, nada viaja hasta la página de gracias: la regla
-      // dura se mantiene. Van solo dos identificadores opacos que no dicen
-      // nada de nadie: su token de ventana —lo que permite que el botón de
-      // gracias le lleve a SU versión de la Hoja de Ruta, con su fecha
-      // límite, en vez de a la de 90 €— y la sesión del embudo, para que el
-      // clic hacia la Hoja de Ruta se cosa a este mismo recorrido en lugar
-      // de aparecer como una visita suelta.
-      const base = window.location.pathname.replace(/\/$/, "");
-      const params = new URLSearchParams();
-      if (typeof data.t === "string" && data.t) params.set("t", data.t);
-      if (sesion.current) params.set("s", sesion.current);
-      const query = params.toString();
-      window.location.assign(query ? `${base}/gracias?${query}` : `${base}/gracias`);
-    } catch {
-      marcar("submit_error", "red");
-      setError(mensajeErrorFormulario(0));
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  // Desde la primera pregunta se vuelve al botón de entrada, como en
-  // /contacto: no se queda uno atrapado dentro del formulario.
-  function volver() {
-    setError("");
-    if (paso === 0) {
-      setEmpezado(false);
-      return;
-    }
-    setPaso(paso - 1);
-  }
-
-  function renderPaso() {
-    if (paso < PASO_CONTACTO) {
-      return (
-        <div key={paso} className="context-fade-in">
-          <div style={{ ...fieldStyle, marginBottom: 0 }}>
-            <label htmlFor={`pregunta-${paso}`} style={labelStyle}>
-              {paso + 1}. {PREGUNTAS_ESPALDA[paso]}
-            </label>
-            <p style={pistaStyle}>{PISTAS_ESPALDA[paso]}</p>
-            <textarea
-              id={`pregunta-${paso}`}
-              ref={primerCampoRef as React.RefObject<HTMLTextAreaElement>}
-              rows={4}
-              value={respuestas[paso]}
-              onChange={(e) =>
-                setRespuestas((prev) => prev.map((r, j) => (j === paso ? e.target.value : r)))
-              }
-              onBlur={() => {
-                if (respuestas[paso].trim()) marcar(`q${paso + 1}_done`);
-              }}
-              style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
-              className="placeholder:text-[#1C3A5E]/35"
-            />
-          </div>
-        </div>
-      );
-    }
-
-    if (paso === PASO_CONTACTO) {
-      return (
-        <div key={paso} className="context-fade-in">
-          <div style={fieldStyle}>
-            <label htmlFor="nombre" style={labelStyle}>
-              Nombre
-            </label>
-            <p style={pistaStyle}>{ESPALDA_FORMULARIO.nombrePista}</p>
-            <input
-              id="nombre"
-              ref={primerCampoRef as React.RefObject<HTMLInputElement>}
-              autoComplete="given-name"
-              placeholder="Tu nombre"
-              value={datos.nombre}
-              onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
-              style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
-            />
-          </div>
-
-          <div style={fieldStyle}>
-            <label htmlFor="email" style={labelStyle}>
-              Correo electrónico
-            </label>
-            <p style={pistaStyle}>{ESPALDA_FORMULARIO.emailPista}</p>
-            <input
-              id="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="tu@email.com"
-              value={datos.email}
-              onChange={(e) => setDatos({ ...datos, email: e.target.value })}
-              style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
-            />
-          </div>
-
-          <div style={{ ...fieldStyle, marginBottom: "1.1rem" }}>
-            <label htmlFor="telefono" style={labelStyle}>
-              Teléfono
-            </label>
-            <p style={pistaStyle}>{ESPALDA_FORMULARIO.telefonoPista}</p>
-            <input
-              id="telefono"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="+34 600 000 000"
-              value={datos.telefono}
-              onChange={(e) => setDatos({ ...datos, telefono: e.target.value })}
-              style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
-            />
-          </div>
-
-          {/* Casilla opcional de WhatsApp: va pegada al teléfono, que es el
-              dato al que se refiere. */}
-          <label style={casillaStyle}>
-            <input
-              type="checkbox"
-              checked={consentWhatsapp}
-              onChange={(e) => setConsentWhatsapp(e.target.checked)}
-              style={{ marginTop: "0.2rem" }}
-            />
-            {CONSENT_ESPALDA.whatsapp}
-          </label>
-          <p style={{ ...pistaStyle, marginTop: "0.35rem", marginBottom: 0, paddingLeft: "1.45rem" }}>
-            {ESPALDA_FORMULARIO.whatsappPista}
-          </p>
-        </div>
-      );
-    }
-
-    if (paso === PASO_PERFIL) {
-      return (
-        <div key={paso} className="context-fade-in">
-          <div style={fieldStyle}>
-            <label htmlFor="edad" style={labelStyle}>
-              Edad
-            </label>
-            <input
-              id="edad"
-              ref={primerCampoRef as React.RefObject<HTMLInputElement>}
-              type="number"
-              inputMode="numeric"
-              min={14}
-              max={100}
-              placeholder="Tu edad"
-              value={datos.edad}
-              onChange={(e) => setDatos({ ...datos, edad: e.target.value })}
-              style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Género</label>
-            <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
-              {GENEROS.map((opt) => {
-                const activo = datos.genero === opt;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setDatos({ ...datos, genero: opt })}
-                    onMouseEnter={() => setGeneroHover(opt)}
-                    onMouseLeave={() => setGeneroHover(null)}
-                    style={{
-                      padding: "0.55rem 1.1rem",
-                      fontSize: "0.95rem",
-                      cursor: "pointer",
-                      border: `1px solid ${activo || generoHover === opt ? "#D4860A" : "rgba(28,58,94,0.25)"}`,
-                      background: activo ? "rgba(212,134,10,0.10)" : "none",
-                      color: activo ? "#0F2240" : "rgba(15,34,64,0.70)",
-                      transition: "border-color 0.2s, background 0.2s, color 0.2s",
-                    }}
-                  >
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Último paso: el permiso. Es la base legal del art. 9 para tratar las
-    // respuestas, así que va solo, sin nada más que le reste atención.
-    return (
-      <div key={paso} className="context-fade-in">
-        <label style={casillaStyle}>
-          <input
-            type="checkbox"
-            checked={consentDatos}
-            onChange={(e) => {
-              setConsentDatos(e.target.checked);
-              if (e.target.checked) marcar("consent_done");
-            }}
-            style={{ marginTop: "0.2rem" }}
-          />
-          {CONSENT_ESPALDA.datos}
-        </label>
-        <p style={{ ...pistaStyle, marginTop: "0.9rem", marginBottom: 0 }}>
-          <a
-            href="/privacidad"
-            className="not-italic underline underline-offset-4 transition-colors hover:text-[#0F2240]"
-          >
-            {ESPALDA_FORMULARIO.privacidad}
-          </a>
-        </p>
-      </div>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
@@ -512,145 +198,46 @@ export default function EspaldaClient() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[680px] px-6 py-16 md:px-8 md:py-24">
+      {/* El puente. Anuncia las tres preguntas y, en su último párrafo,
+          declara el alta en la newsletter: por eso va por encima de los DOS
+          formularios y no puede bajar de aquí. */}
+      <section className="mx-auto max-w-[680px] px-6 pt-16 pb-10 md:px-8 md:pt-24 md:pb-12">
+        <BloqueTexto {...ESPALDA_PUENTE} />
+      </section>
+
+      {/* Primer formulario: el punto de conversión pegado al final de la
+          lectura corta, para quien ya ha decidido con el hero y el puente.
+          Es el que recibe el ancla del botón de arriba. */}
+      <section id="formulario" className="scroll-mt-8 px-6 pb-16 md:px-8 md:pb-20">
+        <div className="mx-auto max-w-[680px]">
+          <FormularioEspalda
+            posicion="top"
+            marcar={marcar}
+            origenActual={origenActual}
+            irAGracias={irAGracias}
+          />
+        </div>
+      </section>
+
+      {/* El cuerpo, para quien necesita leerlo entero antes de decidir. */}
+      <section className="mx-auto max-w-[680px] px-6 pb-16 md:px-8 md:pb-20">
         <div className="space-y-14 md:space-y-16">
-          {ESPALDA_BLOQUES.map((bloque, i) => (
-            <div key={i} className="fade-in">
-              {bloque.titulo && (
-                <h2 className={`mb-6 text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] text-[#1C3A5E] ${tituloClase}`}>
-                  {bloque.titulo}
-                </h2>
-              )}
-              <div className="space-y-5">
-                {bloque.parrafos.map((p, j) => (
-                  <p key={j} className={cuerpoClase}>
-                    {p}
-                  </p>
-                ))}
-              </div>
-            </div>
+          {ESPALDA_CUERPO.map((bloque, i) => (
+            <BloqueTexto key={i} {...bloque} />
           ))}
         </div>
       </section>
 
-      <section id="formulario" className="scroll-mt-8 px-6 pb-24 md:px-8">
+      {/* Segundo formulario: el mismo, con su propio estado. Quien ha bajado
+          leyendo no tiene que volver a subir. */}
+      <section id="formulario-final" className="scroll-mt-8 px-6 pb-24 md:px-8">
         <div className="mx-auto max-w-[680px]">
-          <div ref={tarjetaRef} className="p-6 md:p-10" style={cardStyle}>
-            <p className="mb-6 text-[1rem] leading-[1.6] text-[#0F2240]/75">
-              {ESPALDA_FORMULARIO.antesDelFormulario}{" "}
-              <span className="font-semibold text-[#1C3A5E]">«{FICHA_ESPALDA_TITULO_PUBLICO}»</span>
-            </p>
-
-            {!empezado ? (
-              /* El formulario vive detrás de un botón, como en /contacto: la
-                 página no se cierra con un muro de campos, y quien pulsa ya
-                 ha decidido que le compensa. */
-              <button
-                type="button"
-                onClick={() => {
-                  marcar("form_open");
-                  setEmpezado(true);
-                }}
-                style={{
-                  border: "none",
-                  padding: "0.95rem 2.5rem",
-                  fontSize: "0.98rem",
-                  letterSpacing: "0.08em",
-                  cursor: "pointer",
-                  display: "block",
-                }}
-                className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
-              >
-                {ESPALDA_FORMULARIO.empezar}
-              </button>
-            ) : (
-              <>
-            {/* Cuánto queda: los segmentos de un vistazo y el conteo escrito
-                para quien quiera el número exacto. */}
-            <div style={{ marginBottom: "2.5rem" }}>
-              <div style={{ display: "flex", gap: "6px" }}>
-                {Array.from({ length: PASOS_TOTAL }).map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      height: "2px",
-                      flex: 1,
-                      background: i <= paso ? "#D4860A" : "rgba(28,58,94,0.15)",
-                      transition: "background 0.3s",
-                    }}
-                  />
-                ))}
-              </div>
-              <p
-                style={{
-                  marginTop: "0.7rem",
-                  fontSize: "0.75rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.16em",
-                  color: "rgba(28,58,94,0.55)",
-                }}
-              >
-                Paso {paso + 1} de {PASOS_TOTAL}
-              </p>
-            </div>
-
-            <form
-              onSubmit={avanzar}
-              onFocus={() => marcar("form_start")}
-              onChange={() => marcar("form_start")}
-              noValidate
-            >
-              {renderPaso()}
-
-              {error && (
-                <p style={{ fontSize: "0.92rem", color: "#B3261E", marginTop: "1.5rem", lineHeight: 1.6 }}>
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={enviando}
-                style={{
-                  marginTop: "2.5rem",
-                  border: "none",
-                  padding: "0.95rem 2.5rem",
-                  fontSize: "0.98rem",
-                  letterSpacing: "0.08em",
-                  cursor: enviando ? "default" : "pointer",
-                  display: "block",
-                  opacity: enviando ? 0.6 : 1,
-                }}
-                className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
-              >
-                {paso < PASO_PERMISO
-                  ? "Siguiente →"
-                  : enviando
-                    ? ESPALDA_FORMULARIO.enviando
-                    : ESPALDA_FORMULARIO.boton}
-              </button>
-            </form>
-
-            <button
-              type="button"
-              onClick={volver}
-              style={{
-                marginTop: "1.2rem",
-                fontSize: "0.82rem",
-                letterSpacing: "0.08em",
-                color: "rgba(15,34,64,0.50)",
-                background: "none",
-                cursor: "pointer",
-                display: "block",
-                padding: 0,
-              }}
-              className="transition-colors duration-200 hover:text-[#0F2240]/75"
-            >
-              ← volver
-            </button>
-              </>
-            )}
-          </div>
+          <FormularioEspalda
+            posicion="bottom"
+            marcar={marcar}
+            origenActual={origenActual}
+            irAGracias={irAGracias}
+          />
         </div>
       </section>
 

@@ -13,7 +13,6 @@ export const EVENTOS_EMBUDO = [
   "time_30s",
   "hero_cta_click",
   "form_visible",
-  "form_open",
   "form_start",
   "q1_done",
   "q2_done",
@@ -44,8 +43,10 @@ export const PASOS_EMBUDO: { clave: EventoEmbudo; etiqueta: string }[] = [
   { clave: "time_10s", etiqueta: "Siguen a los 10 s" },
   { clave: "time_30s", etiqueta: "Siguen a los 30 s" },
   { clave: "hero_cta_click", etiqueta: "Pulsan el botón de arriba" },
+  // El formulario sale abierto y aparece dos veces en la página, así que
+  // "lo ven" se alcanza pronto y casi siempre. El escalón que dice algo es
+  // el siguiente: de verlo a tocarlo.
   { clave: "form_visible", etiqueta: "Ven el formulario" },
-  { clave: "form_open", etiqueta: "Pulsan «Empezar»" },
   { clave: "form_start", etiqueta: "Tocan un campo" },
   { clave: "q1_done", etiqueta: "Pregunta 1" },
   { clave: "q2_done", etiqueta: "Pregunta 2" },

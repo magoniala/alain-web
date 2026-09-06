@@ -5,7 +5,7 @@
 // graba, y tienen que ser literalmente los mismos que ve el lead.
 
 export interface Bloque {
-  // El bloque 2 va sin titular, a propósito.
+  // El cuerpo va sin titular, a propósito.
   titulo?: string;
   parrafos: string[];
 }
@@ -20,7 +20,29 @@ export const ESPALDA_HERO = {
   ctaNota: "Cuatro páginas en PDF. Se lee en cinco minutos.",
 };
 
-export const ESPALDA_BLOQUES: Bloque[] = [
+// El puente: va entre el hero y el PRIMER formulario, que es el que ahora
+// recoge a quien no piensa leerse la página entera.
+//
+// El último párrafo estaba antes al final del cuerpo. Ha subido aquí porque
+// es el que declara el alta en la newsletter, y el alta no tiene casilla: se
+// sostiene solo en que la persona haya podido leerlo ANTES de enviar. Con el
+// formulario a media página, dejarlo abajo significaba dar de alta en un
+// correo diario a quien nunca vio la frase que se lo decía. El texto no ha
+// cambiado ni una coma; si se toca, hay que tocar también
+// DECLARACION_NEWSLETTER_ESPALDA.
+export const ESPALDA_PUENTE: Bloque = {
+  titulo: "Antes de recibirla, tres preguntas.",
+  parrafos: [
+    "Hay que responderlas escribiendo.",
+    "No son para clasificar a nadie. Los correos que mando después salen de lo que la gente responde aquí, así que cuanto más concreto, más útil te va a resultar lo que recibas.",
+    "Se tarda dos o tres minutos. Quien no los tenga ahora, mejor en otro momento.",
+    "La ha escrito Alain Zulaika, entrenador titulado especializado en personas de 45 a 65 años. Te llega por correo, y a partir de ahí llega también un correo diario sobre esto mismo. Te puedes dar de baja con un clic cuando quieras.",
+  ],
+};
+
+// El cuerpo: va DESPUÉS del primer formulario, para quien quiera saber más
+// antes de decidir. Al final de él está el segundo formulario.
+export const ESPALDA_CUERPO: Bloque[] = [
   {
     parrafos: [
       "El episodio agudo se cura casi solo. En seis o doce semanas la mayoría de la gente ya casi no tiene dolores, haga lo que haga.",
@@ -29,17 +51,6 @@ export const ESPALDA_BLOQUES: Bloque[] = [
       "Y esa parte no la trabaja casi nadie.",
       "Esta es una ficha sobre por qué las espaldas vuelven a fallar y qué es lo que rompe el ciclo. También qué no lo rompe: el reposo, las fajas y el paracetamol salen mal parados.",
       "Cuatro páginas. Se lee en cinco minutos. Sin dramas y sin milagros.",
-      // Esta frase es la que declara el alta en la newsletter: si se toca,
-      // hay que tocar también DECLARACION_NEWSLETTER_ESPALDA.
-      "La ha escrito Alain Zulaika, entrenador titulado especializado en personas de 45 a 65 años. Te llega por correo, y a partir de ahí llega también un correo diario sobre esto mismo. Te puedes dar de baja con un clic cuando quieras.",
-    ],
-  },
-  {
-    titulo: "Antes de recibirla, tres preguntas.",
-    parrafos: [
-      "Hay que responderlas escribiendo.",
-      "No son para clasificar a nadie. Los correos que mando después salen de lo que la gente responde aquí, así que cuanto más concreto, más útil te va a resultar lo que recibas.",
-      "Se tarda dos o tres minutos. Quien no los tenga ahora, mejor en otro momento.",
     ],
   },
 ];
@@ -50,10 +61,6 @@ export const ESPALDA_FORMULARIO = {
   // No repite "tres preguntas" porque el bloque de arriba ya lo dice y
   // quedaría dicho dos veces seguidas.
   antesDelFormulario: "Al terminar te llega, en PDF:",
-  // Botón que abre el formulario. NO dice "recibir la ficha" a propósito: ese
-  // es el texto del botón final, el que envía. Si los dos dijeran lo mismo,
-  // este prometería algo que no pasa al pulsarlo.
-  empezar: "Responder las tres preguntas",
   nombrePista: "Para saber cómo llamarte.",
   emailPista: "Aquí te llega la ficha.",
   telefonoPista:

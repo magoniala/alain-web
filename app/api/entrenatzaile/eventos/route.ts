@@ -10,10 +10,15 @@ import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
-// Detalle de un evento. Solo se acepta un código corto —el status HTTP de
-// un envío fallido, o "red" si ni llegó a salir—, nunca texto libre. Es la
-// barrera que garantiza que por aquí no puede colarse una respuesta del
-// formulario aunque alguien lo intente.
+// Eventos que pueden traer detalle, y qué significa en cada uno: el status
+// HTTP de un envío fallido ("400", "500", o "red" si ni llegó a salir) y,
+// en un envío bueno, desde cuál de los dos formularios de la página salió
+// ("top" o "bottom").
+const CON_DETALLE = new Set(["submit_error", "submit_ok"]);
+
+// Solo se acepta un código corto, nunca texto libre. Es la barrera que
+// garantiza que por aquí no puede colarse una respuesta del formulario
+// aunque alguien lo intente.
 function limpiarDetalle(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const v = raw.trim();
@@ -43,7 +48,7 @@ export async function POST(req: Request) {
     sesion,
     landing,
     evento,
-    detalle: evento === "submit_error" ? limpiarDetalle(body.detalle) : null,
+    detalle: CON_DETALLE.has(evento) ? limpiarDetalle(body.detalle) : null,
     ...limpiarUtm(body.utm),
     dispositivo: dispositivoDeUA(userAgent),
     navegador: navegadorDeUA(userAgent),
