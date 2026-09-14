@@ -424,6 +424,15 @@ export default function NewsletterTab() {
   const cola = campanas
     .filter(c => c.estado === "cola")
     .sort((a, b) => (a.orden_cola ?? 0) - (b.orden_cola ?? 0));
+  // Los dos estados que antes no se pintaban en ninguna lista: una campaña en
+  // 'enviando' o 'cancelado' existía en la tabla pero era invisible aquí. El
+  // 12/09/2026 una se quedó atascada en 'enviando' y no había forma de verlo.
+  const atascadas = campanas
+    .filter(c => c.estado === "enviando")
+    .sort((a, b) => (b.programado_para ?? "").localeCompare(a.programado_para ?? ""));
+  const canceladas = campanas
+    .filter(c => c.estado === "cancelado")
+    .sort((a, b) => (b.programado_para ?? "").localeCompare(a.programado_para ?? ""));
 
   const inputClass = "w-full border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 transition-colors";
 
@@ -966,6 +975,33 @@ export default function NewsletterTab() {
             {accionError && (
               <div className="p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{accionError}</div>
             )}
+
+            {/* Atascadas: el cron las reclamó y no llegó a cerrarlas */}
+            {atascadas.length > 0 && (
+              <div className="border border-amber-300 bg-amber-50 p-4">
+                <p className="text-[0.7rem] uppercase tracking-[0.22em] text-amber-800 mb-2">
+                  A medio enviar ({atascadas.length})
+                </p>
+                <p className="text-[0.75rem] text-amber-800 mb-3 leading-relaxed">
+                  El cron las cogió para enviarlas y no llegó a cerrarlas. Lo más probable es que los correos
+                  sí salieran y lo que se perdiera fuese el registro. Mientras estén así no cuentan como
+                  envío del día: hay que cerrarlas a mano en Supabase (<code>estado</code> a{" "}
+                  <code>enviado</code> con su <code>enviado_en</code>).
+                </p>
+                <div className="space-y-2">
+                  {atascadas.map(c => (
+                    <div key={c.id} className="border border-amber-200 bg-white p-3">
+                      <p className="text-sm font-medium">
+                        {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "Sin asunto"}
+                      </p>
+                      <p className="text-[0.75rem] text-gray-400 mt-0.5">{fmtDate(c.programado_para)}</p>
+                      <p className="text-[0.7rem] text-gray-400 mt-0.5 font-mono">{c.id}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Pending */}
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a] mb-5">
@@ -1094,6 +1130,27 @@ export default function NewsletterTab() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Canceladas: ni pendientes ni enviadas, pero siguen en la tabla */}
+            {canceladas.length > 0 && (
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-4">
+                  Canceladas ({canceladas.length})
+                </p>
+                <div className="space-y-1">
+                  {canceladas.map(c => (
+                    <div key={c.id} className="border border-gray-100 px-4 py-3">
+                      <p className="text-sm text-gray-400 line-through">
+                        {[c.subject_eu, c.subject_es].filter(Boolean).join(" / ") || "—"}
+                      </p>
+                      <p className="text-[0.72rem] text-gray-400 mt-0.5">
+                        Iba a salir el {fmtDate(c.programado_para)}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

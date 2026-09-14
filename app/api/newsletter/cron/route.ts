@@ -313,7 +313,13 @@ async function enviarCampana(campana: CampanaEnviable, contactos: ContactoEnvio[
     );
   }
 
-  await supabase
+  // El envío ya ha salido: esto es solo la contabilidad. Pero si se pierde, la
+  // campaña se queda en 'enviando' para siempre —invisible en /admin, que solo
+  // pinta programado/enviado/cola— y, peor, la cola B deja de ver que hoy ya ha
+  // salido algo. Pasó el 12/09/2026: dos mails el mismo día. Se registra a
+  // gritos y quien llama se entera, que es lo único que se puede hacer sin
+  // volver a mandar los correos.
+  const { error: cierreError } = await supabase
     .from("newsletter_campanas")
     .update({
       estado: "enviado",
@@ -322,25 +328,45 @@ async function enviarCampana(campana: CampanaEnviable, contactos: ContactoEnvio[
       enviados_es: esContactos.length,
     })
     .eq("id", campana.id);
+  if (cierreError) {
+    console.error(`cron: la campaña ${campana.id} SE HA ENVIADO pero no se ha podido cerrar como 'enviado':`, cierreError);
+  }
 }
 
 // Cola B: mails de reserva sin fecha (estado 'cola', ordenados por orden_cola).
 // A las 19:15 (Madrid), si ese día no ha salido ni está programado ningún otro
 // envío, sale el primero de la cola. Un solo mail por día, nunca dos.
-async function procesarColaB(cargarContactos: () => Promise<ContactoEnvio[]>): Promise<number> {
+//
+// `yaSalioEnEstaPasada` es el cinturón que no depende de la base de datos: si
+// esta misma ejecución acaba de mandar una campaña, la cola B no sale, aunque
+// la escritura que la cerraba se haya perdido por el camino.
+async function procesarColaB(
+  cargarContactos: () => Promise<ContactoEnvio[]>,
+  yaSalioEnEstaPasada: boolean
+): Promise<number> {
   const ahora = madridParts();
   const minutosAhora = ahora.hour * 60 + ahora.minute;
   if (!enVentana(minutosAhora, HORA_COLA_B_MIN)) return 0;
+  if (yaSalioEnEstaPasada) return 0;
 
   // ¿Hay algo hoy? Cuenta lo ya enviado, lo que está saliendo ahora mismo y lo
   // que sigue programado para hoy más tarde (los canceladas no cuentan). El
   // filtro por fecha reciente es solo para no traerse el histórico entero.
   const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  const { data: recientes } = await supabase
+  const { data: recientes, error: recientesError } = await supabase
     .from("newsletter_campanas")
     .select("estado, enviado_en, programado_para")
     .in("estado", ["enviado", "enviando", "programado"])
     .or(`enviado_en.gte.${desde},programado_para.gte.${desde}`);
+
+  // Una consulta que falla NO es "hoy no ha salido nada". Sin esto, un tropiezo
+  // de Supabase se leía como día vacío y la cola B mandaba un segundo mail
+  // encima del del día. Ante la duda, la cola B se queda quieta: un día sin
+  // mail de reserva se arregla solo al siguiente; dos mails en un día, no.
+  if (recientesError) {
+    console.error("cron: no se ha podido comprobar si hoy ya había envío; la cola B no sale:", recientesError);
+    return 0;
+  }
 
   const hayEnvioHoy = (recientes ?? []).some(c =>
     (c.enviado_en && madridDate(c.enviado_en) === ahora.date) ||
@@ -747,7 +773,7 @@ export async function GET(req: Request) {
 
   const nurtureEnviados = await procesarNurture();
   const recordatorioEnviados = await procesarRecordatorioValoracion();
-  const colaBEnviadas = await procesarColaB(cargarContactos);
+  const colaBEnviadas = await procesarColaB(cargarContactos, procesadas > 0);
   // Antes del aviso de abandono: liberar primero deja el pago_estado a
   // 'expirado', y ese es justo el filtro que impide que a quien se le acaba
   // de liberar el hueco le llegue además el "te quedaste a medias".
