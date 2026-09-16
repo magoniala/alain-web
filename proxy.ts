@@ -10,6 +10,7 @@ const NO_REDIRECT_PATHS = [
   "/cookies",
   "/entrenatzaile",
   "/magic",
+  "/creadores",
 ];
 
 export function proxy(request: NextRequest) {
@@ -38,6 +39,27 @@ export function proxy(request: NextRequest) {
     }
     const url = request.nextUrl.clone();
     url.pathname = `/entrenatzaile${pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  // Subdominio dedicado: creadores.alainzulaika.com. Una sola página, en la
+  // raíz del subdominio, con la estética del sitio principal. Vive en el
+  // fichero app/creadores/page.tsx, así que aquí se le pone el prefijo.
+  //
+  // Las páginas legales son la excepción, igual que en entrenatzaile: viven
+  // en la raíz del sitio (/privacidad, /aviso-legal, /cookies) y el pie de la
+  // landing enlaza a ellas. Sin esta salida, el rewrite las buscaría en
+  // /creadores/privacidad, que no existe.
+  if (hostname.startsWith("creadores.")) {
+    if (
+      NO_REDIRECT_PATHS.some(
+        (p) => p !== "/entrenatzaile" && p !== "/creadores" && (pathname === p || pathname.startsWith(p + "/"))
+      )
+    ) {
+      return NextResponse.next();
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = pathname === "/" ? "/creadores" : `/creadores${pathname}`;
     return NextResponse.rewrite(url);
   }
 

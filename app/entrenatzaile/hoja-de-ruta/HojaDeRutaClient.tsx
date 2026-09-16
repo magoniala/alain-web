@@ -14,6 +14,7 @@ import {
 } from "./_content";
 import { CONSENT_HOJA_RUTA, UTM_KEYS, mensajeErrorFormulario, type Utm } from "@/lib/entrenatzaile-formularios";
 import type { HuecoDisponible } from "@/lib/entrenatzaile-huecos";
+import Calendario, { etiquetaDia, soloHora, type EstiloCalendario } from "@/app/_reserva/Calendario";
 
 function leerUtm(): Utm {
   if (typeof window === "undefined") return {};
@@ -55,148 +56,22 @@ const pistaStyle: React.CSSProperties = {
   marginBottom: "0.7rem",
 };
 
-const MESES = [
-  "enero",
-  "febrero",
-  "marzo",
-  "abril",
-  "mayo",
-  "junio",
-  "julio",
-  "agosto",
-  "septiembre",
-  "octubre",
-  "noviembre",
-  "diciembre",
-];
-const CABECERA_SEMANA = ["L", "M", "X", "J", "V", "S", "D"];
-
-// Día de la semana del 1 de ese mes, con el lunes como 0 (aquí las semanas
-// empiezan en lunes, no en domingo).
-function primerDiaSemana(anio: number, mes: number) {
-  const d = new Date(Date.UTC(anio, mes - 1, 1)).getUTCDay();
-  return d === 0 ? 6 : d - 1;
-}
-
-function diasEnMes(anio: number, mes: number) {
-  return new Date(Date.UTC(anio, mes, 0)).getUTCDate();
-}
-
-function sumarMes(mes: string, delta: number) {
-  const [a, m] = mes.split("-").map(Number);
-  const d = new Date(Date.UTC(a, m - 1 + delta, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-// Calendario de mes, con los días sin hueco en gris y tachados. Las flechas
-// solo se mueven entre meses que tienen algo que enseñar: no tiene sentido
-// dejar navegar a diciembre si solo se reserva a 30 días vista.
-function Calendario({
-  dias,
-  elegido,
-  onElegir,
-}: {
-  dias: string[];
-  elegido: string;
-  onElegir: (dia: string) => void;
-}) {
-  const primerMes = dias[0].slice(0, 7);
-  const ultimoMes = dias[dias.length - 1].slice(0, 7);
-  const [mes, setMes] = useState(primerMes);
-
-  const disponibles = new Set(dias);
-  const [anio, numMes] = mes.split("-").map(Number);
-  const huecosDelante = primerDiaSemana(anio, numMes);
-  const total = diasEnMes(anio, numMes);
-
-  const celdas: (string | null)[] = [
-    ...Array.from({ length: huecosDelante }, () => null),
-    ...Array.from({ length: total }, (_, i) => `${mes}-${String(i + 1).padStart(2, "0")}`),
-  ];
-
-  const puedeAtras = mes > primerMes;
-  const puedeAlante = mes < ultimoMes;
-
-  const flechaClase =
-    "flex h-9 w-9 items-center justify-center border border-[#1C3A5E]/20 bg-white text-[#1C3A5E] transition-colors hover:border-[#1C3A5E]/45 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#1C3A5E]/20";
-
-  return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setMes(sumarMes(mes, -1))}
-          disabled={!puedeAtras}
-          aria-label="Mes anterior"
-          className={flechaClase}
-        >
-          ‹
-        </button>
-        <p className="text-[1.02rem] font-semibold text-[#1C3A5E]">
-          <span className="capitalize">{MESES[numMes - 1]}</span> {anio}
-        </p>
-        <button
-          type="button"
-          onClick={() => setMes(sumarMes(mes, 1))}
-          disabled={!puedeAlante}
-          aria-label="Mes siguiente"
-          className={flechaClase}
-        >
-          ›
-        </button>
-      </div>
-
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {CABECERA_SEMANA.map((d, i) => (
-          <div key={i} className="pb-1 text-[0.7rem] uppercase tracking-[0.1em] text-[#0F2240]/40">
-            {d}
-          </div>
-        ))}
-
-        {celdas.map((dia, i) => {
-          if (!dia) return <div key={`v${i}`} />;
-          const numero = Number(dia.slice(-2));
-          const libre = disponibles.has(dia);
-          const activo = elegido === dia;
-
-          if (!libre) {
-            return (
-              <div
-                key={dia}
-                title={HOJA_RUTA_HUECOS.sinDisponibilidad}
-                aria-disabled="true"
-                className="flex aspect-square items-center justify-center text-[0.95rem] text-[#0F2240]/25 line-through"
-              >
-                {numero}
-              </div>
-            );
-          }
-
-          return (
-            <button
-              key={dia}
-              type="button"
-              onClick={() => onElegir(dia)}
-              aria-pressed={activo}
-              className={`flex aspect-square items-center justify-center text-[0.95rem] transition-colors ${
-                activo
-                  ? "bg-[#1C3A5E] font-semibold text-[#FAF3E8]"
-                  : "border border-[#D4860A]/45 bg-[#D4860A]/10 text-[#0F2240] hover:border-[#D4860A] hover:bg-[#D4860A]/20"
-              }`}
-            >
-              {numero}
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="mt-4 flex items-center gap-2 text-[0.82rem] text-[#0F2240]/50">
-        <span aria-hidden className="inline-block h-3 w-3 border border-[#D4860A]/45 bg-[#D4860A]/10" />
-        {HOJA_RUTA_HUECOS.leyenda}
-      </p>
-    </div>
-  );
-}
+// Aspecto del calendario compartido en esta landing: crema, azul y ámbar.
+// La estructura y el comportamiento viven en app/_reserva/Calendario.tsx, que
+// comparte con la página de creadores; lo único que no se comparte es esto.
+const ESTILO_CALENDARIO: EstiloCalendario = {
+  flecha:
+    "flex h-9 w-9 items-center justify-center border border-[#1C3A5E]/20 bg-white text-[#1C3A5E] transition-colors hover:border-[#1C3A5E]/45 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#1C3A5E]/20",
+  titulo: "text-[1.02rem] font-semibold text-[#1C3A5E]",
+  cabecera: "pb-1 text-[0.7rem] uppercase tracking-[0.1em] text-[#0F2240]/40",
+  libre:
+    "flex aspect-square items-center justify-center text-[0.95rem] transition-colors border border-[#D4860A]/45 bg-[#D4860A]/10 text-[#0F2240] hover:border-[#D4860A] hover:bg-[#D4860A]/20",
+  elegido:
+    "flex aspect-square items-center justify-center text-[0.95rem] transition-colors bg-[#1C3A5E] font-semibold text-[#FAF3E8]",
+  ocupado: "flex aspect-square items-center justify-center text-[0.95rem] text-[#0F2240]/25 line-through",
+  leyenda: "mt-4 flex items-center gap-2 text-[0.82rem] text-[#0F2240]/50",
+  muestra: "inline-block h-3 w-3 border border-[#D4860A]/45 bg-[#D4860A]/10",
+};
 
 function Parrafos({ parrafos }: { parrafos: Parrafo[] }) {
   return (
@@ -229,22 +104,6 @@ function Checks({ lineas }: { lineas: string[] }) {
       ))}
     </ul>
   );
-}
-
-// "2026-08-27" -> "jue 27 ago"
-function etiquetaDia(dia: string) {
-  const [a, m, d] = dia.split("-").map(Number);
-  return new Date(Date.UTC(a, m - 1, d)).toLocaleDateString("es-ES", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-}
-
-// De la etiqueta completa ("jueves, 27 de agosto · 10:30") solo la hora.
-function soloHora(etiqueta: string) {
-  return etiqueta.split("·").pop()?.trim() ?? etiqueta;
 }
 
 export interface HojaDeRutaClientProps {
@@ -587,7 +446,14 @@ export default function HojaDeRutaClient({
 
       return (
         <div key="dia" className="context-fade-in">
-          <Calendario dias={diasDisponibles} elegido={diaElegido} onElegir={setDiaElegido} />
+          <Calendario
+            dias={diasDisponibles}
+            elegido={diaElegido}
+            onElegir={setDiaElegido}
+            estilo={ESTILO_CALENDARIO}
+            textoSinDisponibilidad={HOJA_RUTA_HUECOS.sinDisponibilidad}
+            textoLeyenda={HOJA_RUTA_HUECOS.leyenda}
+          />
         </div>
       );
     }

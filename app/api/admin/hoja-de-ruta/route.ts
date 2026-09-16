@@ -10,6 +10,8 @@ import {
   MAX_POR_DIA,
   MAX_POR_SEMANA,
   type Bloqueo,
+  type ReservaOcupada,
+  type TipoCita,
 } from "@/lib/entrenatzaile-huecos";
 import { NextResponse } from "next/server";
 
@@ -26,11 +28,20 @@ interface ReservaCalendario {
   etiqueta: string;
   elegibilidad: string | null;
   dias_desde_alta: number | null;
+  tipo: TipoCita;
 }
 
 // Calendario del panel: qué hay reservado, qué está bloqueado y qué días
 // siguen abiertos. Sale del mismo cálculo que ve el lead, para que no puedan
 // contar cosas distintas.
+//
+// Los días libres se calculan para la HOJA DE RUTA, que es la agenda que se
+// gestiona desde aquí (mover, anular, bloquear). Las citas de infoproductos
+// salen igual en su día, marcadas: no se gestionan desde este panel, pero
+// tapan horas de la Hoja de Ruta y hay que verlas.
+//
+// Ojo al leer el calendario: un día puede aparecer con huecos libres y tener
+// ya una cita de creadores. Es correcto — esas solo tapan tres horas.
 export async function GET(req: Request) {
   if (!requireAdminAuth(req)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
@@ -39,7 +50,7 @@ export async function GET(req: Request) {
   const [reservasRes, bloqueosRes] = await Promise.all([
     supabase
       .from("hoja_ruta_reservas")
-      .select("id, nombre, email, telefono, hueco, elegibilidad, dias_desde_alta")
+      .select("id, nombre, email, telefono, hueco, elegibilidad, dias_desde_alta, tipo")
       .not("hueco", "is", null)
       .is("cancelada_en", null)
       .order("hueco", { ascending: true }),
@@ -57,8 +68,9 @@ export async function GET(req: Request) {
 
   const agenda = calcularAgenda({
     ahora,
-    reservados: reservas.map((r) => r.hueco as string),
+    reservados: reservas.map((r) => ({ hueco: r.hueco as string, tipo: r.tipo as TipoCita })) as ReservaOcupada[],
     bloqueos,
+    tipo: "hoja-de-ruta",
   });
 
   // Las reservas, indexadas por el día al que caen, para pintarlas junto a su
@@ -76,14 +88,18 @@ export async function GET(req: Request) {
       etiqueta: formatearHueco(r.hueco as string),
       elegibilidad: r.elegibilidad,
       dias_desde_alta: r.dias_desde_alta,
+      tipo: (r.tipo ?? "hoja-de-ruta") as TipoCita,
     });
     reservasPorDia.set(dia, lista);
   }
 
   // Cuántas llamadas lleva cada semana natural, para poder ver de un vistazo
-  // por qué una semana entera aparece cerrada.
+  // por qué una semana entera aparece cerrada. Solo Hojas de Ruta: el tope
+  // semanal que cierra la semana es el suyo, y contar aquí los infoproductos
+  // enseñaría un 5/5 en una semana que sigue abierta.
   const porSemana = new Map<string, number>();
   for (const r of reservas) {
+    if (r.tipo !== "hoja-de-ruta") continue;
     const lunes = lunesDe(diaMadrid(new Date(r.hueco as string)));
     porSemana.set(lunes, (porSemana.get(lunes) ?? 0) + 1);
   }
@@ -215,7 +231,13 @@ export async function PATCH(req: Request) {
     if (error) {
       if (error.code === "23505") {
         return NextResponse.json(
-          { error: "Ese día ya tiene una llamada. Anúlala o elige otro día." },
+          {
+            // Desde que las dos landings comparten agenda, un 23505 aquí
+            // puede venir del índice de "una Hoja de Ruta al día" o del
+            // trigger de cruces (una cita de creadores cuya ventana tapa esa
+            // hora). El mensaje tiene que valer para los dos.
+            error: "Ese hueco choca con otra cita: el día ya tiene Hoja de Ruta, o hay una cita de creadores cerca.",
+          },
           { status: 409 }
         );
       }

@@ -427,6 +427,11 @@ async function procesarReservasAbandonadas(): Promise<number> {
   const { data: reservas, error } = await supabase
     .from("hoja_ruta_reservas")
     .select("id, nombre, email, variante")
+    // Solo Hojas de Ruta. Esta tabla la comparten ahora las dos landings, y
+    // este correo dice literalmente "te quedaste a medias con tu Hoja de
+    // Ruta" y enlaza a /hoja-de-ruta: a quien empezó a reservar en
+    // creadores.alainzulaika.com le estaría hablando de algo que no pidió.
+    .eq("tipo", "hoja-de-ruta")
     .is("hueco", null)
     // Una llamada anulada desde el panel también se queda sin hueco. Sin este
     // filtro, al anularla le llegaría al lead un correo diciéndole que dejó
@@ -454,6 +459,7 @@ async function procesarReservasAbandonadas(): Promise<number> {
   const { data: completadas } = await supabase
     .from("hoja_ruta_reservas")
     .select("email")
+    .eq("tipo", "hoja-de-ruta")
     .not("hueco", "is", null)
     .in("email", reservas.map((r) => r.email));
   const yaReservaron = new Set((completadas ?? []).map((r) => r.email));
@@ -590,6 +596,7 @@ async function liberarHuecosVencidos(): Promise<number> {
   const { data: vencidas, error } = await supabase
     .from("hoja_ruta_reservas")
     .select("id, hueco, stripe_session_id")
+    .eq("tipo", "hoja-de-ruta")
     .eq("pago_estado", "pendiente")
     .lt("stripe_session_expira_en", new Date().toISOString());
 
@@ -659,6 +666,7 @@ async function avisarHuecosLiberados(): Promise<number> {
   const { data: pendientes, error } = await supabase
     .from("hoja_ruta_reservas")
     .select("id, nombre, email, variante")
+    .eq("tipo", "hoja-de-ruta")
     .eq("pago_estado", "expirado")
     .eq("aviso_liberado_enviado", false);
 

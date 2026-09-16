@@ -28,7 +28,7 @@ export default function PrivacidadPage() {
           </p>
 
           <p className="mb-14 text-[0.85rem] text-[#F2F2F0]/38">
-            Última actualización: 23 de julio de 2026
+            Última actualización: 15 de septiembre de 2026
           </p>
 
           <div className="space-y-14">
@@ -60,7 +60,10 @@ export default function PrivacidadPage() {
                   A través de los formularios instantáneos de Meta (Facebook/Instagram Ads) recogemos tu correo electrónico y tu tramo de edad.
                 </p>
                 <p>
-                  Al reservar una cita de valoración mediante Calendly recogemos tu nombre, correo electrónico y la información que facilites voluntariamente sobre tu situación física.
+                  Al reservar una videollamada de valoración o de Hoja de Ruta en nuestra propia agenda recogemos tu nombre, correo electrónico, teléfono y la información que facilites voluntariamente sobre tu situación física.
+                </p>
+                <p>
+                  Al reservar una reunión de trabajo en creadores.alainzulaika.com recogemos únicamente tu nombre y tu correo electrónico. En esa reserva no se recoge ninguna información sobre salud ni estado físico, ni se te da de alta en ninguna lista de correo.
                 </p>
                 <p>
                   Si respondes a nuestros correos, recogemos los datos que decidas incluir en tu respuesta.
@@ -97,7 +100,10 @@ export default function PrivacidadPage() {
                   Los datos facilitados se utilizan exclusivamente para atender tu consulta, contactarte para entender mejor el contexto de tu evento y, si procede, elaborar y enviarte una propuesta de servicios.
                 </p>
                 <p>
-                  Además, según el formulario a través del que nos hayas facilitado tus datos, los tratamos para: enviarte las guías gratuitas que hayas solicitado; enviarte una newsletter diaria con contenidos y ofertas propias, si has dado tu consentimiento para ello; y gestionar las citas de valoración reservadas mediante Calendly y la elaboración de tu plan de entrenamiento personal.
+                  Además, según el formulario a través del que nos hayas facilitado tus datos, los tratamos para: enviarte las guías gratuitas que hayas solicitado; enviarte una newsletter diaria con contenidos y ofertas propias, si has dado tu consentimiento para ello; gestionar las citas reservadas en nuestra agenda y la elaboración de tu plan de entrenamiento personal; y gestionar el cobro de los servicios de pago que contrates.
+                </p>
+                <p>
+                  En el caso concreto de las reuniones reservadas en creadores.alainzulaika.com, tu nombre y tu correo se tratan con la única finalidad de concertar la reunión, recordártela y mantener el contacto necesario para celebrarla.
                 </p>
               </div>
             </div>
@@ -108,7 +114,10 @@ export default function PrivacidadPage() {
               </p>
               <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>
-                  El tratamiento se basa en el consentimiento del interesado (art. 6.1.a del Reglamento General de Protección de Datos), prestado de forma libre e informada al enviar el formulario de contacto, los formularios de captación de la web, los formularios de Meta o al reservar cita mediante Calendly.
+                  El tratamiento se basa en el consentimiento del interesado (art. 6.1.a del Reglamento General de Protección de Datos), prestado de forma libre e informada al enviar el formulario de contacto, los formularios de captación de la web, los formularios de Meta o al reservar una cita en nuestra agenda.
+                </p>
+                <p>
+                  Cuando reservas una cita o contratas un servicio, el tratamiento se basa además en la ejecución de un contrato o en la aplicación de medidas precontractuales adoptadas a petición tuya (art. 6.1.b), y en el cumplimiento de obligaciones legales de facturación y contabilidad en lo relativo a los pagos (art. 6.1.c).
                 </p>
               </div>
             </div>
@@ -137,7 +146,7 @@ export default function PrivacidadPage() {
                   <p><span className="text-[#F2F2F0]/38 mr-4">Mailjet</span>envío de correos electrónicos y de la newsletter</p>
                   <p><span className="text-[#F2F2F0]/38 mr-4">Supabase Inc.</span>base de datos</p>
                   <p><span className="text-[#F2F2F0]/38 mr-4">Meta Platforms, Inc.</span>formularios instantáneos de anuncios (Facebook/Instagram Ads)</p>
-                  <p><span className="text-[#F2F2F0]/38 mr-4">Calendly LLC</span>gestión de la agenda de citas</p>
+                  <p><span className="text-[#F2F2F0]/38 mr-4">Stripe, Inc.</span>procesamiento de los pagos</p>
                   <p><span className="text-[#F2F2F0]/38 mr-4">Google LLC</span>videollamadas (Meet) y gestión de calendario (Calendar)</p>
                 </div>
                 <p>
@@ -162,7 +171,21 @@ export default function PrivacidadPage() {
 
             <div>
               <p className="mb-5 text-[0.78rem] uppercase tracking-[0.16em] text-[#F2F2F0]/38">
-                9. Tus derechos
+                9. Pagos
+              </p>
+              <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
+                <p>
+                  Si contratas un servicio de pago, el cobro se tramita a través de Stripe, que actúa como encargado del tratamiento. Los datos de tu tarjeta los recoge y custodia directamente Stripe: no llegan a nuestros sistemas ni los conservamos en ningún momento.
+                </p>
+                <p>
+                  De cada cobro conservamos únicamente el importe, la fecha y el identificador de la operación, para poder emitir la factura y atender nuestras obligaciones legales de facturación y contabilidad.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-5 text-[0.78rem] uppercase tracking-[0.16em] text-[#F2F2F0]/38">
+                10. Tus derechos
               </p>
               <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>

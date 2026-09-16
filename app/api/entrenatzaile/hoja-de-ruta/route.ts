@@ -15,6 +15,7 @@ import {
   formatearHueco,
   huecosDisponibles,
   type Bloqueo,
+  type ReservaOcupada,
 } from "@/lib/entrenatzaile-huecos";
 import { getStripe, PRECIO_HOJA_RUTA_CENT } from "@/lib/stripe";
 import { NextResponse } from "next/server";
@@ -35,16 +36,23 @@ const NOMBRE_VARIANTE: Record<string, string> = {
 // enteras, sin filtrar por fecha: son cinco a la semana como mucho, así que
 // la tabla es diminuta, y el tope semanal necesita ver también las de los
 // bordes del rango.
+//
+// Y sin filtrar por tipo, que es lo importante desde que hay dos landings
+// sobre la misma agenda: aquí tienen que venir TAMBIÉN las citas de
+// infoproductos, porque bloquean horas de ésta. Filtrarlas sería ofrecer
+// huecos que la otra página ya se ha llevado. Quien elige las reglas a
+// aplicar es el `tipo` de abajo, no el select.
 async function cargarContexto() {
   const [reservas, bloqueos] = await Promise.all([
-    supabase.from("hoja_ruta_reservas").select("hueco").not("hueco", "is", null),
+    supabase.from("hoja_ruta_reservas").select("hueco, tipo").not("hueco", "is", null),
     supabase.from("hoja_ruta_bloqueos").select("dia, hora_desde, hora_hasta"),
   ]);
 
   return {
     ahora: new Date(),
-    reservados: (reservas.data ?? []).map((r) => r.hueco as string),
+    reservados: (reservas.data ?? []) as ReservaOcupada[],
     bloqueos: (bloqueos.data ?? []) as Bloqueo[],
+    tipo: "hoja-de-ruta" as const,
     error: reservas.error ?? bloqueos.error,
   };
 }
@@ -129,6 +137,10 @@ export async function POST(req: Request) {
       nombre: nombreTrim,
       email: emailLower,
       telefono: telefonoTrim,
+      // Explícito aunque la columna tenga DEFAULT: el tipo decide cuánta
+      // agenda bloquea esta fila, y no es algo que convenga dejar implícito
+      // desde que hay dos landings escribiendo en esta tabla.
+      tipo: "hoja-de-ruta",
       // Qué landing vio, no lo que le corresponde: eso es `elegibilidad`.
       // Lista cerrada para que el navegador no pueda escribir aquí lo que
       // quiera. "capacidades" es /hoja-de-ruta/capacidades, que se pinta

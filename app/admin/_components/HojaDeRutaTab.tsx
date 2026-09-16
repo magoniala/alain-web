@@ -10,6 +10,7 @@ interface ReservaCalendario {
   etiqueta: string;
   elegibilidad: string | null;
   dias_desde_alta: number | null;
+  tipo: "hoja-de-ruta" | "infoproductos";
 }
 
 interface DiaCalendario {
@@ -40,6 +41,14 @@ const ETIQUETA_ELEGIBILIDAD: Record<string, string> = {
   elegible: "GRATIS",
   fuera_ventana: "NO GRATIS",
   no_en_lista: "NO EN LA LISTA",
+};
+
+// Las citas de creadores.alainzulaika.com salen en este mismo calendario
+// porque comparten agenda con la Hoja de Ruta y tapan horas suyas. Se marcan
+// para no confundirlas: son media hora, no llevan teléfono y no se cobran.
+const ETIQUETA_TIPO: Record<string, string> = {
+  "hoja-de-ruta": "",
+  infoproductos: "CREADORES · 30 MIN",
 };
 
 const MOTIVO_TEXTO: Record<string, string> = {
@@ -213,6 +222,13 @@ export default function HojaDeRutaTab() {
           (lunes a domingo). Franjas cada media hora, de 9:00 a 20:00 como última hora de inicio. Se
           puede reservar con 48 h de antelación y hasta 30 días vista.
         </p>
+        <p className="text-sm text-gray-600 mt-2">
+          Los días libres de arriba son los de la Hoja de Ruta. Las citas de creadores comparten esta
+          misma agenda: cada una tapa de 1 h antes a 2 h después, también para la Hoja de Ruta. Y al
+          revés, una Hoja de Ruta les quita solo su media jornada —la mañana si es de mañana, la
+          tarde si es de tarde, con el corte a las 14:00—, aunque para otra Hoja de Ruta sí cierre el
+          día entero. Los bloqueos manuales de abajo afectan a las dos.
+        </p>
       </div>
 
       {error && <p className="text-sm text-[#DC2626]">{error}</p>}
@@ -230,6 +246,11 @@ export default function HojaDeRutaTab() {
               <div key={r.id} className="bg-white border border-gray-200 p-3 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium capitalize">{r.etiqueta}</span>
+                  {ETIQUETA_TIPO[r.tipo] && (
+                    <span className="text-[0.68rem] uppercase tracking-[0.12em] px-2 py-0.5 bg-[#2ED3E6]/15 text-[#0b6b77]">
+                      {ETIQUETA_TIPO[r.tipo]}
+                    </span>
+                  )}
                   {r.elegibilidad && (
                     <span
                       className={`text-[0.68rem] uppercase tracking-[0.12em] px-2 py-0.5 ${

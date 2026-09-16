@@ -18,7 +18,7 @@ export default function PrivacidadEntrenatzailePage() {
           </p>
 
           <p className="mb-14 text-[0.85rem] text-[#0F2240]/40">
-            Última actualización: 24 de agosto de 2026
+            Última actualización: 15 de septiembre de 2026
           </p>
 
           <div className="space-y-14">
@@ -59,7 +59,7 @@ export default function PrivacidadEntrenatzailePage() {
                   En ambos formularios registramos también la fecha y hora de envío, la casilla o casillas de consentimiento que has marcado junto con el texto exacto que se te mostró al marcarlas, y los parámetros de campaña de la dirección desde la que llegaste (UTM). Las respuestas que escribes en los formularios no viajan nunca en la dirección web ni en ningún parámetro de medición.
                 </p>
                 <p>
-                  Al reservar una cita de valoración mediante Calendly recogemos tu nombre, correo electrónico y la información que facilites voluntariamente sobre tu situación física.
+                  Al reservar una videollamada de valoración o de Hoja de Ruta en nuestra propia agenda recogemos tu nombre, correo electrónico, teléfono y la información que facilites voluntariamente sobre tu situación física.
                 </p>
                 <p>
                   Si respondes a nuestros correos, recogemos los datos que decidas incluir en tu respuesta.
@@ -160,7 +160,7 @@ export default function PrivacidadEntrenatzailePage() {
                   <p><span className="text-[#0F2240]/40 mr-4">Mailjet</span>envío de correos electrónicos y de la newsletter</p>
                   <p><span className="text-[#0F2240]/40 mr-4">Supabase Inc.</span>base de datos</p>
                   <p><span className="text-[#0F2240]/40 mr-4">Meta Platforms, Inc.</span>formularios instantáneos de anuncios (Facebook/Instagram Ads)</p>
-                  <p><span className="text-[#0F2240]/40 mr-4">Calendly LLC</span>gestión de la agenda de citas</p>
+                  <p><span className="text-[#0F2240]/40 mr-4">Stripe, Inc.</span>procesamiento de los pagos</p>
                   <p><span className="text-[#0F2240]/40 mr-4">WhatsApp Ireland Ltd.</span>mensajería, si has consentido este canal</p>
                   <p><span className="text-[#0F2240]/40 mr-4">Google LLC</span>videollamadas (Meet) y gestión de calendario (Calendar)</p>
                 </div>
