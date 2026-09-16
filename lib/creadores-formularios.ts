@@ -12,7 +12,7 @@
 export const CONSENT_CREADORES_VERSION = "2026-09-15";
 
 // ============================================================================
-// ⚠️  PENDIENTE DE REVISIÓN POR ALAIN — NO PUBLICAR SIN LEER
+// Por qué este consentimiento no es el de la Hoja de Ruta
 // ============================================================================
 //
 // Este texto NO es el de la Hoja de Ruta. El de allí consiente el tratamiento
