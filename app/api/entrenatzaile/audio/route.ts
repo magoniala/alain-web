@@ -82,11 +82,12 @@ export async function POST(req: Request) {
   // Las banderas: lista sin repetidos, validada contra la del servidor, y con
   // "Ninguna" excluyente también aquí. No puede quedar vacía: es la pregunta
   // que decide si el audio es el normal o es "ve al médico".
-  const banderas = Array.isArray(body.banderas)
-    ? [...new Set(body.banderas.map((b: unknown) => texto(b, 200)))].filter((b) =>
-        (BANDERAS_ROJAS as readonly string[]).includes(b)
-      )
+  const banderasRecibidas: string[] = Array.isArray(body.banderas)
+    ? body.banderas.map((b: unknown) => texto(b, 200))
     : [];
+  const banderas = [...new Set(banderasRecibidas)].filter((b) =>
+    (BANDERAS_ROJAS as readonly string[]).includes(b)
+  );
   if (!banderas.length) {
     return NextResponse.json(
       { error: "Marca al menos una opción en la lista de señales. Si no te pasa ninguna, marca «Ninguna»." },
