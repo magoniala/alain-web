@@ -20,11 +20,14 @@ export function proxy(request: NextRequest) {
   // Subdominio dedicado: entrenatzaile.alainzulaika.com. La landing de
   // valoración gratuita vive en /valoracion (euskera) y /es/valoracion
   // (castellano), igual que el resto del sitio (bare path = eu, /es = es).
-  // La raíz del subdominio redirige a /guias (landing de captación).
+  //
+  // La raíz redirige a /alivio, la landing del lead magnet del lumbago. Antes
+  // iba a /guias, que sigue publicada y recibiendo su tráfico de campañas:
+  // lo que cambia es sólo dónde cae quien entra por el dominio pelado.
   if (hostname.startsWith("entrenatzaile.")) {
     if (pathname === "/") {
       const url = request.nextUrl.clone();
-      url.pathname = "/guias";
+      url.pathname = "/alivio";
       return NextResponse.redirect(url);
     }
     // Páginas legales: viven en la raíz del sitio, no bajo /entrenatzaile.
