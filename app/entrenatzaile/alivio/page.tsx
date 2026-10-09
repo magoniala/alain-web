@@ -2,16 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { Header } from "../_ui";
 import { ALIVIO_TEXTOS } from "@/lib/alivio";
-import FormularioAlivio from "./FormularioAlivio";
+import BotonGuia from "./BotonGuia";
 
 /* ---------------------------------------------------------------------------
    Landing del lead magnet "Alivia tu lumbago hoy".
 
    Misma estética que el pack de /otra-vez-lumbago, pero aquí no se vende: la
-   única acción es dejar el correo. Por eso el bloque de precio es un
-   formulario y no un botón a Whop, y por eso no hay sección de "qué hay
-   dentro" — en una guía de tres páginas, enumerar lo que lleva ocupa más que
-   la guía.
+   guía es gratis y todos los botones van al mismo sitio, el checkout de Whop,
+   que es quien la entrega. No hay sección de "qué hay dentro" — en una guía de
+   tres páginas, enumerar lo que lleva ocupa más que la guía.
    --------------------------------------------------------------------------- */
 
 const T = ALIVIO_TEXTOS;
@@ -90,10 +89,10 @@ function Hero() {
           {T.hero.entrada}
         </p>
         <div className="mt-9">
-          <a href="#descarga" className={BOTON}>
+          <BotonGuia className={BOTON}>
             {T.hero.cta}
             <Flecha />
-          </a>
+          </BotonGuia>
         </div>
         <p className="mt-8 text-sm text-[#4A5C73]">{T.hero.pie}</p>
       </div>
@@ -214,7 +213,13 @@ function Descarga() {
             </li>
           ))}
         </ul>
-        <FormularioAlivio />
+        <div className="mt-9">
+          <BotonGuia className={`${BOTON} w-full`}>
+            {T.descarga.boton}
+            <Flecha />
+          </BotonGuia>
+        </div>
+        <p className="mt-4 text-center text-sm text-[#4A5C73]">{T.descarga.letraPequena}</p>
       </div>
     </section>
   );
@@ -250,13 +255,10 @@ function CierreCta() {
         >
           {T.cierre}
         </h2>
-        <a
-          href="#descarga"
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#C47800] px-7 font-semibold text-[#0F2240]"
-        >
+        <BotonGuia className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#C47800] px-7 font-semibold text-[#0F2240]">
           {T.hero.cta}
           <Flecha />
-        </a>
+        </BotonGuia>
       </div>
     </section>
   );
