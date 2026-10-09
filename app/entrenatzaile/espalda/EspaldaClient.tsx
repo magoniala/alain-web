@@ -38,7 +38,7 @@ function nuevaSesion(): string {
   }
 }
 
-const tituloClase = "font-[family-name:var(--font-lora)] font-medium tracking-[-0.02em]";
+const tituloClase = "font-[family-name:var(--font-fraunces)] font-medium tracking-[-0.02em]";
 const cuerpoClase = "text-[1.15rem] leading-[1.8] text-[#0F2240]/80 md:text-[1.22rem]";
 
 // Un bloque de lectura: titular opcional y sus párrafos.
@@ -46,7 +46,7 @@ function BloqueTexto({ titulo, parrafos }: { titulo?: string; parrafos: string[]
   return (
     <div className="fade-in">
       {titulo && (
-        <h2 className={`mb-6 text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] text-[#1C3A5E] ${tituloClase}`}>
+        <h2 className={`mb-6 text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] text-[#0F2240] ${tituloClase}`}>
           {titulo}
         </h2>
       )}
@@ -170,10 +170,10 @@ export default function EspaldaClient() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
+    <main className="min-h-screen bg-[#F7F1E6] text-[#0F2240]">
       <Header current="es" showLangSwitch={false} />
 
-      <section className="w-full bg-[#D4860A] px-6 py-20 md:px-16 md:py-32">
+      <section className="w-full bg-[#C47800] px-6 py-20 md:px-16 md:py-32">
         <div className="mx-auto max-w-[1400px]">
           <h1
             className={`hero-fade-2 max-w-[900px] text-[clamp(2.1rem,7vw,4.2rem)] leading-[1.1] text-[#0F2240] ${tituloClase}`}
@@ -186,7 +186,7 @@ export default function EspaldaClient() {
           <a
             href="#formulario"
             onClick={() => marcar("hero_cta_click")}
-            className="hero-fade-3 mt-10 inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+            className="hero-fade-3 mt-10 inline-block scale-100 rounded-xl bg-[#0F2240] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
           >
             {ESPALDA_HERO.cta}
           </a>

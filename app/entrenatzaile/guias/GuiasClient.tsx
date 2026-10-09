@@ -120,20 +120,20 @@ export default function GuiasClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
+    <main className="min-h-screen bg-[#F7F1E6] text-[#0F2240]">
       <Header current="es" showLangSwitch={false} />
 
       {/* HERO */}
-      <section className="w-full bg-[#D4860A] px-8 py-24 md:px-16 md:py-32">
+      <section className="w-full bg-[#C47800] px-8 py-24 md:px-16 md:py-32">
         <div className="relative mx-auto max-w-[1400px]">
-          <div className="absolute left-0 top-0 w-[2px] bg-[#1C3A5E]/30 h-[242px] md:h-[287px] xl:h-[329px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-[#0F2240]/30 h-[242px] md:h-[287px] xl:h-[329px]" />
 
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#0F2240]">
               <span className="uppercase">Guía</span> gratuita
             </p>
 
-            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.9rem,5vw,4.4rem)] font-medium leading-[1.08] tracking-[-0.03em] text-[#0F2240]">
+            <h1 className="hero-fade-2 max-w-[900px] font-[family-name:var(--font-fraunces)] text-[clamp(1.9rem,5vw,4.4rem)] font-medium leading-[1.08] tracking-[-0.03em] text-[#0F2240]">
               {contenido.heroTitulo}
             </h1>
 
@@ -146,7 +146,7 @@ export default function GuiasClient({
             <div className="hero-fade-3 mt-10">
               <a
                 href="#formulario"
-                className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+                className="inline-block scale-100 rounded-xl bg-[#0F2240] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
               >
                 Quiero las guías gratis
               </a>
@@ -229,7 +229,7 @@ export default function GuiasClient({
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#1C3A5E]/35"
+                    className="placeholder:text-[#0F2240]/35"
                   />
                 </div>
                 <div style={fieldStyle}>
@@ -240,7 +240,7 @@ export default function GuiasClient({
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#1C3A5E]/35"
+                    className="placeholder:text-[#0F2240]/35"
                   />
                 </div>
 
@@ -260,7 +260,7 @@ export default function GuiasClient({
                     display: "block",
                     opacity: sending ? 0.6 : 1,
                   }}
-                  className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+                  className="rounded-xl scale-100 bg-[#0F2240] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
                 >
                   {sending ? "Enviando..." : "Quiero las guías gratis"}
                 </button>
@@ -280,7 +280,7 @@ export default function GuiasClient({
 
       {/* QUIÉN SOY */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-32 md:px-16">
-        <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(28,58,94,0.15)", paddingTop: "2rem" }}>
+        <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(15,34,64,0.15)", paddingTop: "2rem" }}>
           <p style={proseP}>
             Soy Alain Zulaika (Entrenatzaile). Llevo entrenando desde los 14 años y más de 6 años como
             entrenador titulado. Ahora ayudo a personas de 45 a 65 a mantener su fuerza, su movilidad y su

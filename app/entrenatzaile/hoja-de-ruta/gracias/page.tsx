@@ -28,17 +28,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const tituloClase = "font-[family-name:var(--font-lora)] font-medium tracking-[-0.02em]";
+const tituloClase = "font-[family-name:var(--font-fraunces)] font-medium tracking-[-0.02em]";
 const cuerpoClase = "text-[1.15rem] leading-[1.8] text-[#0F2240]/80 md:text-[1.22rem]";
 
 export default function GraciasHojaDeRutaPage() {
   return (
-    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
+    <main className="min-h-screen bg-[#F7F1E6] text-[#0F2240]">
       <Header current="es" showLangSwitch={false} />
 
       <section className="px-6 py-20 md:px-8 md:py-28">
         <div className="mx-auto max-w-[680px]">
-          <h1 className={`text-[clamp(1.8rem,5.5vw,2.6rem)] leading-[1.15] text-[#1C3A5E] ${tituloClase}`}>
+          <h1 className={`text-[clamp(1.8rem,5.5vw,2.6rem)] leading-[1.15] text-[#0F2240] ${tituloClase}`}>
             Gracias. Pago recibido.
           </h1>
 

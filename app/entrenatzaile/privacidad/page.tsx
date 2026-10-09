@@ -7,13 +7,13 @@ export const metadata: Metadata = {
 
 export default function PrivacidadEntrenatzailePage() {
   return (
-    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
+    <main className="min-h-screen bg-[#F7F1E6] text-[#0F2240]">
       <Header current="es" showLangSwitch={false} />
 
       <section className="mx-auto max-w-[1400px] px-8 pt-20 pb-40 md:px-16 md:pt-28">
         <div className="max-w-[680px]">
 
-          <p className="mb-4 text-[0.82rem] uppercase tracking-[0.35em] text-[#D4860A]">
+          <p className="mb-4 text-[0.82rem] uppercase tracking-[0.35em] text-[#C47800]">
             Política de privacidad
           </p>
 

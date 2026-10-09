@@ -1,9 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export const AMBER = "#D4860A";
-export const NAVY = "#1C3A5E";
+/* Paleta de Entrenatzaile. Son los mismos valores que usa el KIT en
+   /otra-vez-lumbago: tinta, acento, crema de fondo, crema de tarjeta, línea
+   y el gris azulado del texto corrido. NAVY y DARK_NAVY apuntan a la misma
+   tinta desde que se unificaron los dos azules; se mantienen los dos nombres
+   porque están importados en media docena de sitios. */
+export const AMBER = "#C47800";
+export const NAVY = "#0F2240";
 export const DARK_NAVY = "#0F2240";
+export const PAPER = "#F7F1E6";
+export const CARD = "#EFE6D4";
+export const LINE = "#E0D4C0";
+export const MUTED = "#4A5C73";
 
 export const inputStyle: React.CSSProperties = {
   background: "none",
@@ -20,13 +29,13 @@ export const labelStyle: React.CSSProperties = {
   fontSize: "0.75rem",
   textTransform: "uppercase",
   letterSpacing: "0.16em",
-  color: "rgba(28,58,94,0.65)",
+  color: "rgba(15,34,64,0.65)",
   display: "block",
   marginBottom: "0.4rem",
 };
 
 export const fieldStyle: React.CSSProperties = {
-  borderBottom: "1px solid rgba(28,58,94,0.25)",
+  borderBottom: "1px solid rgba(15,34,64,0.25)",
   marginBottom: "2rem",
 };
 
@@ -38,6 +47,7 @@ export const proseP: React.CSSProperties = {
 };
 
 export const sectionTitle: React.CSSProperties = {
+  fontFamily: "var(--font-fraunces), Georgia, serif",
   fontSize: "clamp(1.7rem,2.6vw,2.3rem)",
   fontWeight: 500,
   letterSpacing: "-0.02em",
@@ -55,9 +65,12 @@ export const emphasisP: React.CSSProperties = {
   marginBottom: "2rem",
 };
 
+// Tarjeta cálida, como la del KIT: crema un punto más oscuro que el fondo y
+// línea del mismo tono, en vez del azul translúcido que había antes.
 export const cardStyle: React.CSSProperties = {
-  border: "1px solid rgba(28,58,94,0.18)",
-  background: "rgba(28,58,94,0.04)",
+  border: `1px solid ${LINE}`,
+  background: CARD,
+  borderRadius: "0.75rem",
 };
 
 export function Lines({ lines, mb = "2.75rem" }: { lines: string[]; mb?: string }) {
@@ -76,7 +89,7 @@ export function MapaCTA({ label }: { label: string }) {
   return (
     <a
       href="#formulario"
-      className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+      className="inline-block scale-100 rounded-xl bg-[#0F2240] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
     >
       {label}
     </a>
@@ -84,10 +97,10 @@ export function MapaCTA({ label }: { label: string }) {
 }
 
 export function LangSwitch({ current }: { current: "eu" | "es" }) {
-  const activeStyle: React.CSSProperties = { color: AMBER, background: "rgba(212,134,10,0.08)" };
-  const inactiveStyle: React.CSSProperties = { color: "rgba(28,58,94,0.55)" };
+  const activeStyle: React.CSSProperties = { color: AMBER, background: "rgba(196,120,0,0.08)" };
+  const inactiveStyle: React.CSSProperties = { color: "rgba(15,34,64,0.55)" };
   return (
-    <div className="flex items-center border border-[#1C3A5E]/20 text-[0.75rem] tracking-[0.1em]">
+    <div className="flex items-center border border-[#0F2240]/20 text-[0.75rem] tracking-[0.1em]">
       <Link
         href="/valoracion"
         style={current === "eu" ? activeStyle : inactiveStyle}
@@ -95,7 +108,7 @@ export function LangSwitch({ current }: { current: "eu" | "es" }) {
       >
         EUS
       </Link>
-      <span className="w-px self-stretch bg-[#1C3A5E]/15" />
+      <span className="w-px self-stretch bg-[#0F2240]/15" />
       <Link
         href="/es/valoracion"
         style={current === "es" ? activeStyle : inactiveStyle}
@@ -109,11 +122,11 @@ export function LangSwitch({ current }: { current: "eu" | "es" }) {
 
 export function Header({ current, showLangSwitch = true }: { current: "eu" | "es"; showLangSwitch?: boolean }) {
   return (
-    <header className="border-b border-[#1C3A5E]/12 bg-[#FAF3E8] px-8 py-4 md:px-16">
+    <header className="border-b border-[#E0D4C0] bg-[#F7F1E6] px-8 py-4 md:px-16">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between">
         <div className="flex items-center gap-3">
           <Image src="/entrenatzaile-logo.png" alt="" width={34} height={27} priority />
-          <p className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#D4860A]">
+          <p className="text-[0.82rem] md:text-[0.96rem] uppercase tracking-[0.1em] md:tracking-[0.35em] text-[#C47800]">
             Entrenatzaile
           </p>
         </div>
@@ -125,10 +138,10 @@ export function Header({ current, showLangSwitch = true }: { current: "eu" | "es
 
 export function Footer() {
   return (
-    <footer className="border-t border-[#1C3A5E]/12 px-8 py-10 md:px-16">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-3 text-[0.88rem] text-[#0F2240]/35 md:flex-row md:items-center md:justify-between">
+    <footer className="border-t border-[#E0D4C0] px-8 py-10 md:px-16">
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-3 text-[0.88rem] text-[#4A5C73] md:flex-row md:items-center md:justify-between">
         <p>© Alain Zulaika</p>
-        <Link href="/privacidad" className="transition-colors hover:text-[#0F2240]/60">
+        <Link href="/privacidad" className="transition-colors hover:text-[#0F2240]">
           Privacidad
         </Link>
       </div>

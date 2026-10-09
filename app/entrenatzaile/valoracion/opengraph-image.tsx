@@ -19,7 +19,7 @@ export default async function Image() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#D4860A",
+          background: "#C47800",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

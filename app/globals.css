@@ -117,7 +117,7 @@ body {
    Va aquí y no en un CSS Module porque este proyecto no usa CSS Modules en
    ningún sitio: los keyframes y la política de movimiento reducido viven
    todos en este archivo. Fondo transparente a propósito — el bloque se
-   apoya sobre el crema (#FAF3E8) de la landing.
+   apoya sobre el crema (#F7F1E6) de la landing.
    --------------------------------------------------------------------- */
 
 .hr-escena {
@@ -194,7 +194,7 @@ body {
   text-align: center;
   font-size: 14px;
   line-height: 1.5;
-  color: #1c3a5e;
+  color: #0f2240;
   opacity: 0.85;
 }
 

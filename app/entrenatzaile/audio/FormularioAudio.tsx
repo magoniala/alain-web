@@ -99,8 +99,8 @@ function Opciones({
               padding: "0.55rem 1.1rem",
               fontSize: "0.95rem",
               cursor: "pointer",
-              border: `1px solid ${activo || hover === opt ? "#D4860A" : "rgba(28,58,94,0.25)"}`,
-              background: activo ? "rgba(212,134,10,0.10)" : "none",
+              border: `1px solid ${activo || hover === opt ? "#C47800" : "rgba(15,34,64,0.25)"}`,
+              background: activo ? "rgba(196,120,0,0.10)" : "none",
               color: activo ? "#0F2240" : "rgba(15,34,64,0.70)",
               transition: "border-color 0.2s, background 0.2s, color 0.2s",
             }}
@@ -253,7 +253,7 @@ export default function FormularioAudio() {
     return (
       <div ref={tarjetaRef} className="context-fade-in p-6 md:p-10" style={cardStyle}>
         <h2
-          className="mb-6 font-[family-name:var(--font-lora)] text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] font-medium tracking-[-0.02em] text-[#1C3A5E]"
+          className="mb-6 font-[family-name:var(--font-fraunces)] text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] font-medium tracking-[-0.02em] text-[#0F2240]"
         >
           {AUDIO_TEXTOS.graciasTitulo}
         </h2>
@@ -293,7 +293,7 @@ export default function FormularioAudio() {
                 value={datos.nombre}
                 onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
                 style={inputStyle}
-                className="placeholder:text-[#1C3A5E]/35"
+                className="placeholder:text-[#0F2240]/35"
               />
             </div>
 
@@ -311,7 +311,7 @@ export default function FormularioAudio() {
                 value={datos.email}
                 onChange={(e) => setDatos({ ...datos, email: e.target.value })}
                 style={inputStyle}
-                className="placeholder:text-[#1C3A5E]/35"
+                className="placeholder:text-[#0F2240]/35"
               />
             </div>
 
@@ -329,7 +329,7 @@ export default function FormularioAudio() {
                 value={datos.telefono}
                 onChange={(e) => setDatos({ ...datos, telefono: e.target.value })}
                 style={inputStyle}
-                className="placeholder:text-[#1C3A5E]/35"
+                className="placeholder:text-[#0F2240]/35"
               />
             </div>
           </div>
@@ -376,7 +376,7 @@ export default function FormularioAudio() {
                 value={datos.ultimo}
                 onChange={(e) => setDatos({ ...datos, ultimo: e.target.value })}
                 style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
-                className="placeholder:text-[#1C3A5E]/35"
+                className="placeholder:text-[#0F2240]/35"
               />
             </div>
           </div>
@@ -442,7 +442,7 @@ export default function FormularioAudio() {
                   value={datos.ejercicioDetalle}
                   onChange={(e) => setDatos({ ...datos, ejercicioDetalle: e.target.value })}
                   style={inputStyle}
-                  className="placeholder:text-[#1C3A5E]/35"
+                  className="placeholder:text-[#0F2240]/35"
                 />
               </div>
             )}
@@ -491,7 +491,7 @@ export default function FormularioAudio() {
                 value={datos.deseo}
                 onChange={(e) => setDatos({ ...datos, deseo: e.target.value })}
                 style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
-                className="placeholder:text-[#1C3A5E]/35"
+                className="placeholder:text-[#0F2240]/35"
               />
             </div>
           </div>
@@ -512,7 +512,7 @@ export default function FormularioAudio() {
                 value={datos.extra}
                 onChange={(e) => setDatos({ ...datos, extra: e.target.value })}
                 style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
-                className="placeholder:text-[#1C3A5E]/35"
+                className="placeholder:text-[#0F2240]/35"
               />
             </div>
           </div>
@@ -557,7 +557,7 @@ export default function FormularioAudio() {
               style={{
                 height: "2px",
                 flex: 1,
-                background: i <= paso ? "#D4860A" : "rgba(28,58,94,0.15)",
+                background: i <= paso ? "#C47800" : "rgba(15,34,64,0.15)",
                 transition: "background 0.3s",
               }}
             />
@@ -569,7 +569,7 @@ export default function FormularioAudio() {
             fontSize: "0.75rem",
             textTransform: "uppercase",
             letterSpacing: "0.16em",
-            color: "rgba(28,58,94,0.55)",
+            color: "rgba(15,34,64,0.55)",
           }}
         >
           Paso {paso + 1} de {PASOS.length}
@@ -598,7 +598,7 @@ export default function FormularioAudio() {
             display: "block",
             opacity: enviando ? 0.6 : 1,
           }}
-          className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+          className="rounded-xl scale-100 bg-[#0F2240] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
         >
           {paso < PASO_PERMISO
             ? AUDIO_TEXTOS.siguiente

@@ -43,10 +43,10 @@ const ETIQUETAS_PASO = [
   HOJA_RUTA_PASOS.hora,
 ];
 
-const tituloClase = "font-[family-name:var(--font-lora)] font-medium tracking-[-0.02em]";
+const tituloClase = "font-[family-name:var(--font-fraunces)] font-medium tracking-[-0.02em]";
 const cuerpoClase = "whitespace-pre-line text-[1.15rem] leading-[1.8] text-[#0F2240]/80 md:text-[1.22rem]";
 const botonClase =
-  "inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg";
+  "inline-block scale-100 rounded-xl bg-[#0F2240] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg";
 
 const pistaStyle: React.CSSProperties = {
   fontSize: "0.88rem",
@@ -61,16 +61,16 @@ const pistaStyle: React.CSSProperties = {
 // comparte con la página de creadores; lo único que no se comparte es esto.
 const ESTILO_CALENDARIO: EstiloCalendario = {
   flecha:
-    "flex h-9 w-9 items-center justify-center border border-[#1C3A5E]/20 bg-white text-[#1C3A5E] transition-colors hover:border-[#1C3A5E]/45 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#1C3A5E]/20",
-  titulo: "text-[1.02rem] font-semibold text-[#1C3A5E]",
+    "flex h-9 w-9 items-center justify-center border border-[#E0D4C0] bg-[#F7F1E6] text-[#0F2240] transition-colors hover:border-[#0F2240]/45 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#0F2240]/20",
+  titulo: "text-[1.02rem] font-semibold text-[#0F2240]",
   cabecera: "pb-1 text-[0.7rem] uppercase tracking-[0.1em] text-[#0F2240]/40",
   libre:
-    "flex aspect-square items-center justify-center text-[0.95rem] transition-colors border border-[#D4860A]/45 bg-[#D4860A]/10 text-[#0F2240] hover:border-[#D4860A] hover:bg-[#D4860A]/20",
+    "flex aspect-square items-center justify-center text-[0.95rem] transition-colors border border-[#C47800]/45 bg-[#C47800]/10 text-[#0F2240] hover:border-[#C47800] hover:bg-[#C47800]/20",
   elegido:
-    "flex aspect-square items-center justify-center text-[0.95rem] transition-colors bg-[#1C3A5E] font-semibold text-[#FAF3E8]",
+    "flex aspect-square items-center justify-center text-[0.95rem] transition-colors bg-[#0F2240] font-semibold text-[#F7F1E6]",
   ocupado: "flex aspect-square items-center justify-center text-[0.95rem] text-[#0F2240]/25 line-through",
   leyenda: "mt-4 flex items-center gap-2 text-[0.82rem] text-[#0F2240]/50",
-  muestra: "inline-block h-3 w-3 border border-[#D4860A]/45 bg-[#D4860A]/10",
+  muestra: "inline-block h-3 w-3 border border-[#C47800]/45 bg-[#C47800]/10",
 };
 
 function Parrafos({ parrafos }: { parrafos: Parrafo[] }) {
@@ -79,7 +79,7 @@ function Parrafos({ parrafos }: { parrafos: Parrafo[] }) {
       {parrafos.map((p, i) => (
         <div key={i}>
           {p.destacado && (
-            <p className="text-[1.15rem] leading-[1.7] font-semibold text-[#1C3A5E] md:text-[1.22rem]">
+            <p className="text-[1.15rem] leading-[1.7] font-semibold text-[#0F2240] md:text-[1.22rem]">
               {p.destacado}
               {p.nota && <span className="font-normal text-[#0F2240]/55"> {p.nota}</span>}
             </p>
@@ -96,7 +96,7 @@ function Checks({ lineas }: { lineas: string[] }) {
     <ul className="mt-6 space-y-2">
       {lineas.map((l, i) => (
         <li key={i} className="flex gap-2.5 text-[0.98rem] leading-[1.6] text-[#0F2240]/75">
-          <span aria-hidden className="text-[#1C3A5E]">
+          <span aria-hidden className="text-[#0F2240]">
             ✓
           </span>
           <span>{l}</span>
@@ -364,7 +364,7 @@ export default function HojaDeRutaClient({
               value={datos.nombre}
               onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
               style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
 
@@ -381,7 +381,7 @@ export default function HojaDeRutaClient({
               value={datos.email}
               onChange={(e) => setDatos({ ...datos, email: e.target.value })}
               style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
 
@@ -399,7 +399,7 @@ export default function HojaDeRutaClient({
               value={datos.telefono}
               onChange={(e) => setDatos({ ...datos, telefono: e.target.value })}
               style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
         </div>
@@ -462,7 +462,7 @@ export default function HojaDeRutaClient({
     const delDia = porDia.get(diaElegido) ?? [];
     return (
       <div key="hora" className="context-fade-in">
-        <p className="text-[1.05rem] font-semibold text-[#1C3A5E] capitalize">{etiquetaDia(diaElegido)}</p>
+        <p className="text-[1.05rem] font-semibold text-[#0F2240] capitalize">{etiquetaDia(diaElegido)}</p>
         <p style={{ ...pistaStyle, marginTop: "0.35rem", marginBottom: "1.4rem" }}>{HOJA_RUTA_HUECOS.horaIntro}</p>
         <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6">
           {delDia.map((h) => {
@@ -475,8 +475,8 @@ export default function HojaDeRutaClient({
                 aria-pressed={activo}
                 className={`py-2.5 text-center text-[0.95rem] tabular-nums transition-colors ${
                   activo
-                    ? "bg-[#1C3A5E] font-semibold text-[#FAF3E8]"
-                    : "border border-[#1C3A5E]/20 bg-white text-[#0F2240]/80 hover:border-[#D4860A] hover:text-[#0F2240]"
+                    ? "bg-[#0F2240] font-semibold text-[#F7F1E6]"
+                    : "border border-[#E0D4C0] bg-[#F7F1E6] text-[#0F2240]/80 hover:border-[#C47800] hover:text-[#0F2240]"
                 }`}
               >
                 {soloHora(h.etiqueta)}
@@ -489,11 +489,11 @@ export default function HojaDeRutaClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
+    <main className="min-h-screen bg-[#F7F1E6] text-[#0F2240]">
       <Header current="es" showLangSwitch={false} />
 
       {/* SECCIÓN 1 — Above the fold */}
-      <section className="w-full bg-[#D4860A] px-6 py-16 md:px-16 md:py-24">
+      <section className="w-full bg-[#C47800] px-6 py-16 md:px-16 md:py-24">
         <div className="mx-auto grid max-w-[1400px] items-center gap-12 md:grid-cols-[1.15fr_1fr]">
           <div>
             <h1 className={`hero-fade-2 text-[clamp(2rem,6.2vw,3.6rem)] leading-[1.1] text-[#0F2240] ${tituloClase}`}>
@@ -531,7 +531,7 @@ export default function HojaDeRutaClient({
             return (
               <section key={i} className="fade-in">
                 {seccion.titulo && (
-                  <h2 className={`mb-7 text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] text-[#1C3A5E] ${tituloClase}`}>
+                  <h2 className={`mb-7 text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] text-[#0F2240] ${tituloClase}`}>
                     {seccion.titulo}
                   </h2>
                 )}
@@ -553,10 +553,10 @@ export default function HojaDeRutaClient({
       {/* SECCIÓN 9 — CTA final con el formulario de reserva */}
       <section
         id="reserva"
-        className="scroll-mt-8 border-t border-[#1C3A5E]/12 bg-[#1C3A5E]/[0.04] px-6 py-16 md:px-8 md:py-24"
+        className="scroll-mt-8 border-t border-[#E0D4C0] bg-[#EFE6D4] px-6 py-16 md:px-8 md:py-24"
       >
         <div className="mx-auto max-w-[680px]">
-          <h2 className={`mb-7 text-[clamp(1.7rem,5.2vw,2.4rem)] leading-[1.2] text-[#1C3A5E] ${tituloClase}`}>
+          <h2 className={`mb-7 text-[clamp(1.7rem,5.2vw,2.4rem)] leading-[1.2] text-[#0F2240] ${tituloClase}`}>
             {CIERRE.titulo}
           </h2>
 
@@ -569,11 +569,11 @@ export default function HojaDeRutaClient({
               <p className={cuerpoClase}>{HOJA_RUTA_HUECOS.llevandoAPago}</p>
             ) : hecho && avisoPlazoVencido ? (
               <>
-                <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
+                <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#0F2240] ${tituloClase}`}>
                   {HOJA_RUTA_HUECOS.plazoVencidoTitulo}
                 </h3>
                 {cuandoReservado && (
-                  <p className="mb-4 text-[1.2rem] font-semibold text-[#1C3A5E] capitalize md:text-[1.3rem]">
+                  <p className="mb-4 text-[1.2rem] font-semibold text-[#0F2240] capitalize md:text-[1.3rem]">
                     {cuandoReservado}
                   </p>
                 )}
@@ -589,11 +589,11 @@ export default function HojaDeRutaClient({
               </>
             ) : hecho ? (
               <>
-                <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
+                <h3 className={`mb-4 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#0F2240] ${tituloClase}`}>
                   {HOJA_RUTA_HUECOS.hechoTitulo}
                 </h3>
                 {cuandoReservado && (
-                  <p className="mb-4 text-[1.2rem] font-semibold text-[#1C3A5E] capitalize md:text-[1.3rem]">
+                  <p className="mb-4 text-[1.2rem] font-semibold text-[#0F2240] capitalize md:text-[1.3rem]">
                     {cuandoReservado}
                   </p>
                 )}
@@ -601,7 +601,7 @@ export default function HojaDeRutaClient({
               </>
             ) : (
               <>
-                <h3 className={`mb-6 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#1C3A5E] ${tituloClase}`}>
+                <h3 className={`mb-6 text-[clamp(1.4rem,4vw,1.8rem)] leading-[1.25] text-[#0F2240] ${tituloClase}`}>
                   {CIERRE.formularioTitulo}
                 </h3>
 
@@ -614,7 +614,7 @@ export default function HojaDeRutaClient({
                         style={{
                           height: "2px",
                           flex: 1,
-                          background: i <= paso ? "#D4860A" : "rgba(28,58,94,0.15)",
+                          background: i <= paso ? "#C47800" : "rgba(15,34,64,0.15)",
                           transition: "background 0.3s",
                         }}
                       />
@@ -626,7 +626,7 @@ export default function HojaDeRutaClient({
                       fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.16em",
-                      color: "rgba(28,58,94,0.55)",
+                      color: "rgba(15,34,64,0.55)",
                     }}
                   >
                     Paso {paso + 1} de {PASOS_TOTAL} · {ETIQUETAS_PASO[paso]}
@@ -657,7 +657,7 @@ export default function HojaDeRutaClient({
                         display: "block",
                         opacity: enviando ? 0.6 : 1,
                       }}
-                      className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+                      className="rounded-xl scale-100 bg-[#0F2240] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
                     >
                       {enviando ? CIERRE.enviando : textoBoton}
                     </button>

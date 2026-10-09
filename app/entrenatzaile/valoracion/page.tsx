@@ -110,20 +110,20 @@ export default function ValoracionEntrenatzaileEuPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
+    <main className="min-h-screen bg-[#F7F1E6] text-[#0F2240]">
       <Header current="eu" />
 
       {/* HERO */}
-      <section className="w-full bg-[#D4860A] px-8 py-24 md:px-16 md:py-32">
+      <section className="w-full bg-[#C47800] px-8 py-24 md:px-16 md:py-32">
         <div className="relative mx-auto max-w-[1400px]">
-          <div className="absolute left-0 top-0 w-[2px] bg-[#1C3A5E]/30 h-[242px] md:h-[287px] xl:h-[329px]" />
+          <div className="absolute left-0 top-0 w-[2px] bg-[#0F2240]/30 h-[242px] md:h-[287px] xl:h-[329px]" />
 
           <div className="pl-5 md:pl-10">
             <p className="hero-fade-1 mb-8 text-[0.82rem] tracking-[0.35em] text-[#0F2240]">
               <span className="uppercase">Doako</span> balorazioa
             </p>
 
-            <h1 className="hero-fade-2 max-w-[900px] text-[clamp(1.9rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em] text-[#0F2240]">
+            <h1 className="hero-fade-2 max-w-[900px] font-[family-name:var(--font-fraunces)] text-[clamp(1.9rem,5vw,4.8rem)] font-medium leading-[1.03] tracking-[-0.03em] text-[#0F2240]">
               Eta urteak badaramatzazu bueltaka?
             </h1>
 
@@ -136,7 +136,7 @@ export default function ValoracionEntrenatzaileEuPage() {
             <div className="hero-fade-3 mt-10">
               <a
                 href="#formulario"
-                className="inline-block scale-100 bg-[#1C3A5E] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+                className="inline-block scale-100 rounded-xl bg-[#0F2240] px-10 py-4 text-[0.98rem] tracking-[0.08em] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
               >
                 Nire mapa nahi dut
               </a>
@@ -289,17 +289,17 @@ export default function ValoracionEntrenatzaileEuPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: "0.65rem",
-              border: `1px solid ${full ? "rgba(28,58,94,0.18)" : "rgba(212,134,10,0.35)"}`,
-              background: full ? "rgba(28,58,94,0.04)" : "rgba(212,134,10,0.08)",
+              border: `1px solid ${full ? "rgba(15,34,64,0.18)" : "rgba(196,120,0,0.35)"}`,
+              background: full ? "rgba(15,34,64,0.04)" : "rgba(196,120,0,0.08)",
               padding: "0.7rem 1.2rem",
               marginBottom: "2.5rem",
             }}
           >
             <span
               className="live-dot"
-              style={{ color: full ? "rgba(28,58,94,0.45)" : AMBER, flexShrink: 0 }}
+              style={{ color: full ? "rgba(15,34,64,0.45)" : AMBER, flexShrink: 0 }}
             />
-            <span style={{ fontSize: "clamp(1.1rem,1.5vw,1.35rem)", fontWeight: 500, color: full ? "rgba(28,58,94,0.55)" : AMBER }}>
+            <span style={{ fontSize: "clamp(1.1rem,1.5vw,1.35rem)", fontWeight: 500, color: full ? "rgba(15,34,64,0.55)" : AMBER }}>
               {remaining === null
                 ? "Plaza kopurua eguneratzen…"
                 : full
@@ -349,7 +349,7 @@ export default function ValoracionEntrenatzaileEuPage() {
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#1C3A5E]/35"
+                    className="placeholder:text-[#0F2240]/35"
                   />
                 </div>
                 <div style={fieldStyle}>
@@ -360,7 +360,7 @@ export default function ValoracionEntrenatzaileEuPage() {
                     value={formData.edad}
                     onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#1C3A5E]/35"
+                    className="placeholder:text-[#0F2240]/35"
                   />
                 </div>
                 <div style={fieldStyle}>
@@ -371,7 +371,7 @@ export default function ValoracionEntrenatzaileEuPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#1C3A5E]/35"
+                    className="placeholder:text-[#0F2240]/35"
                   />
                 </div>
                 <div style={fieldStyle}>
@@ -382,7 +382,7 @@ export default function ValoracionEntrenatzaileEuPage() {
                     value={formData.motivo}
                     onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                     style={inputStyle}
-                    className="placeholder:text-[#1C3A5E]/35"
+                    className="placeholder:text-[#0F2240]/35"
                   />
                 </div>
 
@@ -401,14 +401,14 @@ export default function ValoracionEntrenatzaileEuPage() {
                           border:
                             formData.turno === opt
                               ? `1px solid ${AMBER}`
-                              : "1px solid rgba(28,58,94,0.25)",
+                              : "1px solid rgba(15,34,64,0.25)",
                           color:
                             formData.turno === opt
                               ? AMBER
                               : hoveredTurno === opt
                               ? NAVY
-                              : "rgba(28,58,94,0.62)",
-                          background: formData.turno === opt ? "rgba(212,134,10,0.08)" : "none",
+                              : "rgba(15,34,64,0.62)",
+                          background: formData.turno === opt ? "rgba(196,120,0,0.08)" : "none",
                           fontSize: "0.9rem",
                           cursor: "pointer",
                           transition: "all 0.2s",
@@ -460,7 +460,7 @@ export default function ValoracionEntrenatzaileEuPage() {
                     display: "block",
                     opacity: sending ? 0.6 : 1,
                   }}
-                  className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+                  className="rounded-xl scale-100 bg-[#0F2240] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
                 >
                   {sending ? "Bidaltzen..." : "Nire doako balorazioa eskatu"}
                 </button>
@@ -521,7 +521,7 @@ export default function ValoracionEntrenatzaileEuPage() {
 
       {/* PD AZKENA — NORI BURUZ */}
       <section className="fade-in mx-auto max-w-[1400px] px-8 pb-32 md:px-16">
-        <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(28,58,94,0.15)", paddingTop: "2rem" }}>
+        <div className="max-w-[680px]" style={{ borderTop: "1px solid rgba(15,34,64,0.15)", paddingTop: "2rem" }}>
           <Lines
             lines={[
               "Alain Zulaika naiz (Entrenatzaile).",

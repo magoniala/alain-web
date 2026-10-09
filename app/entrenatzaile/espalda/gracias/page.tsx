@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const tituloClase = "font-[family-name:var(--font-lora)] font-medium tracking-[-0.02em] text-[#1C3A5E]";
+const tituloClase = "font-[family-name:var(--font-fraunces)] font-medium tracking-[-0.02em] text-[#0F2240]";
 const cuerpoClase = "whitespace-pre-line text-[1.15rem] leading-[1.8] text-[#0F2240]/80 md:text-[1.22rem]";
 const botonClase =
   "inline-block scale-100 px-10 py-4 text-[0.98rem] tracking-[0.08em] shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg";
@@ -27,7 +27,7 @@ export default async function GraciasPage({ searchParams }: { searchParams: Busq
   // apuntar el clic de abajo en el recorrido al que pertenece.
   const sesion = Array.isArray(s) ? s[0] : s;
   return (
-    <main className="min-h-screen bg-[#FAF3E8] text-[#0F2240]">
+    <main className="min-h-screen bg-[#F7F1E6] text-[#0F2240]">
       <Header current="es" showLangSwitch={false} />
 
       <section className="mx-auto max-w-[680px] px-6 py-16 md:px-8 md:py-24">
@@ -51,12 +51,12 @@ export default async function GraciasPage({ searchParams }: { searchParams: Busq
         <a
           href="/api/nurture-pdf/espalda"
           download
-          className={`${botonClase} mt-10 border border-[#1C3A5E]/25 bg-transparent text-[#1C3A5E] hover:border-[#1C3A5E]/50 hover:bg-[#1C3A5E]/[0.04]`}
+          className={`${botonClase} mt-10 rounded-xl border border-[#0F2240]/25 bg-transparent text-[#0F2240] hover:border-[#0F2240]/50 hover:bg-[#0F2240]/[0.04]`}
         >
           {ESPALDA_GRACIAS.descargaBoton}
         </a>
 
-        <div className="mt-20 border-t border-[#1C3A5E]/12 pt-14">
+        <div className="mt-20 border-t border-[#E0D4C0] pt-14">
           <h2 className={`mb-6 text-[clamp(1.6rem,5vw,2.2rem)] leading-[1.2] ${tituloClase}`}>
             {ESPALDA_GRACIAS.ctaTitulo}
           </h2>
@@ -82,7 +82,7 @@ export default async function GraciasPage({ searchParams }: { searchParams: Busq
               enlace va limpio: versión de pago. */}
           <CtaHojaDeRuta
             href={token ? `/hoja-de-ruta?ventana=1&t=${encodeURIComponent(token)}` : "/hoja-de-ruta"}
-            className={`${botonClase} mt-10 bg-[#1C3A5E] text-[#FAF3E8] hover:bg-[#0F2240]`}
+            className={`${botonClase} mt-10 rounded-xl bg-[#0F2240] text-[#F7F1E6] hover:brightness-110`}
             sesion={sesion}
           >
             {ESPALDA_GRACIAS.ctaBoton}

@@ -208,7 +208,7 @@ export default function FormularioEspalda({
                 if (respuestas[paso].trim()) marcar(`q${paso + 1}_done`);
               }}
               style={{ ...inputStyle, resize: "none", paddingTop: "0.25rem" }}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
         </div>
@@ -231,7 +231,7 @@ export default function FormularioEspalda({
               value={datos.nombre}
               onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
               style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
 
@@ -249,7 +249,7 @@ export default function FormularioEspalda({
               value={datos.email}
               onChange={(e) => setDatos({ ...datos, email: e.target.value })}
               style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
 
@@ -267,7 +267,7 @@ export default function FormularioEspalda({
               value={datos.telefono}
               onChange={(e) => setDatos({ ...datos, telefono: e.target.value })}
               style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
 
@@ -307,7 +307,7 @@ export default function FormularioEspalda({
               value={datos.edad}
               onChange={(e) => setDatos({ ...datos, edad: e.target.value })}
               style={inputStyle}
-              className="placeholder:text-[#1C3A5E]/35"
+              className="placeholder:text-[#0F2240]/35"
             />
           </div>
 
@@ -327,8 +327,8 @@ export default function FormularioEspalda({
                       padding: "0.55rem 1.1rem",
                       fontSize: "0.95rem",
                       cursor: "pointer",
-                      border: `1px solid ${activo || generoHover === opt ? "#D4860A" : "rgba(28,58,94,0.25)"}`,
-                      background: activo ? "rgba(212,134,10,0.10)" : "none",
+                      border: `1px solid ${activo || generoHover === opt ? "#C47800" : "rgba(15,34,64,0.25)"}`,
+                      background: activo ? "rgba(196,120,0,0.10)" : "none",
                       color: activo ? "#0F2240" : "rgba(15,34,64,0.70)",
                       transition: "border-color 0.2s, background 0.2s, color 0.2s",
                     }}
@@ -375,7 +375,7 @@ export default function FormularioEspalda({
     <div ref={tarjetaRef} className="p-6 md:p-10" style={cardStyle}>
       <p className="mb-6 text-[1rem] leading-[1.6] text-[#0F2240]/75">
         {ESPALDA_FORMULARIO.antesDelFormulario}{" "}
-        <span className="font-semibold text-[#1C3A5E]">«{FICHA_ESPALDA_TITULO_PUBLICO}»</span>
+        <span className="font-semibold text-[#0F2240]">«{FICHA_ESPALDA_TITULO_PUBLICO}»</span>
       </p>
 
       {/* Cuánto queda: los segmentos de un vistazo y el conteo escrito
@@ -388,7 +388,7 @@ export default function FormularioEspalda({
               style={{
                 height: "2px",
                 flex: 1,
-                background: i <= paso ? "#D4860A" : "rgba(28,58,94,0.15)",
+                background: i <= paso ? "#C47800" : "rgba(15,34,64,0.15)",
                 transition: "background 0.3s",
               }}
             />
@@ -400,7 +400,7 @@ export default function FormularioEspalda({
             fontSize: "0.75rem",
             textTransform: "uppercase",
             letterSpacing: "0.16em",
-            color: "rgba(28,58,94,0.55)",
+            color: "rgba(15,34,64,0.55)",
           }}
         >
           Paso {paso + 1} de {PASOS_TOTAL}
@@ -434,7 +434,7 @@ export default function FormularioEspalda({
             display: "block",
             opacity: enviando ? 0.6 : 1,
           }}
-          className="scale-100 bg-[#1C3A5E] text-[#FAF3E8] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#0F2240] hover:shadow-lg"
+          className="rounded-xl scale-100 bg-[#0F2240] text-[#F7F1E6] shadow-md transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-lg"
         >
           {paso < PASO_PERMISO
             ? "Siguiente →"
