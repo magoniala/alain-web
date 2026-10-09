@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { whopTrack } from "@/lib/whop";
 import { ALIVIO_FORMULARIO as F, ALIVIO_PDF } from "@/lib/alivio";
 
 /* ---------------------------------------------------------------------------
@@ -22,13 +23,6 @@ const BOTON_ENVIAR =
   "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0F2240] px-7 font-semibold text-[#F7F1E6] transition hover:brightness-110 disabled:opacity-60";
 
 const TITULAR = "font-[family-name:var(--font-fraunces)]";
-
-type Whop = { track: (evento: string, datos?: unknown) => void };
-
-function track(evento: string, datos?: unknown) {
-  if (typeof window === "undefined") return;
-  (window as unknown as { whop?: Whop }).whop?.track(evento, datos);
-}
 
 function Flecha() {
   return (
@@ -64,7 +58,7 @@ export default function BotonGuia({
   const [listo, setListo] = useState(false);
 
   function abrir() {
-    track("add_to_cart", { content_name: "alivia_tu_lumbago_hoy" });
+    whopTrack("add_to_cart", { content_name: "alivia_tu_lumbago_hoy" });
     dialogo.current?.showModal();
     // El foco al campo, no al aspa: la idea es abrir, escribir y darle. Sin
     // esto <dialog> enfoca el primer elemento del DOM, que es el de cerrar.
@@ -92,7 +86,7 @@ export default function BotonGuia({
         setError(data.error || "Algo ha ido mal. Inténtalo de nuevo.");
         return;
       }
-      track("complete_registration", { content_name: "alivia_tu_lumbago_hoy" });
+      whopTrack("complete_registration", { content_name: "alivia_tu_lumbago_hoy" });
       setListo(true);
     } catch {
       setError("Algo ha ido mal. Inténtalo de nuevo.");

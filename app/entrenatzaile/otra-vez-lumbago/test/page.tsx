@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { whopTrack } from "@/lib/whop";
 
 /* ---------------------------------------------------------------------------
    Test rápido · Pack de recursos Otra vez lumbago.
@@ -34,13 +35,6 @@ const PREGUNTAS = [
   },
 ];
 
-type Whop = { track: (evento: string, datos?: unknown) => void };
-
-function track(evento: string, datos?: unknown) {
-  if (typeof window === "undefined") return;
-  (window as unknown as { whop?: Whop }).whop?.track(evento, datos);
-}
-
 export default function Test() {
   const [paso, setPaso] = useState(0);
   const [respuestas, setRespuestas] = useState<string[]>([]);
@@ -51,18 +45,18 @@ export default function Test() {
   const pregunta = PREGUNTAS[paso];
 
   useEffect(() => {
-    track("quiz_start");
+    whopTrack("quiz_start");
   }, []);
 
   useEffect(() => {
     if (terminado && !descartado && !yaContado.current) {
       yaContado.current = true;
-      track("complete_registration");
+      whopTrack("complete_registration");
     }
   }, [terminado, descartado]);
 
   function responder(opcion: string) {
-    if (pregunta) track("quiz_step", { step: pregunta.id });
+    if (pregunta) whopTrack("quiz_step", { step: pregunta.id });
 
     if (opcion === NUNCA) {
       setDescartado(true);
@@ -141,7 +135,7 @@ function Venta({ respuestas, onRepetir }: { respuestas: string[]; onRepetir: () 
       </p>
       <a
         href={CHECKOUT}
-        onClick={() => track("add_to_cart", { value: 24.19, currency: "EUR" })}
+        onClick={() => whopTrack("add_to_cart", { value: 24.19, currency: "EUR" })}
         className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0F2240] px-7 font-semibold text-[#F7F1E6] transition hover:brightness-110"
       >
         Quiero el pack · 24,19 €
