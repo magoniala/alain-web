@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Test rápido para personas con dolor lumbar — Entrenatzaile",
   description:
-    "Tres preguntas para saber si el KIT · Otra vez lumbago encaja con tu caso.",
+    "Tres preguntas para saber si el pack · Otra vez lumbago encaja con tu caso.",
   robots: { index: false, follow: true },
   alternates: {
     canonical: "https://entrenatzaile.alainzulaika.com/otra-vez-lumbago/test",

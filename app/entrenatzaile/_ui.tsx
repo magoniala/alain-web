@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-/* Paleta de Entrenatzaile. Son los mismos valores que usa el KIT en
+/* Paleta de Entrenatzaile. Son los mismos valores que usa el pack en
    /otra-vez-lumbago: tinta, acento, crema de fondo, crema de tarjeta, línea
    y el gris azulado del texto corrido. NAVY y DARK_NAVY apuntan a la misma
    tinta desde que se unificaron los dos azules; se mantienen los dos nombres
@@ -65,7 +65,7 @@ export const emphasisP: React.CSSProperties = {
   marginBottom: "2rem",
 };
 
-// Tarjeta cálida, como la del KIT: crema un punto más oscuro que el fondo y
+// Tarjeta cálida, como la del pack: crema un punto más oscuro que el fondo y
 // línea del mismo tono, en vez del azul translúcido que había antes.
 export const cardStyle: React.CSSProperties = {
   border: `1px solid ${LINE}`,

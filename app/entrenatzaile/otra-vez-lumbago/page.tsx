@@ -4,22 +4,26 @@ import { Header } from "../_ui";
 import { EnlaceTrackeado, VistaKit } from "./_tracking";
 
 /* ---------------------------------------------------------------------------
-   KIT · Otra vez lumbago.
+   Pack de recursos · Otra vez lumbago.
 
-   Copia de la tienda de Whop (entrenatzaile-kit.whop.site) traída a este
-   dominio: mismo texto, misma estructura y misma paleta. Lo único que sigue
-   en Whop es el cobro, así que los botones de compra salen hacia allí.
+   Nació como copia de la tienda de Whop (entrenatzaile-kit.whop.site), pero
+   el copy ya no es el de allí: aquello vendía "el KIT" como si fuera un
+   ebook de 32 páginas, y lo que se compra son cinco recursos. Aquí se llaman
+   por su nombre — pack de recursos — y el bloque de contenido enumera lo que
+   entra, no las características sueltas.
+
+   Lo único que sigue en Whop es el cobro, así que los botones de compra salen
+   hacia allí.
 
    La página tiene una sola salida a propósito: leerla y comprar. Sin menú de
    navegación y sin enlace a la guía gratis — la guía sigue publicada, pero no
    se enlaza desde aquí para no abrir una vía que se lleva la venta. El test
-   queda en el pie, como última opción para quien no se decide.
+   queda en el pie y en una pregunta frecuente, para quien aún dude.
    --------------------------------------------------------------------------- */
 
 const CHECKOUT = "https://entrenatzaile-kit.whop.site/checkout/plan_PmEle1e4obHUF";
 const TEST = "/otra-vez-lumbago/test";
 
-// Paleta de la tienda, con los valores exactos de sus variables CSS.
 const TITULAR = "font-[family-name:var(--font-fraunces)]";
 
 function Flecha({ className = "size-4" }: { className?: string }) {
@@ -62,52 +66,92 @@ const BOTON =
 
 const CIFRAS = [
   { k: "69%", v: "de lumbagos vuelven en el mismo año. Siete de cada diez." },
-  { k: "32", v: "páginas de protocolo, del día 1 al mes 3." },
-  { k: "30 s", v: "filtro para saber si este KIT encaja con tu lumbago." },
+  { k: "5", v: "recursos: dos ebooks, dos registros y una infografía." },
+  { k: "73", v: "ilustraciones numeradas, una por postura y por ejercicio." },
 ];
 
+// Lo que se compra, pieza a pieza. Primero qué es, luego para qué sirve.
 const DENTRO = [
   {
-    title: "Filtro de 30 segundos",
-    body: "Antes de entrenar, sabes si este protocolo es para tu tipo de lumbago.",
+    title: "Ebook «Alivia tu lumbago hoy»",
+    meta: "3 páginas",
+    body: "Los primeros días, paso a paso: cómo levantarte, sentarte y dormir, cómo aliviar el dolor sin quedarte parado, y los 5 errores que alargan el episodio.",
   },
   {
-    title: "Día 1 al mes 3",
-    body: "Progresión escrita para gente con poco tiempo, no una rutina infinita de gym.",
+    title: "Ebook «Protocolo completo»",
+    meta: "32 páginas · del día 1 al mes 3",
+    body: "Sabes qué te toca cada día. Buscas tu momento —me acaba de dar, llevo diez días, ahora estoy bien— y vas directo a tu parte. Tres fases por escalones, desde no poder moverte hasta volver a levantar la garrafa, la maleta o a tu nieto sin pensarlo.",
   },
   {
-    title: "32 páginas",
-    body: "El protocolo completo, listo para seguir en casa, sin máquinas ni citas.",
+    title: "Registro imprimible",
+    meta: "en papel",
+    body: "Lo cuelgas y apuntas cada día. Sabes dónde estás y ves tu progreso en una semana, no en tu memoria.",
   },
   {
-    title: "Hecho para el trabajo",
-    body: "Pensado para quien pasa el día sentado y no puede permitirse otra recaída.",
+    title: "Registro en Excel",
+    meta: "automático",
+    body: "El mismo registro, pero echando él las cuentas: metes los números y te dice si seguir igual, subir o bajar el peso o la dificultad. Se complementa con el de papel.",
+  },
+  {
+    title: "Infografía para el armario",
+    meta: "una hoja",
+    body: "Todo el proceso de un vistazo. Te ubica en cualquier momento y, si dentro de un año te vuelve a dar, ya tienes el plan: no andas apagando fuegos.",
+  },
+];
+
+// Las características que no son un archivo suelto, sino cómo está hecho todo.
+const ADEMAS = [
+  {
+    title: "El filtro de 30 segundos",
+    body: "En medio minuto sabes si tu lumbago es el de siempre o si lo tuyo toca consultarlo con un médico.",
+  },
+  {
+    title: "El semáforo",
+    body: "Dos números del 1 al 10 y sabes si repetir, subir o bajar el ritmo. Se acaba el «¿me estaré haciendo daño?».",
+  },
+  {
+    title: "En casa, con lo que tienes",
+    body: "Una silla y un palo de escoba. Si prefieres el gimnasio, viene también la versión para gimnasio.",
+  },
+  {
+    title: "Basado en guías clínicas",
+    body: "11 fuentes citadas, las más importantes de los últimos diez años. Puedes comprobarlas una a una.",
   },
 ];
 
 const INCLUYE = [
-  "Protocolo de 32 páginas",
-  "Filtro de 30 segundos",
-  "Progresión del día 1 al mes 3",
-  "Hecho para quien trabaja sentado",
+  "Ebook «Alivia tu lumbago hoy» (3 páginas)",
+  "Ebook «Protocolo completo» (32 páginas, del día 1 al mes 3)",
+  "Registro imprimible en papel",
+  "Registro en Excel, con los cálculos hechos",
+  "Infografía resumen para el armario",
 ];
 
 const PREGUNTAS = [
   {
     q: "¿Esto es una guía gratuita?",
-    a: "No. Es el protocolo de pago: 32 páginas, filtro de 30 segundos y progresión hasta el mes 3.",
+    a: "No. Es el pack de pago: dos ebooks, los dos registros y la infografía. La guía gratis de tres páginas va dentro, así que si ya la tienes, el resto es lo nuevo.",
+  },
+  {
+    q: "¿Es esto para mí?",
+    a: "Si has tenido lumbago y no quieres que vuelva, sí. Si nunca lo has tenido, no te hace falta todavía. Hay un test de tres preguntas que te lo dice en medio minuto.",
+    enlaceTest: true,
+  },
+  {
+    q: "¿Y si no me sirve?",
+    a: "Tienes 14 días de garantía para revisar el material. Si no te encaja, me escribes y te devuelvo el dinero.",
   },
   {
     q: "¿Sirve si ahora mismo estoy en un brote?",
-    a: "El filtro de 30 segundos te dice si este protocolo encaja con tu lumbago antes de meterte a entrenar.",
+    a: "Está escrito para eso. El filtro de 30 segundos te dice si puedes entrenar, y el ebook corto cubre los primeros días del episodio.",
   },
   {
     q: "¿Necesito gimnasio o material?",
-    a: "No. Está escrito para seguirlo en casa, con el tiempo que te deja el trabajo.",
+    a: "No. Una silla y un palo de escoba. Y si prefieres hacerlo en el gimnasio, viene también esa versión.",
   },
   {
     q: "¿Cuánto tarda en llegar?",
-    a: "Es digital. En cuanto pagas, tienes acceso al KIT.",
+    a: "Es digital. En cuanto pagas, tienes acceso a todo el pack.",
   },
   {
     q: "¿Cuánto tiempo necesito al día?",
@@ -115,11 +159,11 @@ const PREGUNTAS = [
   },
   {
     q: "¿Esto sustituye al médico o al fisio?",
-    a: "No. Es un protocolo de entrenamiento. El filtro de 30 segundos está justo para eso: para que sepas cuándo lo tuyo toca consultarlo antes de ponerte a entrenar.",
+    a: "No. Es material de entrenamiento. El filtro de 30 segundos está justo para eso: para que sepas cuándo lo tuyo toca consultarlo antes de ponerte a entrenar.",
   },
   {
     q: "¿Es un pago único o una suscripción?",
-    a: "Pago único. Pagas una vez y el KIT es tuyo, sin cuotas ni renovaciones.",
+    a: "Pago único. Pagas una vez y el pack es tuyo, sin cuotas ni renovaciones.",
   },
 ];
 
@@ -134,6 +178,7 @@ export default function OtraVezLumbago() {
         <Relato />
         <Cita />
         <Protocolo />
+        <Ademas />
         <Autor />
         <Precio />
         <Faq />
@@ -155,7 +200,7 @@ function Hero() {
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 pt-10 pb-20 md:grid-cols-2 md:pt-16 md:pb-28">
       <div>
         <p className="text-sm font-semibold tracking-[0.22em] text-[#C47800] uppercase">
-          KIT · Otra vez lumbago
+          Pack de recursos · Otra vez lumbago
         </p>
         <h1
           className={`${TITULAR} mt-4 text-5xl leading-[1.05] font-semibold tracking-tight text-balance md:text-6xl`}
@@ -163,28 +208,31 @@ function Hero() {
           7 de cada 10 lumbagos recaen. Rompe el ciclo hoy.
         </h1>
         <p className="mt-6 max-w-md text-lg leading-relaxed text-pretty text-[#4A5C73]">
-          Protocolo de 32 páginas de Alain Zulaika: un filtro de 30 segundos y una progresión del día
-          1 al mes 3. Hecho para quien trabaja sentado y no puede permitirse otra recaída.
+          Cinco recursos de Alain Zulaika: el protocolo del día 1 al mes 3, la guía para los
+          primeros días, dos registros para ver tu progreso y la infografía que te dice qué hacer la
+          próxima vez. Para quien ya ha pasado por esto y no puede permitirse otra recaída.
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
           <EnlaceTrackeado href={CHECKOUT} evento="add_to_cart" conValor className={BOTON}>
-            Comprar el KIT · 24,19 €
+            Comprar el pack · 24,19 €
             <Flecha />
           </EnlaceTrackeado>
           <a
             href="#protocolo"
             className="font-semibold underline decoration-[#E0D4C0] underline-offset-4 hover:decoration-[#0F2240]"
           >
-            Ver el protocolo
+            Ver qué incluye
           </a>
         </div>
-        <p className="mt-8 text-sm text-[#4A5C73]">Pago único · Acceso inmediato · Sin gimnasio</p>
+        <p className="mt-8 text-sm text-[#4A5C73]">
+          Pago único · Acceso inmediato · 14 días de garantía
+        </p>
       </div>
       <Image
-        src="/otra-vez-lumbago/alain.jpg"
+        src="/otra-vez-lumbago/alain.png"
         alt="Alain Zulaika, entrenador de Entrenatzaile"
-        width={2000}
-        height={2000}
+        width={1254}
+        height={1254}
         priority
         className="aspect-[4/5] w-full rounded-xl object-cover"
       />
@@ -227,7 +275,7 @@ function Relato() {
           la espalda mal, mejor no me muevo”.
         </p>
         <p>
-          El KIT no te vende un milagro. Te da el protocolo para romper ese ciclo: recuperar
+          El pack no te vende un milagro. Te da el material para romper ese ciclo: recuperar
           confianza en el movimiento y construir fuerza de forma sostenida.
         </p>
       </div>
@@ -250,7 +298,7 @@ function Cita() {
         <blockquote
           className={`${TITULAR} text-3xl leading-snug font-medium text-balance md:text-5xl`}
         >
-          “El 69% vuelve a tenerlo en un año. El KIT existe para que no seas uno de ellos.”
+          “El 69% vuelve a tenerlo en un año. Este pack existe para que no seas uno de ellos.”
         </blockquote>
         <figcaption className="mt-8 text-sm tracking-wide text-[#F7F1E6]/80 uppercase">
           Alain Zulaika · Entrenatzaile
@@ -262,14 +310,14 @@ function Cita() {
 
 function Protocolo() {
   return (
-    <section id="protocolo" className="mx-auto max-w-6xl px-6 py-20 md:py-28">
+    <section id="protocolo" className="mx-auto max-w-6xl scroll-mt-8 px-6 py-20 md:py-28">
       <div className="grid items-end gap-8 md:grid-cols-[1.2fr_1fr]">
         <h2 className={`${TITULAR} text-4xl font-semibold tracking-tight md:text-5xl`}>
-          Qué hay dentro del KIT
+          Qué hay dentro del pack
         </h2>
         <Image
           src="/otra-vez-lumbago/kit.png"
-          alt="Protocolo KIT - Otra vez lumbago"
+          alt="Pack de recursos Otra vez lumbago"
           width={1536}
           height={864}
           className="mt-6 w-full rounded-xl object-cover md:mt-0"
@@ -283,7 +331,8 @@ function Protocolo() {
             </span>
             <div>
               <h3 className="text-lg font-semibold">{item.title}</h3>
-              <p className="mt-1 text-[#4A5C73]">{item.body}</p>
+              <p className="mt-0.5 text-sm tracking-wide text-[#C47800]">{item.meta}</p>
+              <p className="mt-2 text-[#4A5C73]">{item.body}</p>
             </div>
           </li>
         ))}
@@ -292,15 +341,39 @@ function Protocolo() {
   );
 }
 
+// Bloque corto a propósito: son las cuatro cosas que atraviesan todo el
+// material, y si se alargan se comen el bloque de arriba, que es el que
+// cuenta qué compras.
+function Ademas() {
+  return (
+    <section className="border-y border-[#E0D4C0] bg-[#EFE6D4]">
+      <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
+        <h2 className={`${TITULAR} text-3xl font-semibold tracking-tight`}>Y además</h2>
+        <ul className="mt-8 grid gap-x-12 gap-y-7 md:grid-cols-2">
+          {ADEMAS.map((item) => (
+            <li key={item.title} className="flex gap-3">
+              <Check className="mt-1 size-5 shrink-0 text-[#C47800]" />
+              <div>
+                <h3 className="font-semibold">{item.title}</h3>
+                <p className="mt-1 text-[#4A5C73]">{item.body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 function Autor() {
   return (
-    <section className="bg-[#EFE6D4]">
+    <section>
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 md:grid-cols-[0.8fr_1fr] md:py-28">
         <Image
-          src="/otra-vez-lumbago/alain.jpg"
+          src="/otra-vez-lumbago/alain.png"
           alt="Alain Zulaika"
-          width={2000}
-          height={2000}
+          width={1254}
+          height={1254}
           className="aspect-[4/5] w-full max-w-sm rounded-xl object-cover"
         />
         <div>
@@ -313,7 +386,7 @@ function Autor() {
           <p className="mt-6 max-w-prose text-lg leading-relaxed text-[#4A5C73]">
             Entrenador personal titulado. Llevo entrenando desde los 14 y más de 6 años como
             entrenador. Ayudo a personas de 45 a 65 a mantener fuerza, movilidad y autonomía. Sin
-            humo, sin promesas milagro: solo el protocolo y alguien que lo ha escrito para que se
+            humo, sin promesas milagro: solo el material y alguien que lo ha escrito para que se
             pueda cumplir.
           </p>
         </div>
@@ -324,13 +397,13 @@ function Autor() {
 
 function Precio() {
   return (
-    <section id="kit" className="mx-auto max-w-6xl px-6 py-20 md:py-28">
+    <section id="kit" className="mx-auto max-w-6xl px-6 pb-20 md:pb-28">
       <div className="mx-auto max-w-lg rounded-xl border border-[#E0D4C0] bg-[#EFE6D4] p-8 md:p-10">
         <p className="text-sm font-semibold tracking-[0.22em] text-[#C47800] uppercase">
           Pago único
         </p>
         <h2 className={`${TITULAR} mt-3 text-3xl font-semibold tracking-tight`}>
-          KIT - Otra vez lumbago
+          Pack de recursos · Otra vez lumbago
         </h2>
         <p className="mt-6 flex flex-wrap items-baseline gap-3">
           <span className={`${TITULAR} text-6xl font-semibold whitespace-nowrap`}>24,19 €</span>
@@ -352,11 +425,13 @@ function Precio() {
             conValor
             className={`${BOTON} w-full`}
           >
-            Comprar el KIT ahora
+            Comprar el pack ahora
             <Flecha />
           </EnlaceTrackeado>
         </div>
-        <p className="mt-4 text-center text-sm text-[#4A5C73]">Pago único · Acceso inmediato</p>
+        <p className="mt-4 text-center text-sm text-[#4A5C73]">
+          14 días de garantía. Si el material no te encaja, te devuelvo el dinero.
+        </p>
       </div>
     </section>
   );
@@ -375,7 +450,21 @@ function Faq() {
                 +
               </span>
             </summary>
-            <p className="mt-3 max-w-prose text-[#4A5C73]">{p.a}</p>
+            <p className="mt-3 max-w-prose text-[#4A5C73]">
+              {p.a}
+              {p.enlaceTest && (
+                <>
+                  {" "}
+                  <EnlaceTrackeado
+                    href={TEST}
+                    evento="quiz_start"
+                    className="font-semibold text-[#0F2240] underline decoration-[#E0D4C0] underline-offset-4 hover:decoration-[#0F2240]"
+                  >
+                    Hacer el test
+                  </EnlaceTrackeado>
+                </>
+              )}
+            </p>
           </details>
         ))}
       </div>
@@ -398,7 +487,7 @@ function CierreCta() {
           conValor
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#C47800] px-7 font-semibold text-[#0F2240]"
         >
-          Quiero el KIT · 24,19 €
+          Quiero el pack · 24,19 €
           <Flecha />
         </EnlaceTrackeado>
       </div>
@@ -421,7 +510,7 @@ function Pie() {
             conValor
             className="hover:text-[#0F2240]"
           >
-            Comprar el KIT
+            Comprar el pack
           </EnlaceTrackeado>
           <Link href="/privacidad" className="hover:text-[#0F2240]">
             Privacidad

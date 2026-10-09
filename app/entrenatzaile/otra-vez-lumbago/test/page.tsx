@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 
 /* ---------------------------------------------------------------------------
-   Test rápido · KIT Otra vez lumbago.
+   Test rápido · Pack de recursos Otra vez lumbago.
 
    Tres preguntas y una sola salida: el precio. La excepción es "No me ha
    ocurrido nunca": quien responde eso no tiene el problema que resuelve el
-   KIT, así que se le dice y se acaba ahí. Venderle sería venderle humo.
+   pack, así que se le dice y se acaba ahí. Venderle sería venderle humo.
    --------------------------------------------------------------------------- */
 
 const CHECKOUT = "https://entrenatzaile-kit.whop.site/checkout/plan_PmEle1e4obHUF";
@@ -127,24 +127,24 @@ function Venta({ respuestas, onRepetir }: { respuestas: string[]; onRepetir: () 
         Siguiente paso
       </p>
       <h1 className={`${TITULAR} mt-3 text-3xl font-semibold tracking-tight`}>
-        KIT - Otra vez lumbago
+        Pack de recursos · Otra vez lumbago
       </h1>
       <p className="mt-6 flex flex-wrap items-baseline gap-3">
         <span className={`${TITULAR} text-5xl font-semibold whitespace-nowrap`}>24,19 €</span>
         <span className="text-[#4A5C73]">IVA incluido</span>
       </p>
-      <p className="mt-2 text-sm text-[#4A5C73]">19,99 € + IVA · protocolo de 32 páginas</p>
+      <p className="mt-2 text-sm text-[#4A5C73]">19,99 € + IVA · cinco recursos</p>
       <p className="mt-6 text-lg leading-relaxed text-[#4A5C73]">
-        El protocolo cubre tu fase exacta. Con tus respuestas
-        {respuestas.length > 0 ? ` (${respuestas.join(" · ")})` : ""}, el kit te da el plan para este
-        episodio y para no repetir el ciclo.
+        El pack cubre tu fase exacta. Con tus respuestas
+        {respuestas.length > 0 ? ` (${respuestas.join(" · ")})` : ""}, te da el plan para este episodio y para no
+        repetir el ciclo.
       </p>
       <a
         href={CHECKOUT}
         onClick={() => track("add_to_cart", { value: 24.19, currency: "EUR" })}
         className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0F2240] px-7 font-semibold text-[#F7F1E6] transition hover:brightness-110"
       >
-        Quiero el KIT · 24,19 €
+        Quiero el pack · 24,19 €
         <svg
           className="size-4"
           viewBox="0 0 24 24"
@@ -180,7 +180,7 @@ function Descartado({ onRepetir }: { onRepetir: () => void }) {
         Esto seguramente no te interese por ahora
       </h1>
       <p className="mt-6 text-lg leading-relaxed text-[#4A5C73]">
-        El KIT está escrito para quien ya ha pasado un lumbago y no quiere que vuelva. Si nunca lo
+        El pack está escrito para quien ya ha pasado un lumbago y no quiere que vuelva. Si nunca lo
         has tenido, no te hace falta.
       </p>
       <button
