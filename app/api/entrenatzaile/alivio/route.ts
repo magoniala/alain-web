@@ -71,6 +71,11 @@ export async function POST(req: Request) {
       idioma: "es",
       origen: "alivio",
       tags: TAGS,
+      // Explícito, y no por omisión: la columna tiene DEFAULT true, así que
+      // sin esta línea quien deja el correo aquí arrancaría la secuencia de
+      // nurture de la Hoja de Ruta. De aquí se entra sólo a la newsletter
+      // diaria — que es justo la que va a quien NO está en una secuencia.
+      recibe_secuencia: false,
     }));
     if (dbError?.code === "23505") {
       // Carrera: alguien insertó este email entre el select y el insert.
