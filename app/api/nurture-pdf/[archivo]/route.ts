@@ -1,4 +1,5 @@
 import { FICHA_ESPALDA_TITULO } from "@/lib/entrenatzaile-formularios";
+import { ALIVIO_PDF } from "@/lib/alivio";
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -17,6 +18,7 @@ const ARCHIVOS: Record<string, { file: string; nombre: () => string }> = {
     file: "ereccion.pdf",
     nombre: () => "Lo que nadie te cuenta sobre la ereccion despues de los 50.pdf",
   },
+  [ALIVIO_PDF.slug]: { file: ALIVIO_PDF.file, nombre: () => sinAcentos(ALIVIO_PDF.nombre) },
 };
 
 export async function GET(_req: Request, ctx: { params: Promise<{ archivo: string }> }) {

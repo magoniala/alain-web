@@ -6,12 +6,28 @@
    del correo, y una ruta de API no puede importar de la carpeta de la página.
    --------------------------------------------------------------------------- */
 
-/* La guía no se sirve desde aquí: está subida en Whop y la entrega el propio
-   checkout, con acceso inmediato. La URL va limpia a propósito — la que
-   entrega Whop al copiarla desde un anuncio arrastra parámetros de
-   previsualización (ad_preview, ids 123456789) y un `session=chs_…` que es de
-   una sesión concreta y no sirve para los demás visitantes. */
-export const ALIVIO_CHECKOUT = "https://whop.com/checkout/ch_lypi7ju8ge1SyJJ/";
+/* El PDF vive en el repo, junto a las demás guías de nutrición de leads, y de
+   ahí salen las dos vías: va adjunto al correo de bienvenida y se sirve por
+   /api/nurture-pdf/alivio para quien prefiera bajárselo en el momento. */
+export const ALIVIO_PDF = {
+  file: "alivio.pdf",
+  slug: "alivio",
+  nombre: "Alivia tu lumbago hoy.pdf",
+};
+
+/* Textos del desplegable que pide el correo. Es el único paso entre el botón
+   y la guía, así que va corto a propósito: un campo y un botón. */
+export const ALIVIO_FORMULARIO = {
+  titulo: "¿A dónde te la mando?",
+  entrada: "Dejas el correo y te llega el PDF. Gratis, sin tarjeta.",
+  placeholder: "tu@email.com",
+  boton: "Enviarme la guía",
+  enviando: "Enviando…",
+  letraPequena: "Te apuntas también a mi newsletter. Te das de baja en un clic.",
+  listoTitulo: "Listo. Va para allá.",
+  listoDescarga: "Descargarla ahora",
+  listoSpam: "Si no te llega en unos minutos, mira en spam.",
+};
 
 export const ALIVIO_TEXTOS = {
   titulo: "Alivia tu lumbago hoy",
