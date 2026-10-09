@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     siteName: "Entrenatzaile",
     locale: "es_ES",
     type: "website",
-    images: [{ url: "/alivio/portada.png", width: 1024, height: 1536 }],
+    images: [{ url: "/alivio/portada.png", width: 1254, height: 1254 }],
   },
   robots: { index: true, follow: true },
 };

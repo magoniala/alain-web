@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     siteName: "Entrenatzaile",
     locale: "es_ES",
     type: "website",
-    images: [{ url: "/otra-vez-lumbago/kit.png", width: 1536, height: 864 }],
+    images: [{ url: "/otra-vez-lumbago/kit.png", width: 1536, height: 1024 }],
   },
   robots: { index: true, follow: true },
 };

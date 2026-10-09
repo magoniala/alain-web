@@ -99,8 +99,8 @@ function Hero() {
       <Image
         src="/alivio/portada.png"
         alt={`Portada de ${T.titulo}, guía gratuita de 3 páginas`}
-        width={1024}
-        height={1536}
+        width={1254}
+        height={1254}
         priority
         className="w-full rounded-xl object-cover"
       />

@@ -107,7 +107,7 @@ const ADEMAS = [
   },
   {
     title: "El semáforo",
-    body: "Dos números del 1 al 10 y sabes si repetir, subir o bajar el ritmo. Se acaba el «¿me estaré haciendo daño?».",
+    body: "Dos números del 0 al 10 y el semáforo te dice si subir, repetir o bajar. Se acaba el «¿me estaré haciendo daño?».",
   },
   {
     title: "En casa, con lo que tienes",
@@ -319,7 +319,7 @@ function Protocolo() {
           src="/otra-vez-lumbago/kit.png"
           alt="Pack de recursos Otra vez lumbago"
           width={1536}
-          height={864}
+          height={1024}
           className="mt-6 w-full rounded-xl object-cover md:mt-0"
         />
       </div>
