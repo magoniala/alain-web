@@ -150,7 +150,7 @@ const CIERRE: ContenidoHR["cierre"] = {
   parrafos: [
     {
       texto:
-        "Una hora por videollamada.\nTu Hoja de Ruta por escrito en 24 o 48 horas.\nEl protocolo por si el dolor vuelve, si tu caso es de espalda.",
+        "Una hora por videollamada.\nTu Hoja de Ruta por escrito en 24 o 48 horas.",
     },
   ],
   precio: igualEnLasDos("90 €"),

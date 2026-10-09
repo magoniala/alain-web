@@ -234,10 +234,6 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
           "Perder el miedo del todo lleva meses o años de entrenamiento progresivo.\nPero salir de la llamada sabiendo qué es seguro para ti y qué molestias son motivo de parar ya te quita muchas decisiones de encima.",
       },
       {
-        destacado: "Te doy un protocolo por si el dolor vuelve.",
-        texto: "Qué hacer las primeras 48 horas, qué no, y cómo volver a entrenar sin repetir el error de siempre.",
-      },
-      {
         texto:
           "Eso es lo que compras aquí. Proceso, criterio y capacidad.\nNo una promesa de que no te va a doler nunca más.",
       },
@@ -264,15 +260,6 @@ export const HOJA_RUTA_SECCIONES: SeccionHR[] = [
       {
         destacado: "Metas realistas para los próximos tres meses.",
         texto: "Alcanzables. No «estar como a los treinta» ni «tener abdominales de Instagram».",
-      },
-      {
-        destacado: "El protocolo por si el dolor vuelve.",
-        nota: "(Ficha extra)",
-        texto: "Qué hacer las primeras 48 horas, qué no, y cómo volver a entrenar.",
-      },
-      {
-        texto:
-          "Si además de la espalda te preocupa otra cosa —la rodilla, el hombro, sentirte más fuerte en general—, también entra.\nLa Hoja de Ruta no va solo de tu espalda: va de en qué estado está tu cuerpo y qué te toca priorizar.",
       },
       { texto: "Recibes todo por escrito en 24 o 48 horas después de la llamada." },
       {
@@ -330,7 +317,7 @@ export const HOJA_RUTA_CIERRE = {
   parrafos: [
     {
       texto:
-        "Una hora por videollamada.\nTu Hoja de Ruta por escrito en 24 o 48 horas.\nEl protocolo por si el dolor vuelve.",
+        "Una hora por videollamada.\nTu Hoja de Ruta por escrito en 24 o 48 horas.",
     },
   ] satisfies Parrafo[],
   precio: {
