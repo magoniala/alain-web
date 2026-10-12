@@ -15,6 +15,7 @@ import {
 } from "../_ui";
 import type { Variante } from "@/lib/entrenatzaile-variantes";
 import { GUIAS_CONTENIDO, type EngancheBloque } from "./_content";
+import { whopTrack } from "@/lib/whop";
 
 function Enganche({ bloques }: { bloques: EngancheBloque[] }) {
   return (
@@ -111,6 +112,27 @@ export default function GuiasClient({
         setError(data.error || "Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
         return;
       }
+
+      // Conversión principal para Whop: es el evento por el que optimiza el
+      // grupo de anuncios. Se dispara aquí, y no al pulsar el botón, porque
+      // este endpoint responde 200 solo cuando el alta en newsletter_contactos
+      // y el correo con las guías han salido. Antes de eso no hay alta que
+      // contar, y un evento de más enseñaría al optimizador a buscar gente
+      // que abandona.
+      //
+      // El email, normalizado igual que en el servidor, hace de clave de
+      // deduplicación: Whop cuenta una sola vez cada par (evento, event_id),
+      // así que un doble clic, un reintento o un F5 colapsan en una sola
+      // conversión. Va en claro a propósito —Whop descarta los hasheados—, y
+      // es el único identificador estable que hay aquí: el endpoint solo
+      // devuelve { ok: true }, sin id de fila.
+      const emailWhop = formData.email.trim().toLowerCase();
+      whopTrack("complete_registration", {
+        email: emailWhop,
+        name: formData.nombre.trim(),
+        event_id: `guias_${emailWhop}`,
+      });
+
       setDone(true);
     } catch {
       setError("Algo ha ido mal. Inténtalo de nuevo o escríbeme directamente.");
