@@ -54,6 +54,36 @@ export const CONSENT_ESPALDA = {
 export const DECLARACION_NEWSLETTER_ESPALDA =
   "Declarado en la página, sin casilla: «La ha escrito Alain Zulaika, entrenador titulado especializado en personas de 45 a 65 años. Te llega por correo, y a partir de ahí llega también un correo diario sobre esto mismo. Te puedes dar de baja con un clic cuando quieras.»";
 
+// ============================================================
+// Formulario instantáneo de Meta Ads (Tirada 03)
+// ============================================================
+//
+// OJO, estos dos textos son una COPIA, y es la diferencia importante con los
+// de arriba. En /espalda el servidor renderiza la pregunta y la casilla y
+// luego las graba, así que son el mismo texto por construcción. Aquí el
+// original vive en el panel de anuncios de Meta y se puede editar sin
+// desplegar nada: si tocas la pregunta o la casilla allí, hay que
+// actualizarlas aquí y subir CONSENT_ADS_VERSION, o las filas dirán que
+// alguien aceptó un texto que no es el que leyó.
+//
+// Versión propia, separada de CONSENT_VERSION, porque esa la comparten
+// /espalda y /hoja-de-ruta: subirla estamparía una versión nueva en sus filas
+// sin que sus textos hayan cambiado. Mismo criterio que
+// CONSENT_CREADORES_VERSION y CONSENT_AUDIO_VERSION.
+export const CONSENT_ADS_VERSION = "2026-10-15";
+
+// La única pregunta de texto libre del formulario. La respuesta puede
+// contener datos de salud: vive en leads_ads y no sale de ahí.
+export const PREGUNTA_ADS = "¿Qué has dejado de hacer y te gustaría volver a hacer?";
+
+export const CONSENT_ADS = {
+  // Una sola casilla, sin premarcar. Es la que habilita el teléfono: si no
+  // está marcada, /api/leads/entrada descarta el número que manda Meta en
+  // vez de guardarlo sin base jurídica.
+  whatsapp:
+    "Acepto que Alain Zulaika me escriba por WhatsApp sobre mi caso. No es una lista de difusión: son mensajes personales y puedo pedir que paren cuando quiera.",
+} as const;
+
 export const CONSENT_HOJA_RUTA = {
   // Una sola casilla, como pide el formulario de reserva. Cubre tres cosas y
   // las tres se nombran de forma expresa: el tratamiento de los datos de
