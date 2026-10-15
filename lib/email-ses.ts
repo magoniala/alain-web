@@ -123,6 +123,12 @@ export async function sendEmail(
         // estadísticas que sacar después.
         TrackOpens: "enabled",
         TrackClicks: "enabled",
+        // Explícito aunque sea el valor por defecto de la API. Las campañas
+        // de la secuencia son de vida larga (nurture-m0 agrupa a TODO el que
+        // pase por el M0, sin importar el mes), así que con esto en true
+        // Mailjet descartaría en silencio a cualquiera que ya estuviera en
+        // ella. Escrito aquí, nadie lo cambia sin verlo.
+        DeduplicateCampaign: false,
         ...(seguimiento?.campana ? { CustomCampaign: seguimiento.campana } : {}),
         ...(seguimiento?.customId ? { CustomID: seguimiento.customId } : {}),
         ...(attachments?.length
