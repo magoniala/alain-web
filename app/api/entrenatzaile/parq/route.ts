@@ -15,6 +15,7 @@ import {
   type Respuesta,
   type ResultadoParq,
 } from "@/lib/parq";
+import { TESTS, criterioTests } from "@/lib/parq-criterio";
 import { limpiarUtm, type Utm } from "@/lib/entrenatzaile-formularios";
 import { NextResponse } from "next/server";
 
@@ -166,7 +167,7 @@ async function avisarme(d: {
     ? `<p style="margin:0 0 1.2rem 0;padding:0.8rem 1rem;background:#fff7e6;border-left:3px solid #D4860A;color:#7a4e00;">NO SE HA GUARDADO EN SUPABASE (${escapar(d.dbError)}). Este correo es la única copia: guárdalo.</p>`
     : "";
 
-  const resumen = resumenBanderas(d.respuestas);
+  const resumen = resumenBanderas(d.respuestas) + bloqueValoracion(d.respuestas);
 
   // Los «sí» primero y marcados: es lo que hay que leer. Los «no» debajo,
   // para tener el cuestionario entero.
@@ -261,5 +262,39 @@ function resumenBanderas(respuestas: FilaRespuesta[]): string {
       <p style="margin:0 0 6px 0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#777;">Preguntas generales</p>
       ${bloqueGenerales}
       ${seguimiento}
+    </div>`;
+}
+
+// Qué tests de la valoración online se pueden hacer con estas respuestas.
+// Criterio propio (lib/parq-criterio.ts), no del PAR-Q+.
+function bloqueValoracion(respuestas: FilaRespuesta[]): string {
+  const criterio = criterioTests(respuestas.filter((r) => r.respuesta === "si").map((r) => r.id));
+  const de = (nivel: string) => criterio.filter((c) => c.nivel === nivel);
+  const fuente = "font-family:Arial,sans-serif;font-size:13px;line-height:1.45;";
+  const titulo = (texto: string, color: string) =>
+    `<p style="margin:10px 0 4px 0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:${color};font-weight:bold;">${texto}</p>`;
+
+  const conMotivo = (lista: ReturnType<typeof de>, color: string) =>
+    lista
+      .map(
+        (c) =>
+          `<div style="${fuente}padding:3px 0;"><strong style="color:${color};">${escapar(TESTS[c.test])}</strong>${
+            c.motivos.length ? `<br><span style="color:#555;">${c.motivos.map(escapar).join("<br>")}</span>` : ""
+          }</div>`
+      )
+      .join("");
+
+  const no = de("no");
+  const pre = de("precaucion");
+  const si = de("si");
+
+  return `
+    <div style="margin:0 0 1.2rem 0;padding:12px 14px;background:#ffffff;border:1px solid #e3e3e3;border-radius:8px;">
+      <p style="margin:0 0 2px 0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#777;">En la valoración online</p>
+      ${no.length ? titulo(`No hacer (${no.length})`, "#b3261e") + conMotivo(no, "#b3261e") : ""}
+      ${pre.length ? titulo(`Con precaución (${pre.length})`, "#9a6400") + conMotivo(pre, "#9a6400") : ""}
+      ${titulo(`Se puede (${si.length})`, "#1e7b3a")}
+      <div style="${fuente}color:#1e7b3a;">${si.map((c) => escapar(TESTS[c.test])).join(" · ")}</div>
+      <p style="margin:10px 0 0 0;font-family:Arial,sans-serif;font-size:11px;color:#999;">Criterio propuesto a partir de las banderas, no del PAR-Q+. Ante la duda, lo que diga su médico.</p>
     </div>`;
 }

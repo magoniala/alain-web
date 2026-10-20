@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RESULTADO_ETIQUETA, type ResultadoParq } from "@/lib/parq";
+import { TESTS, criterioTests, idsDesdeTextos, type CriterioTest, type Test } from "@/lib/parq-criterio";
 import {
   baremoCintura,
   baremoMonopodal,
@@ -69,6 +70,70 @@ function Lectura({ r }: { r: { nivel: Parameters<typeof Badge>[0]["nivel"]; etiq
   );
 }
 
+// ---------- qué se puede hacer según el PAR-Q+ ----------
+
+// Criterio por test a partir del PAR-Q+ vinculado. Sin PAR-Q+ vinculado no
+// hay criterio y no se enseña nada.
+function useCriterio(): Map<Test, CriterioTest> | null {
+  const { d } = useDatos();
+  const parq = d.parq as { sis?: string[]; sisIds?: string[] } | undefined;
+  if (!parq) return null;
+  const ids = parq.sisIds ?? idsDesdeTextos(parq.sis ?? []);
+  return new Map(criterioTests(ids).map((c) => [c.test, c]));
+}
+
+const ESTILO_NIVEL = {
+  no: { caja: "border-[#B3261E] bg-[#FDECEB] text-[#8c1d18]", etiqueta: "NO HACER" },
+  precaucion: { caja: "border-[#D4860A] bg-[#FFF7E6] text-[#7a4e00]", etiqueta: "CON PRECAUCIÓN" },
+} as const;
+
+function CriterioDe({ t }: { t: Test }) {
+  const c = useCriterio()?.get(t);
+  if (!c || c.nivel === "si") return null;
+  const e = ESTILO_NIVEL[c.nivel];
+  return (
+    <div className={`rounded-lg border-l-[3px] px-3 py-2 text-[0.85rem] leading-snug ${e.caja}`}>
+      <p className="font-semibold">
+        {e.etiqueta} · según PAR-Q+
+      </p>
+      {c.motivos.map((m) => (
+        <p key={m}>{m}</p>
+      ))}
+    </div>
+  );
+}
+
+function ResumenCriterio() {
+  const criterio = useCriterio();
+  if (!criterio) return null;
+  const lista = [...criterio.values()];
+  const grupo = (nivel: CriterioTest["nivel"]) => lista.filter((c) => c.nivel === nivel).map((c) => TESTS[c.test]);
+  const no = grupo("no");
+  const pre = grupo("precaucion");
+  const si = grupo("si");
+  return (
+    <div className="mt-3 space-y-1.5 border-t border-gray-200 pt-3 text-[0.85rem]">
+      <p className="text-[0.72rem] font-medium uppercase text-gray-500">En esta valoración</p>
+      {no.length > 0 && (
+        <p>
+          <span className="font-semibold text-[#B3261E]">No hacer:</span> {no.join(" · ")}
+        </p>
+      )}
+      {pre.length > 0 && (
+        <p>
+          <span className="font-semibold text-[#9A6400]">Con precaución:</span> {pre.join(" · ")}
+        </p>
+      )}
+      <p>
+        <span className="font-semibold text-[#1E7B3A]">Se puede:</span> {si.join(" · ")}
+      </p>
+      <p className="text-[0.75rem] italic text-gray-400">
+        Criterio propuesto a partir de las banderas; el motivo sale encima de cada test. Ante la duda, lo que diga su médico.
+      </p>
+    </div>
+  );
+}
+
 // ---------- PAR-Q+ vinculado ----------
 
 function ParqVinculo() {
@@ -88,10 +153,12 @@ function ParqVinculo() {
   }, [abierto, lista]);
 
   function vincular(p: ParqFila) {
-    const sis = p.respuestas.filter((r) => r.respuesta === "si").map((r) => r.pregunta);
+    const siFilas = p.respuestas.filter((r) => r.respuesta === "si");
+    const sis = siFilas.map((r) => r.pregunta);
+    const sisIds = siFilas.map((r) => r.id);
     const cambios: Record<string, unknown> = {
       parqId: p.id,
-      parq: { nombre: p.nombre, email: p.email, telefono: p.telefono, resultado: p.resultado, enviado_en: p.enviado_en, sis },
+      parq: { nombre: p.nombre, email: p.email, telefono: p.telefono, resultado: p.resultado, enviado_en: p.enviado_en, sis, sisIds },
     };
     if (!txt(d, "parqRecibido")) cambios.parqRecibido = sis.length ? "Sí, con bandera(s)" : "Sí, sin banderas";
     if (!txt(d, "cliente")) cambios.cliente = p.nombre;
@@ -118,6 +185,7 @@ function ParqVinculo() {
           ) : (
             <p className="text-[0.85rem] text-[#1E7B3A]">Todo «no».</p>
           )}
+          <ResumenCriterio />
         </div>
       ) : null}
       <button
@@ -352,6 +420,7 @@ export default function Hoja({
       >
         <SinParq />
         <Sub titulo="Sentadilla">
+          <CriterioDe t="sentadilla" />
           <Fila>
             <Chips k="sqModo" label="Modo" opciones={["En directo, cámara lateral", "Vídeo previo autograbado"]} />
             <Chips k="sqVariante" label="Variante" opciones={["Overhead squat", "Air squat", "Sentadilla a silla"]} />
@@ -384,6 +453,7 @@ export default function Hoja({
           titulo="Dorsiflexión de tobillo (rodilla-pared)"
           nota="Cinta métrica al suelo, perpendicular a la pared. Aproximación aceptable si no se puede medir preciso."
         >
+          <CriterioDe t="dorsiflexion" />
           <Chips
             k="dfModo"
             label="Modo de registro"
@@ -399,6 +469,7 @@ export default function Hoja({
         </Sub>
 
         <Sub titulo="Bird-dog estático (10 s por lado)" nota="Aguanta 10 s estable = B · con bamboleo o rotación = R · no aguanta o cae = M">
+          <CriterioDe t="birddog" />
           {([1, 2] as const).map((l) => (
             <div key={l}>
               <Fila cols={3}>
@@ -415,6 +486,7 @@ export default function Hoja({
           titulo="Disociación lumbopélvica con pica"
           nota="Pica o escoba, cámara lateral. Online: que diga en voz alta cuándo nota que se despega algún contacto."
         >
+          <CriterioDe t="pica" />
           <Chips
             k="picaObs"
             label="Observación"
@@ -465,6 +537,7 @@ export default function Hoja({
       <Seccion id="s5" titulo="5 · Fuerza-función + equilibrio" tiempo="15-20 min">
         <SinParq />
         <Sub titulo="Sit-to-stand 30 s" nota="Silla estándar, brazos cruzados. Cronómetro: 30 s.">
+          <CriterioDe t="sitToStand" />
           <div className="max-w-[260px]">
             <Num k="stsReps" label="Reps completas" />
             <Lectura r={baremoSitToStand(d)} />
@@ -476,6 +549,7 @@ export default function Hoja({
           titulo="Apoyo monopodal (hasta 30 s · 2 intentos por lado)"
           nota="Brazos colgando. Corte cuando el movimiento sea exagerado o cruce el eje corporal."
         >
+          <CriterioDe t="monopodal" />
           {(["Izq", "Dch"] as const).map((l) => {
             const mejor = mejorMonopodal(d, l);
             return (
@@ -495,6 +569,7 @@ export default function Hoja({
         </Sub>
 
         <Sub titulo="Plancha frontal" nota="Cortar cuando la cadera cae o sube, no cuando se cansa.">
+          <CriterioDe t="plancha" />
           <Fila>
             <div>
               <Num k="plTiempo" label="Tiempo" unidad="s" />
@@ -505,6 +580,7 @@ export default function Hoja({
         </Sub>
 
         <Sub titulo="Flexiones adaptadas (nivel más exigente viable)">
+          <CriterioDe t="flexiones" />
           <Chips k="flNivel" label="Nivel" opciones={["Pared", "Mesa/banco", "Rodillas", "Completa"]} />
           <Fila>
             <Num k="flReps" label="Reps con técnica" />
@@ -513,6 +589,7 @@ export default function Hoja({
         </Sub>
 
         <Sub titulo="Remo (según material)" nota="Online solo con TRX. Mesa: riesgo de estabilidad y poca verificación por pantalla → mejor omitir.">
+          <CriterioDe t="remo" />
           <Chips k="reOpcion" label="Opción usada" opciones={["TRX", "Omitido (para sesión con material)"]} />
           {txt(d, "reOpcion") === "TRX" && (
             <>
@@ -539,6 +616,7 @@ export default function Hoja({
           <strong className="tabular-nums">{fcR !== null ? `${fcR} ppm` : "sin tomar — ve a «FC en reposo»"}</strong>
           {fcMax && <span className="text-gray-400"> · FC máx. estimada {fcMax} (208 − 0,7 × edad)</span>}
         </p>
+        <CriterioDe t="step" />
         <Chips k="stRef" label="Referencia altura marcada" opciones={["Cinta en muslo", "Mano como referencia", "Otra"]} />
         {txt(d, "stRef") === "Otra" && <Texto k="stRefOtra" label="¿Cuál?" className="max-w-[320px]" />}
         <Fila cols={3}>
@@ -551,6 +629,7 @@ export default function Hoja({
         </Fila>
         <Area k="stIncidencias" label="Paradas o incidencias" />
         <Sub titulo="Test cuesta (opcional, autogestionado, no baseline oficial)">
+          <CriterioDe t="cuesta" />
           <Chips k="cuesta" opciones={["Lo hará solo y reportará", "No aplicable / no interesa"]} />
           {txt(d, "cuesta") === "Lo hará solo y reportará" && <Area k="cuestaNotas" label="Notas" />}
         </Sub>
