@@ -9,8 +9,9 @@ import EmbudoEspaldaTab from "./_components/EmbudoEspaldaTab";
 import MagicTab from "./_components/MagicTab";
 import HojaDeRutaTab from "./_components/HojaDeRutaTab";
 import AcompanamientoTab from "./_components/AcompanamientoTab";
+import ValoracionTab from "./_components/ValoracionTab";
 
-const TABS = ["Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic"] as const;
+const TABS = ["Valoración", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminPage() {
@@ -100,7 +101,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="max-w-[960px] mx-auto px-5 py-8">
+      {/* La hoja de valoración necesita ancho: índice a la izquierda y
+          formulario al lado. El resto de pestañas siguen a 960. */}
+      <div className={`${tab === "Valoración" ? "max-w-[1280px]" : "max-w-[960px]"} mx-auto px-5 py-8`}>
+        {tab === "Valoración" && <ValoracionTab />}
         {tab === "Newsletter" && <NewsletterTab />}
         {tab === "Nurture" && <NurtureTab />}
         {tab === "Hoja de Ruta" && <HojaDeRutaTab />}
