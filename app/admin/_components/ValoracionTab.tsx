@@ -39,6 +39,34 @@ function escribirLocal(id: string, datos: Datos, subido: boolean) {
   }
 }
 
+function borrarLocal(id: string) {
+  try {
+    localStorage.removeItem(PREFIJO + id);
+  } catch {}
+}
+
+// Borra en el servidor (con su historial) y en este navegador. Pide
+// confirmación antes. Devuelve si se ha borrado.
+async function eliminarValoracion(id: string, nombre: string, soloLocal = false): Promise<boolean> {
+  const quien = nombre.trim() || "sin nombre";
+  if (!window.confirm(`¿Eliminar la valoración de ${quien}?\n\nSe borran también sus copias de seguridad. No se puede deshacer.`)) return false;
+  if (!soloLocal) {
+    try {
+      const res = await fetch(`/api/admin/valoraciones?id=${id}`, { method: "DELETE", headers: cabeceras() });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        window.alert(`No se ha podido eliminar: ${j.error || `error ${res.status}`}`);
+        return false;
+      }
+    } catch {
+      window.alert("No se ha podido eliminar: sin conexión. Inténtalo cuando vuelva la red.");
+      return false;
+    }
+  }
+  borrarLocal(id);
+  return true;
+}
+
 // Valoraciones que solo existen en este navegador (creadas sin red, o con
 // cambios que no llegaron a subir).
 function localesSinSubir(): { id: string; local: Local }[] {
@@ -75,6 +103,28 @@ async function subir(id: string, datos: Datos, keepalive = false) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.error || `Error ${res.status}`);
   }
+}
+
+function IconoPapelera() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v5m2-5v5" />
+    </svg>
+  );
+}
+
+function BotonEliminar({ onClick, className = "" }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Eliminar"
+      aria-label="Eliminar valoración"
+      className={`flex h-8 w-8 shrink-0 items-center justify-center text-gray-400 transition-opacity hover:bg-[#FDECEB] hover:text-[#B3261E] ${className}`}
+    >
+      <IconoPapelera />
+    </button>
+  );
 }
 
 export default function ValoracionTab() {
@@ -126,11 +176,12 @@ export default function ValoracionTab() {
         onCerrar={() => abrir(null)}
         onAbrir={abrir}
         onNueva={nueva}
+        onEliminada={() => abrir(null)}
       />
     );
   }
 
-  return <Lista filas={filas} error={errorLista} onAbrir={abrir} onNueva={() => nueva()} />;
+  return <Lista filas={filas} error={errorLista} onAbrir={abrir} onNueva={() => nueva()} onCambio={cargarLista} />;
 }
 
 function Lista({
@@ -138,11 +189,13 @@ function Lista({
   error,
   onAbrir,
   onNueva,
+  onCambio,
 }: {
   filas: Fila[] | null;
   error: string;
   onAbrir: (id: string) => void;
   onNueva: () => void;
+  onCambio: () => void;
 }) {
   const [locales, setLocales] = useState<{ id: string; local: Local }[]>([]);
   useEffect(() => setLocales(localesSinSubir()), [filas]);
@@ -169,9 +222,16 @@ function Lista({
         <div className="mb-5 border border-[#F2DBA6] bg-[#FFFAF0] p-3">
           <p className="mb-2 text-[0.8rem] text-[#9A6400]">Solo en este navegador, pendientes de subir:</p>
           {soloLocales.map(({ id, local }) => (
-            <button key={id} onClick={() => onAbrir(id)} className="block py-1 text-left text-[0.9rem] underline">
-              {(local.datos.cliente as string) || "Sin nombre"} · {(local.datos.fecha as string) || "—"}
-            </button>
+            <div key={id} className="flex items-center justify-between gap-3 py-1">
+              <button onClick={() => onAbrir(id)} className="text-left text-[0.9rem] underline">
+                {(local.datos.cliente as string) || "Sin nombre"} · {(local.datos.fecha as string) || "—"}
+              </button>
+              <BotonEliminar
+                onClick={async () => {
+                  if (await eliminarValoracion(id, (local.datos.cliente as string) || "", true)) setLocales(localesSinSubir());
+                }}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -183,10 +243,10 @@ function Lista({
       ) : (
         <div className="divide-y divide-gray-100 border border-gray-200 bg-white">
           {filas.map((f) => (
+            <div key={f.id} className="group flex items-center hover:bg-gray-50">
             <button
-              key={f.id}
               onClick={() => onAbrir(f.id)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+              className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left"
             >
               <span>
                 <span className="font-medium">{f.cliente || "Sin nombre"}</span>
@@ -197,6 +257,13 @@ function Lista({
                 {f.fecha || "—"} · editada {new Date(f.updated_at).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}
               </span>
             </button>
+            <BotonEliminar
+              className="mr-2 opacity-40 group-hover:opacity-100"
+              onClick={async () => {
+                if (await eliminarValoracion(f.id, f.cliente || "")) onCambio();
+              }}
+            />
+            </div>
           ))}
         </div>
       )}
@@ -210,12 +277,14 @@ function Editor({
   onCerrar,
   onAbrir,
   onNueva,
+  onEliminada,
 }: {
   id: string;
   filas: Fila[];
   onCerrar: () => void;
   onAbrir: (id: string) => void;
   onNueva: (base: Datos, id: string) => void;
+  onEliminada: () => void;
 }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [estado, setEstado] = useState<Estado>("guardado");
@@ -229,10 +298,14 @@ function Editor({
   const sucio = useRef(false);
   const enVuelo = useRef(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tras eliminarla no se vuelve a subir nada: ni el guardado pendiente ni
+  // el de «al cerrar», que la resucitarían.
+  const borrada = useRef(false);
 
   const guardar = useCallback(async () => {
     if (temporizador.current) clearTimeout(temporizador.current);
     temporizador.current = null;
+    if (borrada.current) return;
     if (enVuelo.current) return; // al terminar el que está en vuelo, se vuelve a mirar
     if (!sucio.current) return;
     enVuelo.current = true;
@@ -314,6 +387,7 @@ function Editor({
   // sin subir al cerrar, que el navegador pregunte.
   useEffect(() => {
     const alOcultar = () => {
+      if (borrada.current) return;
       if (document.visibilityState === "hidden" && sucio.current) {
         subir(id, datosRef.current, true)
           .then(() => {
@@ -324,7 +398,7 @@ function Editor({
       }
     };
     const antesDeSalir = (e: BeforeUnloadEvent) => {
-      if (sucio.current || enVuelo.current) {
+      if (!borrada.current && (sucio.current || enVuelo.current)) {
         subir(id, datosRef.current, true).catch(() => {});
         e.preventDefault();
       }
@@ -334,7 +408,7 @@ function Editor({
     return () => {
       document.removeEventListener("visibilitychange", alOcultar);
       window.removeEventListener("beforeunload", antesDeSalir);
-      if (sucio.current) subir(id, datosRef.current, true).catch(() => {});
+      if (sucio.current && !borrada.current) subir(id, datosRef.current, true).catch(() => {});
     };
   }, [id]);
 
@@ -442,6 +516,21 @@ function Editor({
           </nav>
 
           <Cronometro />
+
+          <button
+            onClick={async () => {
+              const pausa = borrada.current;
+              borrada.current = true;
+              if (temporizador.current) clearTimeout(temporizador.current);
+              const ok = await eliminarValoracion(id, typeof datos.cliente === "string" ? datos.cliente : "");
+              if (ok) return onEliminada();
+              borrada.current = pausa;
+              if (sucio.current) guardar();
+            }}
+            className="mt-4 flex w-full items-center justify-center gap-2 border border-transparent py-2 text-[0.8rem] text-gray-400 hover:border-[#F4C7C3] hover:bg-[#FDECEB] hover:text-[#B3261E]"
+          >
+            <IconoPapelera /> Eliminar valoración
+          </button>
         </aside>
 
         <div className="min-w-0">

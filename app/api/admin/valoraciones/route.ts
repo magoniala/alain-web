@@ -86,3 +86,31 @@ export async function PUT(req: Request) {
 
   return NextResponse.json({ ok: true, updated_at: ahora }, { headers: sinCache });
 }
+
+// DELETE ?id=<uuid> → borra la valoración y su historial. Es definitivo: los
+// datos de salud no se guardan «por si acaso» cuando se ha decidido borrar.
+// Si tenía pareja, a la otra ficha se le quita el enlace para que no apunte
+// a una que ya no existe.
+export async function DELETE(req: Request) {
+  if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id || !UUID.test(id)) return NextResponse.json({ error: "id inválido." }, { status: 400 });
+
+  const { data: pareja } = await supabase
+    .from("valoraciones_sesion")
+    .select("id, datos")
+    .eq("pareja_id", id)
+    .maybeSingle();
+  if (pareja) {
+    const resto = { ...((pareja.datos ?? {}) as Record<string, unknown>) };
+    delete resto.parejaId;
+    await supabase.from("valoraciones_sesion").update({ datos: resto, pareja_id: null }).eq("id", pareja.id);
+  }
+
+  const { error: errHist } = await supabase.from("valoraciones_sesion_historial").delete().eq("valoracion_id", id);
+  if (errHist) return NextResponse.json({ error: errHist.message }, { status: 500 });
+  const { error } = await supabase.from("valoraciones_sesion").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true }, { headers: sinCache });
+}
