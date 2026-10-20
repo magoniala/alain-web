@@ -4,6 +4,9 @@ import { sendEmail } from "@/lib/email-ses";
 import { enlaceWhatsapp } from "@/lib/entrenatzaile-mails";
 import { ACOMPANAMIENTO_AVISO_A, ACOMPANAMIENTO_FROM } from "@/lib/acompanamiento-mails";
 import {
+  CONDICIONES,
+  ETIQUETA_CORTA,
+  PREGUNTAS_GENERALES,
   CONSENT_PARQ,
   CONSENT_PARQ_VERSION,
   RESULTADO_ETIQUETA,
@@ -163,6 +166,8 @@ async function avisarme(d: {
     ? `<p style="margin:0 0 1.2rem 0;padding:0.8rem 1rem;background:#fff7e6;border-left:3px solid #D4860A;color:#7a4e00;">NO SE HA GUARDADO EN SUPABASE (${escapar(d.dbError)}). Este correo es la única copia: guárdalo.</p>`
     : "";
 
+  const resumen = resumenBanderas(d.respuestas);
+
   // Los «sí» primero y marcados: es lo que hay que leer. Los «no» debajo,
   // para tener el cuestionario entero.
   const sis = d.respuestas.filter((r) => r.respuesta === "si");
@@ -179,6 +184,7 @@ async function avisarme(d: {
       <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:#999;margin:0 0 1rem 0;">ENTRENATZAILE · /PARQ</p>
       ${cabecera}
       ${incidencia}
+      ${resumen}
       ${botonWa}
       <table style="width:100%;border-collapse:collapse;margin-bottom:1.2rem;">
         ${fila("Nombre", escapar(d.nombre))}
@@ -186,7 +192,7 @@ async function avisarme(d: {
         ${fila("WhatsApp", escapar(d.telefono))}
         ${origen ? fila("Origen", origen) : ""}
       </table>
-      <p style="margin:0 0 0.4rem 0;"><strong>Respondió «sí» (${sis.length})</strong></p>
+      <p style="margin:0 0 0.4rem 0;"><strong>Detalle · respondió «sí» (${sis.length})</strong></p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:1.2rem;">${sis.length ? lista(sis, "SÍ") : fila("—", "Ninguna")}</table>
       <p style="margin:0 0 0.4rem 0;"><strong>Respondió «no» (${nos.length})</strong></p>
       <table style="width:100%;border-collapse:collapse;">${lista(nos, "no")}</table>
@@ -199,4 +205,61 @@ async function avisarme(d: {
     html,
     ACOMPANAMIENTO_FROM
   );
+}
+
+// Resumen visual de las banderas, lo primero que se lee tras el resultado:
+// las preguntas generales marcadas como etiquetas, y una tarjeta por cada
+// condición que dijo tener. En rojo lo que es bandera (una subpregunta en
+// «sí»); en verde la condición que tiene pero sin ninguna bandera.
+// Maquetado con tablas y estilos en línea, que es lo que respetan los
+// clientes de correo.
+function resumenBanderas(respuestas: FilaRespuesta[]): string {
+  const r = new Map(respuestas.map((x) => [x.id, x.respuesta]));
+  const etiqueta = (id: string) => escapar(ETIQUETA_CORTA[id] ?? id.toUpperCase());
+
+  const chip = (texto: string, rojo: boolean) =>
+    `<span style="display:inline-block;margin:0 6px 6px 0;padding:4px 10px;border-radius:12px;font-family:Arial,sans-serif;font-size:12px;line-height:1.4;${
+      rojo ? "background:#fdeceb;color:#8c1d18;border:1px solid #f4c7c3;" : "background:#e7f4ea;color:#1e7b3a;border:1px solid #bfe3c8;"
+    }">${texto}</span>`;
+
+  const generalesSi = PREGUNTAS_GENERALES.filter((p) => r.get(p.id) === "si");
+  const bloqueGenerales = generalesSi.length
+    ? generalesSi.map((p) => chip(etiqueta(p.id), true)).join("")
+    : chip("Todo «no»", false);
+
+  const condiciones = CONDICIONES.filter((c) => r.get(c.id) === "si");
+  const tarjetas = condiciones
+    .map((c) => {
+      const banderas = c.subpreguntas.filter((s) => r.get(s.id) === "si");
+      const rojo = banderas.length > 0;
+      const cuerpo = rojo
+        ? banderas
+            .map((s) => `<div style="padding:3px 0;color:#8c1d18;">⚑ ${etiqueta(s.id)}</div>`)
+            .join("")
+        : `<div style="padding:3px 0;color:#1e7b3a;">La tiene, sin banderas (todas sus preguntas en «no»)</div>`;
+      return `
+        <tr><td style="padding:0 0 8px 0;">
+          <table role="presentation" style="width:100%;border-collapse:separate;border-radius:8px;background:#ffffff;border:1px solid ${rojo ? "#f4c7c3" : "#bfe3c8"};border-left:4px solid ${rojo ? "#b3261e" : "#1e7b3a"};">
+            <tr><td style="padding:10px 12px;font-family:Arial,sans-serif;font-size:13px;line-height:1.45;">
+              <div style="font-weight:bold;color:#1a1a1a;margin-bottom:2px;">${etiqueta(c.id)}${rojo ? ` <span style="color:#b3261e;">· ${banderas.length} bandera${banderas.length === 1 ? "" : "s"}</span>` : ""}</div>
+              ${cuerpo}
+            </td></tr>
+          </table>
+        </td></tr>`;
+    })
+    .join("");
+
+  const seguimiento = generalesSi.length
+    ? condiciones.length
+      ? `<p style="margin:12px 0 6px 0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#777;">Seguimiento · condiciones que dice tener</p>
+         <table role="presentation" style="width:100%;border-collapse:collapse;">${tarjetas}</table>`
+      : `<p style="margin:12px 0 0 0;font-family:Arial,sans-serif;font-size:13px;color:#1e7b3a;">En el seguimiento no marcó ninguna condición.</p>`
+    : "";
+
+  return `
+    <div style="margin:0 0 1.2rem 0;padding:12px 14px;background:#ffffff;border:1px solid #e3e3e3;border-radius:8px;">
+      <p style="margin:0 0 6px 0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#777;">Preguntas generales</p>
+      ${bloqueGenerales}
+      ${seguimiento}
+    </div>`;
 }

@@ -391,3 +391,66 @@ export function preguntasAplicables(r: Record<string, Respuesta | undefined>): P
   }
   return lista;
 }
+
+// Etiqueta corta de cada pregunta, para el resumen visual del aviso que me
+// llega. No se enseña a quien rellena el cuestionario.
+export const ETIQUETA_CORTA: Record<string, string> = {
+  g1: "Corazón o tensión alta",
+  g2: "Dolor en el pecho",
+  g3: "Mareos / pérdida de conocimiento",
+  g4: "Otra enfermedad crónica",
+  g5: "Medicación crónica",
+  g6: "Problema de huesos, articulaciones o tejidos blandos",
+  g7: "Solo actividad con supervisión médica",
+
+  c1: "Artritis, osteoporosis o espalda",
+  c1a: "Le cuesta controlarlo con tratamiento",
+  c1b: "Dolor articular, fractura, espondilolistesis o espondilólisis",
+  c1c: "Corticoides más de 3 meses",
+
+  c2: "Cáncer",
+  c2a: "Pulmón, mieloma, cabeza o cuello",
+  c2b: "En tratamiento (quimio / radio)",
+
+  c3: "Corazón / cardiovascular",
+  c3a: "Le cuesta controlarlo con tratamiento",
+  c3b: "Arritmia con control médico",
+  c3c: "Insuficiencia cardiaca crónica",
+  c3d: "Coronaria y sin actividad en 2 meses",
+
+  c4: "Tensión alta",
+  c4a: "Le cuesta controlarla con tratamiento",
+  c4b: "≥160/90 en reposo (o no la sabe)",
+
+  c5: "Metabólica (diabetes / prediabetes)",
+  c5a: "Le cuesta controlar el azúcar",
+  c5b: "Hipoglucemias con ejercicio o en el día a día",
+  c5c: "Complicaciones de la diabetes",
+  c5d: "Otra metabólica (gestacional, riñón, hígado)",
+  c5e: "Quiere hacer ejercicio muy intenso pronto",
+
+  c6: "Salud mental / dificultad de aprendizaje",
+  c6a: "Le cuesta controlarlo con tratamiento",
+  c6b: "Down con problema de espalda neurológico",
+
+  c7: "Respiratoria",
+  c7a: "Le cuesta controlarlo con tratamiento",
+  c7b: "Oxígeno bajo o necesita oxígeno",
+  c7c: "Asma con síntomas o rescate >2 veces/semana",
+  c7d: "Hipertensión pulmonar",
+
+  c8: "Lesión medular",
+  c8a: "Le cuesta controlarlo con tratamiento",
+  c8b: "Tensión baja con mareos o desmayos",
+  c8c: "Disreflexia autonómica",
+
+  c9: "Ictus",
+  c9a: "Le cuesta controlarlo con tratamiento",
+  c9b: "Dificultad para caminar o moverse",
+  c9c: "Ictus o afectación nerviosa en 6 meses",
+
+  c10: "Otra enfermedad / dos o más",
+  c10a: "Desmayo por golpe o conmoción en 12 meses",
+  c10b: "Enfermedad no listada (epilepsia, neurológica, riñón…)",
+  c10c: "Dos o más enfermedades",
+};
