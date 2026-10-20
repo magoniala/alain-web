@@ -136,84 +136,240 @@ function ResumenCriterio() {
 
 // ---------- PAR-Q+ vinculado ----------
 
-function ParqVinculo() {
+const normal = (x: string) =>
+  x
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// ¿Puede ser la misma persona? Nombre igual, uno contenido en el otro
+// («Antxon» / «Antxon Pérez»), o el email escrito en el campo cliente.
+function coincide(cliente: string, p: ParqFila): boolean {
+  const c = normal(cliente);
+  if (c.length < 3) return false;
+  const n = normal(p.nombre);
+  return c === n || n.includes(c) || c.includes(n) || c === normal(p.email);
+}
+
+type ParqGuardado = {
+  nombre: string;
+  email?: string;
+  telefono?: string;
+  resultado: ResultadoParq;
+  enviado_en: string;
+  sis: string[];
+  sisIds?: string[];
+  respuestas?: ParqFila["respuestas"];
+};
+
+function cargarParq(): Promise<ParqFila[]> {
+  return fetch("/api/admin/valoraciones/parq", {
+    headers: { "x-admin-password": sessionStorage.getItem("admin_pw") || "" },
+  })
+    .then((r) => r.json())
+    .then((j) => {
+      if (!j.parq) throw new Error(j.error || "No se pudo cargar.");
+      return j.parq as ParqFila[];
+    });
+}
+
+// Todas sus respuestas, con los «sí» marcados. Las vinculadas antes de que
+// se guardara la lista completa la piden al servidor por su id.
+function RespuestasCompletas() {
+  const { d } = useDatos();
+  const parq = d.parq as ParqGuardado | undefined;
+  const [respuestas, setRespuestas] = useState<ParqFila["respuestas"] | null>(parq?.respuestas ?? null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (respuestas || !d.parqId) return;
+    cargarParq()
+      .then((l) => {
+        const p = l.find((x) => x.id === d.parqId);
+        if (p) setRespuestas(p.respuestas);
+        else setError("Ese PAR-Q+ ya no está en la tabla.");
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [respuestas, d.parqId]);
+
+  if (error) return <p className="text-[0.85rem] text-[#B3261E]">{error}</p>;
+  if (!respuestas) return <p className="text-[0.85rem] text-gray-400">Cargando…</p>;
+  return (
+    <ol className="space-y-1.5 text-[0.85rem]">
+      {respuestas.map((r) => {
+        const sub = /^c\d+[a-z]$/.test(r.id);
+        return (
+          <li key={r.id} className={`flex gap-2.5 ${sub ? "pl-5" : ""}`}>
+            <span
+              className={`mt-0.5 inline-block w-8 shrink-0 rounded-full text-center text-[0.72rem] font-semibold ${
+                r.respuesta === "si" ? "bg-[#FDECEB] text-[#B3261E]" : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              {r.respuesta === "si" ? "SÍ" : "no"}
+            </span>
+            <span className={r.respuesta === "si" ? "text-[#24211d]" : "text-gray-500"}>
+              <span className="mr-1 text-[0.72rem] text-gray-400">{r.id.toUpperCase()}</span>
+              {r.pregunta}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// PAR-Q+ de la persona. Completo en el bloque 0 (sugerencia, buscador,
+// vincular y desvincular); en el repaso del bloque 2 solo se enseña.
+function ParqVinculo({ soloVer = false }: { soloVer?: boolean }) {
   const { d, setMany } = useDatos();
   const [lista, setLista] = useState<ParqFila[] | null>(null);
   const [error, setError] = useState("");
   const [abierto, setAbierto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [verTodo, setVerTodo] = useState(false);
 
+  const parq = d.parq as ParqGuardado | undefined;
+  const cliente = txt(d, "cliente");
+
+  // Se carga al abrir el buscador, y también si aún no hay ninguno
+  // vinculado y ya hay nombre, para poder sugerir.
+  const hayQueCargar = !soloVer && !lista && !error && (abierto || (!parq && cliente.length >= 3));
   useEffect(() => {
-    if (!abierto || lista) return;
-    fetch("/api/admin/valoraciones/parq", {
-      headers: { "x-admin-password": sessionStorage.getItem("admin_pw") || "" },
-    })
-      .then((r) => r.json())
-      .then((j) => (j.parq ? setLista(j.parq) : setError(j.error || "No se pudo cargar.")))
-      .catch(() => setError("Sin conexión."));
-  }, [abierto, lista]);
+    if (!hayQueCargar) return;
+    cargarParq()
+      .then(setLista)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [hayQueCargar]);
 
   function vincular(p: ParqFila) {
     const siFilas = p.respuestas.filter((r) => r.respuesta === "si");
     const sis = siFilas.map((r) => r.pregunta);
-    const sisIds = siFilas.map((r) => r.id);
     const cambios: Record<string, unknown> = {
       parqId: p.id,
-      parq: { nombre: p.nombre, email: p.email, telefono: p.telefono, resultado: p.resultado, enviado_en: p.enviado_en, sis, sisIds },
+      parq: {
+        nombre: p.nombre,
+        email: p.email,
+        telefono: p.telefono,
+        resultado: p.resultado,
+        enviado_en: p.enviado_en,
+        sis,
+        sisIds: siFilas.map((r) => r.id),
+        respuestas: p.respuestas,
+      } satisfies ParqGuardado,
     };
     if (!txt(d, "parqRecibido")) cambios.parqRecibido = sis.length ? "Sí, con bandera(s)" : "Sí, sin banderas";
-    if (!txt(d, "cliente")) cambios.cliente = p.nombre;
+    if (!cliente) cambios.cliente = p.nombre;
     setMany(cambios);
     setAbierto(false);
+    setBusca("");
   }
 
-  const parq = d.parq as { nombre: string; resultado: ResultadoParq; enviado_en: string; sis: string[] } | undefined;
+  function desvincular() {
+    if (!window.confirm("¿Quitar el PAR-Q+ vinculado a esta valoración? El PAR-Q+ no se borra; solo deja de estar enlazado.")) return;
+    setMany({ parqId: undefined, parq: undefined });
+  }
+
+  const sugerencias = !parq && lista ? lista.filter((p) => coincide(cliente, p)).slice(0, 3) : [];
+  const filtrados = (lista ?? []).filter((p) => {
+    const q = normal(busca);
+    return !q || normal(p.nombre).includes(q) || normal(p.email).includes(q) || p.telefono.replace(/\D/g, "").includes(q.replace(/\D/g, "") || "~");
+  });
+
+  const fila = (p: ParqFila, onClick: () => void) => (
+    <button
+      key={p.id}
+      type="button"
+      onClick={onClick}
+      className="block w-full border-b border-gray-100 px-3 py-2 text-left text-[0.85rem] last:border-b-0 hover:bg-gray-50"
+    >
+      <strong>{p.nombre}</strong> <span className="text-gray-400">{p.email}</span>
+      <br />
+      <span className="text-gray-500">
+        {RESULTADO_ETIQUETA[p.resultado] ?? p.resultado} · {new Date(p.enviado_en).toLocaleDateString("es-ES")}
+      </span>
+    </button>
+  );
+
+  if (soloVer && !parq) return null;
 
   return (
     <div className="space-y-2">
-      {parq ? (
-        <div className="border border-gray-200 bg-[#fafafa] p-3 text-[0.88rem]">
+      {parq && (
+        <div className="border border-gray-200 bg-[#fbf9f5] p-3 text-[0.88rem]">
           <p className="mb-1">
             <strong>{parq.nombre}</strong> · {RESULTADO_ETIQUETA[parq.resultado] ?? parq.resultado} ·{" "}
             <span className="text-gray-500">{new Date(parq.enviado_en).toLocaleDateString("es-ES")}</span>
           </p>
+          {(parq.email || parq.telefono) && (
+            <p className="mb-2 text-[0.8rem] text-gray-500">{[parq.email, parq.telefono].filter(Boolean).join(" · ")}</p>
+          )}
           {parq.sis.length ? (
             <ul className="list-disc space-y-0.5 pl-5 text-[0.85rem] text-[#8c1d18]">
-              {parq.sis.map((s) => (
-                <li key={s}>{s}</li>
+              {parq.sis.map((x) => (
+                <li key={x}>{x}</li>
               ))}
             </ul>
           ) : (
             <p className="text-[0.85rem] text-[#1E7B3A]">Todo «no».</p>
           )}
           <ResumenCriterio />
-        </div>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setAbierto(!abierto)}
-        className="text-[0.82rem] text-gray-500 underline underline-offset-4 hover:text-[#1a1a1a]"
-      >
-        {parq ? "Cambiar PAR-Q+ vinculado" : "Vincular un PAR-Q+ recibido"}
-      </button>
-      {abierto && (
-        <div className="max-h-[260px] overflow-y-auto border border-gray-200 bg-white">
-          {error && <p className="p-3 text-[0.85rem] text-[#B3261E]">{error}</p>}
-          {!lista && !error && <p className="p-3 text-[0.85rem] text-gray-400">Cargando…</p>}
-          {lista?.length === 0 && <p className="p-3 text-[0.85rem] text-gray-400">No hay ninguno todavía.</p>}
-          {lista?.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => vincular(p)}
-              className="block w-full border-b border-gray-100 px-3 py-2 text-left text-[0.85rem] hover:bg-gray-50"
-            >
-              <strong>{p.nombre}</strong> <span className="text-gray-400">{p.email}</span>
-              <br />
-              <span className="text-gray-500">
-                {RESULTADO_ETIQUETA[p.resultado] ?? p.resultado} · {new Date(p.enviado_en).toLocaleDateString("es-ES")}
-              </span>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-200 pt-2.5 text-[0.8rem]">
+            <button type="button" onClick={() => setVerTodo(!verTodo)} className="text-gray-600 underline underline-offset-4 hover:text-[#1a1a1a]">
+              {verTodo ? "Ocultar respuestas completas" : "Ver todas sus respuestas"}
             </button>
-          ))}
+            {!soloVer && (
+              <button type="button" onClick={desvincular} className="text-gray-400 underline underline-offset-4 hover:text-[#B3261E]">
+                Desvincular
+              </button>
+            )}
+          </div>
+          {verTodo && (
+            <div className="mt-3">
+              <RespuestasCompletas />
+            </div>
+          )}
+        </div>
+      )}
+
+      {sugerencias.length > 0 && !abierto && (
+        <div className="border border-[#F2DBA6] bg-[#FFFAF0]">
+          <p className="px-3 pt-2.5 text-[0.8rem] font-medium text-[#9A6400]">
+            {sugerencias.length === 1 ? "¿Es este su PAR-Q+?" : "¿Es alguno de estos su PAR-Q+?"} Pulsa para vincularlo.
+          </p>
+          {sugerencias.map((p) => fila(p, () => vincular(p)))}
+        </div>
+      )}
+
+      {!soloVer && (
+        <button
+          type="button"
+          onClick={() => setAbierto(!abierto)}
+          className="text-[0.82rem] text-gray-500 underline underline-offset-4 hover:text-[#1a1a1a]"
+        >
+          {abierto ? "Cerrar" : parq ? "Cambiar PAR-Q+ vinculado" : "Buscar un PAR-Q+ recibido"}
+        </button>
+      )}
+
+      {abierto && (
+        <div className="border border-gray-200 bg-white">
+          <input
+            autoFocus
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por nombre, email o teléfono"
+            className="w-full border-0 border-b border-gray-200 px-3 py-2.5 text-[0.88rem] outline-none"
+            style={{ borderRadius: 0, boxShadow: "none" }}
+          />
+          <div className="max-h-[280px] overflow-y-auto">
+            {error && <p className="p-3 text-[0.85rem] text-[#B3261E]">{error}</p>}
+            {!lista && !error && <p className="p-3 text-[0.85rem] text-gray-400">Cargando…</p>}
+            {lista && filtrados.length === 0 && (
+              <p className="p-3 text-[0.85rem] text-gray-400">{lista.length ? "Ninguno coincide." : "No hay ninguno todavía."}</p>
+            )}
+            {filtrados.map((p) => fila(p, () => vincular(p)))}
+          </div>
         </div>
       )}
     </div>
@@ -298,7 +454,7 @@ export default function Hoja({
 
       <Seccion id="s2" titulo="2 · Repaso PAR-Q+ + anamnesis" tiempo="12-20 min">
         <Sub titulo="Repaso PAR-Q+">
-          {Boolean(d.parq) && <ParqVinculo />}
+          <ParqVinculo soloVer />
           <Chips k="repasoParq" opciones={["Confirmado limpio", "Aclarada bandera(s)"]} />
           <Area k="notasBanderas" label="Notas sobre banderas" />
         </Sub>
