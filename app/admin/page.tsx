@@ -8,8 +8,9 @@ import EstadisticasGuiasTab from "./_components/EstadisticasGuiasTab";
 import EmbudoEspaldaTab from "./_components/EmbudoEspaldaTab";
 import MagicTab from "./_components/MagicTab";
 import HojaDeRutaTab from "./_components/HojaDeRutaTab";
+import AcompanamientoTab from "./_components/AcompanamientoTab";
 
-const TABS = ["Newsletter", "Nurture", "Hoja de Ruta", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic"] as const;
+const TABS = ["Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminPage() {
@@ -103,6 +104,7 @@ export default function AdminPage() {
         {tab === "Newsletter" && <NewsletterTab />}
         {tab === "Nurture" && <NurtureTab />}
         {tab === "Hoja de Ruta" && <HojaDeRutaTab />}
+        {tab === "Acompañamiento" && <AcompanamientoTab />}
         {tab === "Arrogante" && <ArroganteTab />}
         {tab === "Estadísticas guías" && <EstadisticasGuiasTab />}
         {tab === "Embudo espalda" && <EmbudoEspaldaTab />}
