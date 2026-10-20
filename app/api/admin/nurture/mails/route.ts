@@ -22,10 +22,10 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 
 // Posiciones fuera de la progresión normal (0, 1, 2…): mails puntuales que se
 // disparan por su propia regla y nunca por posicion_secuencia.
-const POSICIONES_ESPECIALES = [-1, -2];
+const POSICIONES_ESPECIALES = [-1, -2, -3];
 
 function esPosicionValida(p: unknown): p is number {
-  return typeof p === "number" && Number.isInteger(p) && p >= -2 && p <= 99;
+  return typeof p === "number" && Number.isInteger(p) && p >= -3 && p <= 99;
 }
 
 // La secuencia y el idioma llegan del panel. Cualquier valor que no esté en

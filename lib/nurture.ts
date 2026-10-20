@@ -403,6 +403,11 @@ export async function enviarMailSecuencia(
     .update({ enviando_secuencia_desde: new Date().toISOString() })
     .eq("id", contacto.id)
     .eq("posicion_secuencia", contacto.posicion_secuencia)
+    // Se vuelve a mirar AQUÍ, y no solo en el select del cron, porque el cron
+    // carga la lista al principio de la pasada: quien pulse "Reservó Hoja de
+    // Ruta" a mitad de ella seguiría en esa lista. Ver pasarANewsletter().
+    .eq("recibe_secuencia", true)
+    .is("hoja_ruta_reservada_en", null)
     .or(`enviando_secuencia_desde.is.null,enviando_secuencia_desde.lt.${staleThreshold}`)
     .select("id");
 
@@ -477,4 +482,235 @@ export async function enviarMailSecuencia(
     .eq("id", contacto.id);
 
   return { enviado: true };
+}
+
+// ============================================================
+// Reservó la Hoja de Ruta → pasa de la secuencia a la newsletter
+// ============================================================
+//
+// Lo dispara el botón del panel. El calendario, en hora de Madrid:
+//
+//   día D (antes de las 19:15)  sale de la secuencia al instante; ese día no
+//                               recibe la newsletter, salga a la hora que
+//                               salga; a las 19:15 le llega SOLO el mail de
+//                               transición (posición -3).
+//   día D+1                     newsletter normal.
+//
+// Pulsado a partir de las 19:15, todo se corre un día. Y si el envío de la
+// transición falla, se reintenta en la siguiente ventana de las 19:15: la
+// newsletter empieza siempre el día DESPUÉS de que la transición salga de
+// verdad, nunca antes (ver filtroTransicionNewsletter).
+
+export const POSICION_MAIL_TRANSICION = -3;
+export const HORA_TRANSICION_MIN = 19 * 60 + 15; // 19:15
+
+function partesMadrid(d: Date) {
+  const p = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => p.find((x) => x.type === t)?.value ?? "0";
+  return {
+    fecha: `${get("year")}-${get("month")}-${get("day")}`,
+    minutos: (Number(get("hour")) % 24) * 60 + Number(get("minute")),
+  };
+}
+
+function sumarUnDia(fecha: string): string {
+  const d = new Date(`${fecha}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Las 00:00 de hoy en Madrid, como instante UTC. */
+function inicioDelDiaMadrid(ahora: Date): string {
+  const { fecha } = partesMadrid(ahora);
+  const medianocheUtc = Date.parse(`${fecha}T00:00:00Z`);
+  // Cuánto va Madrid por delante de UTC a esa hora (1 h en invierno, 2 en
+  // verano). Los cambios de hora son de madrugada, nunca a las 00:00.
+  const enMadrid = partesMadrid(new Date(medianocheUtc));
+  const desfaseMin = enMadrid.fecha === fecha ? enMadrid.minutos : enMadrid.minutos - 24 * 60;
+  return new Date(medianocheUtc - desfaseMin * 60 * 1000).toISOString();
+}
+
+/** Qué día le toca la transición a quien se pase AHORA. */
+export function diaDeTransicion(ahora: Date = new Date()): string {
+  const { fecha, minutos } = partesMadrid(ahora);
+  return minutos < HORA_TRANSICION_MIN ? fecha : sumarUnDia(fecha);
+}
+
+/**
+ * Filtro extra para los destinatarios de la newsletter, que se suma (AND) al
+ * que ya había. Para quien nunca ha pasado por el botón, transicion_para es
+ * NULL y no cambia nada. A quien sí, le deja fuera hasta el día siguiente al
+ * envío real de su transición: ni la newsletter del día del botón ni la de un
+ * día en que la transición siga sin salir.
+ */
+export function filtroTransicionNewsletter(ahora: Date = new Date()): string {
+  return `transicion_para.is.null,transicion_enviada_en.lt.${inicioDelDiaMadrid(ahora)}`;
+}
+
+export type PasoANewsletter =
+  | { estado: "hecho" | "ya-estaba"; transicion_para: string | null; transicion_enviada_en: string | null }
+  | { estado: "enviando" | "no-aplica" | "no-existe" | "sin-mail" | "error"; motivo: string };
+
+/**
+ * El botón "Reservó Hoja de Ruta → pasar a newsletter".
+ *
+ * Es UN solo UPDATE condicionado, y de ahí sale todo lo que importa:
+ *
+ *  - Idempotente: solo se aplica si hoja_ruta_reservada_en sigue a NULL. La
+ *    segunda pulsación no toca nada y devuelve lo que ya había.
+ *  - No se cruza con el cron. Exige que el candado de la secuencia (y el del
+ *    recordatorio -1) esté libre, y el candado de enviarMailSecuencia exige a
+ *    su vez que esta marca siga a NULL. Postgres pone en fila los dos UPDATE
+ *    sobre la misma fila, así que gana uno: si gana el botón, el cron ya no
+ *    puede reclamar el envío aunque tuviera al contacto en su lista; si gana
+ *    el cron, ese correo ya va camino de Mailjet y el botón NO dice "hecho"
+ *    — devuelve "enviando" para que se pulse otra vez en unos segundos.
+ *
+ * recibe_secuencia pasa a false, como hacía el antiguo "Marcar como
+ * reservado": así lo deja fuera todo lo que ya filtraba por ese campo.
+ */
+export async function pasarANewsletter(id: string, ahora: Date = new Date()): Promise<PasoANewsletter> {
+  // Sin mail de transición activo no se pasa a nadie: se quedaría fuera de
+  // la newsletter esperando un correo que no va a salir.
+  const { data: mail } = await supabase
+    .from("secuencia_mails")
+    .select("posicion")
+    .eq("secuencia", "nurture")
+    .eq("posicion", POSICION_MAIL_TRANSICION)
+    .eq("activo", true)
+    .maybeSingle();
+  if (!mail) return { estado: "sin-mail", motivo: "El mail de transición (posición -3) no existe o está desactivado." };
+
+  const staleThreshold = new Date(ahora.getTime() - CANDADO_STALE_MS).toISOString();
+  const { data: hecho, error } = await supabase
+    .from("newsletter_contactos")
+    .update({
+      hoja_ruta_reservada_en: ahora.toISOString(),
+      recibe_secuencia: false,
+      transicion_para: diaDeTransicion(ahora),
+    })
+    .eq("id", id)
+    .is("hoja_ruta_reservada_en", null)
+    .eq("recibe_secuencia", true)
+    .eq("secuencia_completada", false)
+    .eq("unsubscribed", false)
+    .or(`enviando_secuencia_desde.is.null,enviando_secuencia_desde.lt.${staleThreshold}`)
+    .or(`recordatorio_valoracion_enviando_desde.is.null,recordatorio_valoracion_enviando_desde.lt.${staleThreshold}`)
+    .select("transicion_para, transicion_enviada_en");
+
+  if (error) {
+    console.error("pasarANewsletter: error en el update (¿falta la migración?):", id, error);
+    return { estado: "error", motivo: error.message };
+  }
+  if (hecho?.length) return { estado: "hecho", ...hecho[0] };
+
+  // No se ha aplicado: averiguamos por qué para decirlo en el panel.
+  const { data: fila } = await supabase
+    .from("newsletter_contactos")
+    .select(
+      "hoja_ruta_reservada_en, transicion_para, transicion_enviada_en, recibe_secuencia, secuencia_completada, unsubscribed, enviando_secuencia_desde, recordatorio_valoracion_enviando_desde"
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!fila) return { estado: "no-existe", motivo: "No existe ese contacto." };
+  if (fila.hoja_ruta_reservada_en) {
+    return { estado: "ya-estaba", transicion_para: fila.transicion_para, transicion_enviada_en: fila.transicion_enviada_en };
+  }
+  if (fila.unsubscribed || fila.secuencia_completada || !fila.recibe_secuencia) {
+    return { estado: "no-aplica", motivo: "Solo se puede con contactos que están ahora en la secuencia." };
+  }
+  return { estado: "enviando", motivo: "Se le está enviando un correo de la secuencia ahora mismo. Vuelve a pulsar en unos segundos." };
+}
+
+/**
+ * Manda el mail de transición a quien le toque: dentro de la ventana de las
+ * 19:15 (la comprueba quien llama), con transicion_para de hoy o anterior —
+ * lo anterior es un reintento — y sin haberlo recibido todavía.
+ *
+ * Mismo esquema que el recordatorio: candado aparte que se suelta pase lo que
+ * pase, y transicion_enviada_en solo tras confirmarlo Mailjet. Así no puede
+ * salir dos veces, y si falla sale en la siguiente ventana.
+ */
+export async function procesarTransiciones(ahora: Date = new Date()): Promise<number> {
+  const { fecha } = partesMadrid(ahora);
+
+  const { data: mail } = await supabase
+    .from("secuencia_mails")
+    .select("asunto, cuerpo_html, remitente, formato, preheader")
+    .eq("secuencia", "nurture")
+    .eq("posicion", POSICION_MAIL_TRANSICION)
+    .eq("activo", true)
+    .maybeSingle();
+  if (!mail) return 0;
+
+  const { data: contactos, error } = await supabase
+    .from("newsletter_contactos")
+    .select("id, email, nombre, idioma")
+    .not("hoja_ruta_reservada_en", "is", null)
+    .lte("transicion_para", fecha)
+    .is("transicion_enviada_en", null)
+    .eq("unsubscribed", false);
+
+  if (error) {
+    console.error("transicion: error buscando contactos (¿falta la migración?):", error);
+    return 0;
+  }
+
+  const staleThreshold = new Date(ahora.getTime() - CANDADO_STALE_MS).toISOString();
+  let enviados = 0;
+
+  for (const contacto of contactos ?? []) {
+    const { data: claimed, error: claimError } = await supabase
+      .from("newsletter_contactos")
+      .update({ transicion_enviando_desde: new Date().toISOString() })
+      .eq("id", contacto.id)
+      .is("transicion_enviada_en", null)
+      .or(`transicion_enviando_desde.is.null,transicion_enviando_desde.lt.${staleThreshold}`)
+      .select("id");
+    if (claimError) {
+      console.error("transicion: error al reclamar el envío:", contacto.email, claimError);
+      continue;
+    }
+    if (!claimed?.length) continue; // otra pasada lo tiene cogido
+
+    const valores = { ...marcadoresDeNombre(contacto.nombre), ...marcadoresDeFecha() };
+    // Sin enlaces de ventana: esta persona ya ha reservado.
+    const html = wrapNurture(
+      cuerpoDelMail(mail.cuerpo_html, mail.formato, mail.preheader, valores, { si_ventana: false, si_no_ventana: true }),
+      contacto.email,
+      contacto.idioma === "eu"
+    );
+
+    try {
+      await sendEmail(
+        contacto.nombre ? `${contacto.nombre} <${contacto.email}>` : contacto.email,
+        sustituirMarcadores(mail.asunto ?? "", valores),
+        html,
+        resolveNewsletterFrom(mail.remitente),
+        undefined,
+        { campana: "nurture-transicion", customId: contacto.id }
+      );
+    } catch (err) {
+      console.error("transicion send error:", contacto.email, err);
+      await supabase.from("newsletter_contactos").update({ transicion_enviando_desde: null }).eq("id", contacto.id);
+      continue;
+    }
+
+    await supabase
+      .from("newsletter_contactos")
+      .update({ transicion_enviada_en: new Date().toISOString(), transicion_enviando_desde: null })
+      .eq("id", contacto.id);
+    enviados++;
+  }
+
+  return enviados;
 }

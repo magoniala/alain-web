@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { processText } from "@/lib/newsletter-texto";
+import { filtroTransicionNewsletter } from "@/lib/nurture";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -67,12 +68,14 @@ export async function POST(req: Request) {
 
   // Excluye a quien esté activo en una secuencia de nurture (recibe_secuencia=true
   // y aún no la ha completado) — vuelve a recibir el newsletter normal en cuanto
-  // se le marca como reservado o termina la secuencia.
+  // se le marca como reservado o termina la secuencia. Quien pasó con el botón
+  // de "Reservó Hoja de Ruta", desde el día siguiente a su mail de transición.
   const { data: contactos, error } = await supabase
     .from("newsletter_contactos")
     .select("email, nombre, idioma")
     .eq("unsubscribed", false)
-    .or("recibe_secuencia.eq.false,secuencia_completada.eq.true");
+    .or("recibe_secuencia.eq.false,secuencia_completada.eq.true")
+    .or(filtroTransicionNewsletter());
 
   if (error || !contactos) {
     return NextResponse.json({ error: "Error al obtener contactos." }, { status: 500 });

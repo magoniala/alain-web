@@ -33,6 +33,9 @@ interface NurtureContacto {
   fecha_ultimo_mail_secuencia: string | null;
   unsubscribed: boolean;
   siguiente_asunto: string | null;
+  hoja_ruta_reservada_en: string | null;
+  transicion_para: string | null;
+  transicion_enviada_en: string | null;
 }
 
 interface SecuenciaMail {
@@ -60,6 +63,10 @@ const ESPECIALES: Record<number, { titulo: string; cuando: string }> = {
     titulo: "Mail de cortesía (ya estaba en la lista)",
     cuando: "Al instante, cuando un lead de Meta Ads ya estaba suscrito y no entra en la secuencia.",
   },
+  [-3]: {
+    titulo: "Transición a la newsletter (reservó Hoja de Ruta)",
+    cuando: "A las 19:15 (hora de Madrid) del día en que se pulsa el botón, o del siguiente si se pulsa a partir de las 19:15. Ese día no recibe la newsletter; desde el siguiente, sí.",
+  },
 };
 
 function describePosicion(posicion: number) {
@@ -76,6 +83,7 @@ export default function NurtureTab() {
   const [contactos, setContactos] = useState<NurtureContacto[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [avisoContacto, setAvisoContacto] = useState<{ id: string; error: string } | null>(null);
 
   const [mails, setMails] = useState<SecuenciaMail[]>([]);
   const [esperando, setEsperando] = useState<Record<string, number>>({});
@@ -136,6 +144,25 @@ export default function NurtureTab() {
       headers: authHeaders(),
       body: JSON.stringify({ id, recibe_secuencia }),
     });
+    setUpdatingId(null);
+  }
+
+  async function pasarANewsletter(id: string) {
+    setUpdatingId(id);
+    setAvisoContacto(null);
+    const res = await fetch("/api/admin/nurture/contactos", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setContactos(prev => prev.map(c => c.id === id
+        ? { ...c, recibe_secuencia: false, hoja_ruta_reservada_en: c.hoja_ruta_reservada_en ?? new Date().toISOString(), transicion_para: data.transicion_para ?? null, transicion_enviada_en: data.transicion_enviada_en ?? null }
+        : c));
+    } else {
+      setAvisoContacto({ id, error: data.error ?? "No se ha podido pasar a la newsletter." });
+    }
     setUpdatingId(null);
   }
 
@@ -329,7 +356,16 @@ export default function NurtureTab() {
   const posiciones = Object.keys(borradores).map(Number);
   const normales = posiciones.filter(p => p >= 0).sort((a, b) => a - b);
   const especiales = posiciones.filter(p => p < 0).sort((a, b) => b - a);
-  const faltanEspeciales = [-1, -2].filter(p => !posiciones.includes(p));
+  const faltanEspeciales = [-1, -2, -3].filter(p => !posiciones.includes(p));
+
+  // "2026-10-20" -> "hoy" / "mañana" / "20 oct", contado en hora de Madrid.
+  function fmtDia(dia: string) {
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+    const manana = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(Date.now() + 864e5));
+    if (dia === hoy) return "hoy";
+    if (dia === manana) return "mañana";
+    return new Date(`${dia}T12:00:00Z`).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  }
 
   function Row({ c }: { c: NurtureContacto }) {
     return (
@@ -346,17 +382,30 @@ export default function NurtureTab() {
           {c.secuencia_completada && (
             <span className="text-[0.65rem] uppercase tracking-wider px-2 py-0.5 bg-green-50 text-green-600">completada</span>
           )}
-          {!c.recibe_secuencia && (
+          {avisoContacto?.id === c.id && (
+            <span className="text-[0.7rem] text-[#DC2626] max-w-[16rem]">{avisoContacto.error}</span>
+          )}
+          {c.hoja_ruta_reservada_en ? (
+            <span className="text-[0.65rem] uppercase tracking-wider px-2 py-0.5 bg-blue-50 text-blue-700">
+              {c.transicion_enviada_en
+                ? `transición enviada ${fmtDate(c.transicion_enviada_en)}`
+                : c.transicion_para
+                  ? `transición ${fmtDia(c.transicion_para)} 19:15`
+                  : "reservó"}
+            </span>
+          ) : !c.recibe_secuencia && (
             <span className="text-[0.65rem] uppercase tracking-wider px-2 py-0.5 bg-gray-100 text-gray-500">excluido</span>
           )}
-          {c.recibe_secuencia ? (
-            <button
-              onClick={() => toggleRecibe(c.id, false)}
-              disabled={updatingId === c.id}
-              className={`${btnClass} border-gray-300 hover:border-gray-500 disabled:opacity-40`}
-            >
-              Marcar como reservado
-            </button>
+          {c.hoja_ruta_reservada_en ? null : c.recibe_secuencia ? (
+            !c.secuencia_completada && !c.unsubscribed && (
+              <button
+                onClick={() => pasarANewsletter(c.id)}
+                disabled={updatingId === c.id}
+                className={`${btnClass} border-gray-300 hover:border-gray-500 disabled:opacity-40`}
+              >
+                Reservó Hoja de Ruta → pasar a newsletter
+              </button>
+            )
           ) : (
             <button
               onClick={() => toggleRecibe(c.id, true)}

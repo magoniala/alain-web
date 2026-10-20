@@ -6,6 +6,9 @@ import {
   enlacesDeVentana,
   posicionAlDia,
   saltarHasta,
+  procesarTransiciones,
+  filtroTransicionNewsletter,
+  HORA_TRANSICION_MIN,
   CANDADO_STALE_MS,
   CAMPOS_CONTACTO as CAMPOS_CONTACTO_NURTURE,
   type NurtureContacto,
@@ -90,6 +93,11 @@ function madridParts(d: Date = new Date()) {
 
 function madridDate(iso: string) {
   return madridParts(new Date(iso)).date;
+}
+
+function minutosMadrid() {
+  const { hour, minute } = madridParts();
+  return hour * 60 + minute;
 }
 
 function enVentana(minutosAhora: number, minutosObjetivo: number) {
@@ -188,6 +196,10 @@ async function procesarRecordatorioValoracion(): Promise<number> {
       .update({ recordatorio_valoracion_enviando_desde: new Date().toISOString() })
       .eq("id", contacto.id)
       .eq("recordatorio_valoracion_enviado", false)
+      // Como en enviarMailSecuencia: quien haya pasado a la newsletter entre
+      // que se cargó la lista y ahora no recibe el recordatorio.
+      .eq("recibe_secuencia", true)
+      .is("hoja_ruta_reservada_en", null)
       .or(`recordatorio_valoracion_enviando_desde.is.null,recordatorio_valoracion_enviando_desde.lt.${staleThreshold}`)
       .select("id");
     if (claimError) {
@@ -262,6 +274,10 @@ interface ContactoEnvio {
 // Destinatarios del newsletter: excluye a quien esté activo en una secuencia de
 // nurture — vuelve a recibirlo en cuanto se reserva o la completa. Se carga como
 // mucho una vez por ejecución del cron, y solo si hay algo que enviar.
+//
+// A quien pasó a la newsletter con el botón de "Reservó Hoja de Ruta" lo deja
+// fuera hasta el día siguiente a su mail de transición (ver
+// filtroTransicionNewsletter).
 function crearCargadorContactos() {
   let cache: ContactoEnvio[] | null = null;
   return async (): Promise<ContactoEnvio[]> => {
@@ -270,7 +286,8 @@ function crearCargadorContactos() {
       .from("newsletter_contactos")
       .select("email, nombre, idioma")
       .eq("unsubscribed", false)
-      .or("recibe_secuencia.eq.false,secuencia_completada.eq.true");
+      .or("recibe_secuencia.eq.false,secuencia_completada.eq.true")
+      .or(filtroTransicionNewsletter());
     cache = data ?? [];
     return cache;
   };
@@ -781,6 +798,11 @@ export async function GET(req: Request) {
 
   const nurtureEnviados = await procesarNurture();
   const recordatorioEnviados = await procesarRecordatorioValoracion();
+  // A las 19:15, la hora de la cola B. La hora vive en lib/nurture.ts porque
+  // de ella depende también qué día le toca a quien pulsa el botón. El orden
+  // respecto a la newsletter da igual: el filtro de destinatarios no depende
+  // de si esto ya ha corrido.
+  const transicionesEnviadas = enVentana(minutosMadrid(), HORA_TRANSICION_MIN) ? await procesarTransiciones() : 0;
   const colaBEnviadas = await procesarColaB(cargarContactos, procesadas > 0);
   // Antes del aviso de abandono: liberar primero deja el pago_estado a
   // 'expirado', y ese es justo el filtro que impide que a quien se le acaba
@@ -794,6 +816,7 @@ export async function GET(req: Request) {
     procesadas,
     nurtureEnviados,
     recordatorioEnviados,
+    transicionesEnviadas,
     colaBEnviadas,
     huecosLiberados,
     avisosLiberados,
