@@ -163,7 +163,7 @@ export function Chips({
               type="button"
               onClick={() => pulsar(o)}
               aria-pressed={activa}
-              className={`border px-3 py-1.5 text-[0.85rem] transition-colors ${
+              className={`rounded-full border px-3.5 py-1.5 text-[0.85rem] transition-colors ${
                 activa
                   ? "border-[#1a1a1a] bg-[#1a1a1a] text-white"
                   : "border-gray-300 bg-white text-gray-600 hover:border-gray-500"
@@ -188,7 +188,7 @@ const COLOR: Record<Nivel, string> = {
 export function Badge({ nivel, texto }: { nivel: Nivel | null; texto?: string }) {
   if (!nivel) return texto ? <span className="text-[0.8rem] text-gray-500">{texto}</span> : null;
   return (
-    <span className={`inline-block border px-2 py-0.5 text-[0.75rem] font-medium ${COLOR[nivel]}`}>
+    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[0.75rem] font-medium ${COLOR[nivel]}`}>
       {texto ?? NIVEL_ETIQUETA[nivel]}
     </span>
   );
@@ -220,7 +220,7 @@ export function Seccion({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} data-seccion={id} className="scroll-mt-24 border border-gray-200 bg-white p-5 md:p-6">
+    <section id={id} data-seccion={id} className="scroll-mt-20 rounded-2xl border lg:scroll-mt-6 border-gray-200 bg-white p-5 md:p-7">
       <h2 className="mb-1 flex flex-wrap items-baseline gap-x-3 text-[1.05rem] font-semibold text-[#1a1a1a]">
         {titulo}
         {tiempo && <span className="text-[0.78rem] font-normal text-gray-400">{tiempo}</span>}
@@ -234,7 +234,7 @@ export function Seccion({
 export function Sub({ titulo, nota, children }: { titulo: string; nota?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="border-t border-gray-100 pt-5 first:border-t-0 first:pt-0">
-      <h3 className="mb-1 text-[0.95rem] font-semibold text-[#2B4C7E]">{titulo}</h3>
+      <h3 className="mb-1 text-[0.95rem] font-semibold text-[#0F2240]">{titulo}</h3>
       {nota && <p className="mb-3 text-[0.8rem] italic leading-snug text-gray-400">{nota}</p>}
       <div className="space-y-4">{children}</div>
     </div>
@@ -249,5 +249,5 @@ export function Fila({ children, cols = 2 }: { children: React.ReactNode; cols?:
 export function Aviso({ children, tono = "ambar" }: { children: React.ReactNode; tono?: "ambar" | "rojo" }) {
   const t =
     tono === "rojo" ? "border-[#B3261E] bg-[#FDECEB] text-[#8c1d18]" : "border-[#D4860A] bg-[#FFF7E6] text-[#7a4e00]";
-  return <p className={`border-l-[3px] px-3 py-2 text-[0.85rem] leading-snug ${t}`}>{children}</p>;
+  return <p className={`rounded-lg border-l-[3px] px-3 py-2 text-[0.85rem] leading-snug ${t}`}>{children}</p>;
 }

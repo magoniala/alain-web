@@ -404,7 +404,7 @@ function Editor({
   return (
     <DatosCtx.Provider value={ctx}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[230px_1fr]">
-        <aside className="lg:sticky lg:top-[76px] lg:max-h-[calc(100vh-90px)] lg:self-start lg:overflow-y-auto">
+        <aside className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-48px)] lg:self-start lg:overflow-y-auto">
           <button onClick={onCerrar} className="mb-3 text-[0.8rem] text-gray-500 hover:text-[#1a1a1a]">
             ← Todas las valoraciones
           </button>
@@ -457,7 +457,7 @@ function Editor({
           {vista === "hoja" ? (
             <>
               <Hoja parejaNombre={parejaNombre} onPareja={irAPareja} />
-              <section id="informe" data-seccion="informe" className="mt-5 scroll-mt-24 border border-gray-200 bg-[#fafafa] p-5 md:p-6">
+              <section id="informe" data-seccion="informe" className="mt-5 scroll-mt-20 rounded-2xl border border-gray-200 bg-[#fbf9f5] p-5 md:p-7 lg:scroll-mt-6">
                 <Informe />
               </section>
             </>

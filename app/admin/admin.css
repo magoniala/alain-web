@@ -1,0 +1,131 @@
+/* Estética de /admin.
+ *
+ * Las pestañas están escritas con utilidades de Tailwind en gris neutro
+ * (border-gray-200, text-gray-400…) y esquinas rectas. En vez de reescribir
+ * cada pestaña, aquí se cambia el tema dentro de .admin: Tailwind 4 resuelve
+ * los grises a través de variables CSS, así que redefinirlas aquí convierte
+ * todo el panel a una gama cálida de una vez.
+ *
+ * Dos niveles:
+ *  - @layer components: esquinas, sombras y foco. Va por debajo de las
+ *    utilidades, así que una pestaña que pida rounded-full u otra cosa
+ *    concreta sigue mandando.
+ *  - Sin capa (abajo): lo que tiene que ganar a las utilidades, como el
+ *    negro #1a1a1a escrito a mano en los botones o el tracking exagerado de
+ *    las etiquetas en mayúsculas.
+ */
+
+.admin {
+  --admin-bg: #f6f2ec;
+  --admin-ink: #0f2240;
+  --admin-ink-hover: #1b3560;
+  --admin-amber: #c47800;
+  --admin-line: #e7dfd3;
+
+  --color-gray-50: #faf8f4;
+  --color-gray-100: #f2ede6;
+  --color-gray-200: #e7dfd3;
+  --color-gray-300: #d8cebf;
+  --color-gray-400: #9d9488;
+  --color-gray-500: #776f64;
+  --color-gray-600: #5b544b;
+  --color-gray-700: #433d36;
+  --color-gray-800: #2d2924;
+  --color-gray-900: #1e1b18;
+
+  background: var(--admin-bg);
+  color: #24211d;
+  font-family: var(--font-display), Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .admin :where(.border) {
+    border-radius: 0.9rem;
+  }
+
+  /* Contenedores con filas: que el fondo de la fila al pasar el ratón no
+     se salga de las esquinas redondeadas. */
+  .admin :where(.border.divide-y, .border:has(> table)) {
+    overflow: hidden;
+  }
+
+  .admin :where(.bg-white.border) {
+    box-shadow:
+      0 1px 2px rgba(60, 40, 20, 0.04),
+      0 6px 20px -8px rgba(60, 40, 20, 0.08);
+  }
+
+  .admin :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    border-radius: 0.65rem;
+    background-color: #fff;
+  }
+
+  .admin :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+    border-color: var(--admin-amber);
+    box-shadow: 0 0 0 3px rgba(196, 120, 0, 0.14);
+  }
+
+  .admin :where(button) {
+    border-radius: 0.65rem;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s,
+      box-shadow 0.15s;
+  }
+
+  .admin :where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: var(--admin-ink);
+  }
+
+  .admin :where(table) {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* --- Sin capa: gana a las utilidades --- */
+
+.admin .bg-\[\#1a1a1a\] {
+  background-color: var(--admin-ink);
+}
+.admin .bg-\[\#1a1a1a\]:hover:not(:disabled) {
+  background-color: var(--admin-ink-hover);
+}
+.admin .border-\[\#1a1a1a\] {
+  border-color: var(--admin-ink);
+}
+.admin .text-\[\#1a1a1a\] {
+  color: #24211d;
+}
+.admin .bg-\[\#f5f5f5\] {
+  background-color: var(--admin-bg);
+}
+
+/* Las etiquetas en mayúsculas pequeñas eran lo más «de sistema»: menos
+   espaciado entre letras y un punto más de cuerpo. */
+.admin .uppercase {
+  letter-spacing: 0.08em;
+}
+
+.admin .text-\[0\.65rem\],
+.admin .text-\[0\.68rem\],
+.admin .text-\[0\.7rem\] {
+  font-size: 0.72rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-fade {
+    animation: adminFade 0.25s ease both;
+  }
+  @keyframes adminFade {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
