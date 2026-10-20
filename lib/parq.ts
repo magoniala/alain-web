@@ -326,19 +326,19 @@ export const RESULTADOS = {
     parrafos: [
       "Empieza a ser mucho más activo: arranca despacio y ve subiendo poco a poco.",
       "Sigue las recomendaciones internacionales de actividad física para tu edad.",
-      "Puedes hacer una valoración de salud y condición física.",
-      "Si tienes más de 45 años y no estás acostumbrado a hacer ejercicio vigoroso o de esfuerzo máximo con regularidad, consulta a un profesional del ejercicio cualificado antes de hacer ejercicio a esa intensidad.",
-      "Si tienes cualquier otra duda, consulta a un profesional del ejercicio cualificado.",
+      "Alain Zulaika puede hacerte una valoración de salud y condición física.",
+      "Si tienes más de 45 años y no estás acostumbrado a hacer ejercicio vigoroso o de esfuerzo máximo con regularidad, consúltalo con Alain antes de hacer ejercicio a esa intensidad.",
+      "Si tienes cualquier otra duda, pregúntale a Alain.",
     ],
   },
   // Algún «sí» en la página 1, pero todo «no» en el seguimiento.
   aptoTrasSeguimiento: {
     titulo: "Estás listo para ser más activo",
     parrafos: [
-      "Te recomiendo que consultes a un profesional del ejercicio cualificado para que te ayude a preparar un plan de actividad física seguro y eficaz, adaptado a tu salud.",
+      "Alain Zulaika puede hacerte una valoración y preparar contigo un plan de actividad física seguro y eficaz, adaptado a tu salud.",
       "Empieza despacio y ve subiendo poco a poco: de 20 a 60 minutos de ejercicio de intensidad baja a moderada, de 3 a 5 días por semana, con ejercicio aeróbico y de fuerza.",
       "A medida que avances, el objetivo es sumar 150 minutos o más de actividad física de intensidad moderada a la semana.",
-      "Si tienes más de 45 años y no estás acostumbrado a hacer ejercicio vigoroso o de esfuerzo máximo con regularidad, consulta a un profesional del ejercicio cualificado antes de hacer ejercicio a esa intensidad.",
+      "Si tienes más de 45 años y no estás acostumbrado a hacer ejercicio vigoroso o de esfuerzo máximo con regularidad, consúltalo con Alain antes de hacer ejercicio a esa intensidad.",
     ],
   },
   // Algún «sí» en el seguimiento.
@@ -352,7 +352,7 @@ export const RESULTADOS = {
   espera: [
     "Tienes una enfermedad pasajera, como un resfriado o fiebre: espera a encontrarte mejor.",
     "Estás embarazada: habla con tu médico o tu matrona antes de ser más activa.",
-    "Tu salud cambia: vuelve a hacer este cuestionario y/o habla con tu médico o con un profesional del ejercicio cualificado antes de seguir con cualquier programa de actividad física.",
+    "Tu salud cambia: vuelve a hacer este cuestionario y/o habla con tu médico o con Alain antes de seguir con cualquier programa de actividad física.",
   ],
 } as const;
 
