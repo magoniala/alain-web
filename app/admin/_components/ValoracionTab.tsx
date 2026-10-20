@@ -6,6 +6,7 @@ import { DatosCtx } from "./valoracion/campos";
 import Hoja, { SECCIONES } from "./valoracion/Hoja";
 import Informe from "./valoracion/Informe";
 import Cronometro from "./valoracion/Cronometro";
+import { abrirPdf, htmlInforme, htmlNotas } from "./valoracion/pdf";
 
 // Valoración inicial online: la plantilla en PDF hecha formulario.
 //
@@ -494,6 +495,28 @@ function Editor({
                 className={`flex-1 py-1.5 text-[0.8rem] ${vista === v ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-600"}`}
               >
                 {v === "hoja" ? "Hoja" : "Informe"}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-3 grid grid-cols-2 gap-1.5">
+            {(
+              [
+                ["PDF notas", () => htmlNotas(datosRef.current)],
+                ["PDF informe", () => htmlInforme(datosRef.current)],
+              ] as const
+            ).map(([etiqueta, html]) => (
+              <button
+                key={etiqueta}
+                onClick={() => {
+                  if (!abrirPdf(html())) window.alert("El navegador ha bloqueado la ventana. Permite ventanas emergentes para este sitio.");
+                }}
+                className="flex items-center justify-center gap-1.5 border border-gray-300 bg-white py-1.5 text-[0.8rem] text-gray-700 hover:border-gray-500"
+              >
+                <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 3v9m-4-4 4 4 4-4M4 15h12" />
+                </svg>
+                {etiqueta}
               </button>
             ))}
           </div>
