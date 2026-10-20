@@ -345,14 +345,13 @@ export const RESULTADOS = {
   consultar: {
     titulo: "Busca más información antes de ser más activo",
     parrafos: [
-      "Antes de aumentar tu actividad física o de hacer una valoración de condición física, conviene que busques más información.",
-      "Completa el ePARmed-X+, el programa de valoración y recomendaciones de ejercicio diseñado para estos casos, en eparmedx.com, y/o acude a un profesional del ejercicio cualificado para que lo hagáis juntos y te dé más información.",
+      "Antes de aumentar tu actividad física, conviene que busques más información.",
     ],
   },
   esperaTitulo: "Espera antes de ponerte más activo si…",
   espera: [
     "Tienes una enfermedad pasajera, como un resfriado o fiebre: espera a encontrarte mejor.",
-    "Estás embarazada: habla con tu médico o tu matrona, con un profesional del ejercicio cualificado, y/o completa el ePARmed-X+ en eparmedx.com antes de ser más activa.",
+    "Estás embarazada: habla con tu médico o tu matrona antes de ser más activa.",
     "Tu salud cambia: vuelve a hacer este cuestionario y/o habla con tu médico o con un profesional del ejercicio cualificado antes de seguir con cualquier programa de actividad física.",
   ],
 } as const;
@@ -363,7 +362,7 @@ export type ResultadoParq = "apto" | "aptoTrasSeguimiento" | "consultar";
 export const RESULTADO_ETIQUETA: Record<ResultadoParq, string> = {
   apto: "APTO (todo «no»)",
   aptoTrasSeguimiento: "APTO TRAS SEGUIMIENTO",
-  consultar: "CONSULTAR ANTES (ePARmed-X+ / profesional)",
+  consultar: "CONSULTAR ANTES",
 };
 
 export type Respuesta = "si" | "no";
