@@ -14,7 +14,7 @@ import Cronometro from "./valoracion/Cronometro";
 // o no hay red, se reintenta solo cada pocos segundos y la copia local se
 // queda marcada como «sin subir»; al volver a abrir la valoración, esa copia
 // gana a la del servidor y se sube. El servidor guarda además una copia
-// completa cada 2 minutos en valoraciones_historial.
+// completa cada 2 minutos en valoraciones_sesion_historial.
 
 type Fila = { id: string; cliente: string | null; fecha: string | null; pareja_id: string | null; updated_at: string };
 type Local = { datos: Datos; subido: boolean; t: number };
@@ -161,7 +161,7 @@ function Lista({
 
       {error && (
         <p className="mb-4 border-l-[3px] border-[#D4860A] bg-[#FFF7E6] px-3 py-2 text-[0.85rem] text-[#7a4e00]">
-          No se ha podido cargar la lista del servidor ({error}). Si la tabla aún no existe, hay que ejecutar valoraciones.sql.
+          No se ha podido cargar la lista del servidor ({error}). Si la tabla aún no existe, hay que ejecutar valoraciones_sesion.sql.
         </p>
       )}
 

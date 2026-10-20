@@ -4,12 +4,15 @@
 -- Ejecutar a mano en el SQL editor de Supabase.
 -- ============================================================
 --
+-- OJO: no es la tabla «valoraciones», que ya existe y es la de los leads de
+-- la landing /valoracion.
+--
 -- Una fila por persona valorada. Todos los apuntes van en `datos` (una
 -- clave por campo), que se sobrescribe en cada guardado automático.
 -- cliente, fecha y pareja_id se copian de `datos` para poder listar sin
 -- leer el jsonb entero. Contiene datos de salud (art. 9 RGPD).
 
-CREATE TABLE IF NOT EXISTS valoraciones (
+CREATE TABLE IF NOT EXISTS valoraciones_sesion (
   id uuid PRIMARY KEY,
   cliente   text,
   fecha     date,
@@ -19,21 +22,21 @@ CREATE TABLE IF NOT EXISTS valoraciones (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS valoraciones_updated_idx ON valoraciones (updated_at DESC);
+CREATE INDEX IF NOT EXISTS valoraciones_sesion_updated_idx ON valoraciones_sesion (updated_at DESC);
 
 -- Copia completa como mucho cada 2 minutos mientras se escribe. Para
 -- recuperar algo que se borró sin querer:
---   SELECT guardado_en, datos FROM valoraciones_historial
+--   SELECT guardado_en, datos FROM valoraciones_sesion_historial
 --   WHERE valoracion_id = '<id>' ORDER BY guardado_en DESC;
-CREATE TABLE IF NOT EXISTS valoraciones_historial (
+CREATE TABLE IF NOT EXISTS valoraciones_sesion_historial (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   valoracion_id uuid NOT NULL,
   datos jsonb NOT NULL,
   guardado_en timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS valoraciones_historial_idx ON valoraciones_historial (valoracion_id, guardado_en DESC);
+CREATE INDEX IF NOT EXISTS valoraciones_sesion_historial_idx ON valoraciones_sesion_historial (valoracion_id, guardado_en DESC);
 
 -- Sin políticas: solo la service key (los endpoints de /admin) lee y escribe.
-ALTER TABLE valoraciones ENABLE ROW LEVEL SECURITY;
-ALTER TABLE valoraciones_historial ENABLE ROW LEVEL SECURITY;
+ALTER TABLE valoraciones_sesion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE valoraciones_sesion_historial ENABLE ROW LEVEL SECURITY;

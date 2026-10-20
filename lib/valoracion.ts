@@ -1,7 +1,7 @@
 // Valoración inicial online: baremos e informe automático.
 //
 // Los apuntes de la sesión se guardan como un único objeto `datos` (una
-// clave por campo) en la tabla valoraciones. Este módulo no toca la base de
+// clave por campo) en la tabla valoraciones_sesion. Este módulo no toca la base de
 // datos: lee ese objeto y devuelve el informe, así que la pestaña de /admin
 // lo recalcula en directo cada vez que se apunta algo.
 //
