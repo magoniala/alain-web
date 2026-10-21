@@ -5,10 +5,11 @@
 // datos: lee ese objeto y devuelve el informe, así que la pestaña de /admin
 // lo recalcula en directo cada vez que se apunta algo.
 //
-// Los baremos son los de la plantilla de valoración online. Donde la
-// plantilla solo trae una franja de edad (sit-to-stand, 2-minute step), se
-// usa la franja más cercana y el informe lo dice, para no presentar como
-// baremo de su edad uno que no lo es.
+// Los baremos son los de la cheat sheet de valoración online (v1.1,
+// 2026-10-21), que cubre de 40 a 69 años. Fuera de ese rango se usa la
+// franja más cercana y el informe lo dice, para no presentar como baremo de
+// su edad uno que no lo es. Los que la cheat sheet marca como orientativos
+// (sit-to-stand 40-54, 1-min sentadillas, plancha) lo dicen también.
 
 export type Datos = Record<string, unknown>;
 export type Nivel = "bien" | "regular" | "mal";
@@ -108,39 +109,10 @@ export function sugerenciaPica(d: Datos): Nivel | null {
 
 // ---------- baremos ----------
 
-type Franja = { etiqueta: string; nota: string | null };
-
-function franja55o60(edad: number | null, alto: string): Franja & { mayor: boolean } {
-  if (edad === null) return { etiqueta: "55-59", nota: "Sin edad apuntada: se usa el baremo de 55-59.", mayor: false };
-  if (edad < 60) {
-    return {
-      etiqueta: "55-59",
-      nota: edad < 55 ? `Baremo de 55-59, el más cercano a sus ${edad} años.` : null,
-      mayor: false,
-    };
-  }
-  return {
-    etiqueta: alto,
-    nota: edad > 64 && alto === "60-64" ? `Baremo de 60-64, el más cercano a sus ${edad} años.` : null,
-    mayor: true,
-  };
-}
-
 function sexoDe(d: Datos): "H" | "M" | null {
   const s = txt(d, "sexo");
   return s === "Hombre" ? "H" : s === "Mujer" ? "M" : null;
 }
-
-// Sit-to-stand 30 s (Rikli & Jones, plantilla).
-const STS: Record<string, [number, number]> = {
-  "H55-59": [12, 18],
-  "M55-59": [10, 15],
-  "H60-64": [11, 17],
-  "M60-64": [9, 14],
-};
-
-// 2-minute step (Rikli & Jones adultos 60+, plantilla): solo 60-64.
-const STEP: Record<string, [number, number]> = { H: [87, 115], M: [75, 107] };
 
 export type Resultado = {
   nivel: Nivel | null;
@@ -148,71 +120,207 @@ export type Resultado = {
   nota?: string | null;
 };
 
+type Franja<T> = { min: number; max: number; v: T; orientativo?: boolean };
+
+// La franja de su edad, o la más cercana con una nota que lo diga.
+function porEdad<T>(edad: number | null, tabla: Franja<T>[]): { v: T; nota: string | null } {
+  const rango = (f: Franja<T>) => `${f.min}-${f.max}`;
+  const orient = (f: Franja<T>) => (f.orientativo ? " Baremo orientativo, no validado." : "");
+  if (edad === null) {
+    const f = tabla[Math.floor(tabla.length / 2)];
+    return { v: f.v, nota: `Sin edad apuntada: baremo de ${rango(f)}.${orient(f)}` };
+  }
+  const exacta = tabla.find((f) => edad >= f.min && edad <= f.max);
+  if (exacta) return { v: exacta.v, nota: orient(exacta).trim() || null };
+  const f = edad < tabla[0].min ? tabla[0] : tabla[tabla.length - 1];
+  return { v: f.v, nota: `Baremo de ${rango(f)}, el más cercano a sus ${edad} años.${orient(f)}` };
+}
+
+const faltaSexo: Resultado = { nivel: null, etiqueta: "Falta el sexo para el baremo" };
+
+// bajo < a ≤ medio ≤ b < alto
+function tresNiveles(x: number, [a, b]: [number, number], nota: string | null): Resultado {
+  if (x < a) return { nivel: "mal", etiqueta: "Bajo", nota };
+  if (x > b) return { nivel: "bien", etiqueta: "Alto", nota };
+  return { nivel: "regular", etiqueta: "Medio", nota };
+}
+
+type HM = { H: [number, number]; M: [number, number] };
+
+// Sit-to-stand 30 s. 55-69 Rikli & Jones; 40-54 extrapolación orientativa.
+const STS: Franja<HM>[] = [
+  { min: 40, max: 49, v: { H: [18, 30], M: [15, 27] }, orientativo: true },
+  { min: 50, max: 54, v: { H: [14, 24], M: [12, 21] }, orientativo: true },
+  { min: 55, max: 59, v: { H: [12, 18], M: [10, 15] } },
+  { min: 60, max: 64, v: { H: [11, 17], M: [9, 14] } },
+  { min: 65, max: 69, v: { H: [10, 15], M: [8, 13] } },
+];
+
 export function baremoSitToStand(d: Datos): Resultado | null {
   const reps = num(d, "stsReps");
   const sexo = sexoDe(d);
   if (reps === null) return null;
-  if (!sexo) return { nivel: null, etiqueta: "Falta el sexo para el baremo" };
-  const f = franja55o60(num(d, "edad"), "60-64");
-  const [a, b] = STS[`${sexo}${f.etiqueta}`];
-  if (reps < a) return { nivel: "mal", etiqueta: "Bajo", nota: f.nota };
-  if (reps > b) return { nivel: "bien", etiqueta: "Alto", nota: f.nota };
-  return { nivel: "regular", etiqueta: "Medio", nota: f.nota };
+  if (!sexo) return faltaSexo;
+  const { v, nota } = porEdad(num(d, "edad"), STS);
+  return tresNiveles(reps, v[sexo], nota);
 }
 
-export function mejorMonopodal(d: Datos, lado: "Izq" | "Dch"): number | null {
-  const v = [num(d, `mo${lado}1`), num(d, `mo${lado}2`)].filter((x): x is number => x !== null);
+// ¿Supera el baremo con holgura? Entonces el 30 s se queda corto y la
+// cheat sheet propone el 5-TSTS (pensado para 40-54 en forma).
+export function stsTecho(d: Datos): boolean {
+  const reps = num(d, "stsReps");
+  const sexo = sexoDe(d);
+  if (reps === null || !sexo) return false;
+  const [, alto] = porEdad(num(d, "edad"), STS).v[sexo];
+  return reps > alto;
+}
+
+// 5-TSTS: segundos para 5 repeticiones. Menos es mejor.
+export function baremoSts5(d: Datos): Resultado | null {
+  const t = num(d, "sts5Tiempo");
+  if (t === null) return null;
+  const edad = num(d, "edad");
+  const [bueno, normal] = edad !== null && edad >= 60 ? [11, 15] : [10, 13];
+  if (t < bueno) return { nivel: "bien", etiqueta: "Bueno" };
+  if (t <= normal) return { nivel: "regular", etiqueta: "Normal" };
+  return { nivel: "mal", etiqueta: "Pobre" };
+}
+
+export function mejorMonopodal(d: Datos, lado: "Izq" | "Dch", ojosCerrados = false): number | null {
+  const p = ojosCerrados ? "moOc" : "mo";
+  const v = [num(d, `${p}${lado}1`), num(d, `${p}${lado}2`)].filter((x): x is number => x !== null);
   return v.length ? Math.max(...v) : null;
 }
+
+// Monopodal ojos abiertos, hasta 30 s. «Bueno» es el techo de 30 s salvo en
+// 60-69, donde es >22 s.
+const MONO: Franja<{ riesgo: number; bueno: (s: number) => boolean; techo: boolean }>[] = [
+  { min: 40, max: 49, v: { riesgo: 15, bueno: (s) => s >= 30, techo: true } },
+  { min: 50, max: 59, v: { riesgo: 10, bueno: (s) => s >= 30, techo: true } },
+  { min: 60, max: 69, v: { riesgo: 7, bueno: (s) => s > 22, techo: false } },
+];
 
 export function baremoMonopodal(d: Datos, lado: "Izq" | "Dch"): Resultado | null {
   const s = mejorMonopodal(d, lado);
   if (s === null) return null;
-  const f = franja55o60(num(d, "edad"), "60-69");
-  const nota = f.nota;
+  const { v, nota } = porEdad(num(d, "edad"), MONO);
   if (s < 5) return { nivel: "mal", etiqueta: "Riesgo de caída", nota };
-  if (!f.mayor) {
-    if (s < 10) return { nivel: "mal", etiqueta: "Riesgo", nota };
-    if (s >= 30) return { nivel: "bien", etiqueta: "Bueno (techo)", nota };
-    return { nivel: "regular", etiqueta: "Aceptable", nota };
-  }
-  if (s < 7) return { nivel: "mal", etiqueta: "Riesgo", nota };
-  if (s > 22) return { nivel: "bien", etiqueta: "Bueno", nota };
+  if (s < v.riesgo) return { nivel: "mal", etiqueta: "Riesgo", nota };
+  if (v.bueno(s)) return { nivel: "bien", etiqueta: v.techo ? "Bueno (techo)" : "Bueno", nota };
   return { nivel: "regular", etiqueta: "Aceptable", nota };
 }
+
+// Llega al techo de 30 s: toca la variante con ojos cerrados.
+export function monopodalTecho(d: Datos): boolean {
+  return (["Izq", "Dch"] as const).some((l) => (mejorMonopodal(d, l) ?? 0) >= 30);
+}
+
+export function baremoMonopodalOc(d: Datos, lado: "Izq" | "Dch"): Resultado | null {
+  const s = mejorMonopodal(d, lado, true);
+  if (s === null) return null;
+  const edad = num(d, "edad");
+  const [a, b] = edad !== null && edad >= 50 ? [3, 10] : [5, 20];
+  if (s < a) return { nivel: "regular", etiqueta: "Regular" };
+  if (s > b) return { nivel: "bien", etiqueta: "Muy bueno" };
+  return { nivel: "bien", etiqueta: "Bueno" };
+}
+
+const PLANCHA: Franja<[number, number, number]>[] = [
+  { min: 40, max: 49, v: [30, 60, 120] },
+  { min: 50, max: 59, v: [25, 50, 90] },
+  { min: 60, max: 69, v: [20, 45, 60] },
+];
 
 export function baremoPlancha(d: Datos): Resultado | null {
   const t = num(d, "plTiempo");
   if (t === null) return null;
-  if (t < 20) return { nivel: "mal", etiqueta: "Bajo" };
-  if (t < 45) return { nivel: "regular", etiqueta: "Medio" };
-  if (t <= 60) return { nivel: "bien", etiqueta: "Bueno" };
-  return { nivel: "bien", etiqueta: "Alto" };
+  const { v: [a, b, c], nota } = porEdad(num(d, "edad"), PLANCHA);
+  if (t < a) return { nivel: "mal", etiqueta: "Bajo", nota };
+  if (t < b) return { nivel: "regular", etiqueta: "Medio", nota };
+  if (t <= c) return { nivel: "bien", etiqueta: "Bueno", nota };
+  return { nivel: "bien", etiqueta: "Alto", nota };
+}
+
+// Dorsiflexión (rodilla-pared): >10 cm BIEN · 5-10 REGULAR · <5 o talón
+// despega MAL. Mismo baremo a cualquier edad.
+export function sugerenciaDorsiflexion(d: Datos, lado: "Izq" | "Dch"): Nivel | null {
+  if (txt(d, `df${lado}Talon`) === "despega") return "mal";
+  const cm = num(d, `df${lado}Dist`);
+  if (cm === null) return null;
+  if (cm > 10) return "bien";
+  if (cm >= 5) return "regular";
+  return "mal";
+}
+
+export function asimetriaDorsiflexion(d: Datos): number | null {
+  const i = num(d, "dfIzqDist");
+  const r = num(d, "dfDchDist");
+  return i !== null && r !== null ? Math.abs(i - r) : null;
 }
 
 export function baremoCintura(d: Datos): Resultado | null {
   const c = num(d, "cintura");
   const sexo = sexoDe(d);
   if (c === null) return null;
-  if (!sexo) return { nivel: null, etiqueta: "Falta el sexo para el baremo" };
+  if (!sexo) return faltaSexo;
   const [ok, alto] = sexo === "H" ? [94, 102] : [80, 88];
   if (c < ok) return { nivel: "bien", etiqueta: "OK" };
   if (c <= alto) return { nivel: "regular", etiqueta: "Elevado" };
   return { nivel: "mal", etiqueta: "Alto" };
 }
 
+// Ratio cintura/cadera: óptimo H <0,90 · M <0,85.
+export function ratioCinturaCadera(d: Datos): (Resultado & { valor: number }) | null {
+  const c = num(d, "cintura");
+  const k = num(d, "cadera");
+  const sexo = sexoDe(d);
+  if (c === null || !k) return null;
+  const valor = c / k;
+  if (!sexo) return { ...faltaSexo, valor };
+  const limite = sexo === "H" ? 0.9 : 0.85;
+  return valor < limite
+    ? { nivel: "bien", etiqueta: "Óptimo", valor }
+    : { nivel: "regular", etiqueta: `Por encima de ${limite.toFixed(2).replace(".", ",")}`, valor };
+}
+
+// 2-minute step (Rikli & Jones): validado solo para 60+.
+const STEP: Franja<HM>[] = [
+  { min: 60, max: 64, v: { H: [87, 115], M: [75, 107] } },
+  { min: 65, max: 69, v: { H: [86, 116], M: [73, 107] } },
+];
+
 export function baremoStep(d: Datos): Resultado | null {
   const n = num(d, "stSubidas");
   const sexo = sexoDe(d);
   if (n === null) return null;
-  if (!sexo) return { nivel: null, etiqueta: "Falta el sexo para el baremo" };
+  if (!sexo) return faltaSexo;
   const edad = num(d, "edad");
-  const nota =
-    edad === null ? "Sin edad apuntada: baremo de 60-64." : edad < 60 || edad > 64 ? `Baremo de 60-64 (el único de la plantilla); tiene ${edad}.` : null;
-  const [a, b] = STEP[sexo];
-  if (n < a) return { nivel: "mal", etiqueta: "Bajo", nota };
-  if (n > b) return { nivel: "bien", etiqueta: "Alto", nota };
-  return { nivel: "regular", etiqueta: "Medio", nota };
+  const { v, nota } = porEdad(edad, STEP);
+  const corto = edad !== null && edad < 60 ? " En menores de 60 se queda corto: mejor el de 1 minuto de sentadillas." : "";
+  return tresNiveles(n, v[sexo], ((nota ?? "") + corto).trim() || null);
+}
+
+// 1-minute squat test: variante cardio para 40-59. Orientativo.
+const SQ1: Franja<HM>[] = [
+  { min: 40, max: 49, v: { H: [22, 32], M: [18, 28] }, orientativo: true },
+  { min: 50, max: 59, v: { H: [18, 28], M: [15, 24] }, orientativo: true },
+];
+
+export function baremoSentadilla1min(d: Datos): Resultado | null {
+  const n = num(d, "sq1Reps");
+  const sexo = sexoDe(d);
+  if (n === null) return null;
+  if (!sexo) return faltaSexo;
+  const { v, nota } = porEdad(num(d, "edad"), SQ1);
+  return tresNiveles(n, v[sexo], nota);
+}
+
+// Qué test de cardio toca por edad: 2-min step para 55+, 1-min sentadillas
+// para 40-54 (en 55-59 la cheat sheet pone step; su baremo es de 60+).
+export function cardioRecomendado(d: Datos): "step" | "sentadillas" | null {
+  const edad = num(d, "edad");
+  if (edad === null) return null;
+  return edad < 55 ? "sentadillas" : "step";
 }
 
 export function imc(d: Datos): { valor: number; etiqueta: string } | null {
@@ -236,6 +344,17 @@ export function lecturaFcReposo(fc: number): Resultado {
   if (fc > 80) return { nivel: "regular", etiqueta: "Algo elevada" };
   if (fc < 50) return { nivel: null, etiqueta: "Baja", nota: "Normal si entrena resistencia; si no, y hay mareos, que lo mire su médico." };
   return { nivel: "bien", etiqueta: "Normal" };
+}
+
+// Lo que la cheat sheet pide no olvidar sacar de la sesión. Se marca solo
+// en cuanto el campo correspondiente tiene algo.
+export function noOlvidar(d: Datos): { etiqueta: string; hecho: boolean; seccion: string }[] {
+  return [
+    { etiqueta: "Medicaciones (nombre exacto)", hecho: !!txt(d, "medicacion"), seccion: "s2" },
+    { etiqueta: "Frases visión 12 meses", hecho: !!(txt(d, "vis12m") || txt(d, "f12meses")), seccion: "s7" },
+    { etiqueta: "Miedos y preocupaciones", hecho: !!(txt(d, "fMiedos") || txt(d, "miedosCierre")), seccion: "s2" },
+    { etiqueta: "Feedback operativo online", hecho: !!txt(d, "feedbackOnline"), seccion: "s7" },
+  ];
 }
 
 // ---------- informe ----------
@@ -291,6 +410,15 @@ export function generarInforme(d: Datos): Informe {
       nota: cin.nivel === "mal" ? "Riesgo cardiometabólico alto según perímetro." : null,
     });
   }
+  const icc = ratioCinturaCadera(d);
+  if (icc) {
+    comp.push({
+      titulo: "Ratio cintura/cadera",
+      valor: icc.valor.toFixed(2).replace(".", ","),
+      nivel: icc.nivel,
+      lectura: icc.etiqueta,
+    });
+  }
   if (comp.length) bloques.push({ titulo: "Composición", items: comp });
 
   // Movilidad y control
@@ -313,13 +441,11 @@ export function generarInforme(d: Datos): Informe {
       l,
       dist: txt(d, `df${l}Dist`),
       talon: txt(d, `df${l}Talon`),
-      nivel: nivelDeBRM(txt(d, `df${l}Val`)),
+      nivel: nivelDeBRM(txt(d, `df${l}Val`)) ?? sugerenciaDorsiflexion(d, l),
     }))
     .filter((x) => x.dist || x.talon || x.nivel);
   if (dfLados.length) {
-    const dIzq = num(d, "dfIzqDist");
-    const dDch = num(d, "dfDchDist");
-    const asim = dIzq !== null && dDch !== null ? Math.abs(dIzq - dDch) : null;
+    const asim = asimetriaDorsiflexion(d);
     mov.push({
       titulo: "Dorsiflexión de tobillo",
       valor: dfLados.map((x) => `${x.l === "Izq" ? "IZQ" : "DCH"} ${x.dist || "—"}`).join(" · "),
@@ -327,7 +453,12 @@ export function generarInforme(d: Datos): Informe {
       lectura: dfLados
         .map((x) => `${x.l === "Izq" ? "izq" : "dch"}: ${x.nivel ? LECTURA[x.nivel].toLowerCase() : "—"}${x.talon === "despega" ? ", talón despega" : ""}`)
         .join(" · "),
-      nota: asim !== null && asim > 0 ? `Diferencia entre lados: ${fmt(asim, 1)} cm.` : null,
+      nota:
+        asim !== null && asim > 2
+          ? `Diferencia entre lados de ${fmt(asim, 1)} cm: relevante, trabajo específico.`
+          : asim !== null && asim > 0
+            ? `Diferencia entre lados: ${fmt(asim, 1)} cm.`
+            : null,
     });
   }
   const bd = ([1, 2] as const).map((l) => nivelDeBRM(txt(d, `bd${l}Val`)) ?? sugerenciaBirdDog(d, l));
@@ -361,6 +492,10 @@ export function generarInforme(d: Datos): Informe {
   if (sts) {
     fza.push({ titulo: "Sit-to-stand 30 s", valor: `${num(d, "stsReps")} reps`, nivel: sts.nivel, lectura: sts.etiqueta, nota: sts.nota });
   }
+  const sts5 = baremoSts5(d);
+  if (sts5) {
+    fza.push({ titulo: "5 levantadas de silla (5-TSTS)", valor: `${fmt(num(d, "sts5Tiempo")!, 1)} s`, nivel: sts5.nivel, lectura: sts5.etiqueta });
+  }
   for (const lado of ["Izq", "Dch"] as const) {
     const r = baremoMonopodal(d, lado);
     if (r) {
@@ -374,6 +509,17 @@ export function generarInforme(d: Datos): Informe {
       if (r.etiqueta === "Riesgo de caída") alertas.push(`Apoyo monopodal ${lado === "Izq" ? "izquierdo" : "derecho"} por debajo de 5 s: riesgo de caída.`);
     }
   }
+  for (const lado of ["Izq", "Dch"] as const) {
+    const r = baremoMonopodalOc(d, lado);
+    if (r) {
+      fza.push({
+        titulo: `Monopodal ojos cerrados ${lado === "Izq" ? "izquierdo" : "derecho"}`,
+        valor: `${fmt(mejorMonopodal(d, lado, true)!, 1)} s`,
+        nivel: r.nivel,
+        lectura: r.etiqueta,
+      });
+    }
+  }
   const pl = baremoPlancha(d);
   if (pl) {
     fza.push({
@@ -381,7 +527,7 @@ export function generarInforme(d: Datos): Informe {
       valor: `${fmt(num(d, "plTiempo")!, 0)} s`,
       nivel: pl.nivel,
       lectura: pl.etiqueta,
-      nota: txt(d, "plCorte") ? `Corte: ${txt(d, "plCorte")}` : null,
+      nota: [pl.nota, txt(d, "plCorte") && `Corte: ${txt(d, "plCorte")}`].filter(Boolean).join(" ") || null,
     });
   }
   if (txt(d, "flNivel") || txt(d, "flReps")) {
@@ -416,13 +562,17 @@ export function generarInforme(d: Datos): Informe {
   if (st) {
     car.push({ titulo: "2-minute step", valor: `${num(d, "stSubidas")} subidas`, nivel: st.nivel, lectura: st.etiqueta, nota: st.nota });
   }
+  const sq1 = baremoSentadilla1min(d);
+  if (sq1) {
+    car.push({ titulo: "Sentadillas en 1 minuto", valor: `${num(d, "sq1Reps")} reps`, nivel: sq1.nivel, lectura: sq1.etiqueta, nota: sq1.nota });
+  }
   const fcP = num(d, "stFcPico");
   const fcMax = fcMaxEstimada(d);
   if (fcP !== null) {
     const pct = fcMax ? Math.round((fcP / fcMax) * 100) : null;
     const reserva = fcMax && fcR !== null ? Math.round(((fcP - fcR) / (fcMax - fcR)) * 100) : null;
     car.push({
-      titulo: "FC pico tras el step",
+      titulo: "FC pico tras el test cardio",
       valor: `${fmt(fcP)} ppm`,
       nivel: null,
       lectura: pct !== null ? `${pct}% de su FC máx. estimada (${fcMax})` : "",

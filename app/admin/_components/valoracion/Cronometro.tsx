@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 // Cronómetro para los tests con tiempo: cuenta atrás de 10 s (bird-dog),
-// 30 s (sit-to-stand, monopodal) y 2 min (step), y cronómetro libre para
+// 30 s (sit-to-stand, monopodal), 1 min (sentadillas) y 2 min (step), y cronómetro libre para
 // la plancha y el monopodal. Pita al terminar la cuenta atrás.
 type Estado =
   | { tipo: "parado"; ms: number; total: number | null }
@@ -101,6 +101,9 @@ export default function Cronometro() {
         </button>
         <button type="button" className={boton} onClick={() => cuenta(30)}>
           30 s
+        </button>
+        <button type="button" className={boton} onClick={() => cuenta(60)}>
+          1 min
         </button>
         <button type="button" className={boton} onClick={() => cuenta(120)}>
           2 min

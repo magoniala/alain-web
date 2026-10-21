@@ -251,3 +251,14 @@ export function Aviso({ children, tono = "ambar" }: { children: React.ReactNode;
     tono === "rojo" ? "border-[#B3261E] bg-[#FDECEB] text-[#8c1d18]" : "border-[#D4860A] bg-[#FFF7E6] text-[#7a4e00]";
   return <p className={`rounded-lg border-l-[3px] px-3 py-2 text-[0.85rem] leading-snug ${t}`}>{children}</p>;
 }
+
+// Frase memorizable de la cheat sheet, en el punto de la sesión en que se
+// dice. Se lee de un vistazo: cursiva, con la línea ámbar a la izquierda.
+export function Guion({ children, titulo = "Guion" }: { children: React.ReactNode; titulo?: string }) {
+  return (
+    <div className="rounded-lg border-l-[3px] border-[#C47800] bg-[#FBF6EE] px-3.5 py-2.5">
+      <p className="mb-0.5 text-[0.68rem] font-medium uppercase text-[#C47800]">{titulo}</p>
+      <div className="text-[0.88rem] italic leading-relaxed text-[#433d36]">{children}</div>
+    </div>
+  );
+}

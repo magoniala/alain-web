@@ -15,6 +15,7 @@ import {
   lecturaFcReposo,
   mejorMonopodal,
   num,
+  ratioCinturaCadera,
   txt,
   type Datos,
   type Nivel,
@@ -97,6 +98,7 @@ const NOTAS: Bloque[] = [
     titulo: "3 · Control postural",
     campos: [
       ["sqModo", "Sentadilla · modo"],
+      ["sqVideo", "Sentadilla · vídeo"],
       ["sqVariante", "Sentadilla · variante"],
       ["sqRango", "Rango"],
       ["sqTalones", "Talones"],
@@ -129,6 +131,7 @@ const NOTAS: Bloque[] = [
     titulo: "4 · Antropometría",
     campos: [
       ["cintura", "Perímetro de cintura", "cm"],
+      ["cadera", "Perímetro de cadera", "cm"],
       ["fotos", "Fotos"],
     ],
   },
@@ -137,10 +140,15 @@ const NOTAS: Bloque[] = [
     campos: [
       ["stsReps", "Sit-to-stand 30 s", "reps"],
       ["stsNotas", "Notas técnica"],
+      ["sts5Tiempo", "5-TSTS · 5 reps", "s"],
       ["moIzq1", "Monopodal IZQ · intento 1", "s"],
       ["moIzq2", "Monopodal IZQ · intento 2", "s"],
       ["moDch1", "Monopodal DCH · intento 1", "s"],
       ["moDch2", "Monopodal DCH · intento 2", "s"],
+      ["moOcIzq1", "Ojos cerrados IZQ · intento 1", "s"],
+      ["moOcIzq2", "Ojos cerrados IZQ · intento 2", "s"],
+      ["moOcDch1", "Ojos cerrados DCH · intento 1", "s"],
+      ["moOcDch2", "Ojos cerrados DCH · intento 2", "s"],
       ["plTiempo", "Plancha", "s"],
       ["plCorte", "Plancha · motivo de corte"],
       ["flNivel", "Flexiones · nivel"],
@@ -151,11 +159,14 @@ const NOTAS: Bloque[] = [
       ["reAnguloOtro", "Remo · otro ángulo"],
       ["reLongitud", "Remo · longitud correas"],
       ["reReps", "Remo · reps", "reps"],
+      ["reFoto", "Remo · foto"],
     ],
   },
   {
     titulo: "6 · Cardio",
     campos: [
+      ["cardioTest", "Test cardio"],
+      ["sq1Reps", "Sentadillas en 1 min", "reps"],
       ["stRef", "Referencia altura"],
       ["stRefOtra", "Otra referencia"],
       ["stSubidas", "2-minute step · subidas", "subidas"],
@@ -279,6 +290,9 @@ export function htmlNotas(d: Datos): string {
 
   // Valores calculados que no están como campo.
   const extra: Record<string, [string, string][]> = {
+    "4 · Antropometría": ratioCinturaCadera(d)
+      ? [["Ratio cintura/cadera", `${ratioCinturaCadera(d)!.valor.toFixed(2).replace(".", ",")} · ${ratioCinturaCadera(d)!.etiqueta}`]]
+      : [],
     "0 · Datos previos": imc(d) ? [["IMC", `${imc(d)!.valor.toFixed(1).replace(".", ",")} · ${imc(d)!.etiqueta}`]] : [],
     "FC en reposo": num(d, "fcReposo") !== null ? [["Lectura", lecturaFcReposo(num(d, "fcReposo")!).etiqueta]] : [],
     "5 · Fuerza-función y equilibrio": (["Izq", "Dch"] as const)

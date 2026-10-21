@@ -31,6 +31,7 @@ export const TESTS = {
   flexiones: "Flexiones adaptadas",
   remo: "Remo TRX",
   step: "2-minute step",
+  sentadilla1min: "Sentadillas en 1 minuto",
   cuesta: "Test cuesta",
 } as const;
 
@@ -41,7 +42,7 @@ const BASE: Test[] = ["anamnesis", "fcReposo", "antropometria"];
 const MOV: Test[] = ["sentadilla", "dorsiflexion", "birddog", "pica"];
 const EQ: Test[] = ["monopodal"];
 const FZA: Test[] = ["sitToStand", "plancha", "flexiones", "remo"];
-const CARDIO: Test[] = ["step", "cuesta"];
+const CARDIO: Test[] = ["step", "sentadilla1min", "cuesta"];
 const FISICO: Test[] = [...MOV, ...EQ, ...FZA, ...CARDIO];
 
 type Regla = { tests: Test[]; nivel: Exclude<NivelTest, "si">; motivo: string }[];
@@ -58,7 +59,7 @@ const REGLAS: Record<string, Regla> = {
     n(EQ, "Mareos o pérdida de conocimiento: riesgo de caída sin nadie al lado."),
     p([...CARDIO, "sitToStand"], "Mareos o pérdida de conocimiento: parar al primer síntoma, silla cerca."),
   ],
-  g6: [p(["sentadilla", "sitToStand", "plancha", "flexiones"], "Problema osteoarticular: preguntar la zona y no cargarla.")],
+  g6: [p(["sentadilla", "sitToStand", "sentadilla1min", "plancha", "flexiones"], "Problema osteoarticular: preguntar la zona y no cargarla.")],
   g7: [n(FISICO, "Su médico le pide actividad solo con supervisión médica: online no lo es.")],
 
   // 1 · Artritis, osteoporosis, espalda

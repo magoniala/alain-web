@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Datos } from "@/lib/valoracion";
+import { noOlvidar, type Datos } from "@/lib/valoracion";
 import { DatosCtx } from "./valoracion/campos";
 import Hoja, { SECCIONES } from "./valoracion/Hoja";
 import Informe from "./valoracion/Informe";
@@ -539,6 +539,20 @@ function Editor({
           </nav>
 
           <Cronometro />
+
+          <div className="mt-3 border border-gray-200 bg-white p-3">
+            <p className="mb-1.5 text-[0.68rem] uppercase text-gray-400">No olvidar sacar de la sesión</p>
+            {noOlvidar(datos).map((x) => (
+              <button
+                key={x.etiqueta}
+                onClick={() => irA(x.seccion)}
+                className={`flex w-full items-center gap-2 py-0.5 text-left text-[0.8rem] ${x.hecho ? "text-[#1E7B3A]" : "text-gray-600 hover:text-[#1a1a1a]"}`}
+              >
+                <span className="w-3.5 text-center">{x.hecho ? "✓" : "○"}</span>
+                {x.etiqueta}
+              </button>
+            ))}
+          </div>
 
           <button
             onClick={async () => {

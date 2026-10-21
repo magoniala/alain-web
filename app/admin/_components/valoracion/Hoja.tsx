@@ -18,8 +18,17 @@ import {
   sugerenciaPica,
   sugerenciaSentadilla,
   txt,
+  asimetriaDorsiflexion,
+  baremoMonopodalOc,
+  baremoSentadilla1min,
+  baremoSts5,
+  cardioRecomendado,
+  monopodalTecho,
+  ratioCinturaCadera,
+  stsTecho,
+  sugerenciaDorsiflexion,
 } from "@/lib/valoracion";
-import { Area, Aviso, Badge, Chips, Fila, Num, Pista, Seccion, Sub, Sugerido, Texto, useDatos } from "./campos";
+import { Area, Aviso, Badge, Chips, Fila, Guion, Num, Pista, Seccion, Sub, Sugerido, Texto, useDatos } from "./campos";
 
 // Índice de la hoja, en el orden de la sesión. La FC en reposo va sola y
 // antes del bloque 3: en la plantilla estaba en el bloque de cardio, pero
@@ -443,6 +452,7 @@ export default function Hoja({
       </Seccion>
 
       <Seccion id="s1" titulo="1 · Bienvenida + verificación técnica" tiempo="5 min">
+        <Guion>«¿Se me oye bien? ¿Me ves con nitidez? Vale, si en algún momento hay corte o algo raro, avisas y ajustamos.»</Guion>
         <Chips
           k="chequeo"
           label="Chequeo técnico inicial"
@@ -538,6 +548,18 @@ export default function Hoja({
                 "Pregunta abierta «¿esto ayuda con...?»",
               ]}
             />
+            {(d.sexSenales as string[] | undefined)?.length ? (
+              <Guion>
+                «Antes de pasar al siguiente bloque, un dato que quiero dejarte mencionado porque va con lo que estábamos
+                hablando: la función sexual masculina en esta franja se relaciona directamente con la salud cardiovascular, la
+                fuerza y la calidad muscular. Es un indicador clínico más, igual que la tensión o la fuerza de piernas. Si en
+                algún momento del proceso quieres tratar algo relacionado, lo llevo con normalidad, tengo bibliografía. Y si no,
+                tampoco es tema que yo saque otra vez.»
+                <span className="mt-1.5 block not-italic text-gray-500">
+                  Si cierra la puerta: <i>«Perfecto. Como te digo, era solo por dejarlo mencionado. Seguimos.»</i>
+                </span>
+              </Guion>
+            ) : null}
             <Chips k="sexDecision" label="Decisión tomada" opciones={["Aplicado guion", "No aplicable"]} />
           </Sub>
         )}
@@ -575,8 +597,18 @@ export default function Hoja({
         nota="Móvil apoyado, cámara horizontal, distancia 2-3 m."
       >
         <SinParq />
+        <Guion titulo="Guion · setup de cámara">
+          «Vamos a preparar la cámara para este test. Apoya el móvil en [respaldo silla / mesa], gira la cámara horizontal,
+          retrocede dos pasos, verifica que se te ve entero de cabeza a pies. Dime cuando esté.»
+        </Guion>
         <Sub titulo="Sentadilla">
           <CriterioDe t="sentadilla" />
+          <Chips
+            k="sqVideo"
+            multi
+            opciones={["Vídeo lateral grabado (10 s, 3 reps)"]}
+            pista="Una de las dos únicas cosas que se graban."
+          />
           <Fila>
             <Chips k="sqModo" label="Modo" opciones={["En directo, cámara lateral", "Vídeo previo autograbado"]} />
             <Chips k="sqVariante" label="Variante" opciones={["Overhead squat", "Air squat", "Sentadilla a silla"]} />
@@ -607,7 +639,7 @@ export default function Hoja({
 
         <Sub
           titulo="Dorsiflexión de tobillo (rodilla-pared)"
-          nota="Cinta métrica al suelo, perpendicular a la pared. Aproximación aceptable si no se puede medir preciso."
+          nota="Distancia dedo-pared con el talón apoyado. Cinta al suelo, perpendicular a la pared. >10 cm BIEN · 5-10 REGULAR · <5 o talón despega MAL, a cualquier edad."
         >
           <CriterioDe t="dorsiflexion" />
           <Chips
@@ -616,12 +648,21 @@ export default function Hoja({
             opciones={["Cm exactos con cinta", "Referencia visual (rodapié/baldosa)", "Impresión subjetiva por vídeo", "Omitido"]}
           />
           {(["Izq", "Dch"] as const).map((l) => (
-            <Fila key={l} cols={3}>
-              <Texto k={`df${l}Dist`} label={`${l === "Izq" ? "IZQ" : "DCH"} · distancia / referencia`} ph="cm o referencia" />
-              <Chips k={`df${l}Talon`} label="Talón" opciones={["OK", "despega"]} />
-              <Chips k={`df${l}Val`} label="Valoración" opciones={BRM} />
-            </Fila>
+            <div key={l}>
+              <Fila cols={3}>
+                <Texto k={`df${l}Dist`} label={`${l === "Izq" ? "IZQ" : "DCH"} · distancia (cm) o referencia`} ph="cm o referencia" />
+                <Chips k={`df${l}Talon`} label="Talón" opciones={["OK", "despega"]} />
+                <Chips k={`df${l}Val`} label="Valoración" opciones={BRM} />
+              </Fila>
+              <Sugerido nivel={sugerenciaDorsiflexion(d, l)} />
+            </div>
           ))}
+          {(() => {
+            const a = asimetriaDorsiflexion(d);
+            return a !== null && a > 2 ? (
+              <Aviso>Diferencia de {a.toString().replace(".", ",")} cm entre lados: clínicamente relevante, marcar para trabajo específico.</Aviso>
+            ) : null;
+          })()}
         </Sub>
 
         <Sub titulo="Bird-dog estático (10 s por lado)" nota="Aguanta 10 s estable = B · con bamboleo o rotación = R · no aguanta o cae = M">
@@ -643,6 +684,11 @@ export default function Hoja({
           nota="Pica o escoba, cámara lateral. Online: que diga en voz alta cuándo nota que se despega algún contacto."
         >
           <CriterioDe t="pica" />
+          <Guion>
+            «Como no puedo ir a ponerte la mano en la espalda para sentir los contactos, necesito que me lo digas tú. Cuando
+            sientas que la escoba se separa de la espalda por cualquier punto — arriba, media o abajo — me lo dices en voz alta.
+            Yo lo anoto.»
+          </Guion>
           <Chips
             k="picaObs"
             label="Observación"
@@ -681,7 +727,20 @@ export default function Hoja({
         <div>
           <Num k="cintura" label="Perímetro de cintura (mínima, u ombligo si no hay cintura definida)" unidad="cm" className="max-w-[320px]" />
           <Lectura r={baremoCintura(d)} />
-          <Pista>H &lt;94 OK / 94-102 elevado / &gt;102 alto · M &lt;80 OK / 80-88 elevado / &gt;88 alto</Pista>
+          <Pista>H &lt;94 OK / 94-102 elevado / &gt;102 alto · M &lt;80 OK / 80-88 elevado / &gt;88 alto (IDF)</Pista>
+        </div>
+        <div>
+          <Num k="cadera" label="Perímetro de cadera (opcional, para el ratio)" unidad="cm" className="max-w-[320px]" />
+          {(() => {
+            const r = ratioCinturaCadera(d);
+            return r ? (
+              <p className="mt-1.5 flex items-center gap-2 text-[0.8rem] text-gray-500">
+                Ratio cintura/cadera <strong className="tabular-nums text-gray-700">{r.valor.toFixed(2).replace(".", ",")}</strong>
+                <Badge nivel={r.nivel} texto={r.etiqueta} />
+              </p>
+            ) : null;
+          })()}
+          <Pista>Óptimo: H &lt;0,90 · M &lt;0,85</Pista>
         </div>
         <Chips
           k="fotos"
@@ -692,12 +751,22 @@ export default function Hoja({
 
       <Seccion id="s5" titulo="5 · Fuerza-función + equilibrio" tiempo="15-20 min">
         <SinParq />
-        <Sub titulo="Sit-to-stand 30 s" nota="Silla estándar, brazos cruzados. Cronómetro: 30 s.">
+        <Sub titulo="Sit-to-stand 30 s" nota="Silla de 43-44 cm, brazos cruzados sobre el pecho. Cronómetro: 30 s.">
           <CriterioDe t="sitToStand" />
           <div className="max-w-[260px]">
             <Num k="stsReps" label="Reps completas" />
             <Lectura r={baremoSitToStand(d)} />
           </div>
+          {(stsTecho(d) || txt(d, "sts5Tiempo")) && (
+            <div className="rounded-lg border border-gray-200 p-3">
+              {stsTecho(d) && <Aviso>Supera el baremo con holgura: el de 30 s se le queda corto. Haz el 5-TSTS.</Aviso>}
+              <div className="mt-3 max-w-[260px]">
+                <Num k="sts5Tiempo" label="5-TSTS · tiempo para 5 reps" unidad="s" />
+                <Lectura r={baremoSts5(d)} />
+              </div>
+              <Pista>40-59: &lt;10 s bueno · 10-13 normal · &gt;13 pobre · 60+: &lt;11 · 11-15 · &gt;15</Pista>
+            </div>
+          )}
           <Area k="stsNotas" label="Notas técnica (impulso, extensión completa, rebote)" />
         </Sub>
 
@@ -722,9 +791,26 @@ export default function Hoja({
               </div>
             );
           })}
+          {(monopodalTecho(d) || ["moOcIzq1", "moOcIzq2", "moOcDch1", "moOcDch2"].some((k) => txt(d, k))) && (
+            <div className="rounded-lg border border-gray-200 p-3">
+              {monopodalTecho(d) && <Aviso>Llega al techo de 30 s: repite con ojos cerrados, que discrimina mucho más.</Aviso>}
+              {(["Izq", "Dch"] as const).map((l) => (
+                <div key={l} className="mt-3">
+                  <Fila cols={3}>
+                    <Num k={`moOc${l}1`} label={`Ojos cerrados ${l === "Izq" ? "IZQ" : "DCH"} · 1`} unidad="s" />
+                    <Num k={`moOc${l}2`} label="Intento 2" unidad="s" />
+                    <div className="pt-6">
+                      <Lectura r={baremoMonopodalOc(d, l)} />
+                    </div>
+                  </Fila>
+                </div>
+              ))}
+              <Pista>Ojos cerrados · 20-49: &lt;5 s regular · 5-20 bueno · &gt;20 muy bueno · 50-69: &lt;3 · 3-10 · &gt;10</Pista>
+            </div>
+          )}
         </Sub>
 
-        <Sub titulo="Plancha frontal" nota="Cortar cuando la cadera cae o sube, no cuando se cansa.">
+        <Sub titulo="Plancha frontal" nota="Cortar cuando la cadera cae o sube (ruptura técnica), no cuando se cansa. Baremo orientativo por edad.">
           <CriterioDe t="plancha" />
           <Fila>
             <div>
@@ -755,6 +841,7 @@ export default function Hoja({
                 <Texto k="reLongitud" label="Longitud correas (marca)" />
                 <Num k="reReps" label="Reps con técnica" />
               </Fila>
+              <Chips k="reFoto" multi opciones={["Foto del ángulo inicial hecha"]} pista="La otra cosa que se graba." />
             </>
           )}
         </Sub>
@@ -762,9 +849,9 @@ export default function Hoja({
 
       <Seccion
         id="s6"
-        titulo="6 · Cardio · 2-minute step in place"
+        titulo="6 · Cardio"
         tiempo="8-10 min"
-        nota="Marcha en el sitio 2 min; contar las subidas de la rodilla derecha a la altura marcada (punto medio rótula-cresta ilíaca). Cronómetro: 2 min."
+        nota="Registrar siempre FC reposo + FC pico + Borg 0-10."
       >
         <SinParq />
         <p className="text-[0.88rem] text-gray-600">
@@ -772,16 +859,58 @@ export default function Hoja({
           <strong className="tabular-nums">{fcR !== null ? `${fcR} ppm` : "sin tomar — ve a «FC en reposo»"}</strong>
           {fcMax && <span className="text-gray-400"> · FC máx. estimada {fcMax} (208 − 0,7 × edad)</span>}
         </p>
-        <CriterioDe t="step" />
-        <Chips k="stRef" label="Referencia altura marcada" opciones={["Cinta en muslo", "Mano como referencia", "Otra"]} />
-        {txt(d, "stRef") === "Otra" && <Texto k="stRefOtra" label="¿Cuál?" className="max-w-[320px]" />}
+        {(() => {
+          const rec = cardioRecomendado(d);
+          return (
+            <Chips
+              k="cardioTest"
+              label="Test"
+              opciones={["2-min step", "1-min sentadillas"]}
+              pista={
+                rec === "sentadillas"
+                  ? "Por edad (40-54) toca 1 minuto de sentadillas: el step se le queda corto. Si es sedentario, vale cualquiera."
+                  : rec === "step"
+                    ? "Por edad (55+) toca el 2-min step."
+                    : "Apunta la edad en la cabecera y te digo cuál toca."
+              }
+            />
+          );
+        })()}
+        {(() => {
+          const elegido = txt(d, "cardioTest") || (cardioRecomendado(d) === "sentadillas" ? "1-min sentadillas" : "2-min step");
+          return elegido === "1-min sentadillas" ? (
+            <>
+              <CriterioDe t="sentadilla1min" />
+              <Pista>Sentadillas al aire en 1 minuto, ritmo máximo sostenible. Cronómetro: 1 min (Libre).</Pista>
+              <div className="max-w-[260px]">
+                <Num k="sq1Reps" label="Sentadillas en 1 min" unidad="reps" />
+                <Lectura r={baremoSentadilla1min(d)} />
+              </div>
+            </>
+          ) : (
+            <>
+              <CriterioDe t="step" />
+              <Guion>
+                «Para el bloque cardio no vamos a salir a la calle, por dos motivos: uno, sin que yo esté delante hay algún riesgo si
+                te sobreesfuerzas solo; dos, quiero poder verte durante todo el test para valorarlo bien. Vamos a hacer una marcha en
+                el sitio de 2 minutos que mide lo mismo y me deja verte por la cámara todo el rato.»
+              </Guion>
+              <Pista>
+                Marcha en el sitio 2 min; contar subidas de la rodilla derecha a la altura marcada (punto medio rótula-cresta
+                ilíaca). Cronómetro: 2 min.
+              </Pista>
+              <Chips k="stRef" label="Referencia altura marcada" opciones={["Cinta en muslo", "Mano como referencia", "Otra"]} />
+              {txt(d, "stRef") === "Otra" && <Texto k="stRefOtra" label="¿Cuál?" className="max-w-[320px]" />}
+              <div className="max-w-[260px]">
+                <Num k="stSubidas" label="Subidas rodilla dcha (2 min)" />
+                <Lectura r={baremoStep(d)} />
+              </div>
+            </>
+          );
+        })()}
         <Fila cols={3}>
-          <div>
-            <Num k="stSubidas" label="Subidas rodilla dcha (2 min)" />
-            <Lectura r={baremoStep(d)} />
-          </div>
           <Num k="stFcPico" label="FC pico (primeros 15 s al terminar)" unidad="ppm" />
-          <Chips k="stBorg" label="Borg 0-10" opciones={["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]} />
+          <Chips k="stBorg" label="Borg 0-10" opciones={["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]} className="md:col-span-2" />
         </Fila>
         <Area k="stIncidencias" label="Paradas o incidencias" />
         <Sub titulo="Test cuesta (opcional, autogestionado, no baseline oficial)">
@@ -807,6 +936,11 @@ export default function Hoja({
         <Area k="obj3m" label="Objetivos a 3 meses (lo primero que quieren notar)" rows={3} />
         <Area k="vis12m" label="Visión a 12 meses (frases textuales)" rows={3} />
         <Area k="miedosCierre" label="Miedos y preocupaciones (no saltar)" rows={3} />
+        <Guion titulo="Guion · feedback operativo">
+          «Una última cosa antes de despedirnos. Como es de las primeras veces que hago esto por videollamada, me viene bien tu
+          feedback: ¿ha habido algún test o momento donde te has visto perdido, o donde crees que se podría haber hecho mejor?
+          Cualquier cosa que me digas me sirve.»
+        </Guion>
         <Area
           k="feedbackOnline"
           label="Feedback operativo online"
