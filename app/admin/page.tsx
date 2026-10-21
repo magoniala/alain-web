@@ -10,13 +10,14 @@ import MagicTab from "./_components/MagicTab";
 import HojaDeRutaTab from "./_components/HojaDeRutaTab";
 import AcompanamientoTab from "./_components/AcompanamientoTab";
 import ValoracionTab from "./_components/ValoracionTab";
+import ParqTab from "./_components/ParqTab";
 
-const TABS = ["Valoración", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic"] as const;
+const TABS = ["Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
 const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
-  { titulo: "Clientes", tabs: ["Valoración", "Acompañamiento", "Hoja de Ruta"] },
+  { titulo: "Clientes", tabs: ["Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
   { titulo: "Correo", tabs: ["Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
   { titulo: "Otros", tabs: ["Arrogante", "Magic"] },
@@ -26,6 +27,7 @@ const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
 // también con el menú plegado.
 const ICONO: Record<Tab, React.ReactNode> = {
   Valoración: <path d="M6 3h8l3 3v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h6m-6 3h6m-6-6h3" />,
+  "PAR-Q+": <path d="M10 17s-6-3.5-6-8a3.5 3.5 0 0 1 6-2.4A3.5 3.5 0 0 1 16 9c0 4.5-6 8-6 8Zm-3-7h2l1-2 1.5 4 1-2H15" />,
   Newsletter: <path d="M3 5h14v10H3zM3 5l7 6 7-6" />,
   Nurture: <path d="M10 17c-4-2-6-5-6-8a6 6 0 0 1 6-6 6 6 0 0 1 6 6c0 3-2 6-6 8Zm0-11v7m-3-4 3 3 3-3" />,
   "Hoja de Ruta": <path d="M4 4l4-1 4 2 4-1v13l-4 1-4-2-4 1zM8 3v13m4-11v13" />,
@@ -145,7 +147,7 @@ export default function AdminPage() {
     );
   }
 
-  const ancho = tab === "Valoración" ? "max-w-[1320px]" : "max-w-[1040px]";
+  const ancho = tab === "Valoración" || tab === "PAR-Q+" ? "max-w-[1320px]" : "max-w-[1040px]";
 
   return (
     <main className="admin min-h-screen">
@@ -255,6 +257,7 @@ export default function AdminPage() {
 
             <div key={tab} className="admin-fade">
               {tab === "Valoración" && <ValoracionTab />}
+              {tab === "PAR-Q+" && <ParqTab />}
               {tab === "Newsletter" && <NewsletterTab />}
               {tab === "Nurture" && <NurtureTab />}
               {tab === "Hoja de Ruta" && <HojaDeRutaTab />}

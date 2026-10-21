@@ -21,7 +21,7 @@ import {
   type Nivel,
 } from "@/lib/valoracion";
 
-const esc = (s: string) =>
+export const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g, "<br>");
 
 // Campos de la hoja con su etiqueta, en el mismo orden. Solo salen los que
@@ -222,7 +222,7 @@ const etiquetaNivel = (n: Nivel | null, texto?: string) =>
       ? `<span class="suave">${esc(texto)}</span>`
       : "";
 
-function documento(titulo: string, cuerpo: string): string {
+export function documento(titulo: string, cuerpo: string): string {
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>${esc(titulo)}</title>
 <style>
@@ -248,6 +248,7 @@ function documento(titulo: string, cuerpo: string): string {
   .cita b { display: inline-block; min-width: 82px; font-size: 8pt; letter-spacing: .08em; text-transform: uppercase; color: #9d9488; font-weight: 600; }
   ul { margin: 4px 0 0; padding-left: 18px; }
   .pie { margin-top: 26px; color: #9d9488; font-size: 8pt; }
+  .salto { break-before: page; }
   @media screen { body { max-width: 780px; margin: 24px auto; padding: 0 20px; } }
 </style></head><body>${cuerpo}</body></html>`;
 }
