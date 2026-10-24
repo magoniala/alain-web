@@ -65,7 +65,7 @@ function nuevaValoracion(p: ParqCompleto) {
   window.location.href = `/admin?tab=${encodeURIComponent("Valoración")}&valoracion=${id}`;
 }
 
-function Ficha({ p }: { p: ParqCompleto }) {
+function Ficha({ p, onEliminado }: { p: ParqCompleto; onEliminado: () => void }) {
   const r = new Map(p.respuestas.map((x) => [x.id, x.respuesta]));
   const generales = PREGUNTAS_GENERALES.filter((q) => r.get(q.id) === "si");
   const conds = CONDICIONES.filter((c) => r.get(c.id) === "si");
@@ -73,6 +73,31 @@ function Ficha({ p }: { p: ParqCompleto }) {
   const grupo = (n: string) => crit.filter((c) => c.nivel === n);
   const wa = enlaceWa(p.telefono);
   const [todas, setTodas] = useState(false);
+  const [borrando, setBorrando] = useState(false);
+
+  async function eliminar() {
+    const vinc = p.valoraciones.length
+      ? `\n\nEstá vinculado a ${p.valoraciones.length === 1 ? "una valoración" : `${p.valoraciones.length} valoraciones`}: se quitará de ahí la copia de sus respuestas. Tus notas de la sesión se quedan.`
+      : "";
+    if (!window.confirm(`¿Eliminar el PAR-Q+ de ${p.nombre}?${vinc}\n\nNo se puede deshacer.`)) return;
+    setBorrando(true);
+    try {
+      const res = await fetch(`/api/admin/parq?id=${p.id}`, {
+        method: "DELETE",
+        headers: { "x-admin-password": sessionStorage.getItem("admin_pw") || "" },
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        window.alert(`No se ha podido eliminar: ${j.error || `error ${res.status}`}`);
+        return;
+      }
+      onEliminado();
+    } catch {
+      window.alert("No se ha podido eliminar: sin conexión.");
+    } finally {
+      setBorrando(false);
+    }
+  }
   const etiqueta = "mb-2 text-[0.72rem] font-medium uppercase text-gray-400";
 
   return (
@@ -253,6 +278,19 @@ function Ficha({ p }: { p: ParqCompleto }) {
           <p className="mt-2 text-[#B3261E]">El correo de aviso no salió{p.aviso_error ? `: ${p.aviso_error}` : "."}</p>
         )}
       </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={eliminar}
+          disabled={borrando}
+          className="flex items-center gap-2 border border-transparent px-3 py-2 text-[0.8rem] text-gray-400 hover:border-[#F4C7C3] hover:bg-[#FDECEB] hover:text-[#B3261E] disabled:opacity-50"
+        >
+          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v5m2-5v5" />
+          </svg>
+          {borrando ? "Eliminando…" : "Eliminar este PAR-Q+"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -382,7 +420,14 @@ export default function ParqTab() {
                 <button onClick={() => setElegido(null)} className="mb-3 text-[0.82rem] text-gray-500 lg:hidden">
                   ← Volver a la lista
                 </button>
-                <Ficha key={actual.id} p={actual} />
+                <Ficha
+                  key={actual.id}
+                  p={actual}
+                  onEliminado={() => {
+                    setElegido(null);
+                    setLista((l) => (l ? l.filter((x) => x.id !== actual.id) : l));
+                  }}
+                />
               </>
             ) : (
               <div className="hidden rounded-2xl border border-dashed border-gray-300 p-10 text-center text-[0.9rem] text-gray-400 lg:block">
