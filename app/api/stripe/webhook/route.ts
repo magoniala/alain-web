@@ -1,7 +1,8 @@
 import type Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
-import { wrapNurture } from "@/lib/nurture";
+import { pasarANewsletterPorEmail, textoPasoNewsletter, wrapNurture } from "@/lib/nurture";
+import { botonWaConfirmacionHtml } from "@/lib/entrenatzaile-wa";
 import { formatearHueco } from "@/lib/entrenatzaile-huecos";
 import { getStripe } from "@/lib/stripe";
 import { NextResponse } from "next/server";
@@ -166,7 +167,7 @@ async function confirmarPago(sesion: Stripe.Checkout.Session) {
     })
     .eq("id", reservaId)
     .eq("pago_estado", "pendiente")
-    .select("nombre, email, hueco, variante")
+    .select("nombre, email, telefono, hueco, variante")
     .maybeSingle();
 
   if (reserva) {
@@ -204,7 +205,7 @@ async function confirmarPago(sesion: Stripe.Checkout.Session) {
 
 async function avisarPagoConfirmado(
   reservaId: string,
-  reserva: { nombre: string | null; email: string; hueco: string | null; variante: string | null }
+  reserva: { nombre: string | null; email: string; telefono: string | null; hueco: string | null; variante: string | null }
 ) {
   const cuando = reserva.hueco ? formatearHueco(reserva.hueco) : "tu hueco";
   const saludo = reserva.nombre ? `Hola, ${reserva.nombre.split(" ")[0]}.` : "Hola.";
@@ -246,6 +247,18 @@ async function avisarPagoConfirmado(
       .eq("id", reservaId);
   }
 
+  // Confirmada: sale de la secuencia si seguía en ella (lo normal es que ya
+  // esté en la newsletter, y entonces no se toca nada). Va después del correo
+  // al lead y en su propio try: el pago ya está guardado y nada de esto puede
+  // devolverle un 500 a Stripe.
+  let pasoNewsletter: string;
+  try {
+    pasoNewsletter = textoPasoNewsletter(await pasarANewsletterPorEmail(reserva.email));
+  } catch (err) {
+    console.error("stripe webhook: error sacando de la secuencia:", reserva.email, err);
+    pasoNewsletter = "NO SE HA PODIDO COMPROBAR LA SECUENCIA · mira /admin → Nurture";
+  }
+
   // Y el aviso a Alain, que es quien tiene que escribir por WhatsApp.
   try {
     await sendEmail(
@@ -253,8 +266,9 @@ async function avisarPagoConfirmado(
       `Entrenatzaile — PAGADO 90 €: ${reserva.nombre ?? reserva.email} · ${cuando}`,
       `<div style="font-family:monospace;font-size:0.9rem;line-height:1.7;">
         <p style="${p}"><strong>${reserva.nombre ?? "(sin nombre)"}</strong> ha pagado la Hoja de Ruta.</p>
-        <p style="${p}">Hueco: <strong>${cuando}</strong><br>Email: ${reserva.email}<br>Vio: ${reserva.variante ?? "—"}</p>
+        <p style="${p}">Hueco: <strong>${cuando}</strong><br>Email: ${reserva.email}<br>Teléfono: ${reserva.telefono ?? "—"}<br>Vio: ${reserva.variante ?? "—"}<br>Secuencia: ${pasoNewsletter}</p>
         <p style="margin:0;">Le toca el WhatsApp con el enlace de la llamada.</p>
+        ${reserva.hueco ? botonWaConfirmacionHtml({ telefono: reserva.telefono, nombre: reserva.nombre, hueco: reserva.hueco }) : ""}
       </div>`,
       DE_ALAIN
     );

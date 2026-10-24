@@ -1,5 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
-import { altaEnSecuencia, normalizarEmail, wrapNurture } from "@/lib/nurture";
+import {
+  altaEnSecuencia,
+  normalizarEmail,
+  pasarANewsletterPorEmail,
+  textoPasoNewsletter,
+  wrapNurture,
+} from "@/lib/nurture";
+import { botonWaConfirmacionHtml } from "@/lib/entrenatzaile-wa";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { mailReservaAsunto, mailReservaCuerpo } from "@/lib/entrenatzaile-mails";
 import {
@@ -433,6 +440,22 @@ export async function PATCH(req: Request) {
   }
   const asunto = `Entrenatzaile — Reserva Hoja de Ruta: ${reserva.nombre} [${marca}${detalle}]`;
 
+  // La gratuita queda confirmada aquí mismo, así que aquí sale de la
+  // secuencia y aquí lleva el WhatsApp. La de pago, cuando llegue el pago
+  // (webhook de Stripe): si no paga, sigue en la secuencia como hasta ahora.
+  //
+  // En su propio try, como todo lo que viene después de apartar el hueco: un
+  // fallo aquí no puede convertirse en un error en la cara del lead.
+  let pasoNewsletter: string | null = null;
+  if (!cobra) {
+    try {
+      pasoNewsletter = textoPasoNewsletter(await pasarANewsletterPorEmail(reserva.email as string));
+    } catch (err) {
+      console.error("hoja-de-ruta: error sacando de la secuencia:", reserva.email, err);
+      pasoNewsletter = "NO SE HA PODIDO COMPROBAR LA SECUENCIA · mira /admin → Nurture";
+    }
+  }
+
   const celda = "padding:0.35rem 0.6rem;border-bottom:1px solid #eee;vertical-align:top;";
   const fila = (k: string, v: string) =>
     `<tr><td style="${celda}"><strong>${k}</strong></td><td style="${celda}">${v}</td></tr>`;
@@ -467,7 +490,13 @@ export async function PATCH(req: Request) {
         )}
         ${fila("Días desde el alta", reserva.dias_desde_alta ?? "—")}
         ${fila("Día de su ventana", reserva.ventana_dia ?? "—")}
+        ${fila("Secuencia", pasoNewsletter ?? "se decide al llegar el pago")}
       </table>
+      ${
+        cobra
+          ? `<p style="margin:1rem 0 0 0;color:#666;">El botón de WhatsApp llegará en el aviso de pago, cuando quede confirmada.</p>`
+          : botonWaConfirmacionHtml({ telefono: reserva.telefono, nombre: reserva.nombre, hueco: huecoTrim })
+      }
     </div>
   `;
 

@@ -714,3 +714,58 @@ export async function procesarTransiciones(ahora: Date = new Date()): Promise<nu
 
   return enviados;
 }
+
+/**
+ * Lo mismo que el botón del panel, disparado por una reserva confirmada de la
+ * Hoja de Ruta: la gratuita al elegir hueco, la de pago al llegar el pago.
+ *
+ * Quien no está en la secuencia (lo normal en las de pago: ya están en la
+ * newsletter) sale como "no-aplica" y no se le toca nada.
+ *
+ * "enviando" significa que justo ahora sale un correo de la secuencia para
+ * esta persona. Ese candado dura lo que tarda Mailjet en contestar, así que
+ * se reintenta un par de veces; si aun así no entra, el aviso interno lo dice
+ * y queda el botón del panel.
+ */
+export async function pasarANewsletterPorEmail(email: string): Promise<PasoANewsletter> {
+  const { data: contacto } = await supabase
+    .from("newsletter_contactos")
+    .select("id")
+    .eq("email", normalizarEmail(email))
+    .maybeSingle();
+  if (!contacto) return { estado: "no-existe", motivo: "No está en la lista." };
+
+  let r = await pasarANewsletter(contacto.id);
+  for (let intento = 0; intento < 2 && r.estado === "enviando"; intento++) {
+    await new Promise((ok) => setTimeout(ok, 3000));
+    r = await pasarANewsletter(contacto.id);
+  }
+  if (r.estado !== "hecho" && r.estado !== "ya-estaba" && r.estado !== "no-aplica" && r.estado !== "no-existe") {
+    console.error("pasarANewsletterPorEmail: no se ha podido pasar a la newsletter:", email, r);
+  }
+  return r;
+}
+
+/** Una línea para el aviso interno: qué ha pasado con su secuencia. */
+export function textoPasoNewsletter(r: PasoANewsletter): string {
+  switch (r.estado) {
+    case "hecho":
+    case "ya-estaba": {
+      if (r.transicion_enviada_en) return "Ya estaba fuera de la secuencia · transición ya enviada";
+      const hoy = partesMadrid(new Date()).fecha;
+      const dia = !r.transicion_para
+        ? ""
+        : r.transicion_para === hoy
+          ? "hoy"
+          : r.transicion_para === sumarUnDia(hoy)
+            ? "mañana"
+            : r.transicion_para.split("-").reverse().join("/");
+      return `${r.estado === "hecho" ? "Sacado de la secuencia" : "Ya estaba fuera de la secuencia"} · transición ${dia} 19:15 · newsletter desde el día siguiente`;
+    }
+    case "no-aplica":
+    case "no-existe":
+      return "No estaba en la secuencia · no se ha tocado nada";
+    default:
+      return `NO SE HA PODIDO SACAR DE LA SECUENCIA (${r.motivo}) · pulsa el botón en /admin → Nurture`;
+  }
+}
