@@ -13,6 +13,11 @@ const NO_REDIRECT_PATHS = [
   "/creadores",
   // Una sola página con selector ES/EU dentro, sin mirror en /es.
   "/quetal",
+  // Tiene mirror en /es, pero el QR de la tarjeta del show familiar abre
+  // siempre en euskera, con el botón ES a la vista: las familias son
+  // euskaldunes con el móvil en castellano, y la redirección por idioma del
+  // navegador las mandaba a /es/tumision.
+  "/tumision",
 ];
 
 export function proxy(request: NextRequest) {
