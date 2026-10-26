@@ -81,6 +81,10 @@ export async function POST(req: Request) {
       idioma: "es",
       origen: "guias",
       tags,
+      // Explícito: los leads de /guias entran en la secuencia de espalda a
+      // propósito. Antes dependía del DEFAULT true de la columna, que pasa a
+      // false para que solo entre en una secuencia quien la tenga asignada.
+      recibe_secuencia: true,
     }));
     if (dbError?.code === "23505") {
       // Carrera: alguien insertó este email justo entre el select y el insert.
