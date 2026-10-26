@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { cargarMailSecuencia } from "@/lib/secuencia-mails";
+import { altaEmbudo } from "@/lib/embudos";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -98,18 +99,15 @@ export async function POST(req: Request) {
   const remaining = Math.max(0, TOTAL_PLAZAS - YA_RESERVADAS - (count ?? 0) - 1);
 
   if (newsletter) {
-    await supabase.from("newsletter_contactos").upsert(
-      {
-        email: email.trim().toLowerCase(),
-        nombre: nombre.trim(),
-        idioma: isEu ? "eu" : "es",
-        origen: "entrenatzaile_valoracion",
-        // Solo la diaria: ya ha reservado la valoración, y la secuencia de
-        // espalda empuja justo a reservar. La columna tiene DEFAULT true.
-        recibe_secuencia: false,
-      },
-      { onConflict: "email", ignoreDuplicates: true }
-    );
+    // Según el embudo «valoracion» (lib/embudos.ts): hoy, solo la diaria.
+    // Ya ha reservado la valoración, y la secuencia de espalda empuja justo
+    // a reservar.
+    await altaEmbudo({
+      origen: "entrenatzaile_valoracion",
+      email: email.trim().toLowerCase(),
+      nombre: nombre.trim(),
+      idioma: isEu ? "eu" : "es",
+    });
 
     // Siempre apunta al dominio principal: /api/newsletter/baja, /idioma y /contacto
     // solo existen ahí, no bajo el subdominio entrenatzaile.alainzulaika.com desde

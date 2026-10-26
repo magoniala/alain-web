@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { requireAdminAuth } from "@/lib/admin-auth";
+import { altaEmbudo } from "@/lib/embudos";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -27,15 +28,19 @@ export async function POST(req: Request) {
   const protocol = host.includes("localhost") ? "http" : "https";
   const BASE_URL = `${protocol}://${host}`;
 
-  const { data, error } = await supabase
-    .from("newsletter_contactos")
-    .upsert(
-      { email, nombre: nombre || null, idioma: idioma || "es", origen: origen || "manual", recibe_secuencia: conSecuencia },
-      { onConflict: "email", ignoreDuplicates: true }
-    )
-    .select()
-    .single();
-  if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
+  // Según el embudo de su origen (lib/embudos.ts; «manual» por defecto: solo
+  // la diaria). La casilla asigna la secuencia de espalda a mano.
+  const alta = await altaEmbudo({
+    origen: origen || "manual",
+    email,
+    nombre: nombre || null,
+    idioma: idioma || "es",
+    secuenciaManual: conSecuencia ? "nurture" : null,
+  });
+  if (alta.error) return NextResponse.json({ error: "Error." }, { status: 500 });
+  // Ya estaba: no se toca nada (ni secuencia ni idioma), y se dice.
+  if (!alta.creado) return NextResponse.json({ error: "Ese email ya está en la lista." }, { status: 409 });
+  const data = alta.creado;
 
   // Con secuencia no va la bienvenida manual: el M0 de la secuencia, que el
   // cron manda en su siguiente pasada, ya hace de bienvenida.
