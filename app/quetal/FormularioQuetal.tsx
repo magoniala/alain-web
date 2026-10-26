@@ -587,7 +587,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
               </Casilla2>
               <Casilla2 checked={d.privacidad} onChange={(v) => set("privacidad", v)}>
                 {T.privacidadAntes}
-                <Link href="/privacidad" target="_blank" className="underline underline-offset-4 hover:text-[#2ED3E6]">
+                <Link href={idioma === "eu" ? "/privacidad#euskaraz" : "/privacidad"} target="_blank" className="underline underline-offset-4 hover:text-[#2ED3E6]">
                   {T.privacidadEnlace}
                 </Link>
                 {T.privacidadDespues} *
@@ -738,7 +738,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
           <p>© Alain Zulaika</p>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <Link href="/aviso-legal" className="transition-colors hover:text-[#F2F2F0]/62">{T.pie.aviso}</Link>
-            <Link href="/privacidad" className="transition-colors hover:text-[#F2F2F0]/62">{T.pie.privacidad}</Link>
+            <Link href={idioma === "eu" ? "/privacidad#euskaraz" : "/privacidad"} className="transition-colors hover:text-[#F2F2F0]/62">{T.pie.privacidad}</Link>
             <Link href="/cookies" className="transition-colors hover:text-[#F2F2F0]/62">{T.pie.cookies}</Link>
           </div>
         </div>

@@ -28,7 +28,11 @@ export default function PrivacidadPage() {
           </p>
 
           <p className="mb-14 text-[0.85rem] text-[#F2F2F0]/38">
-            Última actualización: 15 de septiembre de 2026
+            Última actualización: 26 de octubre de 2026
+          </p>
+
+          <p className="-mt-10 mb-14 text-[0.9rem] text-[#F2F2F0]/55">
+            <a href="#euskaraz" className="underline underline-offset-4 transition-colors hover:text-[#2ED3E6]">Laburpena euskaraz ↓</a>
           </p>
 
           <div className="space-y-14">
@@ -64,6 +68,9 @@ export default function PrivacidadPage() {
                 </p>
                 <p>
                   Al reservar una reunión de trabajo en creadores.alainzulaika.com recogemos únicamente tu nombre y tu correo electrónico. En esa reserva no se recoge ninguna información sobre salud ni estado físico, ni se te da de alta en ninguna lista de correo.
+                </p>
+                <p>
+                  A través del formulario de valoración (alainzulaika.com/quetal), que envío a quien me ha contratado para un evento, recogemos tu nombre, cargo, entidad, correo electrónico (opcional) y tu valoración del evento y, si decides facilitarlos, el nombre y el teléfono o correo electrónico de otra persona que organice eventos.
                 </p>
                 <p>
                   Si respondes a nuestros correos, recogemos los datos que decidas incluir en tu respuesta.
@@ -119,6 +126,9 @@ export default function PrivacidadPage() {
                 <p>
                   Cuando reservas una cita o contratas un servicio, el tratamiento se basa además en la ejecución de un contrato o en la aplicación de medidas precontractuales adoptadas a petición tuya (art. 6.1.b), y en el cumplimiento de obligaciones legales de facturación y contabilidad en lo relativo a los pagos (art. 6.1.c).
                 </p>
+                <p>
+                  La publicación de testimonios se basa en tu consentimiento, y el primer contacto con las personas que nos recomiendes, en nuestro interés legítimo (art. 6.1.f). Ver el apartado 10.
+                </p>
               </div>
             </div>
 
@@ -129,6 +139,9 @@ export default function PrivacidadPage() {
               <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>
                   Los datos se conservan mientras la relación comercial esté activa o hasta que solicites su supresión. Una vez finalizada la relación, se bloquean durante los plazos legalmente establecidos antes de su eliminación definitiva.
+                </p>
+                <p>
+                  Las valoraciones se conservan un máximo de 3 años desde el evento. Los testimonios publicados permanecen hasta que retires tu consentimiento. Los datos de las personas recomendadas se eliminan si en 3 meses no hay respuesta o no hay interés.
                 </p>
               </div>
             </div>
@@ -185,7 +198,27 @@ export default function PrivacidadPage() {
 
             <div>
               <p className="mb-5 text-[0.78rem] uppercase tracking-[0.16em] text-[#F2F2F0]/38">
-                10. Tus derechos
+                10. Valoraciones, testimonios y personas recomendadas
+              </p>
+              <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
+                <p>
+                  <span className="text-[#F2F2F0]/85">Valoraciones.</span> Usamos tus respuestas para mejorar el servicio. La respuesta a «Si tuvieras que mejorar una cosa, ¿cuál sería?» es solo para uso interno y nunca se publica.
+                </p>
+                <p>
+                  <span className="text-[#F2F2F0]/85">Testimonios.</span> Solo publicamos tu valoración en alainzulaika.com y en nuestros perfiles de redes sociales si lo has autorizado en el formulario, y únicamente con el grado de identificación que hayas elegido: con tu nombre, cargo y entidad; solo con la entidad; o de forma anónima. Podemos corregir erratas o acortar el texto sin cambiar su sentido y, si nos has dejado tu correo, te lo enseñamos antes de publicarlo. El logo de la entidad y las fotos o vídeos del evento solo se usan si has marcado la casilla correspondiente.
+                </p>
+                <p>
+                  La base legal es tu consentimiento (art. 6.1.a RGPD). Puedes retirarlo cuando quieras escribiendo a <span className="text-[#F2F2F0]/85">info@alainzulaika.com</span>, y retiraremos el testimonio de la web y de nuestros perfiles en un plazo máximo de 30 días. Lo que ya hayan compartido terceros puede quedar fuera de nuestro alcance.
+                </p>
+                <p>
+                  <span className="text-[#F2F2F0]/85">Personas recomendadas.</span> Si nos facilitas los datos de otra persona, declaras que lo haces con su conocimiento o que tienes motivos razonables para pensar que no se opondría. Usamos esos datos una sola vez, para presentarnos profesionalmente y ofrecerle nuestros servicios, sobre la base de nuestro interés legítimo (art. 6.1.f RGPD). Solo te mencionaremos si nos lo has autorizado. En ese primer contacto le diremos de dónde hemos obtenido sus datos y cómo ejercer sus derechos. Si no responde o no le interesa, eliminamos sus datos y no volvemos a contactarle.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-5 text-[0.78rem] uppercase tracking-[0.16em] text-[#F2F2F0]/38">
+                11. Tus derechos
               </p>
               <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
                 <p>
@@ -194,6 +227,27 @@ export default function PrivacidadPage() {
                 <p>
                   Si no obtienes respuesta satisfactoria, tienes derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (www.aepd.es).
                 </p>
+              </div>
+            </div>
+
+
+            <div id="euskaraz" lang="eu" className="scroll-mt-10 border-t border-white/10 pt-14">
+              <p className="mb-4 text-[0.82rem] uppercase tracking-[0.35em] text-[#2ED3E6]">
+                Pribatutasun-politika: laburpena
+              </p>
+              <p className="mb-10 text-[0.95rem] text-[#F2F2F0]/50">
+                Testu osoa gaztelaniaz dago; hau haren laburpena da.
+              </p>
+              <div className="space-y-4 text-[clamp(1.05rem,1.3vw,1.15rem)] leading-relaxed text-[#F2F2F0]/70">
+                <p><span className="text-[#F2F2F0]/85">Arduraduna.</span> Alain Zulaika Fuente (IFZ 79187841Z), Elgoibar (Gipuzkoa). Harremana: info@alainzulaika.com.</p>
+                <p><span className="text-[#F2F2F0]/85">Zer datu biltzen ditugu.</span> Webguneko formularioetan ematen dizkiguzunak (izena, emaila, telefonoa eta ekitaldiari edo zure egoerari buruz kontatzen duzuna), Meta-ren formularioetakoak eta gure agendako erreserbetakoak. Entrenatzaile zerbitzuan osasun-datuak ere tratatu daitezke, beti zure baimen esplizituarekin.</p>
+                <p><span className="text-[#F2F2F0]/85">Zertarako.</span> Zure kontsultari erantzuteko eta proposamenak bidaltzeko; eskatu dituzun gidak eta, baimena eman baduzu, newsletterra bidaltzeko; hitzorduak kudeatzeko; eta kontratatutako zerbitzuak kobratzeko.</p>
+                <p><span className="text-[#F2F2F0]/85">Balorazioak eta testigantzak.</span> /quetal formularioko erantzunak zerbitzua hobetzeko erabiltzen ditugu. Zure balorazioa argitaratzeko baimena eman baduzu bakarrik argitaratzen dugu, eta zuk aukeratutako moduan: izen, kargu eta erakundearekin, erakundearekin bakarrik edo anonimoki. Hobetzeko proposamena ez da inoiz argitaratzen. Baimena edozein unetan ken dezakezu, eta gehienez 30 egunean kenduko dugu testigantza.</p>
+                <p><span className="text-[#F2F2F0]/85">Gomendatutako pertsonak.</span> Beste pertsona baten datuak ematen badizkiguzu, behin bakarrik erabiliko ditugu harengana aurkezteko. Datuak nondik atera ditugun esango diogu, eta interesik ez badu, ezabatu egingo ditugu.</p>
+                <p><span className="text-[#F2F2F0]/85">Oinarri juridikoa.</span> Zure baimena; hitzordu edo zerbitzu bat kontratatzen duzunean, kontratua betetzea; fakturazioari dagokionez, legezko betebeharrak; eta gomendatutako pertsonekin, gure interes legitimoa.</p>
+                <p><span className="text-[#F2F2F0]/85">Hartzaileak.</span> Ez diegu inori lagatzen, legeak behartzen gaituenean izan ezik. Zerbitzu-hornitzaile hauek ditugu: Vercel, Mailjet, Supabase, Meta, Stripe eta Google. Horietako batzuk Europako Esparru Ekonomikotik kanpo daude, eta datuen transferentzia Europako Batzordearen kontratu-klausula tipoen babesean egiten da.</p>
+                <p><span className="text-[#F2F2F0]/85">Iraupena.</span> Harreman komertzialak dirauen bitartean edo ezabatzeko eskatu arte; ondoren, legeak agindutako epeetan blokeatuta gordetzen dira. Balorazioak ekitalditik 3 urtez gordetzen dira gehienez, eta gomendatutako pertsonen datuak ezabatu egiten dira 3 hilabetean erantzunik edo interesik ez badago.</p>
+                <p><span className="text-[#F2F2F0]/85">Zure eskubideak.</span> Zure datuak eskuratu, zuzendu eta ezabatu ditzakezu, eta tratamendua mugatzea, datuen eramangarritasuna eta tratamenduaren aurka egitea ere eska ditzakezu. Idatzi info@alainzulaika.com helbidera, gaian «Datuen babesa» jarrita. Erantzunarekin pozik ez bazaude, erreklamazioa aurkez dezakezu Datuak Babesteko Espainiako Agentzian (www.aepd.es).</p>
               </div>
             </div>
 
