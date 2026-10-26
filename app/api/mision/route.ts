@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     wrap(deLaTabla ? deLaTabla.cuerpo : enCodigo.cuerpo),
     resolveNewsletterFrom(deLaTabla?.remitente),
     undefined,
-    { campana: "mision-m1", customId: email }
+    { campana: "mision-m1", customId: email, idioma: isEu ? "eu" : "es" }
   );
 
   const mail2SendAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
