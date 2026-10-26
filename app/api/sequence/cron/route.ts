@@ -85,6 +85,7 @@ async function procesar(cfg: Programado, ahora: Date): Promise<{ enviados: numbe
       await sendEmail(row.email, subject, html, resolveNewsletterFrom(deLaTabla?.remitente), undefined, {
         campana: `${cfg.secuencia}-m${cfg.posicion}`,
         customId: row.email,
+        idioma: isEu ? "eu" : "es",
       });
     } catch (err) {
       // Antes, un fallo aquí abortaba el cron entero y dejaba sin correo a

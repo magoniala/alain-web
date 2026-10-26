@@ -1,4 +1,5 @@
 import Mailjet from "node-mailjet";
+import { registrarEnvioSecuencia, secuenciaDeCampana } from "./registro-envios";
 
 // El cliente se crea en el primer envío, no al importar el módulo.
 //
@@ -54,6 +55,8 @@ export interface EmailAttachment {
 export interface SeguimientoEmail {
   campana?: string;
   customId?: string;
+  // Solo para el registro de envíos (tabla `envios`): el idioma en que sale.
+  idioma?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,7 +81,7 @@ export interface SeguimientoEmail {
 interface MensajeDeRespuesta {
   Status?: string;
   Errors?: Array<{ ErrorMessage?: string; ErrorCode?: string; ErrorRelatedTo?: string[] }>;
-  To?: Array<{ Email?: string; MessageUUID?: string }>;
+  To?: Array<{ Email?: string; MessageUUID?: string; MessageID?: number | string }>;
 }
 
 function mensajesDe(respuesta: unknown): MensajeDeRespuesta[] {
@@ -111,47 +114,77 @@ export async function sendEmail(
   seguimiento?: SeguimientoEmail
 ) {
   const fromParsed = parseAddress(from);
-  const respuesta = await getClient().post("send", { version: "v3.1" }).request({
-    Messages: [
-      {
-        From: fromParsed,
-        To: [parseAddress(to)],
-        Subject: subject,
-        HTMLPart: html,
-        ReplyTo: { Email: "newsletter@alainzulaika.com" },
-        // Sin esto Mailjet no registra ni aperturas ni clics, y no hay
-        // estadísticas que sacar después.
-        TrackOpens: "enabled",
-        TrackClicks: "enabled",
-        // Explícito aunque sea el valor por defecto de la API. Las campañas
-        // de la secuencia son de vida larga (nurture-m0 agrupa a TODO el que
-        // pase por el M0, sin importar el mes), así que con esto en true
-        // Mailjet descartaría en silencio a cualquiera que ya estuviera en
-        // ella. Escrito aquí, nadie lo cambia sin verlo.
-        DeduplicateCampaign: false,
-        ...(seguimiento?.campana ? { CustomCampaign: seguimiento.campana } : {}),
-        ...(seguimiento?.customId ? { CustomID: seguimiento.customId } : {}),
-        ...(attachments?.length
-          ? {
-              Attachments: attachments.map((a) => ({
-                ContentType: a.contentType,
-                Filename: a.filename,
-                Base64Content: a.base64Content,
-              })),
-            }
-          : {}),
-      },
-    ],
-  });
+
+  // Los mails de secuencia (reconocidos por su etiqueta de campaña) quedan en
+  // la tabla `envios`, salgan o no. Ver lib/registro-envios.ts.
+  const datosRegistro = secuenciaDeCampana(seguimiento?.campana);
+  const registrar = (estado: "aceptado" | "error", extra: { error?: string; mensajes?: MensajeDeRespuesta[] } = {}) =>
+    datosRegistro
+      ? registrarEnvioSecuencia({
+          campana: seguimiento!.campana!,
+          datos: datosRegistro,
+          email: parseAddress(to).Email,
+          customId: seguimiento?.customId,
+          idioma: seguimiento?.idioma,
+          asunto: subject,
+          remitente: fromParsed.Email,
+          estado,
+          error: extra.error,
+          mailjetUuid: extra.mensajes?.[0]?.To?.[0]?.MessageUUID,
+          mailjetId: extra.mensajes?.[0]?.To?.[0]?.MessageID?.toString(),
+        })
+      : Promise.resolve();
+
+  let respuesta: unknown;
+  try {
+    respuesta = await getClient().post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: fromParsed,
+          To: [parseAddress(to)],
+          Subject: subject,
+          HTMLPart: html,
+          ReplyTo: { Email: "newsletter@alainzulaika.com" },
+          // Sin esto Mailjet no registra ni aperturas ni clics, y no hay
+          // estadísticas que sacar después.
+          TrackOpens: "enabled",
+          TrackClicks: "enabled",
+          // Explícito aunque sea el valor por defecto de la API. Las campañas
+          // de la secuencia son de vida larga (nurture-m0 agrupa a TODO el que
+          // pase por el M0, sin importar el mes), así que con esto en true
+          // Mailjet descartaría en silencio a cualquiera que ya estuviera en
+          // ella. Escrito aquí, nadie lo cambia sin verlo.
+          DeduplicateCampaign: false,
+          ...(seguimiento?.campana ? { CustomCampaign: seguimiento.campana } : {}),
+          ...(seguimiento?.customId ? { CustomID: seguimiento.customId } : {}),
+          ...(attachments?.length
+            ? {
+                Attachments: attachments.map((a) => ({
+                  ContentType: a.contentType,
+                  Filename: a.filename,
+                  Base64Content: a.base64Content,
+                })),
+              }
+            : {}),
+        },
+      ],
+    });
+  } catch (err) {
+    // Fallo de red o HTTP no 2xx: se registra y se relanza, como antes.
+    await registrar("error", { error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const mensajes = mensajesDe(respuesta);
   const fallidos = mensajes.filter((m) => m.Status !== "success");
   if (fallidos.length || !mensajes.length) {
     const detalle = mensajes.length ? fallidos.map(describirFallo).join(" | ") : "Mailjet no devolvió ningún mensaje";
     console.error(`mailjet: RECHAZADO para ${to} · de ${fromParsed.Email} · "${subject}" · ${detalle}`);
+    await registrar("error", { error: detalle, mensajes });
     throw new Error(`Mailjet rechazó el envío a ${to}: ${detalle}`);
   }
   registrarEnvio(to, subject, mensajes);
+  await registrar("aceptado", { mensajes });
 }
 
 // Sends up to 50 messages in a single Mailjet API call
