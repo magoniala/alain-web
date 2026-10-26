@@ -192,6 +192,9 @@ export async function POST(req: Request) {
         nombre: nombreContacto.trim(),
         idioma: idioma || "eu",
         origen: "mirariak2026",
+        // La columna tiene DEFAULT true: sin esto entraba en la secuencia
+        // nurture de espalda. De aquí se entra solo a la newsletter diaria.
+        recibe_secuencia: false,
       },
       { onConflict: "email", ignoreDuplicates: true }
     );

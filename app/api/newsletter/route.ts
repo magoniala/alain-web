@@ -17,7 +17,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  const { email, nombre, idioma, origen } = await req.json();
+  const { email, nombre, idioma, origen, secuencia } = await req.json();
+  // Por defecto, solo la newsletter diaria. La secuencia de espalda solo si
+  // se marca a mano la casilla en /admin.
+  const conSecuencia = secuencia === true;
   if (!email) return NextResponse.json({ error: "Falta email." }, { status: 400 });
 
   const host = req.headers.get("host") || "www.alainzulaika.com";
@@ -27,14 +30,16 @@ export async function POST(req: Request) {
   const { data, error } = await supabase
     .from("newsletter_contactos")
     .upsert(
-      { email, nombre: nombre || null, idioma: idioma || "es", origen: origen || "manual" },
+      { email, nombre: nombre || null, idioma: idioma || "es", origen: origen || "manual", recibe_secuencia: conSecuencia },
       { onConflict: "email", ignoreDuplicates: true }
     )
     .select()
     .single();
   if (error) return NextResponse.json({ error: "Error." }, { status: 500 });
 
-  if (data && (origen || "manual") === "manual") {
+  // Con secuencia no va la bienvenida manual: el M0 de la secuencia, que el
+  // cron manda en su siguiente pasada, ya hace de bienvenida.
+  if (data && (origen || "manual") === "manual" && !conSecuencia) {
     const isEu = (idioma || "es") === "eu";
     const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
     const bajaUrl = `${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}`;
