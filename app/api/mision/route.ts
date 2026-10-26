@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import { misionMail1, type UrlsMail1, urlsSecuencia } from "@/lib/secuencias-legacy";
+import { altaEmbudo } from "@/lib/embudos";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -29,14 +30,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
   }
 
-  // Entra en la newsletter diaria, no en la secuencia nurture de espalda:
-  // recibe_secuencia tiene DEFAULT true y, sin fijarlo aquí, el cron le
-  // mandaba los mails de la Hoja de Ruta. Con ignoreDuplicates, a quien ya
-  // estaba en newsletter_contactos no se le toca nada, ni idioma ni secuencia.
-  await supabase.from("newsletter_contactos").upsert(
-    { email, origen: "tumision", idioma: isEu ? "eu" : "es", recibe_secuencia: false },
-    { onConflict: "email", ignoreDuplicates: true }
-  );
+  // Alta en la newsletter según el embudo «tumision» (ver lib/embudos.ts):
+  // hoy, solo la diaria; los mails 1 y 2 los lleva esta ruta y el cron de
+  // /api/sequence con mision_contactos. A quien ya estaba no se le toca nada.
+  await altaEmbudo({ origen: "tumision", email, idioma: isEu ? "eu" : "es" });
 
   // Ya estaba apuntado: ni se le reenvía el mail 1 ni se le reprograman el 2
   // y el 3. Antes, enviar el formulario otra vez reiniciaba la secuencia.

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
+import { altaEmbudo } from "@/lib/embudos";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -186,18 +187,13 @@ export async function POST(req: Request) {
   }
 
   if (newsletter) {
-    await supabase.from("newsletter_contactos").upsert(
-      {
-        email: email.trim().toLowerCase(),
-        nombre: nombreContacto.trim(),
-        idioma: idioma || "eu",
-        origen: "mirariak2026",
-        // La columna tiene DEFAULT true: sin esto entraba en la secuencia
-        // nurture de espalda. De aquí se entra solo a la newsletter diaria.
-        recibe_secuencia: false,
-      },
-      { onConflict: "email", ignoreDuplicates: true }
-    );
+    // Según el embudo «mirariak2026» (lib/embudos.ts): hoy, solo la diaria.
+    await altaEmbudo({
+      origen: "mirariak2026",
+      email: email.trim().toLowerCase(),
+      nombre: nombreContacto.trim(),
+      idioma: idioma || "eu",
+    });
   }
 
   const host = req.headers.get("host") || "alainzulaika.com";

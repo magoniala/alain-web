@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
 import { cargarMailSecuencia } from "@/lib/secuencia-mails";
+import { altaEmbudo } from "@/lib/embudos";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -94,14 +95,8 @@ export async function POST(req: Request) {
   }
 
   if (email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    await supabase
-      .from("newsletter_contactos")
-      .upsert(
-        // recibe_secuencia explícito: la columna tiene DEFAULT true y sin
-        // esto entraría en la secuencia nurture de espalda. Solo la diaria.
-        { email: email.trim(), origen: "arrogante", recibe_secuencia: false },
-        { onConflict: "email", ignoreDuplicates: true },
-      );
+    // Según el embudo «arrogante» (lib/embudos.ts): hoy, solo la diaria.
+    await altaEmbudo({ origen: "arrogante", email: email.trim() });
     const mailBD = await cargarMailSecuencia("arrogante", 1, "es", {
       tiktok: TIKTOK_URL,
     });
