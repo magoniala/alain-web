@@ -77,11 +77,10 @@ export async function POST(req: Request) {
   );
 
   const mail2SendAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-  const mail3SendAt = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
-
+  // Sin mail 3: ver PROGRAMADOS en app/api/sequence/cron.
   await supabase
     .from("mision_contactos")
-    .update({ mail2_id: mail2SendAt, mail3_id: mail3SendAt })
+    .update({ mail2_id: mail2SendAt, mail3_id: null })
     .eq("email", email);
 
   return NextResponse.json({ ok: true });

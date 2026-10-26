@@ -8,7 +8,6 @@ import {
   comodinMail2,
   comodinMail3,
   misionMail2,
-  misionMail3,
   urlsSecuencia,
 } from "@/lib/secuencias-legacy";
 import { NextResponse } from "next/server";
@@ -47,7 +46,11 @@ const PROGRAMADOS: Programado[] = [
   { secuencia: "comodin", tabla: "comodin_contactos", columna: "mail2_id", posicion: 2, envoltorio: wrapComodin, enCodigo: comodinMail2 },
   { secuencia: "comodin", tabla: "comodin_contactos", columna: "mail3_id", posicion: 3, envoltorio: wrapComodin, enCodigo: comodinMail3 },
   { secuencia: "mision", tabla: "mision_contactos", columna: "mail2_id", posicion: 2, envoltorio: wrapMision, enCodigo: misionMail2 },
-  { secuencia: "mision", tabla: "mision_contactos", columna: "mail3_id", posicion: 3, envoltorio: wrapMision, enCodigo: misionMail3 },
+  // El mail 3 de mision no se envía: enlaza a la baraja Eguzkilore, un
+  // proyecto pausado, y no se manda a las familias a un producto que no se
+  // vende. La secuencia termina en el mail 2 hasta que esté la nueva.
+  // Desactivarlo en /admin no bastaba: sin fila activa, salía la versión de
+  // reserva en código (misionMail3), que lleva el mismo enlace.
 ];
 
 async function procesar(cfg: Programado, ahora: Date): Promise<{ enviados: number; fallos: number }> {
