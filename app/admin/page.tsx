@@ -11,8 +11,9 @@ import HojaDeRutaTab from "./_components/HojaDeRutaTab";
 import AcompanamientoTab from "./_components/AcompanamientoTab";
 import ValoracionTab from "./_components/ValoracionTab";
 import ParqTab from "./_components/ParqTab";
+import QuetalTab from "./_components/QuetalTab";
 
-const TABS = ["Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic"] as const;
+const TABS = ["Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
@@ -20,7 +21,8 @@ const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
   { titulo: "Clientes", tabs: ["Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
   { titulo: "Correo", tabs: ["Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
-  { titulo: "Otros", tabs: ["Arrogante", "Magic"] },
+  { titulo: "Magia", tabs: ["Opiniones eventos", "Magic"] },
+  { titulo: "Otros", tabs: ["Arrogante"] },
 ];
 
 // Iconos de trazo, 20×20. Uno por pestaña para reconocerlas de un vistazo
@@ -36,6 +38,7 @@ const ICONO: Record<Tab, React.ReactNode> = {
   "Estadísticas guías": <path d="M4 16V9m4 7V5m4 11v-5m4 5V7" />,
   "Embudo espalda": <path d="M3 4h14l-5 6v5l-4 2v-7z" />,
   Magic: <path d="M4 16 14 6m-1-3 1 2 2 1-2 1-1 2-1-2-2-1 2-1zM15 11l.6 1.4L17 13l-1.4.6L15 15l-.6-1.4L13 13l1.4-.6z" />,
+  "Opiniones eventos": <path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm6 2.5.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L7.1 8.6l2-.3z" />,
 };
 
 function Icono({ tab }: { tab: Tab }) {
@@ -147,7 +150,7 @@ export default function AdminPage() {
     );
   }
 
-  const ancho = tab === "Valoración" || tab === "PAR-Q+" ? "max-w-[1320px]" : "max-w-[1040px]";
+  const ancho = tab === "Valoración" || tab === "PAR-Q+" || tab === "Opiniones eventos" ? "max-w-[1320px]" : "max-w-[1040px]";
 
   return (
     <main className="admin min-h-screen">
@@ -266,6 +269,7 @@ export default function AdminPage() {
               {tab === "Estadísticas guías" && <EstadisticasGuiasTab />}
               {tab === "Embudo espalda" && <EmbudoEspaldaTab />}
               {tab === "Magic" && <MagicTab />}
+              {tab === "Opiniones eventos" && <QuetalTab />}
             </div>
           </div>
         </div>
