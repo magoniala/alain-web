@@ -11,6 +11,8 @@ const NO_REDIRECT_PATHS = [
   "/entrenatzaile",
   "/magic",
   "/creadores",
+  // Una sola página con selector ES/EU dentro, sin mirror en /es.
+  "/quetal",
 ];
 
 export function proxy(request: NextRequest) {
