@@ -97,7 +97,9 @@ export async function POST(req: Request) {
     await supabase
       .from("newsletter_contactos")
       .upsert(
-        { email: email.trim(), origen: "arrogante" },
+        // recibe_secuencia explícito: la columna tiene DEFAULT true y sin
+        // esto entraría en la secuencia nurture de espalda. Solo la diaria.
+        { email: email.trim(), origen: "arrogante", recibe_secuencia: false },
         { onConflict: "email", ignoreDuplicates: true },
       );
     const mailBD = await cargarMailSecuencia("arrogante", 1, "es", {

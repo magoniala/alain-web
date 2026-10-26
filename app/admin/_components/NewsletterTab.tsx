@@ -84,6 +84,7 @@ export default function NewsletterTab() {
   const [newNombre, setNewNombre] = useState("");
   const [newIdioma, setNewIdioma] = useState("es");
   const [newOrigen, setNewOrigen] = useState("");
+  const [newSecuencia, setNewSecuencia] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
   const [addContactResult, setAddContactResult] = useState<{ ok?: boolean; error?: string } | null>(null);
 
@@ -252,13 +253,13 @@ export default function NewsletterTab() {
     const res = await fetch("/api/newsletter", {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ email: newEmail.trim(), nombre: newNombre.trim() || null, idioma: newIdioma, origen: newOrigen.trim() || "manual" }),
+      body: JSON.stringify({ email: newEmail.trim(), nombre: newNombre.trim() || null, idioma: newIdioma, origen: newOrigen.trim() || "manual", secuencia: newSecuencia }),
     });
     const data = await res.json();
     if (data.ok) {
       setAddContactResult({ ok: true });
       if (data.contacto) setContactos(prev => [data.contacto, ...prev]);
-      setNewEmail(""); setNewNombre(""); setNewIdioma("es"); setNewOrigen("");
+      setNewEmail(""); setNewNombre(""); setNewIdioma("es"); setNewOrigen(""); setNewSecuencia(false);
     } else {
       setAddContactResult({ error: data.error || "Error al añadir." });
     }
@@ -1307,6 +1308,10 @@ export default function NewsletterTab() {
                   <p className="text-[0.72rem] text-gray-500 mb-1">Origen</p>
                   <input type="text" value={newOrigen} onChange={e => setNewOrigen(e.target.value)} placeholder="entrenamiento…" className={`${inputClass} w-36`} />
                 </div>
+                <label className="flex items-center gap-2 py-2 text-[0.82rem] text-gray-600" title="Si no se marca, solo recibe la newsletter diaria">
+                  <input type="checkbox" checked={newSecuencia} onChange={e => setNewSecuencia(e.target.checked)} />
+                  Meter en la secuencia de espalda
+                </label>
                 <button type="submit" disabled={addingContact || !newEmail} className="px-4 py-2 bg-[#1a1a1a] text-white text-sm disabled:opacity-40">
                   {addingContact ? "Añadiendo..." : "Añadir"}
                 </button>

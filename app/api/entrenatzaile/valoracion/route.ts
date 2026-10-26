@@ -104,6 +104,9 @@ export async function POST(req: Request) {
         nombre: nombre.trim(),
         idioma: isEu ? "eu" : "es",
         origen: "entrenatzaile_valoracion",
+        // Solo la diaria: ya ha reservado la valoración, y la secuencia de
+        // espalda empuja justo a reservar. La columna tiene DEFAULT true.
+        recibe_secuencia: false,
       },
       { onConflict: "email", ignoreDuplicates: true }
     );
