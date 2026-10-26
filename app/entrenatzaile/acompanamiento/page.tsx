@@ -7,8 +7,8 @@ import AvisoPlazas from "./AvisoPlazas";
 // El contador se cambia desde /admin y tiene que verse al momento.
 export const dynamic = "force-dynamic";
 
-// Sin precio, sin duración y sin cuerpo de venta: todo eso va en la
-// videollamada. La página solo recoge lo que necesito para escribirle.
+// Sin precio, sin duración y sin cuerpo de venta: todo eso va en el
+// presupuesto que le mando por WhatsApp. La página solo recoge lo que necesito para escribirle.
 export default async function AcompanamientoPage() {
   const plazas = await getPlazasLibres();
   const abiertas = plazas > 0;
@@ -35,6 +35,19 @@ export default async function AcompanamientoPage() {
             </p>
           ))}
         </div>
+
+        {abiertas && (
+          <div className="mb-12">
+            <h2 className="mb-4 text-[0.75rem] uppercase tracking-[0.16em] text-[#C47800]">
+              {ACOMPANAMIENTO_TEXTOS.comoFuncionaTitulo}
+            </h2>
+            <ol className="list-decimal space-y-2 pl-6 text-[1.05rem] leading-[1.7] text-[#0F2240]/80 marker:text-[#C47800] md:text-[1.12rem]">
+              {ACOMPANAMIENTO_TEXTOS.comoFunciona.map((paso, i) => (
+                <li key={i}>{paso}</li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         {abiertas ? <FormularioAcompanamiento /> : <AvisoPlazas />}
       </section>

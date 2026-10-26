@@ -10,8 +10,9 @@
 // versión, que es lo que hace falta para poder demostrar qué aceptó cada
 // persona y cuándo.
 //
-// Aquí no hay precio ni duración a propósito: los dos se explican en la
-// videollamada, y el formulario solo sirve para que pueda escribirle.
+// Aquí no hay precio ni duración a propósito: los dos van en el presupuesto
+// que le mando por WhatsApp, y el formulario solo sirve para que pueda
+// escribirle.
 
 export const CONSENT_ACOMPANAMIENTO_VERSION = "2026-10-20";
 
@@ -77,14 +78,19 @@ export const ACOMPANAMIENTO_TEXTOS = {
   titulo: "Dos plazas para empezar en noviembre",
   intro: [
     "Cuéntame dónde estás y qué te gustaría conseguir. Son unos tres minutos.",
-    "Te escribo yo por WhatsApp en menos de 48 horas y buscamos un hueco para hablar por videollamada.",
+  ],
+  comoFuncionaTitulo: "Cómo funciona",
+  comoFunciona: [
+    "Rellenas el formulario (unos tres minutos).",
+    "Te escribo por WhatsApp en menos de 48 horas.",
+    "Si puedo ayudarte, te mando un presupuesto por escrito con todo explicado. Si no, te lo digo y, si puedo, te digo a quién acudir.",
   ],
   privacidad: "Política de privacidad",
   boton: "Quiero una de las plazas",
   enviando: "Enviando…",
   graciasTitulo: "Recibido.",
   graciasParrafos: [
-    "Te escribo por WhatsApp en menos de 48 horas para buscar un hueco y hablar por videollamada. Unos 30 minutos: me cuentas tu caso y te digo si puedo ayudarte y cómo.",
+    "Te escribo por WhatsApp en menos de 48 horas. Si con lo que me has contado tengo suficiente, te mando el presupuesto. Si necesito saber algo más, te lo pregunto por ahí.",
     "Si no ves mi mensaje, mira también el correo.",
   ],
   // Con el contador a 0.
