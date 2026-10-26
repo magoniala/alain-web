@@ -34,7 +34,9 @@ export function mailAcompanamientoCuerpo(nombre: string): string {
   const saludo = marcadoresDeNombre(nombre).saludo.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return `
     <p style="${p}">${saludo},</p>
-    <p style="${p}">Ya tengo tu solicitud. En menos de 48 horas te escribo por WhatsApp para buscar un hueco y hablar.</p>
+    <p style="${p}">Recibido.</p>
+    <p style="${p}">Te escribo por WhatsApp en menos de 48 horas. Si con lo que me has contado tengo suficiente, te mando el presupuesto. Si necesito saber algo más, te lo pregunto por ahí.</p>
+    <p style="${p}">Si no ves mi mensaje, mira también el correo.</p>
     <p style="margin:0;">Alain</p>
   `;
 }
