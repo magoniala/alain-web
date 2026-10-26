@@ -7,7 +7,15 @@
 //
 // Regla de oro: el registro nunca bloquea ni tumba un envío. Si la tabla no
 // existe o Supabase falla, se anota en el log y se sigue.
+//
+// La escritura va en after(): se hace cuando la ruta ya ha respondido, así
+// que no se suma al bucle de envío del cron (el lote de nurture de las 14:30
+// tardaba ~1,3 s por mail el 26/10/2026, y no se quería alargarlo). Si la
+// función se quedara sin tiempo antes de llegar, se perdería la fila del
+// registro, nunca el mail. Fuera de una petición (sin contexto para after),
+// se escribe en el momento.
 
+import { after } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export interface DatosRegistro {
@@ -43,7 +51,7 @@ function supabase() {
   return cliente;
 }
 
-export async function registrarEnvioSecuencia(r: {
+type Registro = {
   campana: string;
   datos: DatosRegistro;
   email: string;
@@ -55,7 +63,17 @@ export async function registrarEnvioSecuencia(r: {
   error?: string;
   mailjetUuid?: string;
   mailjetId?: string;
-}): Promise<void> {
+};
+
+export async function registrarEnvioSecuencia(r: Registro): Promise<void> {
+  try {
+    after(() => escribir(r));
+  } catch {
+    await escribir(r);
+  }
+}
+
+async function escribir(r: Registro): Promise<void> {
   try {
     const { error } = await supabase()
       .from("envios")
