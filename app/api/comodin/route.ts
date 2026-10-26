@@ -29,8 +29,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
   }
 
-  await supabase.from("newsletter_contactos")
-    .upsert({ email, origen: "comodin" }, { onConflict: "email", ignoreDuplicates: true });
+  // Entra en la newsletter diaria, no en la secuencia nurture de espalda:
+  // recibe_secuencia tiene DEFAULT true y, sin fijarlo aquí, el cron le
+  // mandaba los mails de la Hoja de Ruta. Con ignoreDuplicates, a quien ya
+  // estaba en newsletter_contactos no se le toca nada, ni idioma ni secuencia.
+  await supabase.from("newsletter_contactos").upsert(
+    { email, origen: "comodin", idioma: isEu ? "eu" : "es", recibe_secuencia: false },
+    { onConflict: "email", ignoreDuplicates: true }
+  );
+
+  // Ya estaba apuntado: ni se le reenvía el mail 1 ni se le reprograman el 2
+  // y el 3. Antes, enviar el formulario otra vez reiniciaba la secuencia.
+  if (dbError?.code === "23505") return NextResponse.json({ ok: true });
 
   const bajaUrl = `${BASE_URL}/api/comodin/baja?email=${encodeURIComponent(email)}`;
   const unsubscribeText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
