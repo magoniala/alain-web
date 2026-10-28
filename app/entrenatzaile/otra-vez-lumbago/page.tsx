@@ -214,7 +214,7 @@ function Hero() {
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
           <EnlaceTrackeado href={CHECKOUT} evento="add_to_cart" conValor className={BOTON}>
-            Comprar el pack · 24,19 €
+            Comprar el pack · 29,95 € (IVA incluido)
             <Flecha />
           </EnlaceTrackeado>
           <a
@@ -406,10 +406,10 @@ function Precio() {
           Pack de recursos · Otra vez lumbago
         </h2>
         <p className="mt-6 flex flex-wrap items-baseline gap-3">
-          <span className={`${TITULAR} text-6xl font-semibold whitespace-nowrap`}>24,19 €</span>
+          <span className={`${TITULAR} text-6xl font-semibold whitespace-nowrap`}>29,95 €</span>
           <span className="text-[#4A5C73]">IVA incluido</span>
         </p>
-        <p className="mt-2 text-sm text-[#4A5C73]">19,99 € + IVA · acceso inmediato</p>
+        <p className="mt-2 text-sm text-[#4A5C73]">24,75 € + IVA · acceso inmediato</p>
         <ul className="mt-8 space-y-3">
           {INCLUYE.map((linea) => (
             <li key={linea} className="flex gap-3">
@@ -487,7 +487,7 @@ function CierreCta() {
           conValor
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#C47800] px-7 font-semibold text-[#0F2240]"
         >
-          Quiero el pack · 24,19 €
+          Quiero el pack · 29,95 € (IVA incluido)
           <Flecha />
         </EnlaceTrackeado>
       </div>

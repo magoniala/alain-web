@@ -124,10 +124,10 @@ function Venta({ respuestas, onRepetir }: { respuestas: string[]; onRepetir: () 
         Pack de recursos · Otra vez lumbago
       </h1>
       <p className="mt-6 flex flex-wrap items-baseline gap-3">
-        <span className={`${TITULAR} text-5xl font-semibold whitespace-nowrap`}>24,19 €</span>
+        <span className={`${TITULAR} text-5xl font-semibold whitespace-nowrap`}>29,95 €</span>
         <span className="text-[#4A5C73]">IVA incluido</span>
       </p>
-      <p className="mt-2 text-sm text-[#4A5C73]">19,99 € + IVA · cinco recursos</p>
+      <p className="mt-2 text-sm text-[#4A5C73]">24,75 € + IVA · cinco recursos</p>
       <p className="mt-6 text-lg leading-relaxed text-[#4A5C73]">
         El pack cubre tu fase exacta. Con tus respuestas
         {respuestas.length > 0 ? ` (${respuestas.join(" · ")})` : ""}, te da el plan para este episodio y para no
@@ -135,10 +135,10 @@ function Venta({ respuestas, onRepetir }: { respuestas: string[]; onRepetir: () 
       </p>
       <a
         href={CHECKOUT}
-        onClick={() => whopTrack("add_to_cart", { value: 24.19, currency: "EUR" })}
+        onClick={() => whopTrack("add_to_cart", { value: 29.95, currency: "EUR" })}
         className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0F2240] px-7 font-semibold text-[#F7F1E6] transition hover:brightness-110"
       >
-        Quiero el pack · 24,19 €
+        Quiero el pack · 29,95 € (IVA incluido)
         <svg
           className="size-4"
           viewBox="0 0 24 24"

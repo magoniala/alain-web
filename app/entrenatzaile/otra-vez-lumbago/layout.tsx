@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "7 de cada 10 lumbagos recaen. Rompe el ciclo. — Entrenatzaile",
   description:
-    "Cinco recursos de Alain Zulaika para romper el ciclo del lumbago: el protocolo del día 1 al mes 3, la guía de los primeros días, dos registros y la infografía. 24,19 € IVA incluido.",
+    "Cinco recursos de Alain Zulaika para romper el ciclo del lumbago: el protocolo del día 1 al mes 3, la guía de los primeros días, dos registros y la infografía. 29,95 € IVA incluido.",
   alternates: {
     canonical: "https://entrenatzaile.alainzulaika.com/otra-vez-lumbago",
   },

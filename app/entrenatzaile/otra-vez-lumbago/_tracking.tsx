@@ -7,7 +7,7 @@ import { whopTrack } from "@/lib/whop";
 // manda el `page` de cada vista. Aquí sólo se replican los eventos de
 // producto que la tienda de Whop dispara en esta misma landing, para que las
 // dos versiones cuenten igual.
-const VALOR = { value: 24.19, currency: "EUR" };
+const VALOR = { value: 29.95, currency: "EUR" };
 /** `view_content` al abrir la página, y `complete_registration` si se vuelve
  *  del checkout con el pago hecho. */
 export function VistaKit() {
