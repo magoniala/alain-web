@@ -7,6 +7,9 @@ import {
   MARCADORES,
   SECUENCIAS,
   SECUENCIA_ETIQUETA,
+  PRIMERA_POSICION,
+  avisoSecuencia,
+  cuandoSale,
   VALORES_DE_MUESTRA,
   type Secuencia,
 } from "@/lib/secuencias";
@@ -69,7 +72,9 @@ const ESPECIALES: Record<number, { titulo: string; cuando: string }> = {
   },
 };
 
-function describePosicion(posicion: number) {
+function describePosicion(posicion: number, secuencia: Secuencia = "nurture") {
+  const propia = cuandoSale(secuencia, posicion);
+  if (propia) return { titulo: `Mail ${posicion}`, cuando: propia };
   if (ESPECIALES[posicion]) return ESPECIALES[posicion];
   if (posicion === 0) {
     return { titulo: "Mail 0 — bienvenida", cuando: "Al instante, en cuanto el lead entra desde el anuncio." };
@@ -279,7 +284,7 @@ export default function NurtureTab() {
 
   function nuevoMail() {
     const normales = Object.keys(borradores).map(Number).filter(p => p >= 0);
-    const siguiente = normales.length ? Math.max(...normales) + 1 : 0;
+    const siguiente = normales.length ? Math.max(...normales) + 1 : PRIMERA_POSICION[secuencia] ?? 0;
     setBorradores(prev => ({
       ...prev,
       [siguiente]: { posicion: siguiente, asunto: "", cuerpo_html: "", remitente: remitentes[0], activo: false, formato: "texto", preheader: "" },
@@ -356,7 +361,8 @@ export default function NurtureTab() {
   const posiciones = Object.keys(borradores).map(Number);
   const normales = posiciones.filter(p => p >= 0).sort((a, b) => a - b);
   const especiales = posiciones.filter(p => p < 0).sort((a, b) => b - a);
-  const faltanEspeciales = [-1, -2, -3].filter(p => !posiciones.includes(p));
+  // Los mails puntuales (-1, -2, -3) son reglas propias de nurture.
+  const faltanEspeciales = secuencia === "nurture" ? [-1, -2, -3].filter(p => !posiciones.includes(p)) : [];
 
   // "2026-10-20" -> "hoy" / "mañana" / "20 oct", contado en hora de Madrid.
   function fmtDia(dia: string) {
@@ -427,7 +433,7 @@ export default function NurtureTab() {
     const draft = borradores[posicion];
     if (!draft) return null;
     const existe = mails.some(m => m.posicion === posicion);
-    const info = describePosicion(posicion);
+    const info = describePosicion(posicion, secuencia);
     const enEspera = posicion >= 0 ? esperando[String(posicion)] ?? 0 : 0;
     const sucio = estaSucio(posicion);
     const isOpen = abierto === posicion;
@@ -751,16 +757,13 @@ export default function NurtureTab() {
               <p className="text-[0.7rem] uppercase tracking-[0.22em] text-[#1a1a1a]">
                 {secuencia === "nurture" ? "Secuencia de leads de Meta Ads" : SECUENCIA_ETIQUETA[secuencia]}
               </p>
-              {secuencia === "nurture" && (
+              {PRIMERA_POSICION[secuencia] !== undefined && (
                 <button onClick={nuevoMail} className="px-3 py-1.5 text-xs border border-gray-300 hover:border-gray-500">
                   + Añadir mail al final
                 </button>
               )}
             </div>
-            <p className="text-[0.72rem] text-gray-500 mb-5">
-              Los cambios afectan solo a los mails que aún no se han enviado. Un mail inactivo o vacío detiene la
-              secuencia: quien esté en esa posición se queda parado ahí hasta que lo actives.
-            </p>
+            <p className="text-[0.72rem] text-gray-500 mb-5">{avisoSecuencia(secuencia)}</p>
 
             {loadingMails ? (
               <p className="text-sm text-gray-400 italic">Cargando...</p>
@@ -773,6 +776,7 @@ export default function NurtureTab() {
             )}
           </div>
 
+          {(especiales.length > 0 || faltanEspeciales.length > 0) && (
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-2">Mails puntuales</p>
             <p className="text-[0.72rem] text-gray-500 mb-5">
@@ -793,6 +797,7 @@ export default function NurtureTab() {
               </div>
             )}
           </div>
+          )}
         </section>
       )}
     </div>

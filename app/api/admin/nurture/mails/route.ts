@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { wrapNurture, normalizarEmail } from "@/lib/nurture";
+import { wrapComodin, wrapMision } from "@/lib/secuencias-legacy";
 import { sendEmail, resolveNewsletterFrom, NEWSLETTER_SENDERS } from "@/lib/email-ses";
 import {
   cuerpoDelMail,
@@ -155,6 +156,10 @@ export async function POST(req: Request) {
   // parece a lo que va a recibir de verdad. Si no está (un buzón cualquiera
   // para echar un ojo), se cae al nombre de muestra del preview.
   const fechas = marcadoresDeFecha();
+  // El pie (contacto y baja) de cada familia de secuencias, para que la
+  // prueba llegue como llegará de verdad. Tumisión usa el de mision.
+  const envoltorio =
+    secuencia === "mision" || secuencia === "tumision" ? wrapMision : secuencia === "comodin" ? wrapComodin : wrapNurture;
   try {
     for (const email of destinatarios) {
       const { data: contacto } = await supabase
@@ -173,7 +178,7 @@ export async function POST(req: Request) {
       await sendEmail(
         email,
         `[PRUEBA] ${sustituirMarcadores(asunto, valores)}`,
-        wrapNurture(
+        envoltorio(
           // Y los bloques condicionales resueltos, o el correo de prueba
           // llegaría con los {{#si_ventana}} a la vista.
           cuerpoDelMail(cuerpo_html, formato, preheader, valores, CONDICIONES_DE_MUESTRA),
