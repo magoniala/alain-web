@@ -90,7 +90,7 @@ const ORDEN = [
   "bloqueado_por", "fecha_proxima_accion", "fecha_creacion", "ficha_cliente",
 ];
 const OPCIONALES = new Set(["via", "bloqueado_por", "ficha_cliente"]);
-const SIEMPRE_COMILLAS = new Set(["codigo", "telefono", "ficha_cliente"]);
+const SIEMPRE_COMILLAS = new Set(["codigo", "telefono", "ficha_cliente", "proxima_accion"]);
 const NUMERICOS = new Set(["intentos_llamada", "mails_enviados"]);
 
 function escalar(clave, v) {
@@ -98,12 +98,16 @@ function escalar(clave, v) {
   const s = String(v);
   if (NUMERICOS.has(clave)) return s;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s) && clave.startsWith("fecha")) return s;
+  // Obsidian no sigue una regla fija (lo que se edita en el panel de
+  // propiedades sale entrecomillado; lo que escriben scripts, no). Aquí se
+  // entrecomilla solo cuando YAML lo exige, para que el diff sea mínimo.
   const necesita =
     SIEMPRE_COMILLAS.has(clave) ||
-    /[:#\[\]{}&*!|>'"%@`,]/.test(s) ||
-    /^[\s-?]/.test(s) ||
-    /\s$/.test(s) ||
-    /^(true|false|null|yes|no|on|off|~)$/i.test(s) ||
+    /: |\s#|["\n]/.test(s) ||
+    /^[\s\-?:,\[\]{}&*!|>'%@`#]/.test(s) ||
+    /[\s:]$/.test(s) ||
+    // "no"/"sí" de euskera van sin comillas, como las escribió el directorio.
+    (/^(true|false|null|yes|on|off|~)$/i.test(s) && clave !== "euskera") ||
     /^[\d.+-]+$/.test(s);
   return necesita ? `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"` : s;
 }
@@ -137,14 +141,20 @@ function lineaRegistro(r) {
   return `- ${fecha}${canal} · ${texto}`;
 }
 
-function ficha(c, registro) {
+// `registroVault`: si se pasa, es el texto del Registro tal cual está en la
+// ficha actual (con sus líneas en blanco y su formato) y se conserva
+// verbatim; solo se añaden debajo las líneas nuevas (panel, sistema, manual).
+function ficha(c, registro, registroVault = null) {
   const vault = registro.filter((r) => r.origen === "vault").sort((a, b) => a.orden - b.orden);
   const resto = registro
     .filter((r) => r.origen !== "vault")
     .sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? "") || a.creado_en.localeCompare(b.creado_en));
-  const lineas = [...vault, ...resto].map(lineaRegistro);
+  const bloque =
+    registroVault !== null
+      ? [registroVault.replace(/\s+$/, ""), ...resto.map(lineaRegistro)].filter(Boolean).join("\n")
+      : [...vault, ...resto].map(lineaRegistro).join("\n");
 
-  let cuerpo = `${frontmatter(c)}\n\n## Registro\n\n${lineas.join("\n")}\n\n## Notas\n\n${c.notas ?? ""}`;
+  let cuerpo = `${frontmatter(c)}\n\n## Registro\n\n${bloque}\n\n## Notas\n\n${c.notas ?? ""}`;
   for (const [titulo, texto] of Object.entries(c.secciones_extra ?? {})) {
     cuerpo += `\n\n${titulo}\n\n${texto}`;
   }
@@ -231,8 +241,12 @@ async function main() {
 
     // Líneas del Registro escritas a mano desde la última importación: no
     // están en Supabase. Se suben como 'manual' antes de reescribir.
-    const conocidas = new Set(registro.map((r) => (r.raw ?? "").trimEnd()).filter(Boolean));
-    const conocidasTexto = new Set(registro.map((r) => lineaRegistro(r).trimEnd()));
+    // Una entrada puede ocupar varias líneas (párrafo debajo de la línea con
+    // fecha): se reconocen todas sus líneas, no solo la entrada completa.
+    const conocidas = new Set(
+      registro.flatMap((r) => [r.raw ?? "", lineaRegistro(r)]).flatMap((t) => t.split("\n")).map((l) => l.trimEnd()).filter(Boolean)
+    );
+    const conocidasTexto = conocidas;
     for (const l of registroDe(cuerpo)) {
       if (conocidas.has(l) || conocidasTexto.has(l)) continue;
       const m = /^-\s*(\d{4}-\d{2}-\d{2})?\s*(?:[·\-]\s*)?(.*)$/.exec(l.trim());
@@ -269,7 +283,15 @@ async function main() {
       diferencias.push({ nombre: c.nombre, difs });
     }
 
-    if (!COMPROBAR && nuevo !== actual) writeFileSync(ruta, nuevo, "utf8");
+    // Solo se reescribe lo que ha cambiado de verdad, y conservando el
+    // Registro tal cual estaba (líneas en blanco incluidas): así Obsidian no
+    // ve 344 ficheros tocados cada hora.
+    if (!COMPROBAR && difs.length > 0) {
+      const mReg = /## Registro\n([\s\S]*?)(?=\n## |$)/.exec(cuerpo);
+      const soloNuevas = difs.every((d) => d.startsWith("registro:"));
+      const registroVault = soloNuevas && mReg ? mReg[1] : null;
+      writeFileSync(ruta, ficha(c, registro, registroVault), "utf8");
+    }
   }
 
   if (!COMPROBAR && apuntesManuales.length) {
