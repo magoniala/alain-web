@@ -236,7 +236,7 @@ export default function TwobascosPage() {
             Informazio gehiago nahi ez gero:
           </p>
           <a
-            href="mailto:kontaktu@alainzulaika.com?subject=Twobascos%20ikuskizunari%20buruz"
+            href="mailto:info@alainzulaika.com?subject=Twobascos%20ikuskizunari%20buruz"
             style={{
               display: "inline-block",
               border: "1px solid rgba(242,242,240,0.2)",

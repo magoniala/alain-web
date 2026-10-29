@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   } = body;
 
   const isEu = idioma === "eu";
-  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  const contactEmail = isEu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
   const hasTaller = actividad === "taller" || actividad === "ambas";
   const hasMicromagia = actividad === "micromagia" || actividad === "ambas";
 

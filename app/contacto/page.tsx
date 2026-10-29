@@ -464,11 +464,11 @@ export default function ContactoPage() {
               Zuzenean idatzi nahi badidazu:
             </p>
             <a
-              href="mailto:kontaktu@alainzulaika.com"
+              href="mailto:info@alainzulaika.com"
               style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: "rgba(46,211,230,0.75)", transition: "color 0.2s" }}
               className="hover:text-[#2ED3E6]"
             >
-              kontaktu@alainzulaika.com
+              info@alainzulaika.com
             </a>
           </div>
           <p style={{ marginTop: "0.8rem", fontSize: "0.95rem", lineHeight: 1.6, color: "rgba(242,242,240,0.72)" }}>

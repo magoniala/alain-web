@@ -13,7 +13,7 @@ const supabase = createClient(
 export async function POST(req: Request) {
   const { email, lang } = await req.json();
   const isEu = lang === "eu";
-  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  const contactEmail = isEu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
   const host = req.headers.get("host") || "alainzulaika.com";
   const protocol = host.includes("localhost") ? "http" : "https";
   const BASE_URL = `${protocol}://${host}`;

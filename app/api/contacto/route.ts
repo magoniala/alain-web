@@ -69,7 +69,7 @@ export async function POST(req: Request) {
           ? `
         <p>Kaixo ${nombre},</p>
         <p>Zure informazioa jaso dut. Laster deituko dizut testuingurua ondo ulertzeko eta elkarrekin lan egiteak zentzua duen ikusteko.</p>
-        <p>Lehenago harremanetan jarri nahi baduzu, idatz iezadazu <a href="mailto:kontaktu@alainzulaika.com">kontaktu@alainzulaika.com</a> helbidera.</p>
+        <p>Lehenago harremanetan jarri nahi baduzu, idatz iezadazu <a href="mailto:info@alainzulaika.com">info@alainzulaika.com</a> helbidera.</p>
         <br />
         <p>Alain Zulaika</p>
       `

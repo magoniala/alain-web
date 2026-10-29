@@ -323,8 +323,8 @@ export default function ValoracionEntrenatzaileEuPage() {
             <div className="p-6 md:p-10" style={cardStyle}>
               <p style={{ fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(15,34,64,0.80)" }}>
                 Plaza guztiak beteta daude. Etorkizuneko irekierez jakinarazi nahi baduzu, idatzi hona{" "}
-                <a href="mailto:kontaktu@alainzulaika.com" style={{ color: AMBER }}>
-                  kontaktu@alainzulaika.com
+                <a href="mailto:info@alainzulaika.com" style={{ color: AMBER }}>
+                  info@alainzulaika.com
                 </a>
                 .
               </p>
@@ -510,11 +510,11 @@ export default function ValoracionEntrenatzaileEuPage() {
             Nahiago duzu niri zuzenean idaztea?
           </p>
           <a
-            href="mailto:kontaktu@alainzulaika.com"
+            href="mailto:info@alainzulaika.com"
             style={{ fontSize: "clamp(1.15rem,1.45vw,1.35rem)", color: AMBER }}
             className="hover:opacity-80"
           >
-            kontaktu@alainzulaika.com
+            info@alainzulaika.com
           </a>
         </div>
       </section>

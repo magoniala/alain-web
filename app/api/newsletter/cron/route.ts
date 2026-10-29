@@ -57,7 +57,7 @@ function buildHtml(body: string, email: string, preheader?: string, isEu?: boole
   const preheaderHtml = preheader?.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader.trim()}</div>`
     : "";
-  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  const contactEmail = isEu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
   return `
     ${preheaderHtml}
     <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">

@@ -853,7 +853,7 @@ export default function NewsletterTab() {
                           {bodyEu.split(/\n/).map((line, i) => renderPreviewLine(line, i))}
                         </div>
                         <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #eee", fontSize: "0.8rem", color: "#999" }}>
-                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · kontaktu@alainzulaika.com</p>
+                          <p style={{ margin: "0 0 0.2rem" }}>Alain Zulaika · info@alainzulaika.com</p>
                           <p style={{ margin: 0, color: "#ccc" }}>Cambiar idioma · Dejar de recibir estos emails</p>
                         </div>
                       </div>
