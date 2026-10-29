@@ -115,15 +115,6 @@ async function construirIndice(): Promise<Indice> {
   return { porEmail, porDominio };
 }
 
-async function centroPorHilo(ids: string[]): Promise<string | null> {
-  if (!ids.length) return null;
-  const supabase = supabaseCharlas();
-  const { data } = await supabase.from("charlas_mensajes").select("centro_id").in("message_id", ids).not("centro_id", "is", null).limit(1);
-  if (data?.[0]?.centro_id) return data[0].centro_id;
-  const { data: d2 } = await supabase.from("charlas_mensajes").select("centro_id").overlaps("referencias", ids).not("centro_id", "is", null).limit(1);
-  return d2?.[0]?.centro_id ?? null;
-}
-
 function asociar(indice: Indice, direcciones: string[]): { centro: string | null; por: string | null } {
   for (const a of direcciones) {
     const c = indice.porEmail.get(norm(a));
@@ -142,6 +133,12 @@ const ASUNTO_CHARLAS = /(calendario de actividades|jardueren egutegia|egutegia|c
 
 // ---------------------------------------------------------------------------
 // Lectura
+//
+// Todo lo que se consulta por correo (hilos conocidos, direcciones, hilos
+// por centro) se carga en memoria una vez al empezar; a la base de datos
+// solo se escribe en bloques. Así una tanda de 100 cabeceras se resuelve en
+// segundos, y el avance (último UID leído) se guarda tras cada bloque: si
+// Vercel corta la función, la siguiente ejecución sigue donde se quedó.
 // ---------------------------------------------------------------------------
 export interface ResumenLectura {
   carpetas: Record<string, { revisados: number; asociados: number; pendientes_asignar: number; nuevos_uid: number }>;
@@ -151,13 +148,50 @@ export interface ResumenLectura {
   error?: string;
 }
 
+interface Hilo {
+  centro_id: string;
+  canal: "principal";
+  asunto: string | null;
+  message_id_raiz: string | null;
+  ultimo_message_id: string | null;
+  ultimo_mensaje_en: string | null;
+}
+
+async function cargarConocidos() {
+  const supabase = supabaseCharlas();
+  // message-id (o id citado en sus referencias) → centro
+  const porId = new Map<string, string>();
+  const guardados = new Set<string>();
+  for (let desde = 0; ; desde += 1000) {
+    const { data } = await supabase.from("charlas_mensajes").select("message_id, referencias, centro_id").range(desde, desde + 999);
+    for (const m of data ?? []) {
+      guardados.add(m.message_id);
+      if (!m.centro_id) continue;
+      porId.set(m.message_id, m.centro_id);
+      for (const r of m.referencias ?? []) if (!porId.has(r)) porId.set(r, m.centro_id);
+    }
+    if (!data || data.length < 1000) break;
+  }
+  const hilos = new Map<string, Hilo>();
+  for (let desde = 0; ; desde += 1000) {
+    const { data } = await supabase.from("charlas_hilos").select("centro_id, canal, asunto, message_id_raiz, ultimo_message_id, ultimo_mensaje_en").eq("canal", "principal").range(desde, desde + 999);
+    for (const h of data ?? []) hilos.set(h.centro_id, h as Hilo);
+    if (!data || data.length < 1000) break;
+  }
+  const { data: abiertas } = await supabase.from("charlas_tareas").select("centro_id").in("estado", ["revisar", "pendiente"]);
+  const conTareaAbierta = new Set((abiertas ?? []).map((t) => t.centro_id as string));
+  return { porId, guardados, hilos, conTareaAbierta };
+}
+
 export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<ResumenLectura> {
   const inicio = Date.now();
+  const sinTiempo = () => Date.now() - inicio > opciones.presupuestoMs;
   const supabase = supabaseCharlas();
   const resumen: ResumenLectura = { carpetas: {}, respondidos_desde_mail: 0, al_dia: true };
   const diasInicial = Number(await config("lectura_inicial_dias", 10));
   const diasHistoricoEnviados = Number(await config("enviados_historico_dias", 75));
-  const indice = await construirIndice();
+  const [indice, conocidos] = await Promise.all([construirIndice(), cargarConocidos()]);
+  const hilosCambiados = new Set<string>();
 
   const cliente = new ImapFlow({ host: IMAP_HOST, port: 993, secure: true, auth: credenciales(), logger: false });
   await cliente.connect();
@@ -168,11 +202,14 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
       carpetas.find((c) => /^(INBOX[./])?(Sent|Enviados|Elementos enviados|Sent Items|Sent Messages)$/i.test(c.path))?.path ??
       null;
 
-    const trabajo: { carpeta: string; direccion: "entrante" | "saliente"; dias: number }[] = [{ carpeta: "INBOX", direccion: "entrante", dias: diasInicial }];
+    // Enviados primero: así, cuando se lee la bandeja de entrada, ya se
+    // conocen los hilos que abrió Alain.
+    const trabajo: { carpeta: string; direccion: "entrante" | "saliente"; dias: number }[] = [];
     if (enviados) trabajo.push({ carpeta: enviados, direccion: "saliente", dias: diasHistoricoEnviados });
+    trabajo.push({ carpeta: "INBOX", direccion: "entrante", dias: diasInicial });
 
     for (const t of trabajo) {
-      if (Date.now() - inicio > opciones.presupuestoMs) {
+      if (sinTiempo()) {
         resumen.al_dia = false;
         break;
       }
@@ -187,102 +224,152 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
         const { data: est } = await supabase.from("charlas_imap_estado").select("*").eq("carpeta", t.carpeta).maybeSingle();
 
         let uids: number[];
-        if (!est || est.uidvalidity !== uidvalidity) {
+        if (!est || est.uidvalidity !== uidvalidity || Number(est.ultimo_uid) === 0) {
           const desde = new Date(Date.now() - t.dias * 86400000);
           uids = ((await cliente.search({ since: desde }, { uid: true })) || []) as number[];
+          // Retomar una primera lectura que se quedó a medias.
+          if (est && est.uidvalidity === uidvalidity && Number(est.ultimo_uid) > 0) uids = uids.filter((u) => u > Number(est.ultimo_uid));
         } else {
           const r = (await cliente.search({ uid: `${Number(est.ultimo_uid) + 1}:*` }, { uid: true })) || [];
           uids = (r as number[]).filter((u) => u > Number(est.ultimo_uid));
         }
         uids.sort((a, b) => a - b);
         stats.nuevos_uid = uids.length;
-        let ultimo = est && est.uidvalidity === uidvalidity ? Number(est.ultimo_uid) : 0;
 
-        // Por tandas de 100: cabeceras primero, cuerpo solo si se asocia.
-        for (let i = 0; i < uids.length; i += 100) {
-          if (Date.now() - inicio > opciones.presupuestoMs) {
-            resumen.al_dia = false;
-            break;
-          }
-          const tanda = uids.slice(i, i + 100);
-          const cabeceras: FetchMessageObject[] = await cliente.fetchAll(tanda.join(","), { uid: true, envelope: true, headers: ["references"] }, { uid: true });
+        let ultimoLeido = est && est.uidvalidity === uidvalidity ? Number(est.ultimo_uid) : 0;
+        let pendientes: Record<string, unknown>[] = [];
+        let ultimoEnCola = ultimoLeido;
 
-          for (const m of cabeceras) {
-            stats.revisados++;
-            const env = m.envelope ?? {};
-            const messageId = limpiarId(env.messageId);
-            const refs = [...new Set([limpiarId(env.inReplyTo), ...idsDeReferencias(m.headers)].filter(Boolean))];
-            const de = norm(env.from?.[0]?.address);
-            const destinos = [...(env.to ?? []), ...(env.cc ?? [])].map((a) => norm(a.address)).filter(Boolean);
-            const contraparte = t.direccion === "entrante" ? [de, ...(env.replyTo ?? []).map((a) => norm(a.address))] : destinos.filter((d) => !PROPIOS.has(d));
-
-            let { centro, por } = { centro: await centroPorHilo(refs), por: "hilo" as string | null };
-            if (!centro) ({ centro, por } = asociar(indice, contraparte));
-            const asunto = env.subject ?? "";
-            const pendiente = !centro && t.direccion === "entrante" && refs.length > 0 && ASUNTO_CHARLAS.test(asunto);
-            if (!centro && !pendiente) continue;
-
-            // Descargar y parsear solo lo asociado. En el histórico de
-            // enviados (primera lectura) basta con las cabeceras: sirven
-            // para reconocer los hilos.
-            const fecha = env.date ? new Date(env.date) : null;
-            const reciente = fecha ? Date.now() - fecha.getTime() < diasInicial * 86400000 : true;
-            let texto: string | null = null;
-            let html: string | null = null;
-            if (reciente || t.direccion === "entrante") {
-              const completo = await cliente.fetchOne(String(m.uid), { source: true }, { uid: true });
-              if (completo && completo.source) {
-                const p = await simpleParser(completo.source);
-                texto = p.text ?? (p.html ? String(p.html).replace(/<[^>]+>/g, " ").replace(/\s+\n/g, "\n") : null);
-                html = p.html ? String(p.html).slice(0, 200000) : null;
-              }
-            }
-
-            const fila = {
-              centro_id: centro,
-              direccion: t.direccion,
-              message_id: messageId || `sin-id-${t.carpeta}-${uidvalidity}-${m.uid}`,
-              in_reply_to: limpiarId(env.inReplyTo) || null,
-              referencias: refs,
-              de: env.from?.[0]?.address ?? null,
-              para: destinos,
-              asunto,
-              texto,
-              html,
-              fecha: fecha?.toISOString() ?? null,
-              carpeta: t.carpeta,
-              uid: m.uid,
-              match_por: centro ? por : null,
-              estado: t.direccion === "saliente" ? "procesado" : pendiente ? "pendiente_asignar" : "nuevo",
-            };
-            const { data: insertado, error } = await supabase
+        const volcar = async () => {
+          if (pendientes.length) {
+            const { data: insertados, error } = await supabase
               .from("charlas_mensajes")
-              .upsert(fila, { onConflict: "message_id", ignoreDuplicates: true })
-              .select("id");
-            if (error) throw new Error(`guardar mensaje: ${error.message}`);
-            const esNuevo = (insertado?.length ?? 0) > 0;
-            if (pendiente) stats.pendientes_asignar++;
-            else stats.asociados++;
-
-            if (centro) await actualizarHilo(centro, messageId, refs, asunto, fila.fecha);
-
-            // Si Alain ha contestado desde Mail, la tarea abierta de ese centro ya no hace falta.
-            if (esNuevo && t.direccion === "saliente" && centro && fila.fecha) {
+              .upsert(pendientes, { onConflict: "message_id", ignoreDuplicates: true })
+              .select("message_id, direccion, centro_id, fecha");
+            if (error) throw new Error(`guardar mensajes: ${error.message}`);
+            // Alain ha contestado desde Mail: la tarea abierta de ese centro sobra.
+            for (const m of insertados ?? []) {
+              if (m.direccion !== "saliente" || !m.centro_id || !m.fecha || !conocidos.conTareaAbierta.has(m.centro_id)) continue;
               const { data: abiertas } = await supabase
                 .from("charlas_tareas")
                 .update({ estado: "descartada", motivo: "Respondido desde Mail", resuelto_en: new Date().toISOString(), resuelto_por: "alain" })
-                .eq("centro_id", centro)
+                .eq("centro_id", m.centro_id)
                 .in("estado", ["revisar", "pendiente"])
-                .lt("creado_en", fila.fecha)
+                .lt("creado_en", m.fecha)
                 .select("id");
               resumen.respondidos_desde_mail += abiertas?.length ?? 0;
             }
+            pendientes = [];
           }
-          ultimo = Math.max(ultimo, ...tanda);
-          await supabase.from("charlas_imap_estado").upsert({ carpeta: t.carpeta, uidvalidity, ultimo_uid: ultimo, ultima_lectura: new Date().toISOString() });
-        }
-        if (uids.length === 0) {
-          await supabase.from("charlas_imap_estado").upsert({ carpeta: t.carpeta, uidvalidity, ultimo_uid: ultimo, ultima_lectura: new Date().toISOString() });
+          if (hilosCambiados.size) {
+            const filas = [...hilosCambiados].map((c) => conocidos.hilos.get(c)!).filter(Boolean);
+            const { error } = await supabase.from("charlas_hilos").upsert(filas, { onConflict: "centro_id,canal" });
+            if (error) throw new Error(`guardar hilos: ${error.message}`);
+            hilosCambiados.clear();
+          }
+          ultimoLeido = ultimoEnCola;
+          await supabase.from("charlas_imap_estado").upsert({ carpeta: t.carpeta, uidvalidity, ultimo_uid: ultimoLeido, ultima_lectura: new Date().toISOString() });
+        };
+
+        try {
+          for (let i = 0; i < uids.length; i += 100) {
+            if (sinTiempo()) {
+              resumen.al_dia = false;
+              break;
+            }
+            const tanda = uids.slice(i, i + 100);
+            const cabeceras: FetchMessageObject[] = await cliente.fetchAll(tanda.join(","), { uid: true, envelope: true, headers: ["references"] }, { uid: true });
+            cabeceras.sort((a, b) => a.uid - b.uid);
+
+            for (const m of cabeceras) {
+              if (sinTiempo()) {
+                resumen.al_dia = false;
+                break;
+              }
+              stats.revisados++;
+              const env = m.envelope ?? {};
+              const messageId = limpiarId(env.messageId) || `sin-id-${t.carpeta}-${uidvalidity}-${m.uid}`;
+              ultimoEnCola = m.uid;
+              if (conocidos.guardados.has(messageId)) continue;
+
+              const refs = [...new Set([limpiarId(env.inReplyTo), ...idsDeReferencias(m.headers)].filter(Boolean))];
+              const de = norm(env.from?.[0]?.address);
+              const destinos = [...(env.to ?? []), ...(env.cc ?? [])].map((a) => norm(a.address)).filter(Boolean);
+              const contraparte = t.direccion === "entrante" ? [de, ...(env.replyTo ?? []).map((a) => norm(a.address))] : destinos.filter((d) => !PROPIOS.has(d));
+
+              let centro: string | null = refs.map((r) => conocidos.porId.get(r)).find(Boolean) ?? null;
+              let por: string | null = centro ? "hilo" : null;
+              if (!centro) ({ centro, por } = asociar(indice, contraparte));
+              const asunto = env.subject ?? "";
+              const pendiente = !centro && t.direccion === "entrante" && refs.length > 0 && ASUNTO_CHARLAS.test(asunto);
+              if (!centro && !pendiente) continue;
+
+              // Cuerpo: solo de lo asociado, y en el histórico de enviados
+              // solo de lo reciente (lo antiguo sirve por sus cabeceras).
+              const fecha = env.date ? new Date(env.date) : null;
+              const reciente = fecha ? Date.now() - fecha.getTime() < diasInicial * 86400000 : true;
+              let texto: string | null = null;
+              let html: string | null = null;
+              if (reciente || t.direccion === "entrante") {
+                const completo = await cliente.fetchOne(String(m.uid), { source: true }, { uid: true });
+                if (completo && completo.source) {
+                  const p = await simpleParser(completo.source);
+                  texto = p.text ?? (p.html ? String(p.html).replace(/<[^>]+>/g, " ").replace(/\s+\n/g, "\n") : null);
+                  html = p.html ? String(p.html).slice(0, 200000) : null;
+                }
+              }
+
+              const fechaISO = fecha?.toISOString() ?? null;
+              pendientes.push({
+                centro_id: centro,
+                direccion: t.direccion,
+                message_id: messageId,
+                in_reply_to: limpiarId(env.inReplyTo) || null,
+                referencias: refs,
+                de: env.from?.[0]?.address ?? null,
+                para: destinos,
+                asunto,
+                texto,
+                html,
+                fecha: fechaISO,
+                carpeta: t.carpeta,
+                uid: m.uid,
+                match_por: centro ? por : null,
+                estado: t.direccion === "saliente" ? "procesado" : pendiente ? "pendiente_asignar" : "nuevo",
+              });
+              conocidos.guardados.add(messageId);
+              if (pendiente) stats.pendientes_asignar++;
+              else stats.asociados++;
+
+              if (centro) {
+                // Lo que se acaba de ver también sirve para los siguientes correos del mismo hilo.
+                conocidos.porId.set(messageId, centro);
+                for (const r of refs) if (!conocidos.porId.has(r)) conocidos.porId.set(r, centro);
+                const h = conocidos.hilos.get(centro);
+                if (!h) {
+                  conocidos.hilos.set(centro, {
+                    centro_id: centro,
+                    canal: "principal",
+                    asunto: asunto.replace(/^((re|rv|fw|fwd|erantz)\s*:\s*)+/i, ""),
+                    message_id_raiz: refs[0] ?? messageId,
+                    ultimo_message_id: messageId,
+                    ultimo_mensaje_en: fechaISO,
+                  });
+                  hilosCambiados.add(centro);
+                } else if (fechaISO && (!h.ultimo_mensaje_en || fechaISO > h.ultimo_mensaje_en)) {
+                  h.ultimo_message_id = messageId;
+                  h.ultimo_mensaje_en = fechaISO;
+                  hilosCambiados.add(centro);
+                }
+              }
+              if (pendientes.length >= 25) await volcar();
+            }
+            await volcar();
+          }
+          if (uids.length === 0) await volcar();
+        } finally {
+          // Lo que esté en cola se guarda aunque se acabe el tiempo.
+          if (pendientes.length || hilosCambiados.size) await volcar().catch(() => {});
         }
       } finally {
         lock.release();
@@ -292,23 +379,6 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
     await cliente.logout().catch(() => {});
   }
   return resumen;
-}
-
-async function actualizarHilo(centro: string, messageId: string, refs: string[], asunto: string, fecha: string | null) {
-  const supabase = supabaseCharlas();
-  const { data: h } = await supabase.from("charlas_hilos").select("*").eq("centro_id", centro).eq("canal", "principal").maybeSingle();
-  if (!h) {
-    await supabase.from("charlas_hilos").insert({
-      centro_id: centro,
-      canal: "principal",
-      asunto: asunto.replace(/^((re|rv|fw|fwd|erantz)\s*:\s*)+/i, ""),
-      message_id_raiz: refs[0] ?? messageId,
-      ultimo_message_id: messageId,
-      ultimo_mensaje_en: fecha,
-    });
-  } else if (fecha && (!h.ultimo_mensaje_en || fecha > h.ultimo_mensaje_en)) {
-    await supabase.from("charlas_hilos").update({ ultimo_message_id: messageId, ultimo_mensaje_en: fecha }).eq("id", h.id);
-  }
 }
 
 // ---------------------------------------------------------------------------

@@ -103,7 +103,15 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
     setAviso("");
     try {
       const r = await fetch("/api/charlas/cron", { method: "POST", headers: headers() });
-      const d = await r.json();
+      const crudo = await r.text();
+      let d;
+      try {
+        d = JSON.parse(crudo);
+      } catch {
+        // Vercel corta la función si pasa de su tiempo máximo y responde con
+        // texto, no JSON. Lo leído hasta ese momento ya está guardado.
+        throw new Error(`la lectura ha tardado más de la cuenta (${r.status}). Lo leído se ha guardado: pulsa otra vez.`);
+      }
       if (!r.ok) throw new Error(d.error || "Error");
       const c = d.lectura?.carpetas ?? {};
       const asociados = Object.values(c).reduce((s: number, x) => s + ((x as { asociados: number }).asociados ?? 0), 0);
