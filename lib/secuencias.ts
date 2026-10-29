@@ -20,6 +20,7 @@ export const SECUENCIAS = [
   "guias",
   "entrenatzaile_valoracion",
   "hoja_ruta_abandono",
+  "tumision",
 ] as const;
 export type Secuencia = (typeof SECUENCIAS)[number];
 
@@ -35,6 +36,7 @@ export const SECUENCIA_ETIQUETA: Record<Secuencia, string> = {
   guias: "Guías gratuitas",
   entrenatzaile_valoracion: "Entrenatzaile · valoración",
   hoja_ruta_abandono: "Hoja de Ruta · reserva a medias",
+  tumision: "Tumisión · 9 días (nueva)",
 };
 
 /** Secuencias con contenido en los dos idiomas. Nurture solo va en castellano. */
@@ -45,7 +47,51 @@ export const SECUENCIAS_BILINGUES: Secuencia[] = [
   "belaustegi",
   "valoracion",
   "entrenatzaile_valoracion",
+  "tumision",
 ];
+
+/**
+ * Secuencias en las que se pueden añadir mails al final desde el panel, y en
+ * qué posición empieza cada una (nurture arranca en el M0; tumisión, como la
+ * vieja de mision, en el mail 1).
+ */
+export const PRIMERA_POSICION: Partial<Record<Secuencia, number>> = {
+  nurture: 0,
+  tumision: 1,
+};
+
+/**
+ * Cuándo sale un mail de cada secuencia, para la ficha del editor. Lo que no
+ * esté aquí usa la descripción de nurture.
+ */
+export function cuandoSale(secuencia: Secuencia, posicion: number): string | null {
+  if (secuencia === "tumision") {
+    return posicion <= 1
+      ? "Al instante, en cuanto se apunta desde la tarjeta."
+      : "A las 21:00 (hora de Madrid), un día después del anterior.";
+  }
+  if (secuencia === "mision" || secuencia === "comodin") {
+    if (posicion <= 1) return "Al instante, en cuanto se apunta desde la tarjeta.";
+    if (posicion === 2) return "48 horas después del alta.";
+    if (secuencia === "comodin" && posicion === 3) return "96 horas después del alta.";
+    return "No se envía: la secuencia termina en el mail anterior.";
+  }
+  return null;
+}
+
+/**
+ * Aviso bajo el título de cada secuencia en el editor: qué pasa si un mail
+ * está inactivo o vacío. No es igual en todas, y conviene decirlo tal cual.
+ */
+export function avisoSecuencia(secuencia: Secuencia): string {
+  if (secuencia === "tumision") {
+    return "Esta secuencia todavía no se envía a nadie: se activará el 18 de noviembre. Puedes escribir los mails y mandarte pruebas. Durante los 9 días la familia no recibe la newsletter diaria; al terminar, pasa a recibirla.";
+  }
+  if (secuencia === "nurture") {
+    return "Los cambios afectan solo a los mails que aún no se han enviado. Un mail inactivo o vacío detiene la secuencia: quien esté en esa posición se queda parado ahí hasta que lo actives.";
+  }
+  return "Los cambios afectan solo a los mails que aún no se han enviado. Ojo: si desactivas un mail aquí, sale igual la versión guardada en el código. Para que deje de enviarse hay que pedirlo (se arreglará en noviembre).";
+}
 
 // Valores de mentira para la previsualización y el "Enviar prueba".
 //
@@ -69,6 +115,13 @@ export const VALORES_DE_MUESTRA: Partial<Record<Secuencia, Record<string, string
   },
   // Los mismos cuatro que Comodín: las dos secuencias comparten marcadores.
   mision: {
+    tutorial: "https://alainzulaika.com/ejemplo/tutorial",
+    cambiar_idioma: "https://alainzulaika.com/ejemplo/idioma",
+    contacto: "https://alainzulaika.com/ejemplo/contacto",
+    entrenamiento: "mailto:contacto@alainzulaika.com?subject=Entrenamiento",
+  },
+  // La nueva de tumisión, de momento con los mismos marcadores que mision.
+  tumision: {
     tutorial: "https://alainzulaika.com/ejemplo/tutorial",
     cambiar_idioma: "https://alainzulaika.com/ejemplo/idioma",
     contacto: "https://alainzulaika.com/ejemplo/contacto",
@@ -123,6 +176,12 @@ export const MARCADORES: Partial<Record<Secuencia, Array<{ clave: string; descri
   ],
   mision: [
     { clave: "tutorial", descripcion: "Enlace al tutorial del truco" },
+    { clave: "cambiar_idioma", descripcion: "Enlace para recibirlos en el otro idioma" },
+    { clave: "contacto", descripcion: "Página de contacto" },
+    { clave: "entrenamiento", descripcion: "Mailto preguntando por entrenamiento" },
+  ],
+  tumision: [
+    { clave: "tutorial", descripcion: "Enlace al tutorial del truco del vaso" },
     { clave: "cambiar_idioma", descripcion: "Enlace para recibirlos en el otro idioma" },
     { clave: "contacto", descripcion: "Página de contacto" },
     { clave: "entrenamiento", descripcion: "Mailto preguntando por entrenamiento" },
