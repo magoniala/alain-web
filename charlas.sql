@@ -89,9 +89,11 @@ CREATE TABLE IF NOT EXISTS charlas_contactos (
   telefono text,
   rol text NOT NULL DEFAULT 'otro' CHECK (rol IN ('responsable','ampa','secretaria','direccion','otro')),
   origen text NOT NULL DEFAULT 'vault',   -- vault | panel | correo | web | llamada
-  creado_en timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (centro_id, lower(email))
+  creado_en timestamptz NOT NULL DEFAULT now()
 );
+-- Un mismo correo no se repite dentro de un centro (índice único con función:
+-- Postgres no lo admite como UNIQUE en la tabla).
+CREATE UNIQUE INDEX IF NOT EXISTS charlas_contactos_unico_idx ON charlas_contactos (centro_id, lower(email)) WHERE email IS NOT NULL;
 CREATE INDEX IF NOT EXISTS charlas_contactos_email_idx ON charlas_contactos (lower(email));
 
 -- ------------------------------------------------------------
@@ -323,21 +325,32 @@ DROP TRIGGER IF EXISTS charlas_eventos_touch ON charlas_eventos;
 CREATE TRIGGER charlas_eventos_touch BEFORE UPDATE ON charlas_eventos
   FOR EACH ROW EXECUTE FUNCTION charlas_touch();
 
+-- Antes de guardar: en conversación → solo Alain. No se baja solo; lo baja
+-- Alain desde el panel.
+CREATE OR REPLACE FUNCTION charlas_nivel_por_estado() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF (TG_OP = 'INSERT' OR NEW.estado IS DISTINCT FROM OLD.estado) AND NEW.estado LIKE '6%' THEN
+    NEW.nivel_autonomia := 'C';
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS charlas_centros_nivel ON charlas_centros;
+CREATE TRIGGER charlas_centros_nivel BEFORE INSERT OR UPDATE ON charlas_centros
+  FOR EACH ROW EXECUTE FUNCTION charlas_nivel_por_estado();
+
+-- Después de guardar (la fila ya existe): apuntar el cambio de estado.
 CREATE OR REPLACE FUNCTION charlas_log_estado() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP = 'INSERT' OR NEW.estado IS DISTINCT FROM OLD.estado THEN
     INSERT INTO charlas_estado_log (centro_id, de, a, origen)
       VALUES (NEW.id, CASE WHEN TG_OP = 'UPDATE' THEN OLD.estado END, NEW.estado, NEW.actualizado_por);
-    -- En conversación → solo Alain. No se baja solo: lo baja Alain desde el panel.
-    IF NEW.estado LIKE '6%' THEN
-      NEW.nivel_autonomia := 'C';
-    END IF;
   END IF;
-  RETURN NEW;
+  RETURN NULL;
 END $$;
 
 DROP TRIGGER IF EXISTS charlas_centros_estado ON charlas_centros;
-CREATE TRIGGER charlas_centros_estado BEFORE INSERT OR UPDATE ON charlas_centros
+CREATE TRIGGER charlas_centros_estado AFTER INSERT OR UPDATE ON charlas_centros
   FOR EACH ROW EXECUTE FUNCTION charlas_log_estado();
 
 -- Sin políticas: solo la service key escribe y lee, como en el resto.
