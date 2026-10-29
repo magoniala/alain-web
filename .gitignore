@@ -40,3 +40,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 scripts/charlas/vault-export.json
+scripts/charlas/centros-snapshot.tgz
