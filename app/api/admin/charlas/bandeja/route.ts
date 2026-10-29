@@ -193,13 +193,28 @@ async function enviar(body: Record<string, unknown>) {
     .select("id")
     .single();
 
-  const editado = texto !== (t.borrador_texto ?? "").trim() || asunto !== (t.borrador_asunto ?? "").trim();
-  if (editado) {
+  // Si eligió la alternativa, lo que cuenta como "borrador" es esa.
+  const alt = body.opcion === "b" ? (t.contexto?.alternativa as { asunto?: string; cuerpo?: string } | null) : null;
+  const borradorTexto = (alt?.cuerpo ?? t.borrador_texto ?? "").trim();
+  const borradorAsunto = (alt?.asunto || t.borrador_asunto || "").trim();
+  const editado = texto !== borradorTexto || asunto !== borradorAsunto;
+  if (alt) {
+    // Elegir la B también enseña: queda como corrección con motivo fijo.
     await supabase.from("charlas_correcciones").insert({
       tarea_id: t.id,
       tipo_mensaje: t.contexto?.clasificacion ?? t.tipo,
       idioma: t.idioma,
       borrador: `Asunto: ${t.borrador_asunto ?? ""}\n\n${t.borrador_texto ?? ""}`,
+      final: `Asunto: ${asunto}\n\n${texto}`,
+      motivo: `ELIGIÓ LA ALTERNATIVA "${(t.contexto?.alternativa as { etiqueta?: string })?.etiqueta ?? "B"}" en vez de "${t.contexto?.etiqueta_principal ?? "A"}"`,
+    });
+  }
+  if (editado) {
+    await supabase.from("charlas_correcciones").insert({
+      tarea_id: t.id,
+      tipo_mensaje: t.contexto?.clasificacion ?? t.tipo,
+      idioma: t.idioma,
+      borrador: `Asunto: ${borradorAsunto}\n\n${borradorTexto}`,
       final: `Asunto: ${asunto}\n\n${texto}`,
       motivo: typeof body.motivo === "string" && body.motivo.trim() ? body.motivo.trim() : null,
     });

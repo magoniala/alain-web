@@ -78,24 +78,38 @@ export function quitarCita(texto: string): string {
 interface Indice {
   porEmail: Map<string, string>;
   porDominio: Map<string, string>;
+  /** (slug del nombre del centro, id) para casar dominios como durangobhi.net con "Durango BHI". */
+  slugs: { slug: string; id: string }[];
 }
+
+const slug = (s: string) =>
+  s
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
 
 async function construirIndice(): Promise<Indice> {
   const supabase = supabaseCharlas();
   const porEmail = new Map<string, string>();
   const dominios = new Map<string, Set<string>>();
-  const anotar = (email: string | null, centro: string) => {
-    const e = norm(email);
-    if (!e.includes("@")) return;
-    porEmail.set(e, centro);
-    const d = dominio(e);
-    if (!dominios.has(d)) dominios.set(d, new Set());
-    dominios.get(d)!.add(centro);
+  const slugs: { slug: string; id: string }[] = [];
+  // Un campo puede traer varios correos ("a@x.eus / b@x.eus"): se cogen todos.
+  const anotar = (valor: string | null, centro: string) => {
+    for (const e of (valor ?? "").toLowerCase().match(EMAIL_RE) ?? []) {
+      porEmail.set(e, centro);
+      const d = dominio(e);
+      if (!dominios.has(d)) dominios.set(d, new Set());
+      dominios.get(d)!.add(centro);
+    }
   };
 
   for (let desde = 0; ; desde += 1000) {
-    const { data } = await supabase.from("charlas_centros").select("id, responsable_email, email_centro, ampa_email").range(desde, desde + 999);
+    const { data } = await supabase.from("charlas_centros").select("id, nombre, responsable_email, email_centro, ampa_email").range(desde, desde + 999);
     for (const c of data ?? []) {
+      slugs.push({ slug: slug(c.nombre), id: c.id });
       anotar(c.responsable_email, c.id);
       anotar(c.email_centro, c.id);
       anotar(c.ampa_email, c.id);
@@ -112,7 +126,7 @@ async function construirIndice(): Promise<Indice> {
   for (const [d, centros] of dominios) {
     if (centros.size === 1 && !DOMINIOS_GENERICOS.has(d)) porDominio.set(d, [...centros][0]);
   }
-  return { porEmail, porDominio };
+  return { porEmail, porDominio, slugs };
 }
 
 function asociar(indice: Indice, direcciones: string[]): { centro: string | null; por: string | null } {
@@ -123,6 +137,17 @@ function asociar(indice: Indice, direcciones: string[]): { centro: string | null
   for (const a of direcciones) {
     const c = indice.porDominio.get(dominio(norm(a)));
     if (c) return { centro: c, por: "dominio" };
+  }
+  // El dominio suele llevar el nombre del centro: durangobhi.net, kirikino.com,
+  // armentiaikastola.eus. Vale si casa con un solo centro.
+  for (const a of direcciones) {
+    const d = dominio(norm(a));
+    if (!d || DOMINIOS_GENERICOS.has(d)) continue;
+    const etiqueta = slug(d.split(".")[0] ?? "");
+    if (etiqueta.length < 5) continue;
+    const candidatos = indice.slugs.filter((x) => x.slug.startsWith(etiqueta) || (etiqueta.length >= 7 && x.slug.includes(etiqueta)));
+    const ids = new Set(candidatos.map((x) => x.id));
+    if (ids.size === 1) return { centro: [...ids][0], por: "dominio~nombre" };
   }
   return { centro: null, por: null };
 }
@@ -381,12 +406,14 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
   }
 
   // Huérfanos: con los hilos de Enviados ya leídos, muchos se pueden asociar solos.
-  const { data: huerfanos } = await supabase.from("charlas_mensajes").select("id, referencias, in_reply_to").eq("estado", "pendiente_asignar");
+  const { data: huerfanos } = await supabase.from("charlas_mensajes").select("id, referencias, in_reply_to, de").eq("estado", "pendiente_asignar");
   for (const h of huerfanos ?? []) {
     const refs = [h.in_reply_to, ...(h.referencias ?? [])].filter(Boolean) as string[];
-    const centro = refs.map((r) => conocidos.porId.get(r)).find(Boolean);
+    let centro = refs.map((r) => conocidos.porId.get(r)).find(Boolean) ?? null;
+    let por = "hilo";
+    if (!centro) ({ centro, por } = asociar(indice, [h.de ?? ""]) as { centro: string | null; por: string });
     if (centro) {
-      await supabase.from("charlas_mensajes").update({ centro_id: centro, estado: "nuevo", match_por: "hilo" }).eq("id", h.id);
+      await supabase.from("charlas_mensajes").update({ centro_id: centro, estado: "nuevo", match_por: por }).eq("id", h.id);
       resumen.huerfanos_asociados++;
     }
   }

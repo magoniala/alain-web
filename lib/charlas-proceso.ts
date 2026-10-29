@@ -189,7 +189,17 @@ export async function procesarMensaje(mensajeId: string, instruccion?: string): 
     estado: "revisar",
     idioma: idiomaRespuesta,
     mensaje_entrante_id: m.id,
-    contexto: { clasificacion: resultado.clasificacion, confianza: resultado.confianza, resumen: resultado.resumen, datos: resultado.datos, instruccion: instruccion ?? null },
+    contexto: {
+      clasificacion: resultado.clasificacion,
+      confianza: resultado.confianza,
+      resumen: resultado.resumen,
+      datos: resultado.datos,
+      instruccion: instruccion ?? null,
+      etiqueta_principal: resultado.alternativa?.etiqueta_principal ?? null,
+      alternativa: resultado.alternativa
+        ? { etiqueta: resultado.alternativa.etiqueta, asunto: resultado.alternativa.asunto, cuerpo: resultado.alternativa.cuerpo, adjuntar_dossier: !!resultado.alternativa.adjuntar_dossier }
+        : null,
+    },
     borrador_asunto: resultado.respuesta?.asunto ?? null,
     borrador_texto: resultado.respuesta?.cuerpo ?? null,
     adjuntar_dossier: resultado.respuesta?.adjuntar_dossier ?? false,

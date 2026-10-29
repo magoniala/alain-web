@@ -50,6 +50,8 @@ export interface ResultadoIA {
   };
   responder: boolean;
   respuesta: { asunto: string; cuerpo: string; adjuntar_dossier: boolean } | null;
+  /** Segunda versión cuando hay dos formas razonables de contestar (p. ej. con o sin abrir la puerta a los shows). */
+  alternativa: { etiqueta: string; etiqueta_principal: string; asunto: string; cuerpo: string; adjuntar_dossier: boolean } | null;
   cambios_crm: {
     estado?: string | null;
     proxima_accion?: string | null;
@@ -103,11 +105,12 @@ Qué decidir:
 - cambios_crm.estado: uno de los estados exactos del CRM ("4 Ha respondido", "5 Dossier enviado", "6 en conversación", "7 Ganado", "8 Perdido", "9 Aparcado (con fecha de reactivación)", "3.9 reenviado - pendiente"…). El estado es el que quedará DESPUÉS de enviar tu respuesta (si adjuntas dossier → "5 Dossier enviado"; si aparcas → "9 Aparcado (con fecha de reactivación)"). null si no cambia.
 - cambios_crm.fecha_proxima_accion (AAAA-MM-DD) y proxima_accion (texto corto): según el Flujo. Tras dossier: +7 días naturales para el seguimiento. Si dan un mes: el primer día laborable de ese mes (o el 15 si dicen "mediados"). Hoy es {{HOY}}.
 - necesita_alain: true si es un lead caliente (interesado_fechas), si hay queja o tono negativo, si hay dinero o fechas concretas que confirmar, si viene de un ayuntamiento o catálogo, o si no sabes qué responder. En esos casos redacta igualmente el borrador si puedes, pero Alain decide.
+- alternativa: cuando haya DOS formas razonables de contestar y la elección sea de Alain (por ejemplo: solo acuse de recibo frente a acuse + abrir la puerta a los shows según la REGLA FIJA; o contestar corto frente a aportar una referencia), redacta las dos completas. "respuesta" es la que recomiendas; "alternativa" es la otra, con "etiqueta" (2-5 palabras que digan en qué se diferencia, p. ej. "Con puerta a los shows") y "etiqueta_principal" (lo mismo para la recomendada, p. ej. "Solo acuse"). NUNCA escribas en nota_para_alain "tendrías que añadirlo tú": si hay algo que añadir, lo escribes tú como alternativa. null si solo hay una forma sensata de contestar.
 - nota_para_alain: una o dos frases sobre algo que deba saber antes de enviar (dato raro, duda, riesgo). null si nada.
 - resumen: una línea en castellano para el Registro, al estilo "Responde: calendario cerrado, deciden en mayo".
 
 Devuelve SOLO el JSON, sin texto alrededor, con esta forma exacta:
-{"clasificacion":"…","confianza":0.0,"idioma":"es|eu|mixto","resumen":"…","datos":{"mes_reactivacion":null,"persona_nueva":null,"n_grupos":null,"nivel":null,"motivo":null},"responder":true,"respuesta":{"asunto":"…","cuerpo":"…","adjuntar_dossier":false},"cambios_crm":{"estado":null,"proxima_accion":null,"fecha_proxima_accion":null,"calendario_abierto":null},"nota_para_alain":null,"necesita_alain":false}
+{"clasificacion":"…","confianza":0.0,"idioma":"es|eu|mixto","resumen":"…","datos":{"mes_reactivacion":null,"persona_nueva":null,"n_grupos":null,"nivel":null,"motivo":null},"responder":true,"respuesta":{"asunto":"…","cuerpo":"…","adjuntar_dossier":false},"alternativa":null,"cambios_crm":{"estado":null,"proxima_accion":null,"fecha_proxima_accion":null,"calendario_abierto":null},"nota_para_alain":null,"necesita_alain":false}
 El asunto de la respuesta es "Re: " + el asunto original (sin duplicar "Re:"). Si responder es false, respuesta es null.`;
 
 export interface EntradaIA {
@@ -218,5 +221,6 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
   r.cambios_crm = r.cambios_crm ?? {};
   if (r.cambios_crm.fecha_proxima_accion && !/^\d{4}-\d{2}-\d{2}$/.test(r.cambios_crm.fecha_proxima_accion)) r.cambios_crm.fecha_proxima_accion = null;
   if (!r.responder) r.respuesta = null;
+  if (!r.respuesta || !r.alternativa?.cuerpo) r.alternativa = null;
   return r;
 }

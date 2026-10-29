@@ -24,7 +24,13 @@ interface Tarea {
   destinatario: string | null;
   nota_para_alain: string | null;
   cambios_crm: Record<string, unknown>;
-  contexto: { clasificacion?: string; confianza?: number; resumen?: string };
+  contexto: {
+    clasificacion?: string;
+    confianza?: number;
+    resumen?: string;
+    etiqueta_principal?: string | null;
+    alternativa?: { etiqueta: string; asunto: string; cuerpo: string; adjuntar_dossier: boolean } | null;
+  };
   creado_en: string;
   centro: { id: string; nombre: string; estado: string; responsable: string | null; euskera: string | null; localidad: string | null; territorio: string | null } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null } | null;
@@ -277,10 +283,26 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
   const [motivo, setMotivo] = useState("");
   const [instruccion, setInstruccion] = useState("");
   const [verOriginal, setVerOriginal] = useState(true);
+  const [opcion, setOpcion] = useState<"a" | "b">("a");
+  const alt = t.contexto?.alternativa ?? null;
+
+  function elegir(o: "a" | "b") {
+    setOpcion(o);
+    if (o === "a") {
+      setAsunto(t.borrador_asunto ?? "");
+      setTexto(t.borrador_texto ?? "");
+      setDossier(t.adjuntar_dossier);
+    } else if (alt) {
+      setAsunto(alt.asunto || t.borrador_asunto || "");
+      setTexto(alt.cuerpo);
+      setDossier(alt.adjuntar_dossier);
+    }
+  }
   const [ocupado, setOcupado] = useState("");
   const [mensaje, setMensaje] = useState("");
 
-  const editado = texto.trim() !== (t.borrador_texto ?? "").trim() || asunto.trim() !== (t.borrador_asunto ?? "").trim();
+  const base = opcion === "b" && alt ? { asunto: alt.asunto || t.borrador_asunto || "", texto: alt.cuerpo } : { asunto: t.borrador_asunto ?? "", texto: t.borrador_texto ?? "" };
+  const editado = texto.trim() !== base.texto.trim() || asunto.trim() !== base.asunto.trim();
   const conRespuesta = t.tipo === "respuesta";
   const cambios = Object.entries(t.cambios_crm ?? {}).filter(([k]) => k !== "contacto_nuevo");
   const persona = t.cambios_crm?.contacto_nuevo as { nombre?: string; email?: string } | undefined;
@@ -328,6 +350,19 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
         <div className="p-5">
           {t.nota_para_alain && <p className="mb-3 bg-amber-50 px-3 py-2 text-[0.82rem] text-amber-900">⚑ {t.nota_para_alain}</p>}
 
+          {conRespuesta && alt && (
+            <div className="mb-3 flex gap-1 rounded-lg bg-gray-100 p-1 text-[0.8rem]">
+              {(["a", "b"] as const).map((o) => (
+                <button
+                  key={o}
+                  onClick={() => elegir(o)}
+                  className={`flex-1 rounded-md px-3 py-1.5 ${opcion === o ? "bg-white font-medium text-gray-900 shadow-sm" : "text-gray-600"}`}
+                >
+                  {o === "a" ? `A · ${t.contexto?.etiqueta_principal ?? "Propuesta"}` : `B · ${alt.etiqueta}`}
+                </button>
+              ))}
+            </div>
+          )}
           {conRespuesta ? (
             <>
               <label className="block text-[0.75rem] text-gray-500">
@@ -376,7 +411,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
           <div className="mt-4 flex flex-wrap gap-2">
             {conRespuesta ? (
               <button
-                onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, adjuntar_dossier: dossier, dossier_idioma: idiomaDossier, motivo })}
+                onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, adjuntar_dossier: dossier, dossier_idioma: idiomaDossier, motivo, opcion: alt ? opcion : null })}
                 disabled={!!ocupado || (editado && !motivo.trim())}
                 title={editado && !motivo.trim() ? "Escribe por qué lo cambias" : ""}
                 className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40"
