@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 scripts/charlas/vault-export.json
 scripts/charlas/centros-snapshot.tgz
+scripts/charlas/_proyecto.tgz
+scripts/charlas/_conocimiento/
+scripts/charlas/_conocimiento.tgz

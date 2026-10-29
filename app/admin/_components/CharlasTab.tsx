@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ESTADOS, faseDeEstado } from "@/lib/charlas";
+import Bandeja from "./charlas/Bandeja";
 
 // Pestaña Charlas · fase 0 del sistema automático.
 //
@@ -74,6 +75,13 @@ function colorEstado(estado: string) {
 }
 
 export default function CharlasTab() {
+  const [seccion, setSeccion] = useState<"bandeja" | "crm">(() => {
+    try {
+      return (sessionStorage.getItem("charlas_seccion") as "bandeja" | "crm") || "bandeja";
+    } catch {
+      return "bandeja";
+    }
+  });
   const [centros, setCentros] = useState<CentroLista[]>([]);
   const [porEstado, setPorEstado] = useState<Record<string, number>>({});
   const [cargando, setCargando] = useState(true);
@@ -179,10 +187,41 @@ export default function CharlasTab() {
 
   const sinProxima = centros.filter((c) => activos(c) && !c.fecha_proxima_accion).length;
 
+  function irA(s: "bandeja" | "crm") {
+    setSeccion(s);
+    try {
+      sessionStorage.setItem("charlas_seccion", s);
+    } catch {}
+  }
+
+  const selector = (
+    <div className="mb-5 flex gap-1 border-b border-gray-200">
+      {(["bandeja", "crm"] as const).map((s) => (
+        <button
+          key={s}
+          onClick={() => irA(s)}
+          className={`-mb-px border-b-2 px-4 py-2 text-[0.9rem] ${seccion === s ? "border-[#0F2240] font-medium text-[#0F2240]" : "border-transparent text-gray-500 hover:text-gray-800"}`}
+        >
+          {s === "bandeja" ? "Bandeja" : "CRM"}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (seccion === "bandeja") {
+    return (
+      <div>
+        {selector}
+        <Bandeja centros={centros.map((c) => ({ id: c.id, nombre: c.nombre }))} onCambio={cargar} />
+      </div>
+    );
+  }
+
   if (cargando && centros.length === 0) return <p className="text-gray-500">Cargando…</p>;
 
   return (
     <div className="space-y-6">
+      {selector}
       {error && <p className="text-sm text-[#DC2626]">{error}</p>}
 
       {/* Pipeline */}
