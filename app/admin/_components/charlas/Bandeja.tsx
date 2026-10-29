@@ -73,6 +73,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [leyendo, setLeyendo] = useState(false);
+  const [progreso, setProgreso] = useState({ pasada: 0, segundos: 0, fase: "" });
   const [aviso, setAviso] = useState("");
 
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("admin_pw") || "" }), []);
@@ -98,37 +99,78 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
     return d;
   }
 
+  // "Leer buzón ahora" hace las pasadas que haga falta seguidas (cada una
+  // es una llamada al cron de como mucho 60 s) hasta que el buzón está al
+  // día y no queda nada pendiente para la IA. Al acabar suena un aviso y,
+  // si el navegador lo permite, sale una notificación: así se puede cambiar
+  // de pestaña mientras trabaja.
   async function leerAhora() {
     setLeyendo(true);
     setAviso("");
     try {
-      const r = await fetch("/api/charlas/cron", { method: "POST", headers: headers() });
-      const crudo = await r.text();
-      let d;
-      try {
-        d = JSON.parse(crudo);
-      } catch {
-        // Vercel corta la función si pasa de su tiempo máximo y responde con
-        // texto, no JSON. Lo leído hasta ese momento ya está guardado.
-        throw new Error(`la lectura ha tardado más de la cuenta (${r.status}). Lo leído se ha guardado: pulsa otra vez.`);
+      if (typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+    } catch {}
+
+    const total = { leidos: 0, procesados: 0, tareas: 0, ya: 0, huerfanos: 0, errores: [] as string[] };
+    const inicio = Date.now();
+    const reloj = setInterval(() => setProgreso((p) => ({ ...p, segundos: Math.round((Date.now() - inicio) / 1000) })), 1000);
+    let fallo: string | null = null;
+
+    try {
+      for (let pasada = 1; pasada <= 12; pasada++) {
+        setProgreso((p) => ({ ...p, pasada, fase: pasada === 1 ? "Leyendo el buzón…" : p.fase }));
+        const r = await fetch("/api/charlas/cron", { method: "POST", headers: headers() });
+        const crudo = await r.text();
+        let d;
+        try {
+          d = JSON.parse(crudo);
+        } catch {
+          // Vercel corta la función si pasa de su tiempo y responde con texto.
+          // Lo leído ya está guardado: se sigue con otra pasada.
+          setProgreso((p) => ({ ...p, fase: "Una pasada se ha alargado; sigo donde se quedó…" }));
+          continue;
+        }
+        if (!r.ok) throw new Error(d.error || "Error");
+        if (d.error_lectura) throw new Error(`lectura del buzón: ${d.error_lectura}`);
+
+        const c = d.lectura?.carpetas ?? {};
+        total.leidos += Object.values(c).reduce((s: number, x) => s + ((x as { asociados: number }).asociados ?? 0), 0);
+        total.procesados += d.proceso?.procesados ?? 0;
+        total.tareas += d.proceso?.tareas ?? 0;
+        total.ya += d.proceso?.ya_respondidos ?? 0;
+        total.huerfanos += d.lectura?.huerfanos_asociados ?? 0;
+        total.errores.push(...(d.proceso?.errores ?? []));
+
+        const leyendoHistorico = !d.lectura?.al_dia;
+        const quedan = d.proceso?.pendientes_restantes ?? 0;
+        setProgreso((p) => ({
+          ...p,
+          fase: leyendoHistorico
+            ? `Leyendo el histórico del buzón… (${total.leidos} correos de centros hasta ahora)`
+            : quedan > 0
+              ? `Redactando respuestas con IA… (${total.procesados} hechas, quedan ${quedan})`
+              : "Terminando…",
+        }));
+        await cargar();
+        if (!leyendoHistorico && quedan === 0) break;
       }
-      if (!r.ok) throw new Error(d.error || "Error");
-      const c = d.lectura?.carpetas ?? {};
-      const asociados = Object.values(c).reduce((s: number, x) => s + ((x as { asociados: number }).asociados ?? 0), 0);
-      setAviso(
-        (d.error_lectura ? `⚠️ Lectura: ${d.error_lectura} · ` : "") +
-          (d.proceso?.esperando_lectura && !d.error_lectura ? "Todavía leyendo el histórico del buzón; pulsa otra vez en un momento. · " : "") +
-          `${asociados} correos de centros leídos · ${d.proceso?.procesados ?? 0} procesados con IA · ${d.proceso?.tareas ?? 0} tareas nuevas` +
-          (d.proceso?.ya_respondidos ? ` · ${d.proceso.ya_respondidos} ya respondidos desde Mail` : "") +
-          (d.proceso?.errores?.length ? ` · ⚠️ ${d.proceso.errores.join(" | ")}` : "")
-      );
-      await cargar();
-      onCambio();
     } catch (e) {
-      setAviso(`Error: ${(e as Error).message}`);
+      fallo = (e as Error).message;
     } finally {
+      clearInterval(reloj);
       setLeyendo(false);
     }
+
+    const resumen = fallo
+      ? `Error: ${fallo}`
+      : `${total.leidos} correos de centros leídos · ${total.procesados} procesados con IA · ${total.tareas} tareas nuevas` +
+        (total.ya ? ` · ${total.ya} ya respondidos desde Mail` : "") +
+        (total.huerfanos ? ` · ${total.huerfanos} correos sin centro asociados solos` : "") +
+        (total.errores.length ? ` · ⚠️ ${total.errores.join(" | ")}` : "");
+    setAviso(resumen);
+    await cargar();
+    onCambio();
+    avisarFin(fallo ? "Bandeja de charlas: ha habido un error" : `Bandeja de charlas lista · ${total.tareas} por revisar`, resumen);
   }
 
   async function cambiarConfig(clave: "modo_prueba" | "lector_activo", valor: boolean) {
@@ -148,8 +190,9 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
     <div className="space-y-5">
       {/* Barra de estado */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-[0.85rem]">
-        <button onClick={leerAhora} disabled={leyendo} className="bg-[#0F2240] px-4 py-2 font-medium text-white disabled:opacity-50">
-          {leyendo ? "Leyendo buzón… (hasta 1 min)" : "Leer buzón ahora"}
+        <button onClick={leerAhora} disabled={leyendo} className="flex items-center gap-2 bg-[#0F2240] px-4 py-2 font-medium text-white disabled:opacity-70">
+          {leyendo && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+          {leyendo ? "Trabajando…" : "Leer buzón ahora"}
         </button>
         <span className="text-gray-500">Última lectura: {fechaHora(datos.ultima_lectura) || "nunca"}</span>
         <span className="text-gray-500">IA: {datos.coste.hoy_usd.toFixed(2)} $ hoy · {datos.coste.ult_30_dias_usd.toFixed(2)} $ en 30 días</span>
@@ -158,6 +201,19 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
           {prueba ? "Modo prueba: los envíos te llegan a ti" : "Envío real a los centros"}
         </label>
       </div>
+      {leyendo && (
+        <div className="overflow-hidden rounded-2xl border border-[#0F2240]/15 bg-white">
+          <div className="h-1 w-full overflow-hidden bg-gray-100">
+            <div className="charlas-barra h-full w-1/3 bg-[#0F2240]" />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-[0.85rem]">
+            <span className="font-medium text-gray-900">{progreso.fase || "Empezando…"}</span>
+            <span className="text-gray-500">Pasada {progreso.pasada} · {progreso.segundos} s</span>
+            <span className="ml-auto text-[0.78rem] text-gray-400">Puedes cambiar de pestaña: te aviso con un sonido al terminar.</span>
+          </div>
+          <style>{`@keyframes charlas-barra{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}.charlas-barra{animation:charlas-barra 1.4s ease-in-out infinite}`}</style>
+        </div>
+      )}
       {aviso && <p className="text-[0.85rem] text-gray-800">{aviso}</p>}
       {datos.error_tareas && <p className="text-[0.85rem] text-[#DC2626]">Error cargando tareas: {datos.error_tareas}</p>}
 
@@ -399,4 +455,44 @@ function Huerfano({ h, centros, accion, alTerminar }: { h: Huerfano; centros: { 
       </div>
     </div>
   );
+}
+
+// Sonido corto (dos notas) y notificación del sistema al terminar. Sin
+// archivos de audio: se genera con Web Audio. Si el navegador no deja,
+// no pasa nada.
+function avisarFin(titulo: string, cuerpo: string) {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    [660, 880].forEach((f, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = f;
+      const t = ctx.currentTime + i * 0.16;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+      o.connect(g).connect(ctx.destination);
+      o.start(t);
+      o.stop(t + 0.3);
+    });
+    setTimeout(() => ctx.close().catch(() => {}), 1000);
+  } catch {}
+  try {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
+      new Notification(titulo, { body: cuerpo.slice(0, 180) });
+    }
+  } catch {}
+  try {
+    const original = document.title;
+    if (document.visibilityState !== "visible") {
+      document.title = `✓ ${titulo}`;
+      const volver = () => {
+        document.title = original;
+        document.removeEventListener("visibilitychange", volver);
+      };
+      document.addEventListener("visibilitychange", volver);
+    }
+  } catch {}
 }

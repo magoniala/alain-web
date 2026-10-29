@@ -19,44 +19,52 @@ export interface ResumenProceso {
   ya_respondidos: number;
   tareas: number;
   errores: string[];
+  /** Correos que siguen esperando a la IA al acabar esta ejecución. */
+  pendientes_restantes: number;
 }
 
+/**
+ * Procesa correos entrantes pendientes. La primera llamada va sola (escribe
+ * la caché del conocimiento); las siguientes, de tres en tres en paralelo,
+ * ya leen de caché. Cada llamada tarda 10-25 s: no se empieza una tanda si
+ * no cabe en el presupuesto.
+ */
 export async function procesarPendientes(opciones: { presupuestoMs: number; limite?: number }): Promise<ResumenProceso> {
   const inicio = Date.now();
   const supabase = supabaseCharlas();
-  const limite = opciones.limite ?? Number(await config("procesar_por_ejecucion", 4));
-  const res: ResumenProceso = { procesados: 0, ya_respondidos: 0, tareas: 0, errores: [] };
+  const limite = opciones.limite ?? Number(await config("procesar_por_ejecucion", 7));
+  const res: ResumenProceso = { procesados: 0, ya_respondidos: 0, tareas: 0, errores: [], pendientes_restantes: 0 };
 
   const { data: pendientes } = await supabase
     .from("charlas_mensajes")
-    .select("*")
+    .select("id, centro_id, fecha, asunto, intentos")
     .eq("direccion", "entrante")
     .eq("estado", "nuevo")
     .not("centro_id", "is", null)
     .lt("intentos", 3)
     .order("fecha", { ascending: true })
-    .limit(limite * 3);
+    .limit(200);
 
+  // Primero se quitan los ya contestados desde Mail (sin gastar IA).
+  const cola: NonNullable<typeof pendientes> = [];
   for (const m of pendientes ?? []) {
-    if (res.procesados >= limite) break;
-    // Una llamada a la IA tarda 10-25 s: no se empieza otra si no da tiempo.
-    if (Date.now() - inicio > opciones.presupuestoMs) break;
+    const { data: posterior } = await supabase
+      .from("charlas_mensajes")
+      .select("id")
+      .eq("centro_id", m.centro_id)
+      .eq("direccion", "saliente")
+      .gt("fecha", m.fecha)
+      .limit(1);
+    if (posterior?.length) {
+      await supabase.from("charlas_mensajes").update({ estado: "procesado", resumen: "Ya respondido desde Mail" }).eq("id", m.id);
+      res.ya_respondidos++;
+    } else {
+      cola.push(m);
+    }
+  }
 
+  const uno = async (m: (typeof cola)[number]) => {
     try {
-      // ¿Ya contestado desde Mail? Entonces no hay nada que hacer.
-      const { data: posterior } = await supabase
-        .from("charlas_mensajes")
-        .select("id")
-        .eq("centro_id", m.centro_id)
-        .eq("direccion", "saliente")
-        .gt("fecha", m.fecha)
-        .limit(1);
-      if (posterior?.length) {
-        await supabase.from("charlas_mensajes").update({ estado: "procesado", resumen: "Ya respondido desde Mail" }).eq("id", m.id);
-        res.ya_respondidos++;
-        continue;
-      }
-
       const r = await procesarMensaje(m.id);
       res.procesados++;
       if (r.tarea) res.tareas++;
@@ -68,7 +76,16 @@ export async function procesarPendientes(opciones: { presupuestoMs: number; limi
         .eq("id", m.id);
       res.errores.push(`${m.asunto ?? m.id}: ${(e as Error).message}`);
     }
+  };
+
+  let i = 0;
+  while (i < cola.length && res.procesados + res.errores.length < limite) {
+    if (Date.now() - inicio > opciones.presupuestoMs) break;
+    const tanda = i === 0 ? cola.slice(0, 1) : cola.slice(i, Math.min(i + 3, i + (limite - res.procesados - res.errores.length)));
+    await Promise.all(tanda.map(uno));
+    i += tanda.length;
   }
+  res.pendientes_restantes = cola.length - i;
   return res;
 }
 

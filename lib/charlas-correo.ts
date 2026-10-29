@@ -143,6 +143,7 @@ const ASUNTO_CHARLAS = /(calendario de actividades|jardueren egutegia|egutegia|c
 export interface ResumenLectura {
   carpetas: Record<string, { revisados: number; asociados: number; pendientes_asignar: number; nuevos_uid: number }>;
   respondidos_desde_mail: number;
+  huerfanos_asociados: number;
   /** true si se han leído todas las carpetas hasta el final (sin cortar por tiempo). */
   al_dia: boolean;
   error?: string;
@@ -187,7 +188,7 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
   const inicio = Date.now();
   const sinTiempo = () => Date.now() - inicio > opciones.presupuestoMs;
   const supabase = supabaseCharlas();
-  const resumen: ResumenLectura = { carpetas: {}, respondidos_desde_mail: 0, al_dia: true };
+  const resumen: ResumenLectura = { carpetas: {}, respondidos_desde_mail: 0, huerfanos_asociados: 0, al_dia: true };
   const diasInicial = Number(await config("lectura_inicial_dias", 10));
   const diasHistoricoEnviados = Number(await config("enviados_historico_dias", 75));
   const [indice, conocidos] = await Promise.all([construirIndice(), cargarConocidos()]);
@@ -377,6 +378,17 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
     }
   } finally {
     await cliente.logout().catch(() => {});
+  }
+
+  // Huérfanos: con los hilos de Enviados ya leídos, muchos se pueden asociar solos.
+  const { data: huerfanos } = await supabase.from("charlas_mensajes").select("id, referencias, in_reply_to").eq("estado", "pendiente_asignar");
+  for (const h of huerfanos ?? []) {
+    const refs = [h.in_reply_to, ...(h.referencias ?? [])].filter(Boolean) as string[];
+    const centro = refs.map((r) => conocidos.porId.get(r)).find(Boolean);
+    if (centro) {
+      await supabase.from("charlas_mensajes").update({ centro_id: centro, estado: "nuevo", match_por: "hilo" }).eq("id", h.id);
+      resumen.huerfanos_asociados++;
+    }
   }
   return resumen;
 }

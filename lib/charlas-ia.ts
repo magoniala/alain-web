@@ -4,16 +4,19 @@
 // Una sola llamada por correo. El conocimiento (guiones, objeciones,
 // dossier, bandejas reales, reglas aprendidas) va en el system con
 // cache_control, así que de la segunda llamada en adelante dentro de la
-// misma ventana se paga a precio de caché.
+// misma hora se paga a precio de caché.
 //
 // Coste por modelo (USD por millón de tokens). Fuente: página de precios de
 // Anthropic, consultada el 29-10-2026.
 
 import { supabaseCharlas } from "./charlas";
 
-const PRECIOS: Record<string, { entrada: number; salida: number; cacheEscritura: number; cacheLectura: number }> = {
-  "claude-sonnet-5-5": { entrada: 2, salida: 10, cacheEscritura: 2.5, cacheLectura: 0.1 },
-  "claude-haiku-5-5": { entrada: 0.1, salida: 0.5, cacheEscritura: 0.125, cacheLectura: 0.01 },
+// La caché del conocimiento se pide de 1 hora (no de 5 minutos): una tanda
+// de correos que se procesa en varias pasadas paga la escritura una sola
+// vez. Escribir caché de 1 h cuesta el doble de la entrada normal.
+const PRECIOS: Record<string, { entrada: number; salida: number; cacheEscritura: number; cacheEscritura1h: number; cacheLectura: number }> = {
+  "claude-sonnet-5-5": { entrada: 2, salida: 10, cacheEscritura: 2.5, cacheEscritura1h: 4, cacheLectura: 0.1 },
+  "claude-haiku-5-5": { entrada: 0.1, salida: 0.5, cacheEscritura: 0.125, cacheEscritura1h: 0.2, cacheLectura: 0.01 },
 };
 
 export const CLASIFICACIONES = [
@@ -60,7 +63,7 @@ export interface ResultadoIA {
 interface BloqueSystem {
   type: "text";
   text: string;
-  cache_control?: { type: "ephemeral" };
+  cache_control?: { type: "ephemeral"; ttl?: "5m" | "1h" };
 }
 
 async function cargarConocimiento(): Promise<string> {
@@ -145,10 +148,13 @@ export async function llamarClaude(opciones: {
   const cuerpo = await r.json().catch(() => ({}));
   const uso = cuerpo?.usage ?? {};
   const p = PRECIOS[modelo] ?? PRECIOS["claude-sonnet-5-5"];
+  const escritura1h = uso.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+  const escritura5m = uso.cache_creation?.ephemeral_5m_input_tokens ?? Math.max(0, (uso.cache_creation_input_tokens ?? 0) - escritura1h);
   const coste =
     ((uso.input_tokens ?? 0) * p.entrada +
       (uso.output_tokens ?? 0) * p.salida +
-      (uso.cache_creation_input_tokens ?? 0) * p.cacheEscritura +
+      escritura5m * p.cacheEscritura +
+      escritura1h * p.cacheEscritura1h +
       (uso.cache_read_input_tokens ?? 0) * p.cacheLectura) /
     1_000_000;
 
@@ -186,7 +192,7 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
   const conocimiento = await cargarConocimiento();
   const system: BloqueSystem[] = [
     { type: "text", text: INSTRUCCIONES.replace("{{HOY}}", hoyMadrid()) },
-    { type: "text", text: `<conocimiento>\n${conocimiento}\n</conocimiento>`, cache_control: { type: "ephemeral" } },
+    { type: "text", text: `<conocimiento>\n${conocimiento}\n</conocimiento>`, cache_control: { type: "ephemeral", ttl: "1h" } },
   ];
 
   const usuario = [
