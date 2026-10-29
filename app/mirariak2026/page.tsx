@@ -81,7 +81,7 @@ function emptyMicromagia(): ParticipanteMicromagia {
 export default function Mirariak2026Page() {
   const [lang, setLang] = useState<Lang>("eu");
   const eu = lang === "eu";
-  const contactEmail = eu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  const contactEmail = eu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
   const [capacity, setCapacity] = useState<CapacityData | null>(null);
 
   // Form

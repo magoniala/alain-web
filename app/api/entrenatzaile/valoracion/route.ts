@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { nombre, edad, email, motivo, turno, newsletter, idioma } = body;
   const isEu = idioma === "eu";
-  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  const contactEmail = isEu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
 
   if (!nombre?.trim() || !edad || !email?.trim() || !motivo?.trim() || !turno) {
     return NextResponse.json(

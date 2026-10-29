@@ -361,7 +361,7 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
       testimonio: "Kontatu zer esango zenioke.",
       permiso: "Aukeratu bat.",
       privacidad: "Bidaltzeko, pribatutasun-politika onartu behar duzu.",
-      envio: "Zerbait gaizki joan da. Saiatu berriro edo idatzi kontaktu@alainzulaika.com helbidera.",
+      envio: "Zerbait gaizki joan da. Saiatu berriro edo idatzi info@alainzulaika.com helbidera.",
     },
 
     pie: { aviso: "Lege oharra", privacidad: "Pribatutasuna", cookies: "Cookieak" },

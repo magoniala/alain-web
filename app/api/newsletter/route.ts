@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   // cron manda en su siguiente pasada, ya hace de bienvenida.
   if (data && (origen || "manual") === "manual" && !conSecuencia) {
     const isEu = (idioma || "es") === "eu";
-    const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+    const contactEmail = isEu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
     const bajaUrl = `${BASE_URL}/api/newsletter/baja?email=${encodeURIComponent(email)}`;
     const euskeraUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(email)}&idioma=eu`;
     const castellanoUrl = `${BASE_URL}/api/newsletter/idioma?email=${encodeURIComponent(email)}&idioma=es`;

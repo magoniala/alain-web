@@ -21,7 +21,7 @@ export function wrapNurture(cuerpoHtml: string, email: string, isEu: boolean) {
   const idiomaUrl = `${BASE_URL}/newsletter/idioma?email=${encodeURIComponent(email)}`;
   const bajaText = isEu ? "Utzi email hauek jasotzeari" : "Dejar de recibir estos emails";
   const idiomaText = isEu ? "Hizkuntza aldatu" : "Cambiar idioma";
-  const contactEmail = isEu ? "kontaktu@alainzulaika.com" : "contacto@alainzulaika.com";
+  const contactEmail = isEu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
   return `
     <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
       <div style="font-size:1.15rem;line-height:2.1;color:#1a1a1a;">${cuerpoHtml}</div>
