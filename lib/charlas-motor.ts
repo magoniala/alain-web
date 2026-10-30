@@ -21,7 +21,7 @@
 //   0/1/2                         → llamada_alain (nivel C)
 //   7 Ganado / 8 Perdido          → nada
 
-import { supabaseCharlas, faseDeEstado } from "./charlas";
+import { supabaseCharlas, faseDeEstado, puntuarUrgencia } from "./charlas";
 import { procesarConIA } from "./charlas-ia";
 
 const hoy = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
@@ -239,10 +239,14 @@ async function crearTarea(c: Centro, d: Decision) {
   const idioma: "es" | "eu" = c.euskera === "sí" || c.euskera === "parcial" ? "eu" : "es";
   const destinatario = (c.responsable_email ?? c.email_centro ?? "").split(/[\/;,\s]+/).find((e) => e.includes("@")) ?? null;
 
+  const nivelFinal = c.nivel_autonomia === "C" ? "C" : d.nivel;
+  const { urgencia, motivo: urgenciaMotivo } = puntuarUrgencia({ tipo: d.tipo, nivel: nivelFinal, estadoCentro: c.estado });
   const base = {
     centro_id: c.id,
     tipo: d.tipo,
-    nivel: c.nivel_autonomia === "C" ? "C" : d.nivel,
+    nivel: nivelFinal,
+    urgencia,
+    urgencia_motivo: urgenciaMotivo,
     estado: "revisar",
     idioma,
     mensaje_entrante_id: null,

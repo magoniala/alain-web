@@ -3,6 +3,7 @@ import { supabaseCharlas } from "@/lib/charlas";
 import { leerBuzon } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
 import { tareasPorFecha } from "@/lib/charlas-motor";
+import { notificarTareasNuevas } from "@/lib/charlas-push";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -100,7 +101,10 @@ async function ejecutar(req: Request) {
       ? await tareasPorFecha({ presupuestoMs: Math.max(0, 45000 - (Date.now() - inicio)) })
       : null;
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, ms: Date.now() - inicio });
+  // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
+  const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
+
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, push, ms: Date.now() - inicio });
 }
 
 export const GET = ejecutar;

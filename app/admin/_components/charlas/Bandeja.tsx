@@ -23,6 +23,8 @@ interface Tarea {
   adjuntar_dossier: boolean;
   destinatario: string | null;
   nota_para_alain: string | null;
+  urgencia?: 1 | 2 | 3;
+  urgencia_motivo?: string | null;
   cambios_crm: Record<string, unknown>;
   contexto: {
     programada?: boolean;
@@ -81,6 +83,25 @@ const ETIQUETA: Record<string, string> = {
   revisar_bloqueo: "Revisar bloqueo",
 };
 
+const URGENCIA = {
+  3: { etiqueta: "Ahora", borde: "border-l-[#DC2626]", chip: "bg-red-100 text-red-800", punto: "bg-[#DC2626]" },
+  2: { etiqueta: "Hoy", borde: "border-l-[#E8A33D]", chip: "bg-amber-100 text-amber-900", punto: "bg-[#E8A33D]" },
+  1: { etiqueta: "Cuando puedas", borde: "border-l-emerald-500", chip: "bg-emerald-50 text-emerald-800", punto: "bg-emerald-500" },
+} as const;
+const urg = (t: Tarea) => URGENCIA[(t.urgencia ?? 1) as 1 | 2 | 3];
+
+function useMovil() {
+  const [movil, setMovil] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const f = () => setMovil(mq.matches);
+    f();
+    mq.addEventListener("change", f);
+    return () => mq.removeEventListener("change", f);
+  }, []);
+  return movil;
+}
+
 function fechaHora(iso: string | null) {
   if (!iso) return "";
   return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -91,6 +112,14 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
   const [cargando, setCargando] = useState(true);
   const [leyendo, setLeyendo] = useState(false);
   const [progreso, setProgreso] = useState({ pasada: 0, segundos: 0, fase: "" });
+  const [abierta, setAbierta] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("tarea");
+    } catch {
+      return null;
+    }
+  });
+  const movil = useMovil();
   const [aviso, setAviso] = useState("");
 
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("admin_pw") || "" }), []);
@@ -201,8 +230,23 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
   if (!datos) return null;
 
   const prueba = datos.config.modo_prueba !== false;
-  const calientes = datos.tareas.filter((t) => t.nivel === "C");
-  const resto = datos.tareas.filter((t) => t.nivel !== "C");
+  const ordenadas = [...datos.tareas].sort((a, b) => (b.urgencia ?? 1) - (a.urgencia ?? 1) || a.creado_en.localeCompare(b.creado_en));
+  const calientes = ordenadas.filter((t) => t.nivel === "C" || (t.urgencia ?? 1) === 3);
+  const resto = ordenadas.filter((t) => !calientes.includes(t));
+  const tareaAbierta = abierta ? datos.tareas.find((t) => t.id === abierta) ?? null : null;
+  const cerrar = () => {
+    setAbierta(null);
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("tarea");
+      window.history.replaceState(null, "", u);
+    } catch {}
+  };
+  const alTerminar = () => {
+    cerrar();
+    cargar();
+    onCambio();
+  };
 
   return (
     <div className="space-y-5">
@@ -239,28 +283,57 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
         <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-[0.9rem] text-gray-500">Bandeja vacía. Nada que revisar.</div>
       )}
 
-      {calientes.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-[0.95rem] font-semibold">Para ti · {calientes.length}</h2>
-          <p className="mb-3 text-[0.8rem] text-gray-500">Leads calientes y casos delicados. El borrador es una propuesta; aquí decides tú.</p>
-          <div className="space-y-4">
-            {calientes.map((t) => (
-              <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={() => { cargar(); onCambio(); }} />
-            ))}
+      {/* Pantalla completa de una tarea (móvil siempre; escritorio al llegar por notificación) */}
+      {tareaAbierta && (movil || abierta) && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#f6f2ec] lg:bg-black/40 lg:p-6">
+          <div className="min-h-full lg:mx-auto lg:max-w-[1100px]">
+            <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-gray-200 bg-[#f6f2ec]/95 px-4 py-3 backdrop-blur lg:rounded-t-2xl">
+              <button onClick={cerrar} className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-700 ring-1 ring-gray-200">
+                ←
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[0.95rem] font-semibold">{tareaAbierta.centro?.nombre}</p>
+                <p className="truncate text-[0.75rem] text-gray-500">{urg(tareaAbierta).etiqueta} · {tareaAbierta.urgencia_motivo ?? ""}</p>
+              </div>
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${urg(tareaAbierta).punto}`} />
+            </div>
+            <div className="p-3 lg:p-0">
+              <TarjetaTarea key={`${tareaAbierta.id}:${tareaAbierta.borrador_texto ?? ""}`} t={tareaAbierta} prueba={prueba} accion={accion} alTerminar={alTerminar} movil />
+            </div>
           </div>
-        </section>
+        </div>
       )}
 
-      {resto.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-[0.95rem] font-semibold">Respuestas por revisar · {resto.length}</h2>
-          <div className="space-y-4">
-            {resto.map((t) => (
-              <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={() => { cargar(); onCambio(); }} />
-            ))}
-          </div>
-        </section>
+      {movil ? (
+        <ListaMovil calientes={calientes} resto={resto} abrir={(id) => setAbierta(id)} />
+      ) : (
+        <>
+          {calientes.length > 0 && (
+            <section>
+              <h2 className="mb-2 text-[0.95rem] font-semibold">Para ti · {calientes.length}</h2>
+              <p className="mb-3 text-[0.8rem] text-gray-500">Leads calientes y casos delicados. El borrador es una propuesta; aquí decides tú.</p>
+              <div className="space-y-4">
+                {calientes.map((t) => (
+                  <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={alTerminar} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {resto.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-[0.95rem] font-semibold">Respuestas por revisar · {resto.length}</h2>
+              <div className="space-y-4">
+                {resto.map((t) => (
+                  <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={alTerminar} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
+
+      <Notificaciones headers={headers} />
 
       {datos.huerfanos.length > 0 && (
         <section>
@@ -286,7 +359,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
   );
 }
 
-function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boolean; accion: (b: Record<string, unknown>) => Promise<unknown>; alTerminar: () => void }) {
+function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tarea; prueba: boolean; accion: (b: Record<string, unknown>) => Promise<unknown>; alTerminar: () => void; movil?: boolean }) {
   const [asunto, setAsunto] = useState(t.borrador_asunto ?? "");
   const [texto, setTexto] = useState(t.borrador_texto ?? "");
   const [para, setPara] = useState(t.destinatario ?? "");
@@ -294,7 +367,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
   const [idiomaDossier, setIdiomaDossier] = useState<"es" | "eu">(t.idioma);
   const [motivo, setMotivo] = useState("");
   const [instruccion, setInstruccion] = useState("");
-  const [verOriginal, setVerOriginal] = useState(true);
+  const [verOriginal, setVerOriginal] = useState(!movil);
   const [opcion, setOpcion] = useState<"a" | "b">("a");
   const alt = t.contexto?.alternativa ?? null;
 
@@ -335,8 +408,9 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
   }
 
   return (
-    <article className={`rounded-2xl border bg-white ${t.nivel === "C" ? "border-[#E8A33D]" : "border-gray-200"}`}>
+    <article className={`rounded-2xl border border-l-4 bg-white ${urg(t).borde} ${t.nivel === "C" ? "border-[#E8A33D]" : "border-gray-200"} ${urg(t).borde}`}>
       <header className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-5 py-3">
+        <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium ${urg(t).chip}`} title={t.urgencia_motivo ?? ""}>{urg(t).etiqueta}</span>
         <span className="text-[0.95rem] font-semibold">{t.centro?.nombre ?? "¿Centro?"}</span>
         <span className="text-[0.78rem] text-gray-500">{t.centro?.localidad} · {t.centro?.estado}</span>
         <span className="ml-auto rounded-full bg-gray-100 px-2.5 py-0.5 text-[0.75rem]">
@@ -345,7 +419,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
         </span>
       </header>
 
-      <div className="grid gap-0 lg:grid-cols-2">
+      <div className={`grid gap-0 ${movil ? "" : "lg:grid-cols-2"}`}>
         {/* Lo que ha llegado */}
         <div className="border-b border-gray-100 p-5 lg:border-b-0 lg:border-r">
           {programada ? (
@@ -396,7 +470,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
                 Asunto
                 <input value={asunto} onChange={(e) => setAsunto(e.target.value)} className="mt-0.5 w-full border border-gray-300 px-2 py-1 text-[0.85rem] text-gray-900" />
               </label>
-              <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={Math.min(18, Math.max(8, texto.split("\n").length + 2))} className="mt-2 w-full border border-gray-300 px-3 py-2 font-sans text-[0.88rem] leading-relaxed text-gray-900" />
+              <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={Math.min(18, Math.max(8, texto.split("\n").length + 2))} className={`mt-2 w-full border border-gray-300 px-3 py-2 font-sans leading-relaxed text-gray-900 ${movil ? "text-[1rem]" : "text-[0.88rem]"}`} />
               <div className="mt-2 flex flex-wrap items-center gap-3 text-[0.82rem]">
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={dossier} onChange={(e) => setDossier(e.target.checked)} /> Adjuntar dossier
@@ -433,7 +507,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className={`mt-4 flex flex-wrap gap-2 ${movil ? "sticky bottom-0 -mx-5 -mb-5 border-t border-gray-100 bg-white px-5 py-3 [&>button]:min-h-[44px] [&>button]:flex-1" : ""}`}>
             {conRespuesta ? (
               <button
                 onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, adjuntar_dossier: dossier, dossier_idioma: idiomaDossier, motivo, opcion: alt ? opcion : null })}
@@ -555,4 +629,157 @@ function avisarFin(titulo: string, cuerpo: string) {
       document.addEventListener("visibilitychange", volver);
     }
   } catch {}
+}
+
+function ListaMovil({ calientes, resto, abrir }: { calientes: Tarea[]; resto: Tarea[]; abrir: (id: string) => void }) {
+  const Fila = ({ t }: { t: Tarea }) => (
+    <button onClick={() => abrir(t.id)} className={`flex w-full items-start gap-3 border-l-4 bg-white px-4 py-3 text-left ${urg(t).borde}`}>
+      <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${urg(t).punto}`} />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="truncate text-[0.95rem] font-semibold">{t.centro?.nombre ?? "¿Centro?"}</span>
+          <span className="shrink-0 text-[0.72rem] text-gray-500">{urg(t).etiqueta}</span>
+        </span>
+        <span className="block truncate text-[0.8rem] text-gray-600">{ETIQUETA[t.contexto?.clasificacion ?? t.tipo] ?? t.tipo}{t.urgencia_motivo ? ` · ${t.urgencia_motivo}` : ""}</span>
+        {t.contexto?.resumen && <span className="mt-0.5 line-clamp-2 block text-[0.8rem] text-gray-500">{t.contexto.resumen}</span>}
+      </span>
+      <span className="mt-1 text-gray-400">›</span>
+    </button>
+  );
+  return (
+    <div className="space-y-4">
+      {calientes.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-[0.85rem] font-semibold uppercase tracking-wide text-gray-500">Para ti · {calientes.length}</h2>
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200">
+            {calientes.map((t) => <Fila key={t.id} t={t} />)}
+          </div>
+        </section>
+      )}
+      {resto.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-[0.85rem] font-semibold uppercase tracking-wide text-gray-500">Por revisar · {resto.length}</h2>
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200">
+            {resto.map((t) => <Fila key={t.id} t={t} />)}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+// Notificaciones push en este dispositivo (la app instalada en el móvil, o el
+// navegador del Mac). En iPhone solo funcionan desde la app añadida a la
+// pantalla de inicio; desde Safari a secas no aparece el botón.
+function Notificaciones({ headers }: { headers: () => Record<string, string> }) {
+  const [estado, setEstado] = useState<"cargando" | "no_soportado" | "sin_claves" | "activas" | "inactivas" | "denegadas">("cargando");
+  const [dispositivos, setDispositivos] = useState(0);
+  const [clave, setClave] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [msg, setMsg] = useState("");
+  const esIphone = typeof navigator !== "undefined" && /iPhone|iPad/.test(navigator.userAgent);
+  const instalada = typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/charlas/push", { headers: headers() });
+        const d = await r.json();
+        setDispositivos(d.dispositivos ?? 0);
+        setClave(d.clave_publica);
+        if (!d.clave_publica) return setEstado("sin_claves");
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return setEstado("no_soportado");
+        if (Notification.permission === "denied") return setEstado("denegadas");
+        const reg = await navigator.serviceWorker.register("/admin-sw.js", { scope: "/admin" });
+        const sub = await reg.pushManager.getSubscription();
+        setEstado(sub ? "activas" : "inactivas");
+      } catch {
+        setEstado("no_soportado");
+      }
+    })();
+  }, [headers]);
+
+  async function activar() {
+    if (!clave) return;
+    setOcupado(true);
+    setMsg("");
+    try {
+      const permiso = await Notification.requestPermission();
+      if (permiso !== "granted") {
+        setEstado("denegadas");
+        return;
+      }
+      const reg = await navigator.serviceWorker.register("/admin-sw.js", { scope: "/admin" });
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: clave });
+      const r = await fetch("/api/admin/charlas/push", { method: "POST", headers: headers(), body: JSON.stringify({ suscripcion: sub.toJSON(), dispositivo: navigator.userAgent.slice(0, 120) }) });
+      if (!r.ok) throw new Error((await r.json()).error || "Error");
+      setEstado("activas");
+      setDispositivos((n) => n + 1);
+      setMsg("Activadas en este dispositivo.");
+    } catch (e) {
+      setMsg(`Error: ${(e as Error).message}`);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function desactivar() {
+    setOcupado(true);
+    try {
+      const reg = await navigator.serviceWorker.getRegistration("/admin");
+      const sub = await reg?.pushManager.getSubscription();
+      if (sub) {
+        await fetch("/api/admin/charlas/push", { method: "DELETE", headers: headers(), body: JSON.stringify({ endpoint: sub.endpoint }) });
+        await sub.unsubscribe();
+      }
+      setEstado("inactivas");
+      setDispositivos((n) => Math.max(0, n - 1));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function probar() {
+    setOcupado(true);
+    setMsg("");
+    try {
+      const r = await fetch("/api/admin/charlas/push", { method: "PUT", headers: headers() });
+      const d = await r.json();
+      setMsg(d.error ? `Error: ${d.error}` : `Prueba enviada a ${d.enviados} dispositivo(s).`);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-4 text-[0.85rem]">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="font-medium">Notificaciones al móvil</span>
+        <span className="text-gray-500">{dispositivos} dispositivo{dispositivos === 1 ? "" : "s"} suscrito{dispositivos === 1 ? "" : "s"}</span>
+        <span className="ml-auto flex flex-wrap gap-2">
+          {estado === "inactivas" && (
+            <button onClick={activar} disabled={ocupado} className="bg-[#0F2240] px-3 py-1.5 font-medium text-white disabled:opacity-50">
+              Activar en este dispositivo
+            </button>
+          )}
+          {estado === "activas" && (
+            <>
+              <button onClick={probar} disabled={ocupado} className="px-3 py-1.5 ring-1 ring-gray-300 disabled:opacity-50">Enviar prueba</button>
+              <button onClick={desactivar} disabled={ocupado} className="px-3 py-1.5 text-gray-600 ring-1 ring-gray-300 disabled:opacity-50">Desactivar aquí</button>
+            </>
+          )}
+        </span>
+      </div>
+      {estado === "sin_claves" && <p className="mt-2 text-amber-800">Faltan las claves VAPID en Vercel (VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY).</p>}
+      {estado === "denegadas" && <p className="mt-2 text-amber-800">Este navegador tiene las notificaciones bloqueadas para el panel. Se cambia en los ajustes del navegador o del sistema.</p>}
+      {estado === "no_soportado" && esIphone && !instalada && (
+        <p className="mt-2 text-gray-600">
+          En iPhone las notificaciones solo funcionan con el panel instalado como app: en Safari, botón <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong>. Luego ábrelo desde ese icono y vuelve aquí.
+        </p>
+      )}
+      {estado === "no_soportado" && !esIphone && <p className="mt-2 text-gray-600">Este navegador no admite notificaciones push.</p>}
+      {msg && <p className="mt-2 text-gray-800">{msg}</p>}
+    </section>
+  );
 }

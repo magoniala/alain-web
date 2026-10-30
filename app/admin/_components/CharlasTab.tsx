@@ -77,6 +77,8 @@ function colorEstado(estado: string) {
 export default function CharlasTab() {
   const [seccion, setSeccion] = useState<"bandeja" | "crm">(() => {
     try {
+      // Si se llega desde una notificación (?tarea=…), siempre a la bandeja.
+      if (new URLSearchParams(window.location.search).get("tarea")) return "bandeja";
       return (sessionStorage.getItem("charlas_seccion") as "bandeja" | "crm") || "bandeja";
     } catch {
       return "bandeja";

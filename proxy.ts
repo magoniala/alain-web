@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Rutas que no tienen versión /es — el middleware no debe tocarlas
 const NO_REDIRECT_PATHS = [
+  // El panel no tiene versión /es y la app instalada en el móvil lo abre
+  // sin cookie de idioma: nunca redirigir.
+  "/admin",
   "/premios-mira",
   "/arrogante",
   "/gilipollas",

@@ -4,7 +4,7 @@
 // Alain pulse "Enviar" en el panel. El nivel (B/C) solo ordena la bandeja:
 // C = lead caliente o caso delicado, arriba del todo.
 
-import { supabaseCharlas, faseDeEstado } from "./charlas";
+import { supabaseCharlas, faseDeEstado, puntuarUrgencia } from "./charlas";
 import { procesarConIA, type ResultadoIA } from "./charlas-ia";
 
 async function config<T>(clave: string, defecto: T): Promise<T> {
@@ -182,10 +182,14 @@ export async function procesarMensaje(mensajeId: string, instruccion?: string): 
     .in("estado", ["revisar", "pendiente"])
     .neq("mensaje_entrante_id", m.id);
 
+  const tipoTarea = resultado.responder ? "respuesta" : "actualizar_crm";
+  const { urgencia, motivo: urgenciaMotivo } = puntuarUrgencia({ tipo: tipoTarea, nivel, clasificacion: resultado.clasificacion, estadoCentro: centro.estado, necesitaAlain: resultado.necesita_alain });
   const fila = {
     centro_id: m.centro_id,
-    tipo: resultado.responder ? "respuesta" : "actualizar_crm",
+    tipo: tipoTarea,
     nivel,
+    urgencia,
+    urgencia_motivo: urgenciaMotivo,
     estado: "revisar",
     idioma: idiomaRespuesta,
     mensaje_entrante_id: m.id,

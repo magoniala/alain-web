@@ -67,6 +67,15 @@ export default function AdminPage() {
   const [plegado, setPlegado] = useState(false);
 
   useEffect(() => {
+    // La app instalada en el móvil abre una sesión nueva cada vez: la
+    // contraseña se guarda también en localStorage y se repone aquí. Las
+    // pestañas siguen leyendo sessionStorage como siempre.
+    try {
+      if (!sessionStorage.getItem("admin_pw") && localStorage.getItem("admin_pw")) {
+        sessionStorage.setItem("admin_pw", localStorage.getItem("admin_pw")!);
+        sessionStorage.setItem("admin_auth", "1");
+      }
+    } catch {}
     setAuth(sessionStorage.getItem("admin_auth") === "1");
     setCheckingSession(false);
     const t = new URLSearchParams(window.location.search).get("tab");
@@ -104,6 +113,9 @@ export default function AdminPage() {
     if (res.ok) {
       sessionStorage.setItem("admin_auth", "1");
       sessionStorage.setItem("admin_pw", password);
+      try {
+        localStorage.setItem("admin_pw", password);
+      } catch {}
       setAuth(true);
     } else {
       setAuthError("Contraseña incorrecta.");
@@ -114,6 +126,9 @@ export default function AdminPage() {
   function logout() {
     sessionStorage.removeItem("admin_auth");
     sessionStorage.removeItem("admin_pw");
+    try {
+      localStorage.removeItem("admin_pw");
+    } catch {}
     setAuth(false);
   }
 

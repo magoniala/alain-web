@@ -203,3 +203,32 @@ export function normalizarFrontmatter(fm: Record<string, unknown>): Partial<Cent
     ficha_cliente: texto(fm.ficha_cliente),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Urgencia de una tarea: 3 = ahora (rojo), 2 = hoy (naranja), 1 = cuando puedas (verde).
+// Reglas fijas, no IA: lo que más vale es contestar rápido a quien quiere
+// cerrar; lo que menos, un recordatorio que el Flujo ya tiene programado.
+// ---------------------------------------------------------------------------
+export function puntuarUrgencia(t: {
+  tipo: string;
+  nivel: "A" | "B" | "C";
+  clasificacion?: string | null;
+  estadoCentro?: string | null;
+  adjuntarDossier?: boolean;
+  necesitaAlain?: boolean;
+}): { urgencia: 1 | 2 | 3; motivo: string } {
+  const c = t.clasificacion ?? "";
+  const fase = faseDeEstado(t.estadoCentro);
+
+  if (c === "interesado_fechas") return { urgencia: 3, motivo: "Quiere hablar de fechas: lead caliente" };
+  if (fase === 6 && t.tipo === "respuesta") return { urgencia: 3, motivo: "Responde un centro en conversación" };
+  if (c === "pregunta_precio") return { urgencia: 3, motivo: "Pregunta precio: está decidiendo" };
+  if (c === "pide_contacto_ayuntamiento") return { urgencia: 2, motivo: "Vía ayuntamiento: abre un canal nuevo" };
+  if (c === "pide_info" || c === "calendario_abierto" || t.tipo === "dossier") return { urgencia: 2, motivo: "Pide el dossier: cuanto antes llegue, mejor" };
+  if (c === "lo_decide_otro" || c === "reenviado_a") return { urgencia: 2, motivo: "Hay una persona nueva en el hilo" };
+  if (t.tipo === "seguimiento_conversacion") return { urgencia: 2, motivo: "Conversación que se enfría" };
+  if (t.tipo === "llamada_alain") return { urgencia: 2, motivo: "Llamada pendiente" };
+  if (c === "no_interesa") return { urgencia: 1, motivo: "Un no: cerrar con calma y anotar el motivo" };
+  if (t.tipo === "respuesta") return { urgencia: 2, motivo: "Han respondido" };
+  return { urgencia: 1, motivo: "Paso programado del Flujo" };
+}

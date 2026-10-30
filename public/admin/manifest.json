@@ -1,0 +1,15 @@
+{
+  "name": "Panel Alain Zulaika",
+  "short_name": "Panel",
+  "description": "Bandeja de charlas y CRM",
+  "start_url": "/admin?tab=Charlas&app=1",
+  "scope": "/admin",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f2ec",
+  "theme_color": "#0F2240",
+  "icons": [
+    { "src": "/admin/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/admin/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
