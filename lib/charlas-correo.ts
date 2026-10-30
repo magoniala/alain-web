@@ -444,7 +444,9 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
     adjuntos.push({ filename: d.nombre, content: await readFile(join(process.cwd(), "assets/charlas", d.archivo)), contentType: "application/pdf" });
   }
 
-  const para = e.prueba ? user : e.para;
+  // En modo prueba el correo va al buzón de pruebas (config `prueba_destinatario`)
+  // o, si no hay, al propio alain@.
+  const para = e.prueba ? String(await config("prueba_destinatario", user)) || user : e.para;
   const opciones = {
     from: remitente,
     to: para,

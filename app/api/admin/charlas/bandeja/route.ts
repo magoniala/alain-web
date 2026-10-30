@@ -175,7 +175,22 @@ async function enviar(body: Record<string, unknown>) {
   const envio = await enviarCorreo({ para: destinatario, asunto, texto, inReplyTo, referencias, dossier, prueba });
 
   if (prueba) {
-    // En modo prueba no se toca nada: la tarea sigue en la bandeja.
+    // En modo prueba no se toca el CRM ni la tarea, pero el envío queda
+    // apuntado (tipo_salida 'prueba') para poder revisar qué dijo el servidor.
+    await supabase.from("charlas_mensajes").insert({
+      centro_id: t.centro_id,
+      direccion: "saliente",
+      message_id: envio.messageId,
+      de: "alain@alainzulaika.com",
+      para: [envio.para],
+      asunto: `[PRUEBA → ${destinatario}] ${asunto}`,
+      texto,
+      fecha: new Date().toISOString(),
+      estado: "ignorado",
+      tarea_id: t.id,
+      tipo_salida: "prueba",
+      error: envio.smtp,
+    });
     return { ok: true, prueba: true, enviado_a: envio.para, smtp: envio.smtp };
   }
 
