@@ -38,6 +38,7 @@ const CAMPOS_EDITABLES = new Set([
   "email_centro",
   "telefono",
   "web",
+  "otros_formatos",
 ]);
 
 export async function GET(req: Request) {

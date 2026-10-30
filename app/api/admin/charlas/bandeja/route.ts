@@ -258,11 +258,16 @@ async function enviar(body: Record<string, unknown>) {
 async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
   const supabase = supabaseCharlas();
   const c = (t.cambios_crm ?? {}) as Record<string, unknown>;
-  const { data: centro } = await supabase.from("charlas_centros").select("mails_enviados").eq("id", t.centro_id).single();
+  const { data: centro } = await supabase.from("charlas_centros").select("mails_enviados, otros_formatos").eq("id", t.centro_id).single();
 
   const cambios: Record<string, unknown> = { actualizado_por: "sistema", fecha_ultimo_contacto: hoy() };
-  for (const k of ["estado", "proxima_accion", "fecha_proxima_accion", "calendario_abierto"]) if (c[k]) cambios[k] = c[k];
+  for (const k of ["estado", "proxima_accion", "fecha_proxima_accion", "calendario_abierto", "via"]) if (c[k]) cambios[k] = c[k];
   if (envio) cambios.mails_enviados = (centro?.mails_enviados ?? 0) + 1;
+  // Qué otro formato se le ha ofrecido al centro (plan de noviembre): se acumula con la fecha, no se pisa.
+  if (envio && typeof c.otros_formatos === "string" && c.otros_formatos.trim()) {
+    const linea = `${hoy().slice(8, 10)}-${hoy().slice(5, 7)}: ${c.otros_formatos.trim()}`;
+    cambios.otros_formatos = centro?.otros_formatos ? `${centro.otros_formatos} · ${linea}` : linea;
+  }
   await supabase.from("charlas_centros").update(cambios).eq("id", t.centro_id);
 
   const persona = c.contacto_nuevo as { nombre?: string; email?: string; cargo?: string } | undefined;

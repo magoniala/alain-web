@@ -87,9 +87,9 @@ const ORDEN = [
   "etapas_confirmadas", "direccion", "telefono", "email_centro", "web", "prioridad", "estado", "origen", "via",
   "responsable", "responsable_cargo", "responsable_email", "responsable_tel", "ampa", "ampa_contacto", "ampa_email",
   "calendario_abierto", "intentos_llamada", "mails_enviados", "fecha_ultimo_contacto", "proxima_accion",
-  "bloqueado_por", "fecha_proxima_accion", "fecha_creacion", "ficha_cliente",
+  "bloqueado_por", "fecha_proxima_accion", "fecha_creacion", "ficha_cliente", "otros_formatos",
 ];
-const OPCIONALES = new Set(["via", "bloqueado_por", "ficha_cliente"]);
+const OPCIONALES = new Set(["via", "bloqueado_por", "ficha_cliente", "otros_formatos"]);
 const SIEMPRE_COMILLAS = new Set(["codigo", "telefono", "ficha_cliente", "proxima_accion"]);
 const NUMERICOS = new Set(["intentos_llamada", "mails_enviados"]);
 
@@ -309,6 +309,146 @@ async function main() {
   }
   if (diferencias.length > 15) console.log(`\n… y ${diferencias.length - 15} más.`);
   if (COMPROBAR) console.log("\n(modo --comprobar: no se ha escrito nada)");
+
+  if (!COMPROBAR) await espejoDiario(centros);
+}
+
+// ---------------------------------------------------------------------------
+// Bandeja diaria, Volumen y nota diaria.
+//
+// Reproduce lo que Alain hacía a mano cada día en el vault: la nota
+// "Bandeja — respuestas DD-MM-AAAA" (qué ha llegado, qué ha salido, qué queda
+// por revisar), el recuento de contactos en "Volumen — <mes>" y una línea en
+// la nota diaria con enlace a la bandeja y al panel. Se regenera cada hora
+// para hoy (y para ayer, por si quedó algo de última hora). Lo que escribe el
+// sistema va marcado; lo que Alain escribe a mano no se toca.
+// ---------------------------------------------------------------------------
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const fechaMadrid = (d = new Date()) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(d);
+const ddmmaaaa = (iso) => iso.split("-").reverse().join("-");
+const horaMadrid = (iso) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+// Quita la parte citada de una respuesta (lo que ya está en el hilo).
+function sinCita(texto) {
+  const lineas = texto.replace(/\r/g, "").split("\n");
+  const corte = lineas.findIndex((l) => /^>/.test(l.trim()) || /(escribió|wrote|idatzi zuen|idatzi du)\s*:\s*$/i.test(l.trim()) || /^-{2,}\s*(Mensaje original|Original Message)/i.test(l.trim()));
+  return (corte > 0 ? lineas.slice(0, corte) : lineas).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+async function configValor(clave, defecto) {
+  const r = await rest(`charlas_config?select=valor&clave=eq.${encodeURIComponent(clave)}`);
+  return r?.[0]?.valor ?? defecto;
+}
+
+async function espejoDiario(centros) {
+  const nombrePorId = new Map(centros.map((c) => [c.id, c.nombre]));
+  const hoy = fechaMadrid();
+  const ayer = fechaMadrid(new Date(Date.now() - 86400000));
+  const bandejaOn = (await configValor("espejo_bandeja_diaria", true)) !== false;
+  const notaOn = (await configValor("espejo_nota_diaria", true)) !== false;
+
+  // Todo lo de ayer y hoy, de una vez.
+  const desde = `${ayer}T00:00:00+01:00`;
+  const [entrantes, salientes, tareas, pendientes, llamadas] = await Promise.all([
+    rest(`charlas_mensajes?select=centro_id,de,asunto,fecha,clasificacion,resumen,estado&direccion=eq.entrante&fecha=gte.${encodeURIComponent(desde)}&order=fecha`),
+    rest(`charlas_mensajes?select=centro_id,para,asunto,fecha,texto,tipo_salida,estado&direccion=eq.saliente&fecha=gte.${encodeURIComponent(desde)}&order=fecha`),
+    rest(`charlas_tareas?select=centro_id,tipo,estado,urgencia,resuelto_en,resuelto_por,motivo,contexto&resuelto_en=gte.${encodeURIComponent(desde)}&order=resuelto_en`),
+    rest(`charlas_tareas?select=centro_id,tipo,nivel,urgencia,urgencia_motivo,contexto,creado_en&estado=eq.revisar&order=urgencia.desc,creado_en`),
+    rest(`charlas_interacciones?select=centro_id,fecha,canal&canal=eq.Llamada&fecha=gte.${ayer}`),
+  ]);
+
+  const dirBandejas = join(VAULT, "Bandejas");
+  if (!existsSync(dirBandejas)) mkdirSync(dirBandejas);
+  const raizVault = join(VAULT, "..", "..", "..", "..", "..");
+
+  for (const dia of [ayer, hoy]) {
+    const ent = (entrantes ?? []).filter((m) => fechaMadrid(new Date(m.fecha)) === dia && m.estado !== "ignorado");
+    const sal = (salientes ?? []).filter((m) => fechaMadrid(new Date(m.fecha)) === dia && m.tipo_salida !== "prueba");
+    const res = (tareas ?? []).filter((t) => t.resuelto_en && fechaMadrid(new Date(t.resuelto_en)) === dia);
+    const nombre = (id) => nombrePorId.get(id) ?? "¿Centro?";
+    const enlace = (id) => (nombrePorId.has(id) ? `[[${nombrePorId.get(id)}]]` : "¿Centro?");
+
+    if (bandejaOn && (ent.length || sal.length || res.length || dia === hoy)) {
+      const lineas = [
+        "---",
+        "tags:",
+        "  - bandeja",
+        "  - sistema",
+        `fecha: ${dia}`,
+        "---",
+        "",
+        `# Bandeja — ${ddmmaaaa(dia)} (sistema)`,
+        "",
+        `Generada por el sistema a las ${horaMadrid(new Date().toISOString())}. Se actualiza sola cada hora. Panel: [[00 Panel charlas]] · bandeja en vivo: www.alainzulaika.com/admin → Charlas.`,
+        "",
+        `## Han llegado · ${ent.length}`,
+        "",
+      ];
+      if (!ent.length) lineas.push("Nada.");
+      for (const m of ent) {
+        lineas.push(`- **${enlace(m.centro_id)}** · ${horaMadrid(m.fecha)} · ${m.de ?? ""} · *${m.clasificacion ?? "sin clasificar"}*`);
+        if (m.resumen) lineas.push(`\t- ${m.resumen}`);
+      }
+      lineas.push("", `## Han salido · ${sal.length}`, "");
+      if (!sal.length) lineas.push("Nada.");
+      for (const m of sal) {
+        lineas.push(`### ${nombre(m.centro_id)} · ${horaMadrid(m.fecha)} · ${(m.para ?? []).join(", ")}`, "", `**${m.asunto ?? ""}**`, "");
+        for (const l of sinCita(String(m.texto ?? "")).split("\n")) lineas.push(`> ${l}`);
+        lineas.push("");
+      }
+      const descartadas = res.filter((t) => t.estado === "descartada" && t.resuelto_por === "alain");
+      if (descartadas.length) {
+        lineas.push(`## Descartadas por Alain · ${descartadas.length}`, "");
+        for (const t of descartadas) lineas.push(`- ${enlace(t.centro_id)} · ${t.tipo}${t.motivo ? ` · ${t.motivo}` : ""}`);
+        lineas.push("");
+      }
+      if (dia === hoy) {
+        lineas.push(`## Pendiente en la bandeja · ${(pendientes ?? []).length}`, "");
+        if (!(pendientes ?? []).length) lineas.push("Nada.");
+        for (const t of pendientes ?? []) {
+          const u = t.urgencia === 3 ? "🔴" : t.urgencia === 2 ? "🟠" : "🟢";
+          lineas.push(`- ${u} ${enlace(t.centro_id)} · ${t.contexto?.resumen ?? t.tipo}${t.urgencia_motivo ? ` · _${t.urgencia_motivo}_` : ""}`);
+        }
+      }
+      writeFileSync(join(dirBandejas, `Bandeja — ${ddmmaaaa(dia)}.md`), lineas.join("\n").replace(/\n{3,}/g, "\n\n") + "\n", "utf8");
+    }
+
+    // Volumen del mes: sección propia del sistema debajo de la tabla de Alain.
+    const [y, m] = dia.split("-");
+    const rutaVol = join(VAULT, "..", "..", `Volumen — ${MESES[Number(m) - 1]} ${y}.md`);
+    if (existsSync(rutaVol)) {
+      const txt = readFileSync(rutaVol, "utf8");
+      const llam = (llamadas ?? []).filter((l) => l.fecha === dia).length;
+      const fila = `| ${dia} | ${sal.length} | ${ent.length} | ${llam} |`;
+      const ini = "<!-- sistema-volumen -->";
+      const fin = "<!-- /sistema-volumen -->";
+      let bloque = txt.includes(ini) ? txt.slice(txt.indexOf(ini) + ini.length, txt.indexOf(fin)).trim() : "";
+      const filas = bloque.split("\n").filter((l) => /^\| \d{4}-\d{2}-\d{2} \|/.test(l) && !l.startsWith(`| ${dia} |`));
+      filas.push(fila);
+      filas.sort();
+      const nuevoBloque = `${ini}\n## Automático (sistema)\n\nLo que el sistema ha visto cada día: correos enviados a centros, correos recibidos de centros y llamadas apuntadas en el Registro. No sustituye a tu recuento de arriba; lo complementa.\n\n| Fecha | Mails enviados | Recibidos | Llamadas |\n| --- | --- | --- | --- |\n${filas.join("\n")}\n${fin}`;
+      const nuevo = txt.includes(ini) ? txt.slice(0, txt.indexOf(ini)) + nuevoBloque + txt.slice(txt.indexOf(fin) + fin.length) : txt.replace(/\s+$/, "") + "\n\n" + nuevoBloque + "\n";
+      if (nuevo !== txt) writeFileSync(rutaVol, nuevo, "utf8");
+    }
+  }
+
+  // Nota diaria de hoy: una línea del sistema, entre marcadores, al final.
+  if (notaOn) {
+    const [y, m] = hoy.split("-");
+    const rutaDia = join(raizVault, "02 - AREAS", "PERSONAL", "📆 Notas diarias", y, `${y}-${m}`, `${hoy}.md`);
+    if (existsSync(rutaDia)) {
+      const txt = readFileSync(rutaDia, "utf8");
+      const n = (pendientes ?? []).length;
+      const rojas = (pendientes ?? []).filter((t) => t.urgencia === 3).length;
+      const linea = `- **Charlas (sistema):** ${n === 0 ? "bandeja vacía" : `${n} por revisar${rojas ? ` (${rojas} 🔴)` : ""}`} · [[Bandeja — ${ddmmaaaa(hoy)}]] · [[00 Panel charlas]] · www.alainzulaika.com/admin`;
+      const ini = "<!-- charlas-sistema -->";
+      const fin = "<!-- /charlas-sistema -->";
+      const bloque = `${ini}\n${linea}\n${fin}`;
+      const nuevo = txt.includes(ini) ? txt.slice(0, txt.indexOf(ini)) + bloque + txt.slice(txt.indexOf(fin) + fin.length) : txt.replace(/\s+$/, "") + "\n\n" + bloque + "\n";
+      if (nuevo !== txt) writeFileSync(rutaDia, nuevo, "utf8");
+    }
+  }
+  console.log(`Bandeja diaria, Volumen y nota diaria actualizados (${hoy}).`);
 }
 
 export { ficha, frontmatter, partir, registroDe, lineaRegistro, normal, ORDEN };

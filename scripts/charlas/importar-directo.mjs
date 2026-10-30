@@ -53,7 +53,7 @@ function normalizar(fm) {
     mails_enviados: entero(fm.mails_enviados), fecha_ultimo_contacto: fecha(fm.fecha_ultimo_contacto),
     proxima_accion: texto(fm.proxima_accion), bloqueado_por: texto(fm.bloqueado_por),
     fecha_proxima_accion: fecha(fm.fecha_proxima_accion), fecha_creacion: fecha(fm.fecha_creacion),
-    ficha_cliente: texto(fm.ficha_cliente),
+    ficha_cliente: texto(fm.ficha_cliente), otros_formatos: texto(fm.otros_formatos),
   };
 }
 

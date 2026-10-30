@@ -83,6 +83,7 @@ export interface Centro {
   fecha_proxima_accion: string | null;
   fecha_creacion: string | null;
   ficha_cliente: string | null;
+  otros_formatos: string | null;
   notas: string | null;
   secciones_extra: Record<string, string>;
   nivel_autonomia: NivelAutonomia;
@@ -140,13 +141,14 @@ export const CAMPOS_FRONTMATTER = [
   "fecha_proxima_accion",
   "fecha_creacion",
   "ficha_cliente",
+  "otros_formatos",
 ] as const;
 
 export type CampoFrontmatter = (typeof CAMPOS_FRONTMATTER)[number];
 
 // Campos que solo se escriben en la ficha si tienen valor (en el vault no
 // aparecen en las fichas que no los usan).
-export const CAMPOS_OPCIONALES: ReadonlySet<string> = new Set(["via", "bloqueado_por", "ficha_cliente"]);
+export const CAMPOS_OPCIONALES: ReadonlySet<string> = new Set(["via", "bloqueado_por", "ficha_cliente", "otros_formatos"]);
 
 /** Normaliza lo que llega del YAML del vault a lo que guarda la tabla. */
 export function normalizarFrontmatter(fm: Record<string, unknown>): Partial<Centro> {
@@ -201,6 +203,7 @@ export function normalizarFrontmatter(fm: Record<string, unknown>): Partial<Cent
     fecha_proxima_accion: fecha(fm.fecha_proxima_accion),
     fecha_creacion: fecha(fm.fecha_creacion),
     ficha_cliente: texto(fm.ficha_cliente),
+    otros_formatos: texto(fm.otros_formatos),
   };
 }
 

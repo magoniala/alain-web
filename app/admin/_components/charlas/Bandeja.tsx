@@ -77,6 +77,8 @@ const ETIQUETA: Record<string, string> = {
   dossier: "Enviar dossier",
   seguimiento_dossier: "Seguimiento del dossier",
   mail_cierre: "Mail de cierre",
+  mail_b: "Mail al buzón del centro",
+  mail_1: "Mail 1 (primer contacto)",
   reactivacion: "Reactivación",
   seguimiento_conversacion: "Seguimiento de conversación",
   llamada_alain: "📞 Llamada",

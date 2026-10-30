@@ -45,9 +45,9 @@ interface Interaccion {
 }
 
 interface Detalle {
-  centro: CentroLista & { notas: string | null; responsable_cargo: string | null; ampa: string | null; ampa_contacto: string | null; ampa_email: string | null; direccion: string | null; modelo_linguistico: string | null; web: string | null };
+  centro: CentroLista & { notas: string | null; otros_formatos?: string | null; responsable_cargo: string | null; ampa: string | null; ampa_contacto: string | null; ampa_email: string | null; direccion: string | null; modelo_linguistico: string | null; web: string | null };
   registro: Interaccion[];
-  contactos: { id: string; nombre: string | null; cargo: string | null; email: string | null; telefono: string | null; rol: string }[];
+  contactos: { id: string; nombre: string | null; cargo: string | null; email: string | null; telefono: string | null; rol: string; origen: string }[];
   tareas: { id: string; tipo: string; nivel: string; estado: string; fecha_prevista: string }[];
   eventos: { id: string; nombre: string; fecha_evento: string | null; estado_evento: string | null; importe_base: number | null }[];
 }
@@ -358,6 +358,7 @@ function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: 
   const [proxima, setProxima] = useState(c.proxima_accion ?? "");
   const [fecha, setFecha] = useState(c.fecha_proxima_accion ?? "");
   const [nivel, setNivel] = useState(c.nivel_autonomia);
+  const [otros, setOtros] = useState(c.otros_formatos ?? "");
   const [nuevaLinea, setNuevaLinea] = useState("");
   const [canal, setCanal] = useState("Manual");
   const [guardando, setGuardando] = useState(false);
@@ -367,10 +368,11 @@ function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: 
     setProxima(c.proxima_accion ?? "");
     setFecha(c.fecha_proxima_accion ?? "");
     setNivel(c.nivel_autonomia);
+    setOtros(c.otros_formatos ?? "");
     setNuevaLinea("");
-  }, [c.id, c.estado, c.proxima_accion, c.fecha_proxima_accion, c.nivel_autonomia]);
+  }, [c.id, c.estado, c.proxima_accion, c.fecha_proxima_accion, c.nivel_autonomia, c.otros_formatos]);
 
-  const cambiado = estado !== c.estado || proxima !== (c.proxima_accion ?? "") || fecha !== (c.fecha_proxima_accion ?? "") || nivel !== c.nivel_autonomia || nuevaLinea.trim() !== "";
+  const cambiado = estado !== c.estado || proxima !== (c.proxima_accion ?? "") || fecha !== (c.fecha_proxima_accion ?? "") || nivel !== c.nivel_autonomia || otros !== (c.otros_formatos ?? "") || nuevaLinea.trim() !== "";
 
   async function guardar() {
     setGuardando(true);
@@ -380,6 +382,7 @@ function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: 
         proxima_accion: proxima,
         fecha_proxima_accion: fecha || null,
         nivel_autonomia: nivel,
+        otros_formatos: otros,
         ...(nuevaLinea.trim() ? { registro: nuevaLinea, registro_canal: canal, fecha_ultimo_contacto: hoyISO() } : {}),
       });
       setNuevaLinea("");
@@ -387,6 +390,8 @@ function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: 
       setGuardando(false);
     }
   }
+
+  const otrosContactos = detalle.contactos.filter((k) => k.rol !== "responsable" && k.rol !== "ampa" && (k.email || k.telefono));
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white">
@@ -430,6 +435,24 @@ function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: 
               <dd className="text-amber-800">{c.bloqueado_por}</dd>
             </div>
           )}
+          {otrosContactos.length > 0 && (
+            <div className="col-span-2 sm:col-span-3">
+              <dt className="text-gray-500">Otros contactos {otrosContactos.some((k) => k.origen === "web") ? "(encontrados en la web del centro)" : ""}</dt>
+              {otrosContactos.map((k) => (
+                <dd key={k.id} className="flex flex-wrap items-center gap-2">
+                  <span>{k.nombre ? `${k.nombre} · ` : ""}{k.cargo ?? k.rol}{k.email ? ` · ${k.email}` : ""}{k.telefono ? ` · ${k.telefono}` : ""}</span>
+                  {k.email && k.email !== c.responsable_email && (
+                    <button
+                      onClick={() => onGuardar({ responsable_email: k.email, responsable_cargo: k.cargo ?? null, ...(k.nombre ? { responsable: k.nombre } : {}) })}
+                      className="rounded-full border border-gray-300 px-2 py-0.5 text-[0.75rem] text-gray-700 hover:border-gray-500"
+                    >
+                      Usar como responsable
+                    </button>
+                  )}
+                </dd>
+              ))}
+            </div>
+          )}
           {detalle.eventos.length > 0 && (
             <div className="col-span-2 sm:col-span-3">
               <dt className="text-gray-500">Eventos</dt>
@@ -461,6 +484,10 @@ function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: 
             <option value="B">B · el sistema redacta, yo apruebo</option>
             <option value="C">C · solo yo</option>
           </select>
+        </label>
+        <label className="text-[0.8rem] text-gray-600 sm:col-span-2">
+          Otros formatos ofrecidos (show, semana cultural, charla a familias…) y cuándo
+          <input value={otros} onChange={(e) => setOtros(e.target.value)} className="mt-1 w-full border border-gray-300 px-2 py-1.5 text-[0.88rem] text-gray-900" placeholder="p. ej. 11-11: show de Navidad mencionado en el post-evento" />
         </label>
         <label className="text-[0.8rem] text-gray-600 sm:col-span-2">
           Próxima acción

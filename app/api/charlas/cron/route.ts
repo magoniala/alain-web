@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseCharlas } from "@/lib/charlas";
 import { leerBuzon } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
-import { tareasPorFecha } from "@/lib/charlas-motor";
+import { tareasPorFecha, mail1Automatico } from "@/lib/charlas-motor";
+import { rastrearContactos } from "@/lib/charlas-rastreo";
 import { notificarTareasNuevas } from "@/lib/charlas-push";
 import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 
@@ -102,6 +103,22 @@ async function ejecutar(req: Request) {
       ? await tareasPorFecha({ presupuestoMs: Math.max(0, 45000 - (Date.now() - inicio)) })
       : null;
 
+  // Fase 3: Mail 1 sin llamada previa en los territorios activados en
+  // charlas_config (ninguno por defecto). Usa IA, así que va en ventana.
+  const mail1 =
+    lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 40000
+      ? await mail1Automatico({ presupuestoMs: Math.max(0, 50000 - (Date.now() - inicio)) }).catch((e) => ({ activo: true, territorios: [], cupo_dia: 0, hoy_ya: 0, creadas: 0, candidatos: 0, errores: [(e as Error).message] }))
+      : null;
+
+  // Rastreo web de correos de contacto (sin IA, solo red): se hace en las
+  // ejecuciones fuera de ventana, que si no estarían ociosas. Unos pocos
+  // centros por pasada; en un par de días recorre todos los que no tienen
+  // correo directo.
+  const rastreo =
+    !panel && lectura?.al_dia && !errorLectura && !toca
+      ? await rastrearContactos({ presupuestoMs: Math.max(0, 48000 - (Date.now() - inicio)) }).catch((e) => ({ revisados: 0, con_emails: 0, propuestos: 0, errores: [(e as Error).message] }))
+      : null;
+
   // Aprendizaje semanal (domingo 20:00 por defecto): propone reglas a partir
   // de las correcciones de la semana. Barato: una llamada sin conocimiento.
   const aprendizaje = !panel && (await tocaAprender()) ? await aprender().catch((e) => ({ correcciones: 0, propuestas: 0, saltado: (e as Error).message })) : null;
@@ -109,7 +126,7 @@ async function ejecutar(req: Request) {
   // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, push, aprendizaje, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, rastreo, push, aprendizaje, ms: Date.now() - inicio });
 }
 
 export const GET = ejecutar;
