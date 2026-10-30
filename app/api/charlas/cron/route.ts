@@ -4,6 +4,7 @@ import { leerBuzon } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
 import { tareasPorFecha } from "@/lib/charlas-motor";
 import { notificarTareasNuevas } from "@/lib/charlas-push";
+import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -101,10 +102,14 @@ async function ejecutar(req: Request) {
       ? await tareasPorFecha({ presupuestoMs: Math.max(0, 45000 - (Date.now() - inicio)) })
       : null;
 
+  // Aprendizaje semanal (domingo 20:00 por defecto): propone reglas a partir
+  // de las correcciones de la semana. Barato: una llamada sin conocimiento.
+  const aprendizaje = !panel && (await tocaAprender()) ? await aprender().catch((e) => ({ correcciones: 0, propuestas: 0, saltado: (e as Error).message })) : null;
+
   // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, push, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, push, aprendizaje, ms: Date.now() - inicio });
 }
 
 export const GET = ejecutar;
