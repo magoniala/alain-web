@@ -117,7 +117,10 @@ export interface EntradaIA {
   centro: Record<string, unknown>;
   registro: { fecha: string | null; canal: string | null; texto: string }[];
   hilo: { direccion: string; fecha: string | null; de: string | null; asunto: string | null; texto: string | null }[];
-  correo: { de: string | null; asunto: string | null; fecha: string | null; texto: string };
+  /** Correo recibido (modo normal). */
+  correo?: { de: string | null; asunto: string | null; fecha: string | null; texto: string } | null;
+  /** Tarea que toca por fecha, sin correo nuevo (modo programado). */
+  programada?: { tipo: string; instrucciones: string; destinatario: string | null } | null;
   instruccion_extra?: string;
 }
 
@@ -206,13 +209,18 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
           .map((m) => `[${m.direccion === "saliente" ? "ALAIN" : "CENTRO"} · ${m.fecha ?? ""} · ${m.de ?? ""}]\nAsunto: ${m.asunto ?? ""}\n${(m.texto ?? "").slice(0, 2500)}`)
           .join("\n---\n")}\n</hilo_anterior>`
       : "",
-    `<correo_nuevo>\nDe: ${entrada.correo.de}\nFecha: ${entrada.correo.fecha}\nAsunto: ${entrada.correo.asunto}\n\n${entrada.correo.texto.slice(0, 8000)}\n</correo_nuevo>`,
+    entrada.correo
+      ? `<correo_nuevo>\nDe: ${entrada.correo.de}\nFecha: ${entrada.correo.fecha}\nAsunto: ${entrada.correo.asunto}\n\n${entrada.correo.texto.slice(0, 8000)}\n</correo_nuevo>`
+      : "",
+    entrada.programada
+      ? `<tarea_programada tipo="${entrada.programada.tipo}">\nNo ha llegado ningún correo nuevo. Toca esta acción del Flujo porque ha llegado su fecha. Destinatario previsto: ${entrada.programada.destinatario ?? "(sin correo directo)"}.\n${entrada.programada.instrucciones}\nDevuelve el mismo JSON de siempre: clasificacion "otro", confianza 1, resumen = qué se hace (p. ej. "Recordatorio 1 enviado"), responder true salvo que la instrucción diga lo contrario, y cambios_crm con el estado/fecha que indica la instrucción. El asunto: "Re: " + el asunto del hilo anterior si existe; si no, el del guion.\n</tarea_programada>`
+      : "",
     entrada.instruccion_extra ? `<instruccion_de_alain>\n${entrada.instruccion_extra}\n</instruccion_de_alain>` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
 
-  const texto = await llamarClaude({ system, usuario, proposito: entrada.instruccion_extra ? "regenerar" : "procesar_entrante", mensajeId, maxTokens: 2500 });
+  const texto = await llamarClaude({ system, usuario, proposito: entrada.instruccion_extra ? "regenerar" : entrada.programada ? "programada" : "procesar_entrante", mensajeId, maxTokens: 2500 });
   const r = extraerJSON(texto) as ResultadoIA;
 
   if (!(CLASIFICACIONES as readonly string[]).includes(r.clasificacion)) r.clasificacion = "otro";

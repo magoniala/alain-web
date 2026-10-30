@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseCharlas } from "@/lib/charlas";
 import { leerBuzon } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
+import { tareasPorFecha } from "@/lib/charlas-motor";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -92,7 +93,14 @@ async function ejecutar(req: Request) {
           fuera_de_ventana: !toca,
         };
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0, lectura, error_lectura: errorLectura, proceso, ms: Date.now() - inicio });
+  // Lo que toca por fecha (recordatorios, cierres, reactivaciones…): mismas
+  // condiciones que la IA de entrantes, y después de ella.
+  const motor =
+    lectura?.al_dia && !errorLectura && toca
+      ? await tareasPorFecha({ presupuestoMs: Math.max(0, 45000 - (Date.now() - inicio)) })
+      : null;
+
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, ms: Date.now() - inicio });
 }
 
 export const GET = ejecutar;

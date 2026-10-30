@@ -433,7 +433,7 @@ export interface Envio {
   prueba?: boolean;
 }
 
-export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para: string }> {
+export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para: string; smtp: string }> {
   const { user, pass } = credenciales();
   const remitente = String(await config("remitente", `Alain Zulaika <${user}>`));
   const messageId = `${randomUUID()}@alainzulaika.com`;
@@ -460,7 +460,7 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
   const crudo: Buffer = await new MailComposer(opciones).compile().build();
 
   const transporte = nodemailer.createTransport({ host: SMTP_HOST, port: 465, secure: true, auth: { user, pass } });
-  await transporte.sendMail({ envelope: { from: user, to: [para] }, raw: crudo });
+  const info = await transporte.sendMail({ envelope: { from: user, to: [para] }, raw: crudo });
 
   if (!e.prueba) {
     // Copia en Enviados para que el hilo se vea completo en Mail del Mac.
@@ -477,5 +477,5 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
     }
   }
 
-  return { messageId, para };
+  return { messageId, para, smtp: String(info.response ?? "") };
 }

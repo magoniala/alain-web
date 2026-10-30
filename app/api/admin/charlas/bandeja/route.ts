@@ -162,13 +162,21 @@ async function enviar(body: Record<string, unknown>) {
       inReplyTo = m.message_id;
       referencias = [...(m.referencias ?? []), m.message_id].slice(-15);
     }
+  } else {
+    // Tarea programada (recordatorio, cierre, reactivación): se responde al
+    // último correo del hilo del centro, para que siga siendo un solo hilo.
+    const { data: h } = await supabase.from("charlas_hilos").select("ultimo_message_id, message_id_raiz").eq("centro_id", t.centro_id).eq("canal", "principal").maybeSingle();
+    if (h?.ultimo_message_id && !h.ultimo_message_id.startsWith("sin-id-")) {
+      inReplyTo = h.ultimo_message_id;
+      referencias = [...new Set([h.message_id_raiz, h.ultimo_message_id].filter(Boolean) as string[])];
+    }
   }
 
   const envio = await enviarCorreo({ para: destinatario, asunto, texto, inReplyTo, referencias, dossier, prueba });
 
   if (prueba) {
     // En modo prueba no se toca nada: la tarea sigue en la bandeja.
-    return { ok: true, prueba: true, enviado_a: envio.para };
+    return { ok: true, prueba: true, enviado_a: envio.para, smtp: envio.smtp };
   }
 
   const ahora = new Date().toISOString();
@@ -225,8 +233,11 @@ async function enviar(body: Record<string, unknown>) {
     .update({ estado: "enviada", texto_final: texto, editado, mensaje_salida_id: saliente?.id ?? null, resuelto_en: ahora, resuelto_por: "alain", adjuntar_dossier: !!dossier })
     .eq("id", t.id);
 
+  await supabase
+    .from("charlas_hilos")
+    .upsert({ centro_id: t.centro_id, canal: "principal", asunto: asunto.replace(/^((re|rv|fw|fwd|erantz)\s*:\s*)+/i, ""), message_id_raiz: referencias[0] ?? envio.messageId, ultimo_message_id: envio.messageId, ultimo_mensaje_en: ahora }, { onConflict: "centro_id,canal" });
   await aplicarCambios(t, { dossier: !!dossier });
-  return { ok: true, prueba: false, enviado_a: envio.para };
+  return { ok: true, prueba: false, enviado_a: envio.para, smtp: envio.smtp };
 }
 
 async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
@@ -248,7 +259,9 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
   }
 
   const partes = [];
-  if (envio) partes.push(envio.dossier ? "Respuesta enviada con dossier" : "Respuesta enviada");
+  if (envio) partes.push(envio.dossier ? `${t.tipo === "respuesta" ? "Respuesta" : t.tipo.replace(/_/g, " ")} enviada con dossier` : `${t.tipo === "respuesta" ? "Respuesta" : t.tipo.replace(/_/g, " ")} enviado`);
+  else if (t.tipo === "llamada_alain") partes.push("Llamada hecha (desde el panel)");
+  else if (t.tipo === "aparcar") partes.push("Aparcado sin respuesta");
   if (c.estado) partes.push(`→ ${c.estado}`);
   if (c.fecha_proxima_accion) partes.push(`siguiente: ${c.proxima_accion ?? "acción"} el ${c.fecha_proxima_accion}`);
   await supabase.from("charlas_interacciones").insert({

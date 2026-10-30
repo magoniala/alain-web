@@ -25,6 +25,7 @@ interface Tarea {
   nota_para_alain: string | null;
   cambios_crm: Record<string, unknown>;
   contexto: {
+    programada?: boolean;
     clasificacion?: string;
     confianza?: number;
     resumen?: string;
@@ -68,6 +69,16 @@ const ETIQUETA: Record<string, string> = {
   acuse_automatico: "Acuse automático",
   fuera_de_oficina: "Fuera de oficina",
   otro: "Otro",
+  recordatorio_1: "Recordatorio 1",
+  recordatorio_2: "Recordatorio 2 (último)",
+  aparcar: "Aparcar",
+  dossier: "Enviar dossier",
+  seguimiento_dossier: "Seguimiento del dossier",
+  mail_cierre: "Mail de cierre",
+  reactivacion: "Reactivación",
+  seguimiento_conversacion: "Seguimiento de conversación",
+  llamada_alain: "📞 Llamada",
+  revisar_bloqueo: "Revisar bloqueo",
 };
 
 function fechaHora(iso: string | null) {
@@ -145,10 +156,11 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
         total.tareas += d.proceso?.tareas ?? 0;
         total.ya += d.proceso?.ya_respondidos ?? 0;
         total.huerfanos += d.lectura?.huerfanos_asociados ?? 0;
-        total.errores.push(...(d.proceso?.errores ?? []));
+        total.errores.push(...(d.proceso?.errores ?? []), ...(d.motor?.errores ?? []));
+        total.tareas += d.motor?.creadas ?? 0;
 
         const leyendoHistorico = !d.lectura?.al_dia;
-        const quedan = d.proceso?.pendientes_restantes ?? 0;
+        const quedan = (d.proceso?.pendientes_restantes ?? 0) + (d.motor?.pendientes_restantes ?? 0);
         setProgreso((p) => ({
           ...p,
           fase: leyendoHistorico
@@ -303,7 +315,8 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
 
   const base = opcion === "b" && alt ? { asunto: alt.asunto || t.borrador_asunto || "", texto: alt.cuerpo } : { asunto: t.borrador_asunto ?? "", texto: t.borrador_texto ?? "" };
   const editado = texto.trim() !== base.texto.trim() || asunto.trim() !== base.asunto.trim();
-  const conRespuesta = t.tipo === "respuesta";
+  const conRespuesta = !!t.borrador_texto;
+  const programada = !!t.contexto?.programada;
   const cambios = Object.entries(t.cambios_crm ?? {}).filter(([k]) => k !== "contacto_nuevo");
   const persona = t.cambios_crm?.contacto_nuevo as { nombre?: string; email?: string } | undefined;
 
@@ -311,8 +324,8 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
     setOcupado(nombre);
     setMensaje("");
     try {
-      const r = (await accion(body)) as { prueba?: boolean; enviado_a?: string };
-      if (r?.prueba) setMensaje(`Prueba enviada a ${r.enviado_a}. Revisa tu correo; la tarea sigue aquí.`);
+      const r = (await accion(body)) as { prueba?: boolean; enviado_a?: string; smtp?: string };
+      if (r?.prueba) setMensaje(`Prueba enviada a ${r.enviado_a}. Revisa tu correo (también Spam); la tarea sigue aquí. Servidor: ${r.smtp || "sin respuesta"}`);
       else alTerminar();
     } catch (e) {
       setMensaje(`Error: ${(e as Error).message}`);
@@ -335,14 +348,24 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
       <div className="grid gap-0 lg:grid-cols-2">
         {/* Lo que ha llegado */}
         <div className="border-b border-gray-100 p-5 lg:border-b-0 lg:border-r">
-          <button onClick={() => setVerOriginal(!verOriginal)} className="mb-2 text-[0.78rem] font-medium uppercase text-gray-400">
-            Ha llegado {verOriginal ? "▾" : "▸"}
-          </button>
-          <p className="text-[0.82rem] text-gray-600">
-            {t.entrante?.de} · {fechaHora(t.entrante?.fecha ?? null)}
-          </p>
-          <p className="mb-2 text-[0.85rem] font-medium">{t.entrante?.asunto}</p>
-          {verOriginal && <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap font-sans text-[0.85rem] text-gray-800">{(t.entrante?.texto ?? "").trim()}</pre>}
+          {programada ? (
+            <>
+              <p className="mb-2 text-[0.78rem] font-medium uppercase text-gray-400">Toca por fecha</p>
+              <p className="text-[0.95rem] font-medium">{ETIQUETA[t.tipo] ?? t.tipo}</p>
+              <p className="mt-1 text-[0.82rem] text-gray-600">No ha llegado ningún correo: lo marca el Flujo según el estado de la ficha y su fecha de próxima acción.</p>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setVerOriginal(!verOriginal)} className="mb-2 text-[0.78rem] font-medium uppercase text-gray-400">
+                Ha llegado {verOriginal ? "▾" : "▸"}
+              </button>
+              <p className="text-[0.82rem] text-gray-600">
+                {t.entrante?.de} · {fechaHora(t.entrante?.fecha ?? null)}
+              </p>
+              <p className="mb-2 text-[0.85rem] font-medium">{t.entrante?.asunto}</p>
+              {verOriginal && <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap font-sans text-[0.85rem] text-gray-800">{(t.entrante?.texto ?? "").trim()}</pre>}
+            </>
+          )}
           {t.contexto?.resumen && <p className="mt-3 text-[0.8rem] text-gray-500">Resumen: {t.contexto.resumen}</p>}
         </div>
 
@@ -393,7 +416,9 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
               )}
             </>
           ) : (
-            <p className="text-[0.85rem] text-gray-700">No hace falta responder. Solo se propone actualizar la ficha.</p>
+            <p className="text-[0.85rem] text-gray-700">
+              {t.tipo === "llamada_alain" ? "Esto es una llamada tuya. Cuando la hagas, apunta el resultado abajo y pulsa Aplicar." : "No hace falta responder. Solo se propone actualizar la ficha."}
+            </p>
           )}
 
           {(cambios.length > 0 || persona?.email) && (
@@ -435,7 +460,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar }: { t: Tarea; prueba: boo
             </button>
           </div>
 
-          {conRespuesta && (
+          {conRespuesta && !programada && (
             <div className="mt-3 flex gap-2">
               <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)} placeholder="Rehazlo así: …" className="min-w-0 flex-1 border border-gray-300 px-2 py-1 text-[0.82rem]" />
               <button onClick={() => hacer("regenerar", { accion: "regenerar", id: t.id, instruccion })} disabled={!!ocupado || !instruccion.trim()} className="px-3 py-1 text-[0.82rem] ring-1 ring-gray-300 disabled:opacity-40">
