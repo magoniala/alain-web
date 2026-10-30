@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ESTADOS, faseDeEstado } from "@/lib/charlas";
 import Bandeja from "./charlas/Bandeja";
+import ImportarDirectorio from "./charlas/ImportarDirectorio";
 import Aprendizajes from "./charlas/Aprendizajes";
 
 // Pestaña Charlas · fase 0 del sistema automático.
@@ -328,6 +329,9 @@ export default function CharlasTab() {
           {seleccion && detalle && <Ficha detalle={detalle} onGuardar={guardar} />}
         </section>
       </div>
+
+      {/* Fase 3: directorios oficiales (Navarra, Cantabria…) */}
+      <ImportarDirectorio pw={pw} onImportado={cargar} />
 
       {/* Importación desde el vault */}
       <section className="rounded-2xl border border-gray-200 bg-white p-5">
