@@ -71,6 +71,8 @@ export async function aprender(opciones: { dias?: number; forzar?: boolean } = {
     .gte("creado_en", desde)
     .order("creado_en");
 
+  // Se marca la pasada aunque no haya material: así la semanal no se repite en cada tick del cron.
+  await supabase.from("charlas_config").upsert({ clave: "aprendizaje_ultima", valor: new Date().toISOString(), actualizado_en: new Date().toISOString() });
   if (!correcciones?.length) return { correcciones: 0, propuestas: 0, saltado: "sin correcciones en el periodo" };
   if (correcciones.length < 3 && !opciones.forzar) return { correcciones: correcciones.length, propuestas: 0, saltado: "menos de 3 correcciones: poco material" };
 
@@ -117,12 +119,15 @@ Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["da_mes","recordatori
       propuestas.map((p) => ({ regla: p.regla.trim(), tipos: p.tipos ?? [], evidencia: p.evidencia ?? null, n_correcciones: p.n ?? 0 }))
     );
   }
-  await supabase.from("charlas_config").upsert({ clave: "aprendizaje_ultima", valor: new Date().toISOString(), actualizado_en: new Date().toISOString() });
   return { correcciones: correcciones.length, propuestas: propuestas.length };
 }
 
 /** ¿Toca la pasada semanal ahora? (día y hora de config, una vez por semana) */
 export async function tocaAprender(): Promise<boolean> {
+  // Se ejecuta en la primera pasada del cron posterior al momento semanal
+  // configurado (domingo 20:00 por defecto). El cron no corre en fin de
+  // semana, así que en la práctica es el lunes a las 7:00: lo que importa es
+  // que pase una vez por semana, no la hora exacta.
   const supabase = supabaseCharlas();
   const { data } = await supabase.from("charlas_config").select("clave, valor").in("clave", ["aprendizaje_ultima", "aprendizaje_dia", "aprendizaje_hora"]);
   const cfg = Object.fromEntries((data ?? []).map((c) => [c.clave, c.valor]));
@@ -130,12 +135,17 @@ export async function tocaAprender(): Promise<boolean> {
   const madrid = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(ahora);
   const dias: Record<string, number> = { dom: 0, lun: 1, mar: 2, mié: 3, jue: 4, vie: 5, sáb: 6 };
   const dia = dias[(madrid.find((p) => p.type === "weekday")?.value ?? "").replace(".", "").toLowerCase()] ?? -1;
+  if (dia < 0) return false;
   const h = Number(madrid.find((p) => p.type === "hour")?.value) * 60 + Number(madrid.find((p) => p.type === "minute")?.value);
   const [hh, mm] = String(cfg.aprendizaje_hora ?? "20:00").split(":").map(Number);
-  const objetivo = hh * 60 + mm;
-  if (dia !== Number(cfg.aprendizaje_dia ?? 0) || h < objetivo || h >= objetivo + 30) return false;
+  const objetivoDia = Number(cfg.aprendizaje_dia ?? 0);
+  const objetivoMin = hh * 60 + mm;
+  // Minutos transcurridos desde la última vez que se cumplió (día, hora) objetivo.
+  let desde = ((dia - objetivoDia + 7) % 7) * 1440 + (h - objetivoMin);
+  if (desde < 0) desde += 7 * 1440;
+  const ultimaOcurrencia = Date.now() - desde * 60000;
   const ultima = cfg.aprendizaje_ultima ? new Date(String(cfg.aprendizaje_ultima)).getTime() : 0;
-  return Date.now() - ultima > 6 * 86400000;
+  return ultima < ultimaOcurrencia;
 }
 
 /** Aprueba una propuesta: la añade a reglas_aprendidas numerada y fechada. */
