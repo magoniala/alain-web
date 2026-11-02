@@ -18,11 +18,28 @@
 // Sin dependencias: usa fetch contra la API REST de Supabase y escribe el
 // YAML a mano (el esquema del frontmatter es plano y fijo).
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
+
+// Qué notas escribió el propio espejo (ruta → mtime): una nota con ese mtime
+// no la ha tocado Alain, así que no cuenta como "cambiada en Obsidian".
+const ESTADO_ESPEJO = join(dirname(fileURLToPath(import.meta.url)), ".espejo-mtimes.json");
+const escritas = (() => { try { return JSON.parse(readFileSync(ESTADO_ESPEJO, "utf8")); } catch { return {}; } })();
+function escribir(ruta, texto) {
+  writeFileSync(ruta, texto, "utf8");
+  escritas[ruta] = statSync(ruta).mtimeMs;
+}
+function guardarEstadoEspejo() {
+  try { writeFileSync(ESTADO_ESPEJO, JSON.stringify(escritas), "utf8"); } catch { /* no es crítico */ }
+}
+const tocadaEnObsidian = (ruta, actualizadoEn) => {
+  const m = statSync(ruta).mtimeMs;
+  return escritas[ruta] !== m && m > Date.parse(actualizadoEn) + 5000;
+};
+
 const RAIZ = join(AQUI, "..", "..");
 
 // --- entorno ---------------------------------------------------------------
@@ -230,6 +247,7 @@ async function main() {
   let nuevas = 0;
   const apuntesManuales = [];
   const diferencias = [];
+  const subidasVault = [];
 
   for (const c of centros) {
     const ruta = join(c.tipo === "ayuntamiento" ? dirInst : dir, `${c.nombre.replace(/[\/\\:*?"<>|]/g, "-")}.md`);
@@ -238,7 +256,7 @@ async function main() {
 
     if (!existsSync(ruta)) {
       nuevas++;
-      if (!COMPROBAR) writeFileSync(ruta, ficha(c, registro), "utf8");
+      if (!COMPROBAR) escribir(ruta, ficha(c, registro));
       continue;
     }
 
@@ -276,6 +294,25 @@ async function main() {
       const real = normal(fm[k], k);
       if (esperado !== real) difs.push(`${k}: vault="${real}" · db="${esperado}"`);
     }
+    // Si la nota se ha tocado en Obsidian después del último cambio en
+    // Supabase (Alain cambia el estado o la próxima acción a mano), gana el
+    // vault: se sube lo que difiere y esta vez no se reescribe la nota. Si lo
+    // último fue del panel o del sistema, gana Supabase (como hasta ahora).
+    if (difs.length && tocadaEnObsidian(ruta, c.actualizado_en)) {
+      const cambios = {};
+      for (const k of ORDEN) {
+        if (normal(c[k], k) === normal(fm[k], k)) continue;
+        let v = fm[k];
+        if (k === "etapas") v = Array.isArray(v) ? v : String(v ?? "").split(/\s*,\s*/).filter(Boolean);
+        else if (v === undefined || String(v).trim() === "") v = NUMERICOS.has(k) ? 0 : null;
+        else if (NUMERICOS.has(k)) v = Number(v) || 0;
+        cambios[k] = v;
+      }
+      cambios.actualizado_por = "vault";
+      subidasVault.push({ nombre: c.nombre, difs });
+      if (!COMPROBAR) await rest(`charlas_centros?id=eq.${c.id}`, { method: "PATCH", body: JSON.stringify(cambios) });
+      continue;
+    }
     const nuevo = ficha(c, registro);
     const regVault = registroDe(cuerpo).map((l) => l.trim());
     const regNuevo = registroDe(nuevo.split("\n---\n")[1] ?? nuevo).map((l) => l.trim());
@@ -296,19 +333,22 @@ async function main() {
       const mReg = /## Registro\n([\s\S]*?)(?=\n## |$)/.exec(cuerpo);
       const soloNuevas = difs.every((d) => d.startsWith("registro:"));
       const registroVault = soloNuevas && mReg ? mReg[1] : null;
-      writeFileSync(ruta, ficha(c, registro, registroVault), "utf8");
+      escribir(ruta, ficha(c, registro, registroVault));
     }
   }
 
   if (!COMPROBAR && apuntesManuales.length) {
     await rest("charlas_interacciones", { method: "POST", body: JSON.stringify(apuntesManuales) });
   }
+  if (!COMPROBAR) guardarEstadoEspejo();
 
   console.log(
     `${centros.length} centros en Supabase · ${iguales} fichas iguales · ${distintas} con diferencias · ${nuevas} nuevas` +
       ` · ${apuntesManuales.length} apuntes a mano ${COMPROBAR ? "detectados" : "subidos"}` +
+      ` · ${subidasVault.length} fichas cambiadas en Obsidian ${COMPROBAR ? "por subir" : "subidas"}` +
       (enVault.size ? ` · ${enVault.size} fichas en el vault que no están en Supabase: ${[...enVault].slice(0, 5).join(", ")}` : "")
   );
+  for (const d of subidasVault.slice(0, 15)) console.log(`\n↑ ${d.nombre} (cambiada en Obsidian)\n    ${d.difs.join("\n    ")}`);
   for (const d of diferencias.slice(0, 15)) {
     console.log(`\n· ${d.nombre}`);
     for (const x of d.difs) console.log(`    ${x}`);

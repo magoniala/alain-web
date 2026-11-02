@@ -9,10 +9,27 @@
 // Registro de una ficha, se sube a Supabase (origen manual) antes de reescribir.
 // Lo llama espejo-vault.mjs al final de su pasada (misma tarea de launchd).
 
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseFicha, renderFicha, igual, CLAVES } from "./prospectos-lib.mjs";
+
+
+// Qué notas escribió el propio espejo (ruta → mtime): una nota con ese mtime
+// no la ha tocado Alain, así que no cuenta como "cambiada en Obsidian".
+const ESTADO_ESPEJO = join(dirname(fileURLToPath(import.meta.url)), ".espejo-mtimes.json");
+const escritas = (() => { try { return JSON.parse(readFileSync(ESTADO_ESPEJO, "utf8")); } catch { return {}; } })();
+function escribir(ruta, texto) {
+  writeFileSync(ruta, texto, "utf8");
+  escritas[ruta] = statSync(ruta).mtimeMs;
+}
+function guardarEstadoEspejo() {
+  try { writeFileSync(ESTADO_ESPEJO, JSON.stringify(escritas), "utf8"); } catch { /* no es crítico */ }
+}
+const tocadaEnObsidian = (ruta, actualizadoEn) => {
+  const m = statSync(ruta).mtimeMs;
+  return escritas[ruta] !== m && m > Date.parse(actualizadoEn) + 5000;
+};
 
 export async function espejoProspectos({ dir, url, key, comprobar = false } = {}) {
   const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -65,6 +82,7 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
   let nuevas = 0;
   const manuales = [];
   const diferencias = [];
+  const subidas = [];
 
   for (const f of fichas) {
     const ruta = join(dir, `${f.nombre.replace(/[\/\\:*?"<>|]/g, "-")}.md`);
@@ -72,7 +90,7 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     const registro = porFicha.get(f.id) ?? [];
     if (!existsSync(ruta)) {
       nuevas++;
-      if (!comprobar) writeFileSync(ruta, renderFicha(f, registro), "utf8");
+      if (!comprobar) escribir(ruta, renderFicha(f, registro));
       continue;
     }
     const actual = readFileSync(ruta, "utf8");
@@ -93,6 +111,31 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     }
     const difs = [];
     for (const k of CLAVES) if (!igual(p.frontmatter[k], f[k] ?? f.datos?.[k] ?? null, k)) difs.push(`${k}: vault="${p.frontmatter[k] ?? ""}" · db="${f[k] ?? ""}"`);
+    // Si la nota se ha tocado en Obsidian después del último cambio en
+    // Supabase (Alain cambia el estado o la próxima acción a mano), gana el
+    // vault: se sube lo que difiere y no se reescribe la nota. Si lo último
+    // fue del panel o del sistema, gana Supabase.
+    if (difs.length && tocadaEnObsidian(ruta, f.actualizado_en)) {
+      const cambios = {};
+      const datos = { ...(f.datos ?? {}) };
+      let conDatos = false;
+      for (const k of CLAVES) {
+        if (igual(p.frontmatter[k], f[k] ?? f.datos?.[k] ?? null, k)) continue;
+        let v = p.frontmatter[k];
+        if (v === "" || v === undefined) v = null;
+        if (k === "enviado" && v !== null && typeof v !== "boolean") v = String(v) === "true";
+        if (k in f) cambios[k] = v;
+        else {
+          datos[k] = v;
+          conDatos = true;
+        }
+      }
+      if (conDatos) cambios.datos = datos;
+      cambios.actualizado_por = "vault";
+      subidas.push({ nombre: f.nombre, difs });
+      if (!comprobar) await rest(`crm_fichas?id=eq.${f.id}`, { method: "PATCH", body: JSON.stringify(cambios) });
+      continue;
+    }
     const nuevo = renderFicha(f, registro);
     if (difs.length === 0 && nuevo === actual) {
       iguales++;
@@ -100,12 +143,13 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     }
     distintas++;
     if (difs.length) diferencias.push({ nombre: f.nombre, difs });
-    if (!comprobar) writeFileSync(ruta, nuevo, "utf8");
+    if (!comprobar) escribir(ruta, nuevo);
   }
 
   if (!comprobar && manuales.length) await rest("crm_interacciones", { method: "POST", body: JSON.stringify(manuales) });
+  if (!comprobar) guardarEstadoEspejo();
 
-  return { fichas: fichas.length, iguales, distintas, nuevas, manuales: manuales.length, sin_supabase: [...enVault], diferencias };
+  return { fichas: fichas.length, iguales, distintas, nuevas, manuales: manuales.length, subidas: subidas.length, sin_supabase: [...enVault], diferencias, detalle_subidas: subidas };
 }
 
 // Ejecución directa.
@@ -115,7 +159,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   espejoProspectos({ dir, comprobar })
     .then((r) => {
       if (r.saltado) return console.log(`Prospectos: saltado (${r.saltado})`);
-      console.log(`Prospectos (magia): ${r.fichas} fichas en Supabase · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${comprobar ? "detectados" : "subidos"}${r.sin_supabase.length ? ` · en el vault sin Supabase: ${r.sin_supabase.slice(0, 5).join(", ")}` : ""}`);
+      console.log(`Prospectos (magia): ${r.fichas} fichas en Supabase · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${comprobar ? "detectados" : "subidos"} · ${r.subidas} fichas cambiadas en Obsidian ${comprobar ? "por subir" : "subidas"}${r.sin_supabase.length ? ` · en el vault sin Supabase: ${r.sin_supabase.slice(0, 5).join(", ")}` : ""}`);
+      for (const d of r.detalle_subidas.slice(0, 10)) console.log(`↑ ${d.nombre} (cambiada en Obsidian)\n    ${d.difs.join("\n    ")}`);
       for (const d of r.diferencias.slice(0, 10)) console.log(`· ${d.nombre}\n    ${d.difs.join("\n    ")}`);
       if (comprobar) console.log("(modo --comprobar: no se ha escrito nada)");
     })

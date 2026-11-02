@@ -66,9 +66,12 @@ let nuevas = 0;
 let actualizadas = 0;
 const existentes = new Map(((await rest("crm_fichas?select=id,nombre&carril=eq.magia")) ?? []).map((c) => [c.nombre, c.id]));
 const idPorNombre = new Map(existentes);
+// PostgREST exige las mismas claves en todo el lote: con ?columns= las que
+// falten en una ficha toman el valor por defecto de la columna.
+const columnas = [...new Set(filas.flatMap((f) => Object.keys(f)))].join(",");
 for (let i = 0; i < filas.length; i += 50) {
   const lote = filas.slice(i, i + 50);
-  const data = await rest("crm_fichas?on_conflict=carril,nombre", { method: "POST", prefer: "resolution=merge-duplicates,return=representation", body: JSON.stringify(lote) });
+  const data = await rest(`crm_fichas?on_conflict=carril,nombre&columns=${columnas}`, { method: "POST", prefer: "resolution=merge-duplicates,return=representation", body: JSON.stringify(lote) });
   for (const d of data ?? []) {
     existentes.has(d.nombre) ? actualizadas++ : nuevas++;
     idPorNombre.set(d.nombre, d.id);
