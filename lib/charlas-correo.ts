@@ -219,14 +219,38 @@ function carpetaEnviados(carpetas: { path: string; specialUse?: string }[]): str
 }
 
 /** Marca como leído y respondido el correo al que se ha contestado, para que en Mail se vea igual que si hubiera contestado Alain. */
-async function marcarRespondido(cliente: ImapFlow, messageIdOriginal: string) {
+/** Busca un correo por Message-ID en la carpeta abierta; prueba con y sin <>. Si el servidor no admite la búsqueda, devuelve []. */
+async function buscarPorMessageId(cliente: ImapFlow, messageId: string): Promise<number[]> {
+  const limpio = messageId.replace(/^<|>$/g, "");
+  for (const v of [`<${limpio}>`, limpio]) {
+    try {
+      const r = (await cliente.search({ header: { "message-id": v } }, { uid: true })) as number[] | false;
+      if (r && r.length) return r;
+    } catch {
+      /* siguiente variante */
+    }
+  }
+  return [];
+}
+
+/** Marca como leído y respondido el correo al que se ha contestado, para que en Mail se vea igual que si hubiera contestado Alain. */
+async function marcarRespondido(cliente: ImapFlow, messageIdOriginal: string): Promise<boolean> {
   const lock = await cliente.getMailboxLock("INBOX");
   try {
-    const uids = await cliente.search({ header: { "message-id": messageIdOriginal } }, { uid: true });
-    if (uids && uids.length) await cliente.messageFlagsAdd(uids, ["\\Seen", "\\Answered"], { uid: true });
+    const uids = await buscarPorMessageId(cliente, messageIdOriginal);
+    if (uids.length) await cliente.messageFlagsAdd(uids, ["\\Seen", "\\Answered"], { uid: true });
+    return uids.length > 0;
   } finally {
     lock.release();
   }
+}
+
+/** Deja constancia en charlas_config de lo último que pasó con IMAP (para diagnosticar sin acceso a los logs de Vercel). */
+async function diag(clave: string, valor: unknown) {
+  await supabaseCharlas()
+    .from("charlas_config")
+    .upsert({ clave, valor: { ...(valor as object), en: new Date().toISOString() }, actualizado_en: new Date().toISOString() })
+    .then(() => null, () => null);
 }
 
 export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<ResumenLectura> {
@@ -488,11 +512,17 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
       await cliente.connect();
       const carpetas = await cliente.list();
       const enviados = carpetaEnviados(carpetas);
-      if (enviados) await cliente.append(enviados, crudo, ["\\Seen"]);
-      if (e.inReplyTo) await marcarRespondido(cliente, `<${e.inReplyTo}>`).catch(() => {});
+      let copiado = false;
+      let marcado = false;
+      if (enviados) {
+        await cliente.append(enviados, crudo, ["\\Seen"]);
+        copiado = true;
+      }
+      if (e.inReplyTo) marcado = await marcarRespondido(cliente, e.inReplyTo).catch(() => false);
+      await diag("diag_enviados", { ok: true, carpeta: enviados, carpetas: carpetas.map((c) => c.path), copiado, marcado, para });
     } catch (err) {
       // La copia en Enviados es una comodidad: si falla, el correo ya ha salido.
-      console.error("[charlas] copia en Enviados:", (err as Error).message);
+      await diag("diag_enviados", { ok: false, error: (err as Error).message, para });
     } finally {
       await cliente.logout().catch(() => {});
     }
@@ -537,7 +567,7 @@ export async function reponerEnviados(opciones: { presupuestoMs: number }): Prom
       const lock = await cliente.getMailboxLock(enviados);
       let ya: number[] = [];
       try {
-        ya = ((await cliente.search({ header: { "message-id": id } }, { uid: true })) || []) as number[];
+        ya = await buscarPorMessageId(cliente, id);
       } finally {
         lock.release();
       }
@@ -558,11 +588,15 @@ export async function reponerEnviados(opciones: { presupuestoMs: number }): Prom
         res.repuestos++;
       }
       if (m.in_reply_to) {
-        await marcarRespondido(cliente, `<${String(m.in_reply_to).replace(/^<|>$/g, "")}>`).then(() => res.marcados++, () => null);
+        await marcarRespondido(cliente, String(m.in_reply_to)).then((ok) => ok && res.marcados++, () => null);
       }
     }
     res.pendientes = lista.length - i;
+    await diag("diag_reposicion", { ...res, carpeta: enviados, total: lista.length });
     if (res.pendientes === 0) await supabase.from("charlas_config").upsert({ clave: "reponer_enviados", valor: false, actualizado_en: new Date().toISOString() });
+  } catch (err) {
+    await diag("diag_reposicion", { ...res, error: (err as Error).message });
+    throw err;
   } finally {
     await cliente.logout().catch(() => {});
   }
