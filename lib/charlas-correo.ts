@@ -508,21 +508,28 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
   if (!e.prueba) {
     // Copia en Enviados para que el hilo se vea completo en Mail del Mac.
     const cliente = new ImapFlow({ host: IMAP_HOST, port: 993, secure: true, auth: { user, pass }, logger: false });
+    let paso = "connect";
     try {
       await cliente.connect();
+      paso = "list";
       const carpetas = await cliente.list();
       const enviados = carpetaEnviados(carpetas);
       let copiado = false;
       let marcado = false;
+      let errorMarcar: string | null = null;
+      // Primero marcar el original como leído/respondido: no depende de la copia.
+      paso = "marcar";
+      if (e.inReplyTo) marcado = await marcarRespondido(cliente, e.inReplyTo).catch((x: Error & { responseText?: string }) => ((errorMarcar = x.responseText ?? x.message), false));
       if (enviados) {
+        paso = `append ${enviados}`;
         await cliente.append(enviados, crudo, ["\\Seen"]);
         copiado = true;
       }
-      if (e.inReplyTo) marcado = await marcarRespondido(cliente, e.inReplyTo).catch(() => false);
-      await diag("diag_enviados", { ok: true, carpeta: enviados, carpetas: carpetas.map((c) => c.path), copiado, marcado, para });
+      await diag("diag_enviados", { ok: true, carpeta: enviados, carpetas: carpetas.map((c) => `${c.path}${c.specialUse ? ` [${c.specialUse}]` : ""}`), copiado, marcado, errorMarcar, para });
     } catch (err) {
       // La copia en Enviados es una comodidad: si falla, el correo ya ha salido.
-      await diag("diag_enviados", { ok: false, error: (err as Error).message, para });
+      const x = err as Error & { responseText?: string; serverResponseCode?: string; code?: string };
+      await diag("diag_enviados", { ok: false, paso, error: x.message, detalle: x.responseText ?? null, codigo: x.serverResponseCode ?? x.code ?? null, para });
     } finally {
       await cliente.logout().catch(() => {});
     }
@@ -595,7 +602,8 @@ export async function reponerEnviados(opciones: { presupuestoMs: number }): Prom
     await diag("diag_reposicion", { ...res, carpeta: enviados, total: lista.length });
     if (res.pendientes === 0) await supabase.from("charlas_config").upsert({ clave: "reponer_enviados", valor: false, actualizado_en: new Date().toISOString() });
   } catch (err) {
-    await diag("diag_reposicion", { ...res, error: (err as Error).message });
+    const x = err as Error & { responseText?: string; serverResponseCode?: string };
+    await diag("diag_reposicion", { ...res, error: x.message, detalle: x.responseText ?? null, codigo: x.serverResponseCode ?? null });
     throw err;
   } finally {
     await cliente.logout().catch(() => {});
