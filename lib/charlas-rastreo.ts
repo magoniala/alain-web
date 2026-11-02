@@ -93,6 +93,43 @@ export function extraerEmails(html: string, pagina: string): EmailHallado[] {
   return out;
 }
 
+// Dominios que nunca son la web de un centro (directorios, redes, prensa).
+const NO_ES_EL_CENTRO = /wikipedia|facebook|instagram|twitter|x\.com|youtube|linkedin|tiktok|google\.|paginasamarillas|infoisinfo|empresite|micole|scholarum|colegiosyescuelas|educaweb|colegios\.|guiainfantil|emagister|yelp|tripadvisor|cylex|hotfrog|habitissimo|idealista|eldiario|elcorreo|deia|diariovasco|noticiasdegipuzkoa|naiz\.eus|20minutos|abc\.es|elpais|elmundo|europapress|\.gob\.es|educantabria\.es|educacion\.navarra\.es\/?$|hezkuntza\.net|ikasgunea|euskadi\.eus|navarra\.es\/?$|cantabria\.es|registro|boe\.es|datos\.gob/i;
+
+/**
+ * Busca la web oficial de un centro con Brave Search (clave en BRAVE_SEARCH_KEY,
+ * plan gratuito). Devuelve la URL del primer resultado que parezca la web del
+ * propio centro, o null.
+ */
+export async function buscarWeb(nombre: string, localidad: string | null): Promise<string | null> {
+  const key = process.env.BRAVE_SEARCH_KEY;
+  if (!key) return null;
+  const q = `${nombre} ${(localidad ?? "").split(/[\/(]/)[0].trim()} instituto web`.replace(/\s+/g, " ").trim();
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  const r = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=8&country=ES&search_lang=es`, {
+    signal: ctrl.signal,
+    headers: { accept: "application/json", "X-Subscription-Token": key },
+  });
+  clearTimeout(t);
+  if (!r.ok) throw new Error(`Brave ${r.status}`);
+  const j = (await r.json()) as { web?: { results?: { url: string; title?: string }[] } };
+  const palabras = norm(nombre).split(" ").filter((w) => w.length > 3 && !/^(ies|ieso|colegio|instituto|centro|privado|publico|educacion|secundaria|bhi|ikastola|ikastetxea)$/.test(w));
+  for (const res of j.web?.results ?? []) {
+    if (NO_ES_EL_CENTRO.test(res.url)) continue;
+    const host = (() => { try { return new URL(res.url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
+    if (!host) continue;
+    // Debe compartir alguna palabra del nombre con el dominio o el título.
+    const texto = norm(`${host} ${res.title ?? ""}`);
+    if (palabras.length === 0 || palabras.some((w) => texto.includes(w))) return `https://${host}`;
+  }
+  return null;
+}
+
+function norm(s: string) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 export interface ResumenRastreo {
   revisados: number;
   con_emails: number;
@@ -110,11 +147,13 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
   const limite = opciones.limite ?? Number(cfg.rastreo_por_ejecucion ?? 6);
 
   // Candidatos: sin correo del responsable, en estados donde el nombre importa, y no rastreados aún.
-  const { data: hechos } = await supabase.from("charlas_rastreo").select("centro_id");
-  const ya = new Set((hechos ?? []).map((h) => h.centro_id as string));
+  const { data: hechos } = await supabase.from("charlas_rastreo").select("centro_id, resultado");
+  // Con clave de búsqueda, los "sin_web" de antes se vuelven a intentar una vez (resultado pasa a sin_web_buscado).
+  const buscador = !!process.env.BRAVE_SEARCH_KEY;
+  const ya = new Set((hechos ?? []).filter((h) => !(buscador && h.resultado === "sin_web")).map((h) => h.centro_id as string));
   const { data: centros } = await supabase
     .from("charlas_centros")
-    .select("id, nombre, web, email_centro, responsable_email, estado, territorio, tipo")
+    .select("id, nombre, web, email_centro, responsable_email, estado, territorio, tipo, localidad")
     .is("responsable_email", null)
     .order("territorio")
     .order("nombre")
@@ -127,9 +166,18 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
   for (const c of cola.slice(0, limite)) {
     if (Date.now() - inicio > opciones.presupuestoMs) break;
     res.revisados++;
-    const dominio = dominioDe(c.web, c.email_centro);
+    let dominio = dominioDe(c.web, c.email_centro);
+    if (!dominio && buscador) {
+      // Sin web ni dominio propio (Cantabria, p. ej.): se busca la web del centro y se guarda en la ficha.
+      const web = await buscarWeb(c.nombre, c.localidad).catch(() => null);
+      if (web) {
+        dominio = dominioDe(web, null);
+        await supabase.from("charlas_centros").update({ web, actualizado_por: "sistema" }).eq("id", c.id);
+        await supabase.from("charlas_interacciones").insert({ centro_id: c.id, fecha: new Date().toISOString().slice(0, 10), canal: "Sistema", texto: `Web del centro localizada con el buscador: ${web}`, orden: 690, origen: "sistema" });
+      }
+    }
     if (!dominio) {
-      await supabase.from("charlas_rastreo").upsert({ centro_id: c.id, web: null, resultado: "sin_web", rastreado_en: new Date().toISOString() });
+      await supabase.from("charlas_rastreo").upsert({ centro_id: c.id, web: null, resultado: buscador ? "sin_web_buscado" : "sin_web", rastreado_en: new Date().toISOString() });
       continue;
     }
     const base = `https://${dominio}`;
