@@ -12,6 +12,8 @@ interface ClienteLista {
   nombre: string;
   estado: string;
   aviso_canal: string;
+  token: string | null;
+  push: { id: string }[];
   plan: { id: string; nombre: string; inicio: string; fin: string | null } | null;
   semana_actual: { id: string; numero: number; lunes: string; estado: string; fase: string | null } | null;
   semana_siguiente: { id: string; numero: number; lunes: string; estado: string } | null;
@@ -30,6 +32,7 @@ interface Cliente {
   aviso_canal: string;
   ficha_vault: string | null;
   notas: string | null;
+  token: string | null;
 }
 interface Plan {
   id: string;
@@ -105,7 +108,7 @@ interface DetalleSemana {
   sesiones: Sesion[];
   avisos: Aviso[];
   series: { ejercicio_id: string; serie: number; reps: number | null; peso: number | null; rir: number | null; lado: string | null; nota: string | null }[];
-  formularios: { sesion_id: string; tipo: string; respuestas: Record<string, unknown>; alerta: string | null }[];
+  formularios: { sesion_id: string; tipo: string; respuestas: Record<string, unknown>; alerta: string | null; fotos_url?: string[]; creado_en: string }[];
 }
 
 const DIA = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
@@ -286,7 +289,7 @@ export default function EntrenatzaileTab() {
       {error && <p className="rounded-xl bg-red-50 px-4 py-2 text-[0.85rem] text-red-800">{error}</p>}
 
       <p className="rounded-xl bg-gray-50 px-4 py-2.5 text-[0.82rem] text-gray-600">
-        Fase 7a: aquí se programa la semana y se preparan los avisos, pero <b>todavía no se envía nada</b>. El cliente sigue en Trainer Studio. El botón «Copiar Markdown» te da la semana lista para pasarla allí o al vault.
+        Aquí se programa la semana y se preparan los avisos. Los avisos salen solos (notificación de la app, o correo si no la tiene instalada) cuando <code>ent_avisos_envio</code> está en <code>true</code>; hasta entonces solo se preparan. «Copiar Markdown» te da la semana para el vault o para Trainer Studio.
       </p>
 
       {/* Clientes */}
@@ -299,6 +302,7 @@ export default function EntrenatzaileTab() {
               {c.semana_actual ? ` · semana ${c.semana_actual.numero}` : ""}
               {c.constancia_4s.programadas ? ` · ${c.constancia_4s.hechas}/${c.constancia_4s.programadas} en 4 sem.` : ""}
               {c.semana_siguiente ? "" : c.plan ? " · ⚠︎ falta la semana que viene" : ""}
+              {c.push?.length ? " · 📱 app" : ""}
             </span>
           </button>
         ))}
@@ -385,7 +389,20 @@ function FichaCliente({ ficha, post }: { ficha: { cliente: Cliente; plan: Plan |
             {fase ? ` · semana ${semanaN}: ${fase.fase}` : ""}
           </p>
         </div>
-        <div className="flex gap-2 text-[0.8rem]">
+        <div className="flex flex-wrap gap-2 text-[0.8rem]">
+          {c.token ? (
+            <button
+              onClick={async () => {
+                const url = `${location.origin}/app/${c.token}`;
+                try { await navigator.clipboard.writeText(url); alert(`Enlace copiado:\n${url}\n\nMándaselo por WhatsApp. En iPhone: Compartir → Añadir a pantalla de inicio.`); } catch { prompt("Enlace personal de la app", url); }
+              }}
+              className="px-3 py-1.5 text-[#0F2240] ring-1 ring-[#0F2240]/30"
+            >
+              Copiar enlace de la app
+            </button>
+          ) : (
+            <button onClick={() => post({ accion: "cliente_enlace", id: c.id }, ["ficha", "clientes"])} className="px-3 py-1.5 ring-1 ring-gray-300">Crear enlace de la app</button>
+          )}
           {!plan && (
             <button onClick={() => { const n = prompt("Nombre del plan (T1, B1…)"); if (n) post({ accion: "plan_crear", cliente_id: c.id, nombre: n }, ["ficha", "clientes"]); }} className="px-3 py-1.5 ring-1 ring-gray-300">
               Crear plan
@@ -669,7 +686,21 @@ function SesionCard({ ses, det, post }: { ses: Sesion; det: DetalleSemana; post:
         <div className="border-t border-gray-100 px-5 py-2 text-[0.8rem] text-gray-600">
           {ses.rpe !== null && <span>RPE {ses.rpe} · {ses.minutos ?? "?"} min · carga {ses.rpe && ses.minutos ? Math.round(ses.rpe * ses.minutos) : "?"}</span>}
           {forms.map((f, k) => (
-            <span key={k} className="ml-3">{f.tipo === "post" ? "Post-sesión" : "Recuperación"}{f.alerta ? ` ⚠︎ ${f.alerta}` : " ✓"}</span>
+            <details key={k} className="mt-1">
+              <summary className="cursor-pointer">{f.tipo === "post" ? "Post-sesión" : "Recuperación"}{f.alerta ? ` ⚠︎ ${f.alerta}` : " ✓"}</summary>
+              <ul className="mt-1 grid gap-x-4 sm:grid-cols-2">
+                {Object.entries(f.respuestas ?? {}).filter(([, v]) => v !== null && v !== "" && v !== undefined).map(([k2, v]) => (
+                  <li key={k2}><span className="text-gray-400">{k2.replace(/_/g, " ")}:</span> {typeof v === "boolean" ? (v ? "sí" : "no") : String(v)}</li>
+                ))}
+              </ul>
+              {f.fotos_url && f.fotos_url.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {f.fotos_url.map((u) => (
+                    <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" className="h-24 rounded-lg object-cover" /></a>
+                  ))}
+                </div>
+              )}
+            </details>
           ))}
         </div>
       )}

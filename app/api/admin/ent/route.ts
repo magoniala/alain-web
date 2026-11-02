@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const hoy = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" });
 
 const EDITABLE = {
-  ent_clientes: ["email", "telefono", "idioma", "estado", "zonas_riesgo", "reglas", "material", "aviso_canal", "ficha_vault", "notas"],
+  ent_clientes: ["email", "telefono", "idioma", "estado", "zonas_riesgo", "reglas", "material", "aviso_canal", "ficha_vault", "notas", "token"],
   ent_planes: ["nombre", "inicio", "fin", "frecuencia", "metas", "fases", "reglas_carga"],
   ent_semanas: ["titulo", "notas", "rir_objetivo", "fase", "lunes", "resumen"],
   ent_sesiones: ["nombre", "clave", "fecha", "duracion_min", "foco", "calentamiento", "notas", "estado", "sesion_tipo_id"],
@@ -45,7 +45,15 @@ async function detalleSemana(id: string) {
         sb.from("ent_formularios").select("*").in("sesion_id", ids).order("creado_en"),
       ])
     : [{ data: [] }, { data: [] }];
-  return { semana: semana.data, sesiones: ses, avisos: (avisos.data ?? []) as Aviso[], series: series.data ?? [], formularios: formularios.data ?? [] };
+  // Fotos de los formularios: URL firmada 1 h (bucket privado).
+  const forms = (formularios.data ?? []) as { fotos?: string[] }[];
+  const rutas = forms.flatMap((f) => f.fotos ?? []);
+  const firmadas: Record<string, string> = {};
+  if (rutas.length) {
+    const { data } = await sb.storage.from("ent-fotos").createSignedUrls(rutas, 3600);
+    for (const x of data ?? []) if (x.path && x.signedUrl) firmadas[x.path] = x.signedUrl;
+  }
+  return { semana: semana.data, sesiones: ses, avisos: (avisos.data ?? []) as Aviso[], series: series.data ?? [], formularios: forms.map((f) => ({ ...f, fotos_url: (f.fotos ?? []).map((r) => firmadas[r]).filter(Boolean) })) };
 }
 
 export async function GET(req: Request) {
@@ -80,7 +88,7 @@ export async function GET(req: Request) {
     }
 
     // Lista de clientes
-    const { data: clientes, error } = await sb.from("ent_clientes").select("id, nombre, estado, aviso_canal, zonas_riesgo").order("estado").order("nombre");
+    const { data: clientes, error } = await sb.from("ent_clientes").select("id, nombre, estado, aviso_canal, zonas_riesgo, token, push:ent_push(id)").order("estado").order("nombre");
     if (error) return NextResponse.json({ error: error.message, falta_sql: /ent_clientes/.test(error.message) }, { status: 500 });
     const ids = (clientes ?? []).map((c) => c.id);
     const h = hoy();
@@ -118,6 +126,13 @@ export async function POST(req: Request) {
         const { data, error } = await sb.from("ent_clientes").insert({ nombre }).select().single();
         if (error) throw new Error(error.message);
         return NextResponse.json({ ok: true, cliente: data });
+      }
+      case "cliente_enlace": {
+        // Genera (o regenera) el enlace personal del cliente.
+        const token = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, "0")).join("");
+        const { error } = await sb.from("ent_clientes").update({ token }).eq("id", b.id);
+        if (error) throw new Error(error.message);
+        return NextResponse.json({ ok: true, token });
       }
       case "cliente_guardar": {
         const { error } = await sb.from("ent_clientes").update(filtrar("ent_clientes", b.campos)).eq("id", b.id);

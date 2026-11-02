@@ -5,6 +5,8 @@ const NO_REDIRECT_PATHS = [
   // El panel no tiene versión /es y la app instalada en el móvil lo abre
   // sin cookie de idioma: nunca redirigir.
   "/admin",
+  // App del cliente de Entrenatzaile: enlace personal, sin versión /es.
+  "/app",
   "/premios-mira",
   "/arrogante",
   "/gilipollas",
