@@ -219,6 +219,11 @@ function carpetaEnviados(carpetas: { path: string; specialUse?: string }[]): str
 }
 
 /** Marca como leído y respondido el correo al que se ha contestado, para que en Mail se vea igual que si hubiera contestado Alain. */
+/** IMAP exige finales de línea CRLF en lo que se guarda con APPEND; Arsys rechaza los LF sueltos ("bare newlines"). */
+function crlf(b: Buffer): Buffer {
+  return Buffer.from(b.toString("binary").replace(/\r?\n/g, "\r\n"), "binary");
+}
+
 /** Busca un correo por Message-ID en la carpeta abierta; prueba con y sin <>. Si el servidor no admite la búsqueda, devuelve []. */
 async function buscarPorMessageId(cliente: ImapFlow, messageId: string): Promise<number[]> {
   const limpio = messageId.replace(/^<|>$/g, "");
@@ -522,7 +527,7 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
       if (e.inReplyTo) marcado = await marcarRespondido(cliente, e.inReplyTo).catch((x: Error & { responseText?: string }) => ((errorMarcar = x.responseText ?? x.message), false));
       if (enviados) {
         paso = `append ${enviados}`;
-        await cliente.append(enviados, crudo, ["\\Seen"]);
+        await cliente.append(enviados, crlf(crudo), ["\\Seen"]);
         copiado = true;
       }
       await diag("diag_enviados", { ok: true, carpeta: enviados, carpetas: carpetas.map((c) => `${c.path}${c.specialUse ? ` [${c.specialUse}]` : ""}`), copiado, marcado, errorMarcar, para });
@@ -591,7 +596,7 @@ export async function reponerEnviados(opciones: { presupuestoMs: number }): Prom
         })
           .compile()
           .build();
-        await cliente.append(enviados, crudo, ["\\Seen"], m.fecha ? new Date(m.fecha) : undefined);
+        await cliente.append(enviados, crlf(crudo), ["\\Seen"], m.fecha ? new Date(m.fecha) : undefined);
         res.repuestos++;
       }
       if (m.in_reply_to) {
