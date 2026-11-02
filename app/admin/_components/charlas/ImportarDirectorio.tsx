@@ -16,6 +16,7 @@ type Resultado = {
   resumen?: { centros: number; por_tipo: Record<string, number>; con_email: number; con_telefono: number; con_web: number; euskera: number };
   muestra?: Record<string, unknown>[];
   importacion?: { nuevas: number; ya_existian: number; insertados: number; errores: string[] };
+  diagnostico?: { ensenanza: string[]; tipo_centro: string[]; columnas_fichero: string[]; primeras_filas: Record<string, string>[] };
   error?: string;
 };
 
@@ -100,6 +101,15 @@ export default function ImportarDirectorio({ pw, onImportado }: { pw: () => stri
               </p>
               <p className="text-gray-500">Columnas usadas: {Object.entries(res.columnas_usadas ?? {}).map(([k, v]) => `${k}=${v ?? "—"}`).join(" · ")}</p>
               <pre className="max-h-56 overflow-auto bg-gray-50 p-2 text-[0.75rem]">{JSON.stringify(res.muestra, null, 1)}</pre>
+              {res.diagnostico && (
+                <details open={res.resumen.centros === 0} className="text-[0.78rem] text-gray-700">
+                  <summary className="cursor-pointer">Diagnóstico (mándale captura a Álex si algo no cuadra)</summary>
+                  <p className="mt-1"><b>Columnas del fichero:</b> {res.diagnostico.columnas_fichero.join(" · ")}</p>
+                  <p className="mt-1"><b>Valores de enseñanza:</b> {res.diagnostico.ensenanza.join(" · ")}</p>
+                  <p className="mt-1"><b>Valores de tipo de centro:</b> {res.diagnostico.tipo_centro.join(" · ")}</p>
+                  <pre className="mt-1 max-h-56 overflow-auto bg-gray-50 p-2 text-[0.72rem]">{JSON.stringify(res.diagnostico.primeras_filas, null, 1)}</pre>
+                </details>
+              )}
               {res.importacion && (
                 <p className="font-medium text-gray-900">
                   Importados {res.importacion.insertados} ({res.importacion.ya_existian} ya existían){res.importacion.errores.length ? ` · ⚠️ ${res.importacion.errores.join(" | ")}` : ""}. El espejo los escribirá en el vault en su próxima pasada; el rastreo web empezará a buscarles correo de orientación.

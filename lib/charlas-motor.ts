@@ -330,8 +330,25 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
   const { data: abiertas } = await supabase.from("charlas_tareas").select("centro_id").in("estado", ["revisar", "pendiente", "aprobada"]);
   const conTarea = new Set((abiertas ?? []).map((t) => t.centro_id as string));
 
+  // Centros donde lo último que ha pasado es que han escrito ellos (en las
+  // últimas 3 semanas) y Alain no ha contestado: el paso programado no toca;
+  // ese correo ya tiene su tarjeta o está a la espera de ser procesado.
+  const hace21 = new Date(Date.now() - 21 * 86400000).toISOString();
+  const { data: recientes } = await supabase
+    .from("charlas_mensajes")
+    .select("centro_id, direccion, fecha")
+    .gte("fecha", hace21)
+    .not("centro_id", "is", null)
+    .order("fecha", { ascending: true });
+  const ultimoPorCentro = new Map<string, string>();
+  for (const m of recientes ?? []) ultimoPorCentro.set(m.centro_id as string, m.direccion as string);
+
   const cola = (centros ?? []).filter((c) => {
     if (conTarea.has(c.id)) {
+      res.ya_abiertas++;
+      return false;
+    }
+    if (ultimoPorCentro.get(c.id) === "entrante") {
       res.ya_abiertas++;
       return false;
     }

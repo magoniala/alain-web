@@ -209,6 +209,26 @@ async function cargarConocidos() {
   return { porId, guardados, hilos, conTareaAbierta };
 }
 
+/** Carpeta de Enviados del buzón: por marca especial y, si el servidor no la pone (Arsys), por nombre. */
+function carpetaEnviados(carpetas: { path: string; specialUse?: string }[]): string | null {
+  return (
+    carpetas.find((c) => c.specialUse === "\\Sent")?.path ??
+    carpetas.find((c) => /^(INBOX[./])?(Sent|Enviados|Elementos enviados|Sent Items|Sent Messages)$/i.test(c.path))?.path ??
+    null
+  );
+}
+
+/** Marca como leído y respondido el correo al que se ha contestado, para que en Mail se vea igual que si hubiera contestado Alain. */
+async function marcarRespondido(cliente: ImapFlow, messageIdOriginal: string) {
+  const lock = await cliente.getMailboxLock("INBOX");
+  try {
+    const uids = await cliente.search({ header: { "message-id": messageIdOriginal } }, { uid: true });
+    if (uids && uids.length) await cliente.messageFlagsAdd(uids, ["\\Seen", "\\Answered"], { uid: true });
+  } finally {
+    lock.release();
+  }
+}
+
 export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<ResumenLectura> {
   const inicio = Date.now();
   const sinTiempo = () => Date.now() - inicio > opciones.presupuestoMs;
@@ -223,10 +243,7 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
   await cliente.connect();
   try {
     const carpetas = await cliente.list();
-    const enviados =
-      carpetas.find((c) => c.specialUse === "\\Sent")?.path ??
-      carpetas.find((c) => /^(INBOX[./])?(Sent|Enviados|Elementos enviados|Sent Items|Sent Messages)$/i.test(c.path))?.path ??
-      null;
+    const enviados = carpetaEnviados(carpetas);
 
     // Enviados primero: así, cuando se lee la bandeja de entrada, ya se
     // conocen los hilos que abrió Alain.
@@ -470,14 +487,84 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
     try {
       await cliente.connect();
       const carpetas = await cliente.list();
-      const enviados = carpetas.find((c) => c.specialUse === "\\Sent")?.path;
+      const enviados = carpetaEnviados(carpetas);
       if (enviados) await cliente.append(enviados, crudo, ["\\Seen"]);
-    } catch {
+      if (e.inReplyTo) await marcarRespondido(cliente, `<${e.inReplyTo}>`).catch(() => {});
+    } catch (err) {
       // La copia en Enviados es una comodidad: si falla, el correo ya ha salido.
+      console.error("[charlas] copia en Enviados:", (err as Error).message);
     } finally {
       await cliente.logout().catch(() => {});
     }
   }
 
   return { messageId, para, smtp: String(info.response ?? "") };
+}
+
+// ---------------------------------------------------------------------------
+// Reposición única (2-11-2026): hasta hoy la copia en Enviados no se hacía,
+// porque Arsys no marca su carpeta "Sent" como especial. Se reponen las
+// respuestas enviadas desde el panel y se marcan como leídos y respondidos
+// los correos a los que contestaban. Corre una vez (config
+// `reponer_enviados` = true) desde el cron y se apaga sola.
+// ---------------------------------------------------------------------------
+export async function reponerEnviados(opciones: { presupuestoMs: number }): Promise<{ repuestos: number; marcados: number; pendientes: number } | null> {
+  if ((await config("reponer_enviados", false)) !== true) return null;
+  const inicio = Date.now();
+  const supabase = supabaseCharlas();
+  const { user, pass } = credenciales();
+  const remitente = String(await config("remitente", `Alain Zulaika <${user}>`));
+  const { data: salientes } = await supabase
+    .from("charlas_mensajes")
+    .select("id, message_id, in_reply_to, referencias, para, asunto, texto, fecha, tarea_id")
+    .eq("direccion", "saliente")
+    .not("tarea_id", "is", null)
+    .neq("tipo_salida", "prueba")
+    .order("fecha");
+  const res = { repuestos: 0, marcados: 0, pendientes: 0 };
+  const cliente = new ImapFlow({ host: IMAP_HOST, port: 993, secure: true, auth: { user, pass }, logger: false });
+  await cliente.connect();
+  try {
+    const enviados = carpetaEnviados(await cliente.list());
+    if (!enviados) return res;
+    const lista = salientes ?? [];
+    let i = 0;
+    for (; i < lista.length; i++) {
+      if (Date.now() - inicio > opciones.presupuestoMs) break;
+      const m = lista[i];
+      if (!m.message_id) continue;
+      const id = `<${String(m.message_id).replace(/^<|>$/g, "")}>`;
+      const lock = await cliente.getMailboxLock(enviados);
+      let ya: number[] = [];
+      try {
+        ya = ((await cliente.search({ header: { "message-id": id } }, { uid: true })) || []) as number[];
+      } finally {
+        lock.release();
+      }
+      if (!ya.length) {
+        const crudo: Buffer = await new MailComposer({
+          from: remitente,
+          to: (m.para ?? []).join(", "),
+          subject: m.asunto ?? "",
+          text: m.texto ?? "",
+          date: m.fecha ? new Date(m.fecha) : new Date(),
+          messageId: id,
+          inReplyTo: m.in_reply_to ? `<${String(m.in_reply_to).replace(/^<|>$/g, "")}>` : undefined,
+          references: (m.referencias ?? []).map((r: string) => `<${r.replace(/^<|>$/g, "")}>`).join(" ") || undefined,
+        })
+          .compile()
+          .build();
+        await cliente.append(enviados, crudo, ["\\Seen"], m.fecha ? new Date(m.fecha) : undefined);
+        res.repuestos++;
+      }
+      if (m.in_reply_to) {
+        await marcarRespondido(cliente, `<${String(m.in_reply_to).replace(/^<|>$/g, "")}>`).then(() => res.marcados++, () => null);
+      }
+    }
+    res.pendientes = lista.length - i;
+    if (res.pendientes === 0) await supabase.from("charlas_config").upsert({ clave: "reponer_enviados", valor: false, actualizado_en: new Date().toISOString() });
+  } finally {
+    await cliente.logout().catch(() => {});
+  }
+  return res;
 }

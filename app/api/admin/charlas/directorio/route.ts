@@ -72,7 +72,15 @@ export async function POST(req: Request) {
 
     const { col, filas: mapeadas } = aplicarMapeo(filas, mapeo);
     const fichas = aFichas(mapeadas, territorio);
-    const base = { fuente, filas: filas.length, columnas_usadas: col, resumen: resumir(fichas), muestra: fichas.slice(0, 5).map((f) => ({ nombre: f.nombre, ...f.frontmatter })) };
+    // Diagnóstico para cuando el filtro no cuadra con el fichero: qué valores
+    // traen las columnas de enseñanza y tipo, y cómo se han leído las primeras filas.
+    const top = (campo: string) => {
+      const n = new Map<string, number>();
+      for (const f of mapeadas) n.set(f[campo] || "(vacío)", (n.get(f[campo] || "(vacío)") ?? 0) + 1);
+      return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([v, k]) => `${v.slice(0, 60)} (${k})`);
+    };
+    const diagnostico = { ensenanza: top("ensenanza"), tipo_centro: top("tipo_centro"), columnas_fichero: Object.keys(filas[0] ?? {}), primeras_filas: mapeadas.slice(0, 3) };
+    const base = { fuente, filas: filas.length, columnas_usadas: col, resumen: resumir(fichas), muestra: fichas.slice(0, 5).map((f) => ({ nombre: f.nombre, ...f.frontmatter })), diagnostico };
     if (accion === "previsualizar") return NextResponse.json(base);
     if (accion !== "importar") return NextResponse.json({ error: `Acción desconocida: ${accion}` }, { status: 400 });
     const res = await importarFichas(fichas);

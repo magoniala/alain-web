@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { supabaseCharlas } from "@/lib/charlas";
-import { leerBuzon } from "@/lib/charlas-correo";
+import { leerBuzon, reponerEnviados } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
 import { tareasPorFecha, mail1Automatico } from "@/lib/charlas-motor";
 import { rastrearContactos } from "@/lib/charlas-rastreo";
@@ -123,10 +123,13 @@ async function ejecutar(req: Request) {
   // de las correcciones de la semana. Barato: una llamada sin conocimiento.
   const aprendizaje = !panel && (await tocaAprender()) ? await aprender().catch((e) => ({ correcciones: 0, propuestas: 0, saltado: (e as Error).message })) : null;
 
+  // Reposición única de las copias en Enviados (se apaga sola al terminar).
+  const repuestos = Date.now() - inicio < 45000 ? await reponerEnviados({ presupuestoMs: Math.max(0, 52000 - (Date.now() - inicio)) }).catch((e) => ({ error: (e as Error).message })) : null;
+
   // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, rastreo, push, aprendizaje, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, rastreo, repuestos, push, aprendizaje, ms: Date.now() - inicio });
 }
 
 // cron-job.org espera la respuesta como mucho 30 s y, si falla muchas veces

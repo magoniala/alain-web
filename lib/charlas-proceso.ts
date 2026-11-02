@@ -171,8 +171,22 @@ export async function procesarMensaje(mensajeId: string, instruccion?: string): 
     })
     .eq("id", m.id);
 
-  // Nada que contestar ni que cambiar: no hay tarea.
-  if (!resultado.responder && Object.keys(cambios).length === 0) return { resultado, tarea: null };
+  // Nada que contestar ni que cambiar: no hay tarea… salvo que el centro ya
+  // tuviera el dossier o estuviera en conversación, o que el correo sea un
+  // "no", un lead caliente o algo que la IA quiere que vea Alain. Ahí siempre
+  // hay tarjeta (aunque sea solo para cerrar la ficha), para que nunca quede
+  // un correo importante sin mirar y el motor no proponga un seguimiento
+  // como si no hubiera llegado nada.
+  const importante =
+    faseDeEstado(centro.estado) >= 4 ||
+    resultado.necesita_alain ||
+    CALIENTES.has(resultado.clasificacion) ||
+    ["no_interesa", "lo_decide_otro", "reenviado_a", "pide_contacto_ayuntamiento", "pregunta_precio"].includes(resultado.clasificacion);
+  const sinNada = !resultado.responder && Object.keys(cambios).length === 0;
+  if (sinNada && !importante) return { resultado, tarea: null };
+  if (sinNada && importante && !resultado.nota_para_alain) {
+    resultado.nota_para_alain = "La IA no ve necesario contestar ni cambiar la ficha. Revísalo: si hay que cerrar (8 Perdido / 9 Aparcado) o mover la fecha, hazlo desde la ficha o con Rehacer.";
+  }
 
   // Una respuesta nueva sustituye a la que hubiera sin enviar para ese centro.
   await supabase
