@@ -340,15 +340,11 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
     .gte("fecha", hace21)
     .not("centro_id", "is", null)
     .order("fecha", { ascending: true });
-  const ultimoPorCentro = new Map<string, string>();
-  for (const m of recientes ?? []) ultimoPorCentro.set(m.centro_id as string, m.direccion as string);
+  const ultimoPorCentro = new Map<string, { direccion: string; fecha: string }>();
+  for (const m of recientes ?? []) ultimoPorCentro.set(m.centro_id as string, { direccion: m.direccion as string, fecha: String(m.fecha).slice(0, 10) });
 
   const cola = (centros ?? []).filter((c) => {
     if (conTarea.has(c.id)) {
-      res.ya_abiertas++;
-      return false;
-    }
-    if (ultimoPorCentro.get(c.id) === "entrante") {
       res.ya_abiertas++;
       return false;
     }
@@ -360,8 +356,21 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
     if (Date.now() - inicio > opciones.presupuestoMs) break;
     const c = cola[i] as Centro;
     res.revisados++;
-    const d = decidir(c);
+    let d = decidir(c);
     if (!d) continue;
+    // Lo último que hay con este centro es un correo suyo sin contestar: el
+    // paso programado no toca; se le pide a Alain que decida sobre ese correo.
+    const ult = ultimoPorCentro.get(c.id);
+    if (ult?.direccion === "entrante") {
+      d = {
+        tipo: "revisar_correo",
+        nivel: "C",
+        conCorreo: false,
+        instrucciones: "",
+        cambios: { fecha_proxima_accion: sumar(hoy(), 7) },
+        nota: `Tocaba "${etiqueta(d.tipo).toLowerCase()}", pero lo último es un correo suyo del ${ult.fecha.split("-").reverse().join("-")} sin respuesta tuya. Decide: si hay que contestar, abre la ficha y escribe desde Mail o pide un borrador con Rehacer; si no, cierra el estado o mueve la fecha. Al aplicar, la fecha pasa a +7 días.`,
+      };
+    }
     try {
       await crearTarea(c, d);
       res.creadas++;
@@ -460,6 +469,7 @@ export function etiqueta(tipo: string): string {
       seguimiento_conversacion: "Seguimiento de conversación",
       llamada_alain: "Llamada",
       revisar_bloqueo: "Revisar bloqueo",
+      revisar_correo: "Correo suyo sin respuesta",
     } as Record<string, string>
   )[tipo] ?? tipo;
 }

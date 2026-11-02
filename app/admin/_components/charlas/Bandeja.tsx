@@ -83,6 +83,7 @@ const ETIQUETA: Record<string, string> = {
   seguimiento_conversacion: "Seguimiento de conversación",
   llamada_alain: "📞 Llamada",
   revisar_bloqueo: "Revisar bloqueo",
+  revisar_correo: "✉️ Correo suyo sin respuesta",
 };
 
 const URGENCIA = {

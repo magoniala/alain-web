@@ -84,6 +84,7 @@ Tu trabajo: leer un correo que ha llegado de un centro, con la ficha del centro 
 
 Cómo escribe Alain (tienes ejemplos reales en los documentos tipo "ejemplos" — son la referencia principal, imítalos):
 - Corto, directo, cercano, sin fórmulas comerciales ni adjetivos vacíos. Frases breves.
+- El cuerpo va en párrafos cortos separados por una línea en blanco ("\\n\\n" dentro del JSON), como escribe él: nunca un solo bloque de texto seguido. Un recordatorio de dos frases son dos párrafos.
 - Abre con "Kaixo [nombre]," / "Egun on [nombre]," en euskera, "Hola [nombre]:" o "Buenos días," en castellano. Firma "Ondo izan,\\nAlain Zulaika" o "Un saludo,\\nAlain Zulaika".
 - Si el centro escribe en euskera, respondes en euskera. Si escribe en castellano, en castellano. Si la ficha dice euskera "sí" y el correo es mixto, euskera.
 - Agradece en una línea cuando procede, sin exagerar. Si se disculpan por tardar, quítale importancia en una línea.
@@ -220,7 +221,7 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
     .filter(Boolean)
     .join("\n\n");
 
-  const texto = await llamarClaude({ system, usuario, proposito: entrada.instruccion_extra ? "regenerar" : entrada.programada ? "programada" : "procesar_entrante", mensajeId, maxTokens: 2500 });
+  const texto = await llamarClaude({ system, usuario, proposito: entrada.instruccion_extra ? "regenerar" : entrada.programada ? "programada" : "procesar_entrante", mensajeId, maxTokens: 4500 });
   let r: ResultadoIA;
   try {
     r = extraerJSON(texto) as ResultadoIA;
@@ -230,11 +231,11 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
     // correo por fallido, se le pide que lo devuelva bien formado (llamada
     // corta, sin el conocimiento: céntimos).
     const reparado = await llamarClaude({
-      system: [{ type: "text", text: "Devuelve SOLO el JSON que te paso, corregido para que sea JSON válido (comillas internas escapadas, comas, llaves). No cambies ni una palabra del contenido." }],
+      system: [{ type: "text", text: "Devuelve SOLO el JSON que te paso, corregido para que sea JSON válido (comillas internas escapadas, comas, llaves). Si está cortado a medias, ciérralo con el mínimo imprescindible (acorta la alternativa antes que la respuesta). No cambies el contenido del resto." }],
       usuario: `Error al leerlo: ${(e as Error).message}\n\n${texto}`,
       proposito: "reparar_json",
       mensajeId,
-      maxTokens: 2500,
+      maxTokens: 4500,
     });
     r = extraerJSON(reparado) as ResultadoIA;
   }

@@ -252,6 +252,14 @@ export function aFichas(filas: FilaMapeada[], territorio: string): FichaDirector
       registro: { fecha: hoy, canal: "Sistema", texto: `Ficha generada desde el directorio oficial de ${territorio}${f.codigo ? ` (código ${f.codigo})` : ""}; etapas según el directorio.` },
     });
   }
+  // El nombre es único en el CRM: si dos centros se llaman igual (Sagrado
+  // Corazón en dos pueblos), se les añade la localidad.
+  const veces = new Map<string, number>();
+  for (const f of fichas) veces.set(f.nombre, (veces.get(f.nombre) ?? 0) + 1);
+  for (const f of fichas) {
+    const loc = f.frontmatter.localidad as string | null;
+    if ((veces.get(f.nombre) ?? 0) > 1 && loc && !f.nombre.includes(loc)) f.nombre = `${f.nombre} (${loc.split("/")[0].trim()})`;
+  }
   return priorizar(fichas);
 }
 
@@ -295,12 +303,18 @@ export async function importarFichas(fichas: FichaDirectorio[]) {
       .from("charlas_centros")
       .insert(lote.map((f) => ({ nombre: f.nombre, ...f.frontmatter, notas: null, secciones_extra: {}, actualizado_por: "sistema" })))
       .select("id, nombre");
+    let filasOk = data ?? [];
     if (error) {
-      errores.push(`lote ${i}: ${error.message}`);
-      continue;
+      // Si el lote entero falla (p. ej. un nombre repetido), se inserta de uno en uno y se apunta solo el que falle.
+      filasOk = [];
+      for (const f of lote) {
+        const { data: d1, error: e1 } = await sb.from("charlas_centros").insert({ nombre: f.nombre, ...f.frontmatter, notas: null, secciones_extra: {}, actualizado_por: "sistema" }).select("id, nombre");
+        if (e1) errores.push(`${f.nombre}: ${e1.message}`);
+        else filasOk.push(...(d1 ?? []));
+      }
     }
-    insertados += data.length;
-    const idPorNombre = new Map(data.map((d) => [d.nombre as string, d.id as string]));
+    insertados += filasOk.length;
+    const idPorNombre = new Map(filasOk.map((d) => [d.nombre as string, d.id as string]));
     const inter = lote
       .filter((f) => idPorNombre.has(f.nombre))
       .map((f) => ({ centro_id: idPorNombre.get(f.nombre), fecha: f.registro.fecha, canal: "Sistema", texto: f.registro.texto, orden: 0, origen: "sistema" }));
