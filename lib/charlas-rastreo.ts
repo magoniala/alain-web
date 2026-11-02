@@ -66,6 +66,31 @@ async function descargar(url: string): Promise<string | null> {
   }
 }
 
+/** Prueba la web de la ficha y el dominio con y sin www., por https y http. */
+async function resolverBase(dominio: string, web: string | null): Promise<{ base: string; html: string } | null> {
+  const candidatos: string[] = [];
+  if (web) {
+    try {
+      const u = new URL(web.startsWith("http") ? web : `https://${web}`);
+      candidatos.push(u.href);
+    } catch {
+      /* sigue */
+    }
+  }
+  const sinWww = dominio.replace(/^www\./, "");
+  candidatos.push(`https://${sinWww}`, `https://www.${sinWww}`, `http://www.${sinWww}`, `http://${sinWww}`);
+  for (const url of [...new Set(candidatos)]) {
+    const html = await descargar(url);
+    if (html !== null) {
+      const u = new URL(url);
+      // Si la web de la ficha cuelga de una ruta (…/web/), las páginas candidatas se buscan desde ahí.
+      const ruta = u.pathname.replace(/\/[^/]*\.[a-z]+$/i, "").replace(/\/$/, "");
+      return { base: `${u.protocol}//${u.host}${ruta}`, html };
+    }
+  }
+  return null;
+}
+
 export function extraerEmails(html: string, pagina: string): EmailHallado[] {
   const texto = html
     .replace(/&#64;|&commat;/g, "@")
@@ -184,13 +209,17 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
       await supabase.from("charlas_rastreo").upsert({ centro_id: c.id, web: null, resultado: buscador ? "sin_web_buscado" : "sin_web", rastreado_en: new Date().toISOString() });
       continue;
     }
-    const base = `https://${dominio}`;
+    // Muchas webs solo responden con www. o solo por http: se prueba la portada
+    // en sus variantes y se usa la primera que conteste.
+    const portada = await resolverBase(dominio, c.web);
+    const base = portada?.base ?? `https://${dominio}`;
     const hallados = new Map<string, EmailHallado>();
     let vistas = 0;
     const esAyto = c.tipo === "ayuntamiento";
     for (const p of esAyto ? PAGINAS_AYUNTAMIENTO : PAGINAS_CANDIDATAS) {
       if (Date.now() - inicio > opciones.presupuestoMs) break;
-      const html = await descargar(base + p);
+      if (!portada) break;
+      const html = p === "" ? portada.html : await descargar(base + p);
       if (html === null) continue;
       vistas++;
       for (const e of extraerEmails(html, base + p)) {
