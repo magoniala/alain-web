@@ -459,9 +459,24 @@ async function espejoDiario(centros) {
 
 export { ficha, frontmatter, partir, registroDe, lineaRegistro, normal, ORDEN };
 
+// Tras las charlas, el CRM de magia (Prospectos/), si existe: misma tarea de launchd.
+async function espejoMagia() {
+  try {
+    const { espejoProspectos } = await import("../crm/espejo-prospectos.mjs");
+    const r = await espejoProspectos({ url: URL, key: KEY, comprobar: COMPROBAR });
+    if (r.saltado) return console.log(`Prospectos: saltado (${r.saltado})`);
+    console.log(`Prospectos (magia): ${r.fichas} fichas · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${COMPROBAR ? "detectados" : "subidos"}`);
+  } catch (e) {
+    // Si las tablas crm_* aún no existen o la carpeta no está, no pasa nada: el espejo de charlas ya ha terminado.
+    console.log(`Prospectos: no espejado (${String(e.message).slice(0, 160)})`);
+  }
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  main().catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+  main()
+    .then(espejoMagia)
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }

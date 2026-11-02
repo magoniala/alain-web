@@ -4,7 +4,8 @@ import { leerBuzon, reponerEnviados } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
 import { tareasPorFecha, mail1Automatico } from "@/lib/charlas-motor";
 import { rastrearContactos } from "@/lib/charlas-rastreo";
-import { notificarTareasNuevas } from "@/lib/charlas-push";
+import { tareasPorFechaMagia, procesarPendientesMagia } from "@/lib/crm-motor";
+import { notificarTareasNuevas, notificarTareasMagia } from "@/lib/charlas-push";
 import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
@@ -110,6 +111,16 @@ async function ejecutar(req: Request) {
       ? await mail1Automatico({ presupuestoMs: Math.max(0, 50000 - (Date.now() - inicio)) }).catch((e) => ({ activo: true, territorios: [], cupo_dia: 0, hoy_ya: 0, creadas: 0, candidatos: 0, errores: [(e as Error).message] }))
       : null;
 
+  // Carril de magia (fase 6a): correos entrantes de prospectos y pasos por fecha. Mismas ventanas que la IA de charlas.
+  const magia =
+    lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 42000
+      ? await (async () => {
+          const entrantes = await procesarPendientesMagia({ presupuestoMs: Math.max(0, 48000 - (Date.now() - inicio)), limite: 3 }).catch((e) => ({ procesados: 0, tareas: 0, errores: [(e as Error).message] }));
+          const motor = Date.now() - inicio < 46000 ? await tareasPorFechaMagia({ presupuestoMs: Math.max(0, 52000 - (Date.now() - inicio)) }).catch((e) => ({ activo: true, revisados: 0, creadas: 0, ya_abiertas: 0, errores: [(e as Error).message], pendientes_restantes: 0 })) : null;
+          return { entrantes, motor };
+        })()
+      : null;
+
   // Rastreo web de correos de contacto (sin IA, solo red): se hace en las
   // ejecuciones fuera de ventana, que si no estarían ociosas. Unos pocos
   // centros por pasada; en un par de días recorre todos los que no tienen
@@ -128,8 +139,9 @@ async function ejecutar(req: Request) {
 
   // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
+  const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, rastreo, repuestos, push, aprendizaje, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, rastreo, repuestos, push, push_magia: pushMagia, aprendizaje, ms: Date.now() - inicio });
 }
 
 // cron-job.org espera la respuesta como mucho 30 s y, si falla muchas veces

@@ -13,13 +13,14 @@ import ValoracionTab from "./_components/ValoracionTab";
 import ParqTab from "./_components/ParqTab";
 import QuetalTab from "./_components/QuetalTab";
 import CharlasTab from "./_components/CharlasTab";
+import MagiaTab from "./_components/MagiaTab";
 
-const TABS = ["Charlas", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos"] as const;
+const TABS = ["Charlas", "Prospectos magia", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
 const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
-  { titulo: "Comercial", tabs: ["Charlas"] },
+  { titulo: "Comercial", tabs: ["Charlas", "Prospectos magia"] },
   { titulo: "Clientes", tabs: ["Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
   { titulo: "Correo", tabs: ["Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
@@ -31,6 +32,7 @@ const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
 // también con el menú plegado.
 const ICONO: Record<Tab, React.ReactNode> = {
   Charlas: <path d="M4 5h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-6l-3 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm3 3h6M7 11h4" />,
+  "Prospectos magia": <path d="M4 16l6-11 6 11H4Zm6-7v4m-7 3h14M8 3l2 2 2-2" />,
   Valoración: <path d="M6 3h8l3 3v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h6m-6 3h6m-6-6h3" />,
   "PAR-Q+": <path d="M10 17s-6-3.5-6-8a3.5 3.5 0 0 1 6-2.4A3.5 3.5 0 0 1 16 9c0 4.5-6 8-6 8Zm-3-7h2l1-2 1.5 4 1-2H15" />,
   Newsletter: <path d="M3 5h14v10H3zM3 5l7 6 7-6" />,
@@ -278,6 +280,7 @@ export default function AdminPage() {
 
             <div key={tab} className="admin-fade">
               {tab === "Charlas" && <CharlasTab />}
+              {tab === "Prospectos magia" && <MagiaTab />}
               {tab === "Valoración" && <ValoracionTab />}
               {tab === "PAR-Q+" && <ParqTab />}
               {tab === "Newsletter" && <NewsletterTab />}

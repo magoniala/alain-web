@@ -166,6 +166,7 @@ const ASUNTO_CHARLAS = /(calendario de actividades|jardueren egutegia|egutegia|c
 // Vercel corta la función, la siguiente ejecución sigue donde se quedó.
 // ---------------------------------------------------------------------------
 export interface ResumenLectura {
+  magia?: number;
   carpetas: Record<string, { revisados: number; asociados: number; pendientes_asignar: number; nuevos_uid: number }>;
   respondidos_desde_mail: number;
   huerfanos_asociados: number;
@@ -207,6 +208,42 @@ async function cargarConocidos() {
   const { data: abiertas } = await supabase.from("charlas_tareas").select("centro_id").in("estado", ["revisar", "pendiente"]);
   const conTareaAbierta = new Set((abiertas ?? []).map((t) => t.centro_id as string));
   return { porId, guardados, hilos, conTareaAbierta };
+}
+
+// ---------------------------------------------------------------------------
+// Carril de magia (fase 6a): los correos que no son de ningún centro pero sí
+// de una ficha de Prospectos (crm_fichas) se guardan en crm_mensajes para que
+// su motor los procese. Si las tablas crm_* no existen aún, se ignora.
+// ---------------------------------------------------------------------------
+interface IndiceMagia {
+  porEmail: Map<string, string>;
+  porId: Map<string, string>;
+  guardados: Set<string>;
+  conTareaAbierta: Set<string>;
+}
+async function indiceMagia(): Promise<IndiceMagia | null> {
+  const supabase = supabaseCharlas();
+  const { data: fichas, error } = await supabase.from("crm_fichas").select("id, email, responsable_email").eq("carril", "magia");
+  if (error) return null;
+  const porEmail = new Map<string, string>();
+  for (const f of fichas ?? []) {
+    for (const campo of [f.responsable_email, f.email]) {
+      for (const e of String(campo ?? "").toLowerCase().match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) ?? []) {
+        porEmail.set(e, f.id as string);
+      }
+    }
+  }
+  const porId = new Map<string, string>();
+  const guardados = new Set<string>();
+  const { data: msgs } = await supabase.from("crm_mensajes").select("message_id, referencias, ficha_id").range(0, 4999);
+  for (const m of msgs ?? []) {
+    if (m.message_id) guardados.add(m.message_id);
+    if (!m.ficha_id) continue;
+    if (m.message_id) porId.set(m.message_id, m.ficha_id);
+    for (const r of m.referencias ?? []) if (!porId.has(r)) porId.set(r, m.ficha_id);
+  }
+  const { data: abiertas } = await supabase.from("crm_tareas").select("ficha_id").in("estado", ["revisar", "pendiente"]);
+  return { porEmail, porId, guardados, conTareaAbierta: new Set((abiertas ?? []).map((t) => t.ficha_id as string)) };
 }
 
 /** Carpeta de Enviados del buzón: por marca especial y, si el servidor no la pone (Arsys), por nombre. */
@@ -265,8 +302,10 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
   const resumen: ResumenLectura = { carpetas: {}, respondidos_desde_mail: 0, huerfanos_asociados: 0, al_dia: true };
   const diasInicial = Number(await config("lectura_inicial_dias", 10));
   const diasHistoricoEnviados = Number(await config("enviados_historico_dias", 75));
-  const [indice, conocidos] = await Promise.all([construirIndice(), cargarConocidos()]);
+  const [indice, conocidos, magia] = await Promise.all([construirIndice(), cargarConocidos(), indiceMagia()]);
   const hilosCambiados = new Set<string>();
+  let pendientesMagia: Record<string, unknown>[] = [];
+  resumen.magia = 0;
 
   const cliente = new ImapFlow({ host: IMAP_HOST, port: 993, secure: true, auth: credenciales(), logger: false });
   await cliente.connect();
@@ -333,6 +372,22 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
             }
             pendientes = [];
           }
+          if (pendientesMagia.length) {
+            const lote = pendientesMagia;
+            pendientesMagia = [];
+            const { data: ins } = await supabase.from("crm_mensajes").upsert(lote, { onConflict: "message_id", ignoreDuplicates: true }).select("message_id, direccion, ficha_id, fecha, asunto, referencias");
+            for (const m of ins ?? []) {
+              if (!m.ficha_id) continue;
+              // Hilo de la ficha: el último mensaje manda.
+              await supabase
+                .from("crm_hilos")
+                .upsert({ ficha_id: m.ficha_id, canal: "principal", asunto: String(m.asunto ?? "").replace(/^((re|rv|fw|fwd|erantz)\s*:\s*)+/i, ""), message_id_raiz: (m.referencias ?? [])[0] ?? m.message_id, ultimo_message_id: m.message_id, ultimo_mensaje_en: m.fecha }, { onConflict: "ficha_id,canal" })
+                .then(() => null, () => null);
+              if (m.direccion === "saliente" && magia?.conTareaAbierta.has(m.ficha_id) && m.fecha) {
+                await supabase.from("crm_tareas").update({ estado: "descartada", motivo: "Respondido desde Mail", resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("ficha_id", m.ficha_id).in("estado", ["revisar", "pendiente"]).lt("creado_en", m.fecha);
+              }
+            }
+          }
           if (hilosCambiados.size) {
             const filas = [...hilosCambiados].map((c) => conocidos.hilos.get(c)!).filter(Boolean);
             const { error } = await supabase.from("charlas_hilos").upsert(filas, { onConflict: "centro_id,canal" });
@@ -374,7 +429,12 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
               if (!centro) ({ centro, por } = asociar(indice, contraparte));
               const asunto = env.subject ?? "";
               const pendiente = !centro && t.direccion === "entrante" && refs.length > 0 && ASUNTO_CHARLAS.test(asunto);
-              if (!centro && !pendiente) continue;
+              // ¿Es de una ficha de magia?
+              let fichaMagia: string | null = null;
+              if (!centro && !pendiente && magia && !magia.guardados.has(messageId)) {
+                fichaMagia = refs.map((r) => magia.porId.get(r)).find(Boolean) ?? contraparte.map((e) => magia.porEmail.get(e)).find(Boolean) ?? null;
+              }
+              if (!centro && !pendiente && !fichaMagia) continue;
 
               // Cuerpo: solo de lo asociado, y en el histórico de enviados
               // solo de lo reciente (lo antiguo sirve por sus cabeceras).
@@ -392,6 +452,27 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
               }
 
               const fechaISO = fecha?.toISOString() ?? null;
+              if (fichaMagia) {
+                pendientesMagia.push({
+                  ficha_id: fichaMagia,
+                  direccion: t.direccion,
+                  message_id: messageId,
+                  in_reply_to: limpiarId(env.inReplyTo) || null,
+                  referencias: refs,
+                  de: env.from?.[0]?.address ?? null,
+                  para: destinos,
+                  asunto,
+                  texto,
+                  fecha: fechaISO,
+                  estado: t.direccion === "saliente" ? "procesado" : "nuevo",
+                });
+                magia!.guardados.add(messageId);
+                magia!.porId.set(messageId, fichaMagia);
+                for (const r of refs) if (!magia!.porId.has(r)) magia!.porId.set(r, fichaMagia);
+                resumen.magia = (resumen.magia ?? 0) + 1;
+                if (pendientesMagia.length >= 25) await volcar();
+                continue;
+              }
               pendientes.push({
                 centro_id: centro,
                 direccion: t.direccion,
@@ -441,7 +522,7 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
           if (uids.length === 0) await volcar();
         } finally {
           // Lo que esté en cola se guarda aunque se acabe el tiempo.
-          if (pendientes.length || hilosCambiados.size) await volcar().catch(() => {});
+          if (pendientes.length || pendientesMagia.length || hilosCambiados.size) await volcar().catch(() => {});
         }
       } finally {
         lock.release();

@@ -119,3 +119,26 @@ export async function notificarTareasNuevas(): Promise<{ avisos: number; tareas:
   await supabase.from("charlas_tareas").update({ notificada_en: new Date().toISOString() }).in("id", tareas.map((t) => t.id));
   return { avisos, tareas: tareas.length };
 }
+
+/** Avisos del carril de magia: un resumen por pasada (las tarjetas no son tan urgentes como un lead de charlas). */
+export async function notificarTareasMagia(): Promise<{ avisos: number; tareas: number }> {
+  const supabase = supabaseCharlas();
+  const { data: tareas, error } = await supabase
+    .from("crm_tareas")
+    .select("id, tipo, urgencia, urgencia_motivo, contexto, ficha:crm_fichas(nombre)")
+    .eq("carril", "magia")
+    .eq("estado", "revisar")
+    .is("notificada_en", null)
+    .order("urgencia", { ascending: false });
+  if (error || !tareas?.length) return { avisos: 0, tareas: 0 };
+  const nombres = tareas.map((t) => (t.ficha as unknown as { nombre: string } | null)?.nombre).filter(Boolean);
+  const calientes = tareas.filter((t) => t.urgencia === 3);
+  const r = await enviarPush({
+    title: calientes.length ? `🎩🔴 Magia: ${(calientes[0].ficha as unknown as { nombre: string } | null)?.nombre ?? "un cliente"}` : `🎩 Magia: ${tareas.length} ${tareas.length === 1 ? "mensaje" : "mensajes"} para revisar`,
+    body: calientes.length ? calientes[0].urgencia_motivo ?? "Quiere repetir" : nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? "…" : ""),
+    url: "/admin?tab=Prospectos%20magia",
+    tag: "magia-resumen",
+  });
+  await supabase.from("crm_tareas").update({ notificada_en: new Date().toISOString() }).in("id", tareas.map((t) => t.id));
+  return { avisos: r.enviados ? 1 : 0, tareas: tareas.length };
+}
