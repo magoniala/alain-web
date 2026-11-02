@@ -161,7 +161,11 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
   // Fases donde el correo directo cambia algo: antes del Mail 1 (0-2), con el
   // Mail 1 genérico en marcha (3) y aparcados a reactivar (9). Ganados,
   // perdidos y los que ya conversan (4-6) no hacen falta.
-  const cola = (centros ?? []).filter((c) => !ya.has(c.id) && [0, 1, 2, 3, 9].includes(faseDeEstado(c.estado)));
+  // Primero los territorios donde el Mail 1 depende de este correo (Navarra, y los ayuntamientos), luego el resto.
+  const prioridad = (c: { territorio: string | null; tipo: string | null }) => (c.tipo === "ayuntamiento" ? 0 : c.territorio === "Navarra" ? 1 : c.territorio === "Cantabria" ? 3 : 2);
+  const cola = (centros ?? [])
+    .filter((c) => !ya.has(c.id) && [0, 1, 2, 3, 9].includes(faseDeEstado(c.estado)))
+    .sort((a, b) => prioridad(a) - prioridad(b));
 
   for (const c of cola.slice(0, limite)) {
     if (Date.now() - inicio > opciones.presupuestoMs) break;
