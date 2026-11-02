@@ -49,7 +49,6 @@ interface Serie {
   rir: number | null;
   tiempo_s: number | null;
   nota: string | null;
-  completada: boolean;
 }
 interface Datos {
   cliente: { nombre: string; idioma: string; zonas_riesgo: string | null; aviso_canal: string };

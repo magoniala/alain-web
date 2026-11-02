@@ -46,14 +46,14 @@ async function detalleSemana(id: string) {
       ])
     : [{ data: [] }, { data: [] }];
   // Fotos de los formularios: URL firmada 1 h (bucket privado).
-  const forms = (formularios.data ?? []) as { fotos?: string[] }[];
-  const rutas = forms.flatMap((f) => f.fotos ?? []);
+  const forms = (formularios.data ?? []) as { respuestas?: { fotos?: string[] } }[];
+  const rutas = forms.flatMap((f) => f.respuestas?.fotos ?? []);
   const firmadas: Record<string, string> = {};
   if (rutas.length) {
     const { data } = await sb.storage.from("ent-fotos").createSignedUrls(rutas, 3600);
     for (const x of data ?? []) if (x.path && x.signedUrl) firmadas[x.path] = x.signedUrl;
   }
-  return { semana: semana.data, sesiones: ses, avisos: (avisos.data ?? []) as Aviso[], series: series.data ?? [], formularios: forms.map((f) => ({ ...f, fotos_url: (f.fotos ?? []).map((r) => firmadas[r]).filter(Boolean) })) };
+  return { semana: semana.data, sesiones: ses, avisos: (avisos.data ?? []) as Aviso[], series: series.data ?? [], formularios: forms.map((f) => ({ ...f, fotos_url: (f.respuestas?.fotos ?? []).map((r) => firmadas[r]).filter(Boolean) })) };
 }
 
 export async function GET(req: Request) {

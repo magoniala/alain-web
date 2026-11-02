@@ -55,11 +55,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const id = pedida ?? actual?.id;
   const detalle = id ? await semanaCompleta(id, c.id) : null;
   // Formulario de recuperación pendiente: de la última sesión hecha sin él, si ya pasó la hora (14:00 del día siguiente).
-  const { data: ultHecha } = await sb.from("ent_sesiones").select("id, nombre, fecha").eq("cliente_id", c.id).in("estado", ["hecha", "incompleta"]).order("fecha", { ascending: false }).limit(1).maybeSingle();
+  // Formulario de recuperación pendiente: sesiones hechas entre hace 3 días y ayer, sin él.
+  const { data: hechas } = await sb.from("ent_sesiones").select("id, nombre, fecha").eq("cliente_id", c.id).in("estado", ["hecha", "incompleta"]).gte("fecha", sumarDias(h, -3)).lt("fecha", h).order("fecha", { ascending: false });
   let recuperacionPendiente: { sesion_id: string; nombre: string; fecha: string } | null = null;
-  if (ultHecha && sumarDias(ultHecha.fecha, 1) <= h && sumarDias(ultHecha.fecha, 4) >= h) {
-    const { count } = await sb.from("ent_formularios").select("id", { count: "exact", head: true }).eq("sesion_id", ultHecha.id).eq("tipo", "recuperacion");
-    if (!count) recuperacionPendiente = { sesion_id: ultHecha.id, nombre: ultHecha.nombre, fecha: ultHecha.fecha };
+  if (hechas?.length) {
+    const { data: ya } = await sb.from("ent_formularios").select("sesion_id").eq("tipo", "recuperacion").in("sesion_id", hechas.map((x) => x.id));
+    const con = new Set((ya ?? []).map((x) => x.sesion_id));
+    const falta = hechas.find((x) => !con.has(x.id));
+    if (falta) recuperacionPendiente = { sesion_id: falta.id, nombre: falta.nombre, fecha: falta.fecha };
   }
   // Constancia: últimas 4 semanas programadas.
   const { data: ult } = await sb.from("ent_sesiones").select("estado, fecha").eq("cliente_id", c.id).gte("fecha", sumarDias(h, -28)).lt("fecha", h);
@@ -108,7 +111,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
         if (!ej) return NextResponse.json({ error: "Ejercicio no encontrado." }, { status: 404 });
         const s = await sesionDe(ej.sesion_id);
         if (!s) return NextResponse.json({ error: "No es tu sesión." }, { status: 403 });
-        const fila = { ejercicio_id: ej.id, sesion_id: s.id, serie: Number(b.serie), lado: b.lado ?? null, reps: num(b.reps), peso: num(b.peso), rir: num(b.rir), tiempo_s: num(b.tiempo_s), tempo: b.tempo ?? null, nota: b.nota ?? null, completada: b.completada !== false, origen: "cliente" };
+        const fila = { ejercicio_id: ej.id, sesion_id: s.id, serie: Number(b.serie), lado: b.lado ?? null, reps: num(b.reps), peso: num(b.peso), rir: num(b.rir), tiempo_s: num(b.tiempo_s), tempo: b.tempo ?? null, nota: b.nota ?? null, origen: "cliente" };
         const { data: prev } = await sb.from("ent_series").select("id").eq("ejercicio_id", ej.id).eq("serie", fila.serie).is("lado", fila.lado).maybeSingle();
         const r = prev ? await sb.from("ent_series").update(fila).eq("id", prev.id).select().single() : await sb.from("ent_series").insert(fila).select().single();
         if (r.error) throw new Error(r.error.message);
@@ -127,7 +130,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
         const alerta = alertaPost(r, c.zonas_riesgo);
         const { error } = await sb.from("ent_sesiones").update({ estado: r.todo === false ? "incompleta" : "hecha", hecha_en: new Date().toISOString(), rpe: num(r.rpe), minutos: num(r.minutos) }).eq("id", s.id);
         if (error) throw new Error(error.message);
-        await sb.from("ent_formularios").insert({ cliente_id: c.id, sesion_id: s.id, tipo: "post", respuestas: r, alerta, fotos: Array.isArray(b.fotos) ? b.fotos : [] });
+        const fotos = Array.isArray(b.fotos) ? (b.fotos as string[]) : [];
+        const f1 = await sb.from("ent_formularios").insert({ cliente_id: c.id, sesion_id: s.id, tipo: "post", respuestas: fotos.length ? { ...r, fotos } : r, alerta });
+        if (f1.error) throw new Error(f1.error.message);
         // El "¿al final no ha podido ser?" de hoy ya no hace falta.
         await sb.from("ent_avisos").update({ estado: "omitido", error: "Ya registró la sesión" }).eq("sesion_id", s.id).eq("tipo", "si_no_registra").eq("estado", "programado");
         return NextResponse.json({ ok: true, alerta });

@@ -25,6 +25,4 @@ UPDATE ent_clientes SET token = encode(gen_random_bytes(18), 'hex') WHERE token 
 -- Fotos del cliente (solo las ve Alain): bucket privado.
 INSERT INTO storage.buckets (id, name, public) VALUES ('ent-fotos', 'ent-fotos', false) ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE ent_series ADD COLUMN IF NOT EXISTS completada boolean NOT NULL DEFAULT true;
-ALTER TABLE ent_formularios ADD COLUMN IF NOT EXISTS fotos text[] NOT NULL DEFAULT '{}';
 ALTER TABLE ent_avisos ADD COLUMN IF NOT EXISTS leido_en timestamptz;
