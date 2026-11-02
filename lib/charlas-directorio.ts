@@ -9,12 +9,11 @@
 // Bachillerato → normalizar a ficha → priorizar (públicos y modelo D primero)
 // → insertar los que no existan (idempotente por nombre).
 
-import * as XLSX from "xlsx";
-import type { WorkBook } from "xlsx";
+import { readSheet } from "read-excel-file/node";
 import { supabaseCharlas } from "./charlas";
 
-// xlsx va en serverExternalPackages (next.config.ts): se carga con require
-// desde node_modules en el servidor, como las librerías de correo.
+// Los XLSX se leen con read-excel-file (sin vulnerabilidades conocidas; el
+// paquete xlsx de npm tiene dos sin arreglo). CSV/TSV con un lector propio.
 
 export const norm = (s: unknown) =>
   String(s ?? "")
@@ -71,26 +70,66 @@ function tieneSecundaria(f: FilaMapeada): boolean {
   return /\b(ies|instituto|secundaria|bhi|ikastetxea|cpeips|cpi|colegio)\b/.test(t) && !/\b(infantil|primaria|eei|cra|escuela)\b/.test(t);
 }
 
-/** Lee un CSV/TSV (texto) o un XLSX/XLS/ODS (binario) y devuelve filas como objetos. */
-export function leerTabla(contenido: Buffer, nombreFichero: string, tipoMime = ""): Record<string, unknown>[] {
+/** CSV/TSV con comillas ("a;b" y "" dentro de comillas). */
+export function parsearCSV(txt: string, sep: string): string[][] {
+  const filas: string[][] = [];
+  let fila: string[] = [];
+  let campo = "";
+  let comillas = false;
+  for (let i = 0; i < txt.length; i++) {
+    const ch = txt[i];
+    if (comillas) {
+      if (ch === '"') {
+        if (txt[i + 1] === '"') {
+          campo += '"';
+          i++;
+        } else comillas = false;
+      } else campo += ch;
+      continue;
+    }
+    if (ch === '"' && campo === "") comillas = true;
+    else if (ch === sep) {
+      fila.push(campo);
+      campo = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && txt[i + 1] === "\n") i++;
+      fila.push(campo);
+      campo = "";
+      if (fila.some((c) => c.trim() !== "")) filas.push(fila);
+      fila = [];
+    } else campo += ch;
+  }
+  fila.push(campo);
+  if (fila.some((c) => c.trim() !== "")) filas.push(fila);
+  return filas;
+}
+
+function aObjetos(matriz: unknown[][]): Record<string, unknown>[] {
+  if (!matriz.length) return [];
+  const cab = matriz[0].map((c, i) => String(c ?? "").trim() || `col${i + 1}`);
+  return matriz.slice(1).map((f) => Object.fromEntries(cab.map((c, i) => [c, f[i] ?? ""])));
+}
+
+/** Lee un CSV/TSV/JSON (texto) o un XLSX (binario) y devuelve filas como objetos. */
+export async function leerTabla(contenido: Buffer, nombreFichero: string, tipoMime = ""): Promise<Record<string, unknown>[]> {
   const n = nombreFichero.toLowerCase();
   if (n.endsWith(".json") || /application\/json/.test(tipoMime)) {
     const j = JSON.parse(contenido.toString("utf8").replace(/^\uFEFF/, "")) as unknown;
     const arr = Array.isArray(j) ? j : (Object.values(j as Record<string, unknown>).find((v) => Array.isArray(v)) as unknown[] | undefined) ?? [];
     return arr.filter((x) => x && typeof x === "object") as Record<string, unknown>[];
   }
-  const esTexto = /\.(csv|tsv|txt)$/.test(n) || /text\/(csv|plain|tab)/.test(tipoMime);
-  let wb: WorkBook;
-  if (esTexto) {
-    const txt = contenido.toString("utf8").replace(/^﻿/, "");
-    const primera = txt.split("\n")[0] ?? "";
-    const sep = primera.includes("\t") ? "\t" : primera.includes(";") ? ";" : ",";
-    wb = XLSX.read(txt, { type: "string", FS: sep });
-  } else {
-    wb = XLSX.read(contenido, { type: "buffer", raw: false });
+  const esZip = contenido.length > 4 && contenido[0] === 0x50 && contenido[1] === 0x4b; // "PK": xlsx/ods
+  if (esZip || /\.xlsx$/.test(n) || /sheet/.test(tipoMime)) {
+    const datos = await readSheet(contenido);
+    return aObjetos(datos as unknown[][]);
   }
-  const hoja = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(hoja, { defval: "" }) as Record<string, unknown>[];
+  if (/\.(xls|ods)$/.test(n)) throw new Error("Formato .xls/.ods antiguo: ábrelo y guárdalo como .xlsx o .csv.");
+  let txt = contenido.toString("utf8").replace(/^\uFEFF/, "");
+  // Portales que aún sirven Latin-1: si hay caracteres de reemplazo, se relee.
+  if (txt.includes("\uFFFD")) txt = contenido.toString("latin1");
+  const primera = txt.split(/\r?\n/)[0] ?? "";
+  const sep = primera.includes("\t") ? "\t" : primera.includes(";") ? ";" : ",";
+  return aObjetos(parsearCSV(txt, sep));
 }
 
 export function aplicarMapeo(filas: Record<string, unknown>[], mapeo: Mapeo): { col: Record<string, string | null>; filas: FilaMapeada[] } {

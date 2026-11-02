@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { supabaseCharlas } from "@/lib/charlas";
 import { leerBuzon } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
@@ -129,5 +129,25 @@ async function ejecutar(req: Request) {
   return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, rastreo, push, aprendizaje, ms: Date.now() - inicio });
 }
 
-export const GET = ejecutar;
-export const POST = ejecutar;
+// cron-job.org espera la respuesta como mucho 30 s y, si falla muchas veces
+// seguidas, desactiva el trabajo. Una pasada con IA puede tardar 40-60 s, así
+// que cuando llama el cron se responde al momento y el trabajo sigue en
+// segundo plano (after), con el mismo límite de 60 s de la función. Desde el
+// panel se sigue esperando el resultado, porque enseña el progreso.
+async function entrada(req: Request) {
+  if (desdePanel(req)) return ejecutar(req);
+  if (!desdeCron(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  after(async () => {
+    try {
+      const r = await ejecutar(req);
+      const d = await r.json().catch(() => null);
+      console.log("[charlas-cron]", JSON.stringify({ ok: d?.ok, leidos: d?.lectura?.carpetas, proceso: d?.proceso, motor: d?.motor?.creadas, ms: d?.ms }).slice(0, 800));
+    } catch (e) {
+      console.error("[charlas-cron] error", (e as Error).message);
+    }
+  });
+  return NextResponse.json({ ok: true, en_segundo_plano: true });
+}
+
+export const GET = entrada;
+export const POST = entrada;

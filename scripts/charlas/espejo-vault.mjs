@@ -65,8 +65,10 @@ async function rest(ruta, opciones = {}) {
       ...(opciones.headers ?? {}),
     },
   });
-  if (!r.ok) throw new Error(`${ruta}: ${r.status} ${await r.text()}`);
-  return r.status === 204 ? null : r.json();
+  const texto = await r.text();
+  if (!r.ok) throw new Error(`${ruta}: ${r.status} ${texto}`);
+  // Los POST con return=minimal responden 201 sin cuerpo: no hay JSON que leer.
+  return texto.trim() ? JSON.parse(texto) : null;
 }
 
 async function todas(tabla, select = "*", orden = "") {

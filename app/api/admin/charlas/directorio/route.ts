@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       fuente = url;
     }
 
-    const filas = leerTabla(contenido, nombre, tipo);
+    const filas = await leerTabla(contenido, nombre, tipo);
     if (accion === "inspeccionar") {
       return NextResponse.json({ fuente, filas: filas.length, columnas: Object.keys(filas[0] ?? {}), muestra: filas.slice(0, 3) });
     }

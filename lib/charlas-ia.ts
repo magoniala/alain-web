@@ -221,7 +221,23 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
     .join("\n\n");
 
   const texto = await llamarClaude({ system, usuario, proposito: entrada.instruccion_extra ? "regenerar" : entrada.programada ? "programada" : "procesar_entrante", mensajeId, maxTokens: 2500 });
-  const r = extraerJSON(texto) as ResultadoIA;
+  let r: ResultadoIA;
+  try {
+    r = extraerJSON(texto) as ResultadoIA;
+  } catch (e) {
+    // A veces el modelo deja unas comillas sin escapar dentro de un texto en
+    // euskera o castellano y el JSON no se puede leer. En vez de dar el
+    // correo por fallido, se le pide que lo devuelva bien formado (llamada
+    // corta, sin el conocimiento: céntimos).
+    const reparado = await llamarClaude({
+      system: [{ type: "text", text: "Devuelve SOLO el JSON que te paso, corregido para que sea JSON válido (comillas internas escapadas, comas, llaves). No cambies ni una palabra del contenido." }],
+      usuario: `Error al leerlo: ${(e as Error).message}\n\n${texto}`,
+      proposito: "reparar_json",
+      mensajeId,
+      maxTokens: 2500,
+    });
+    r = extraerJSON(reparado) as ResultadoIA;
+  }
 
   if (!(CLASIFICACIONES as readonly string[]).includes(r.clasificacion)) r.clasificacion = "otro";
   r.confianza = Math.max(0, Math.min(1, Number(r.confianza) || 0));

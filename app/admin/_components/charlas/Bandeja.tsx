@@ -50,7 +50,7 @@ interface Huerfano {
 interface Datos {
   tareas: Tarea[];
   huerfanos: Huerfano[];
-  errores: { id: string; asunto: string | null; error: string | null }[];
+  errores: { id: string; de?: string | null; asunto: string | null; fecha?: string | null; error: string | null }[];
   config: { modo_prueba?: boolean; lector_activo?: boolean; modelo?: string };
   coste: { hoy_usd: number; ult_30_dias_usd: number; llamadas_30_dias: number };
   ultima_lectura: string | null;
@@ -204,7 +204,16 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
         if (!leyendoHistorico && quedan === 0) break;
       }
     } catch (e) {
-      fallo = (e as Error).message;
+      const m = (e as Error).message;
+      // "Load failed" (Safari/iPhone) o "Failed to fetch": el móvil ha cortado
+      // la conexión (pantalla bloqueada, cambio de app o de red). El servidor
+      // termina su pasada igualmente; se recarga la bandeja en unos segundos.
+      if (/load failed|failed to fetch|network/i.test(m)) {
+        fallo = null;
+        setTimeout(() => cargar(), 15000);
+        setTimeout(() => cargar(), 45000);
+        total.errores.push("La conexión del móvil se cortó a mitad; el servidor ha seguido trabajando y la bandeja se recarga sola.");
+      } else fallo = m;
     } finally {
       clearInterval(reloj);
       setLeyendo(false);
@@ -312,8 +321,8 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
         <>
           {calientes.length > 0 && (
             <section>
-              <h2 className="mb-2 text-[0.95rem] font-semibold">Para ti · {calientes.length}</h2>
-              <p className="mb-3 text-[0.8rem] text-gray-500">Leads calientes y casos delicados. El borrador es una propuesta; aquí decides tú.</p>
+              <h2 className="mb-2 text-[0.95rem] font-semibold">Te toca a ti · {calientes.length}</h2>
+              <p className="mb-3 text-[0.8rem] text-gray-500">Lo que el sistema nunca hará solo: leads calientes, llamadas, conversaciones abiertas y casos delicados. El borrador es solo una propuesta.</p>
               <div className="space-y-4">
                 {calientes.map((t) => (
                   <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={alTerminar} />
@@ -351,9 +360,21 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
 
       {datos.errores.length > 0 && (
         <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-[0.82rem] text-red-900">
-          <p className="font-medium">Correos que han fallado 3 veces</p>
+          <p className="font-medium">Correos que la IA no ha podido procesar (3 intentos)</p>
+          <p className="mb-2 text-red-800/80">Suele ser una respuesta mal formada de la IA. Desde el 2-11 se corrige sola; si alguno sigue aquí, dale a Reintentar.</p>
           {datos.errores.map((e) => (
-            <p key={e.id}>{e.asunto}: {e.error}</p>
+            <div key={e.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-red-200 py-1.5">
+              <span className="min-w-0">
+                <b>{e.asunto}</b>{e.de ? ` · ${e.de}` : ""}
+                <span className="block truncate text-[0.75rem] text-red-800/70">{e.error}</span>
+              </span>
+              <button
+                onClick={async () => { await accion({ accion: "reintentar_mensaje", mensaje_id: e.id }).catch(() => null); await cargar(); }}
+                className="shrink-0 rounded-full border border-red-300 bg-white px-3 py-1 text-[0.78rem]"
+              >
+                Reintentar
+              </button>
+            </div>
           ))}
         </section>
       )}
@@ -652,7 +673,7 @@ function ListaMovil({ calientes, resto, abrir }: { calientes: Tarea[]; resto: Ta
     <div className="space-y-4">
       {calientes.length > 0 && (
         <section>
-          <h2 className="mb-2 text-[0.85rem] font-semibold uppercase tracking-wide text-gray-500">Para ti · {calientes.length}</h2>
+          <h2 className="mb-2 text-[0.85rem] font-semibold uppercase tracking-wide text-gray-500">Te toca a ti · {calientes.length}</h2>
           <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200">
             {calientes.map((t) => <Fila key={t.id} t={t} />)}
           </div>
@@ -660,7 +681,7 @@ function ListaMovil({ calientes, resto, abrir }: { calientes: Tarea[]; resto: Ta
       )}
       {resto.length > 0 && (
         <section>
-          <h2 className="mb-2 text-[0.85rem] font-semibold uppercase tracking-wide text-gray-500">Por revisar · {resto.length}</h2>
+          <h2 className="mb-2 text-[0.85rem] font-semibold uppercase tracking-wide text-gray-500">Borradores para enviar · {resto.length}</h2>
           <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200">
             {resto.map((t) => <Fila key={t.id} t={t} />)}
           </div>

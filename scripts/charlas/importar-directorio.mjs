@@ -19,8 +19,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
-const XLSX = createRequire(import.meta.url)("xlsx");
+import { readSheet } from "read-excel-file/node";
 import { createClient } from "@supabase/supabase-js";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -85,14 +84,41 @@ const TIENE_SECUNDARIA = (fila) => {
   return /\b(ies|instituto|secundaria|bhi|ikastetxea|cpeips|cpi|colegio)\b/.test(t) && !/\b(infantil|primaria|eei|cra|escuela)\b/.test(t);
 };
 
-function leerFichero(ruta) {
-  // CSV con ; (lo habitual en los portales españoles) o , ; XLS/XLSX tal cual.
-  const wb = ruta.toLowerCase().endsWith(".csv")
-    ? XLSX.read(readFileSync(ruta, "utf8"), { type: "string", FS: readFileSync(ruta, "utf8").split("\n")[0].includes(";") ? ";" : "," })
-    : XLSX.readFile(ruta, { raw: false });
-  const hoja = wb.Sheets[wb.SheetNames[0]];
-  const filas = XLSX.utils.sheet_to_json(hoja, { defval: "" });
+// Mismo lector que lib/charlas-directorio.ts (el panel): CSV/TSV propio y XLSX con read-excel-file.
+function parsearCSV(txt, sep) {
+  const filas = [];
+  let fila = [], campo = "", comillas = false;
+  for (let i = 0; i < txt.length; i++) {
+    const ch = txt[i];
+    if (comillas) {
+      if (ch === '"') { if (txt[i + 1] === '"') { campo += '"'; i++; } else comillas = false; } else campo += ch;
+      continue;
+    }
+    if (ch === '"' && campo === "") comillas = true;
+    else if (ch === sep) { fila.push(campo); campo = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && txt[i + 1] === "\n") i++;
+      fila.push(campo); campo = "";
+      if (fila.some((c) => c.trim() !== "")) filas.push(fila);
+      fila = [];
+    } else campo += ch;
+  }
+  fila.push(campo);
+  if (fila.some((c) => c.trim() !== "")) filas.push(fila);
   return filas;
+}
+const aObjetos = (m) => {
+  if (!m.length) return [];
+  const cab = m[0].map((c, i) => String(c ?? "").trim() || `col${i + 1}`);
+  return m.slice(1).map((f) => Object.fromEntries(cab.map((c, i) => [c, f[i] ?? ""])));
+};
+async function leerFichero(ruta) {
+  const buf = readFileSync(ruta);
+  if (buf[0] === 0x50 && buf[1] === 0x4b) return aObjetos(await readSheet(buf));
+  let txt = buf.toString("utf8").replace(/^\uFEFF/, "");
+  if (txt.includes("\uFFFD")) txt = buf.toString("latin1");
+  const primera = txt.split(/\r?\n/)[0] ?? "";
+  return aObjetos(parsearCSV(txt, primera.includes("\t") ? "\t" : primera.includes(";") ? ";" : ","));
 }
 
 function aplicarMapeo(filas, mapeo) {
@@ -195,7 +221,7 @@ async function main() {
     console.log("Uso: inspeccionar <fichero> | previsualizar <fichero> --territorio X [--mapeo navarra|cantabria|recd] | importar <fichero> --territorio X [--mapeo …]");
     process.exit(1);
   }
-  const filas = leerFichero(ruta);
+  const filas = await leerFichero(ruta);
   if (orden === "inspeccionar") {
     console.log(`${filas.length} filas. Columnas:`);
     for (const c of Object.keys(filas[0] ?? {})) console.log(`  - ${c}`);

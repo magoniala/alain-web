@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     supabase.from("charlas_config").select("clave, valor").in("clave", ["modo_prueba", "lector_activo", "modelo"]),
     supabase.from("charlas_ia_uso").select("creado_en, coste_usd").gte("creado_en", new Date(Date.now() - 30 * 86400000).toISOString()),
     supabase.from("charlas_imap_estado").select("carpeta, ultima_lectura").order("ultima_lectura", { ascending: false }).limit(2),
-    supabase.from("charlas_mensajes").select("id, asunto, error").eq("estado", "error").limit(10),
+    supabase.from("charlas_mensajes").select("id, de, asunto, fecha, error").eq("estado", "error").order("fecha", { ascending: false }).limit(10),
   ]);
 
   const cfg = Object.fromEntries((config.data ?? []).map((c) => [c.clave, c.valor]));
@@ -64,6 +64,10 @@ export async function POST(req: Request) {
   const supabase = supabaseCharlas();
 
   try {
+    if (body.accion === "reintentar_mensaje" && typeof body.mensaje_id === "string") {
+      await supabaseCharlas().from("charlas_mensajes").update({ estado: "nuevo", intentos: 0, error: null }).eq("id", body.mensaje_id).eq("estado", "error");
+      return NextResponse.json({ ok: true });
+    }
     switch (body.accion) {
       case "enviar":
         return NextResponse.json(await enviar(body));
