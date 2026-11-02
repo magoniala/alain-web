@@ -12,16 +12,21 @@
 import { supabaseCharlas, faseDeEstado } from "./charlas";
 
 const PISTAS: [RegExp, string, number][] = [
+  [/prebentzio|prevenci|adikzio|adiccion|drogodep/i, "prevención de adicciones", 6],
   [/orienta|orientazio|orientatzail/i, "orientación", 5],
   [/jefatura|ikasketaburu|ikasketa|jefedeestudios|jestudios/i, "jefatura de estudios", 5],
   [/direcci|zuzendari|zuzendaritza|director/i, "dirección", 4],
   [/dbh|eso|secundaria|bigarren/i, "coordinación ESO", 4],
   [/extraescolar|eskolaz|actividades|jarduer/i, "actividades", 4],
+  [/hezkuntza|educacion|gazteria|juventud|gaztedi/i, "educación / juventud", 4],
+  [/gizarte|sociales|ongizate|bienestar|osasun|salud/i, "servicios sociales / salud", 3],
   [/secretar|idazkari|administra/i, "secretaría", 2],
   [/info|kontaktu|contacto|general|^[a-z0-9.]+@/i, "buzón general", 1],
 ];
 const DESCARTAR = /noreply|no-reply|example|sentry|wixpress|@(w3\.org|schema\.org|apple\.com|google\.com|facebook\.com|twitter\.com|instagram\.com|youtube\.com)/i;
 const PAGINAS_CANDIDATAS = ["", "/contacto", "/contacto/", "/kontaktua", "/harremana", "/contactar", "/contact", "/centro", "/ikastetxea", "/quienes-somos", "/organizacion", "/equipo", "/orientacion", "/orientazioa", "/secretaria", "/idazkaritza"];
+// Para ayuntamientos: las páginas del servicio de prevención / servicios sociales / educación.
+const PAGINAS_AYUNTAMIENTO = ["", "/es/servicios-sociales", "/eu/gizarte-zerbitzuak", "/es/prevencion", "/eu/prebentzioa", "/es/adicciones", "/eu/adikzioak", "/es/educacion", "/eu/hezkuntza", "/es/juventud", "/eu/gazteria", "/es/contacto", "/eu/kontaktua", "/contacto", "/kontaktua", "/es/ayuntamiento/areas", "/eu/udala/sailak", "/es/directorio", "/eu/direktorioa", "/es/telefonos", "/es/telefonos-de-interes"];
 
 export interface EmailHallado {
   email: string;
@@ -109,7 +114,7 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
   const ya = new Set((hechos ?? []).map((h) => h.centro_id as string));
   const { data: centros } = await supabase
     .from("charlas_centros")
-    .select("id, nombre, web, email_centro, responsable_email, estado, territorio")
+    .select("id, nombre, web, email_centro, responsable_email, estado, territorio, tipo")
     .is("responsable_email", null)
     .order("territorio")
     .order("nombre")
@@ -130,7 +135,8 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
     const base = `https://${dominio}`;
     const hallados = new Map<string, EmailHallado>();
     let vistas = 0;
-    for (const p of PAGINAS_CANDIDATAS) {
+    const esAyto = c.tipo === "ayuntamiento";
+    for (const p of esAyto ? PAGINAS_AYUNTAMIENTO : PAGINAS_CANDIDATAS) {
       if (Date.now() - inicio > opciones.presupuestoMs) break;
       const html = await descargar(base + p);
       if (html === null) continue;
@@ -140,8 +146,8 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
         if (!prev || prev.peso < e.peso) hallados.set(e.email, e);
       }
       // Con la portada y una página de contacto suele bastar; si ya hay algo bueno, parar.
-      if (vistas >= 2 && [...hallados.values()].some((e) => e.peso >= 4)) break;
-      if (vistas >= 5) break;
+      if (vistas >= 2 && [...hallados.values()].some((e) => e.peso >= (esAyto ? 6 : 4))) break;
+      if (vistas >= (esAyto ? 8 : 5)) break;
     }
     const lista = [...hallados.values()].filter((e) => !c.email_centro || e.email !== c.email_centro.toLowerCase()).sort((a, b) => b.peso - a.peso);
     await supabase.from("charlas_rastreo").upsert({
@@ -163,7 +169,7 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
         .then(() => null, () => null);
     }
     const mejor = lista[0];
-    if (mejor.peso >= 4) {
+    if (mejor.peso >= 4 && !(esAyto && mejor.pista === "dirección")) {
       // Solo se escribe en la ficha si aún no hay hilo abierto (fases 0-2):
       // con un Mail 1 genérico en marcha o aparcado, cambiar el destinatario
       // rompería la regla "lo que va dentro de un hilo responde al hilo".

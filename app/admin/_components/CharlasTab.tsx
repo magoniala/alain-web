@@ -181,7 +181,10 @@ export default function CharlasTab() {
     if (vista === "hoy") lista = lista.filter((c) => activos(c) && c.fecha_proxima_accion && c.fecha_proxima_accion <= hoy);
     if (vista === "semana") lista = lista.filter((c) => activos(c) && c.fecha_proxima_accion && c.fecha_proxima_accion <= sumarDias(hoy, 7));
     if (filtroEstado) lista = lista.filter((c) => c.estado === filtroEstado);
-    if (filtroTerritorio) lista = lista.filter((c) => c.territorio === filtroTerritorio);
+    if (filtroTerritorio === "__instituciones") lista = lista.filter((c) => c.tipo === "ayuntamiento");
+    else if (filtroTerritorio) lista = lista.filter((c) => c.territorio === filtroTerritorio);
+    // En las vistas Hoy/Semana y en el pipeline general, las instituciones se ven aparte (su filtro), salvo que se busque algo.
+    if (filtroTerritorio !== "__instituciones" && !busqueda.trim()) lista = lista.filter((c) => c.tipo !== "ayuntamiento" || vista !== "todos" || filtroEstado);
     if (busqueda.trim()) {
       const q = busqueda.trim().toLowerCase();
       lista = lista.filter((c) => [c.nombre, c.localidad, c.responsable, c.responsable_email, c.email_centro].some((v) => v?.toLowerCase().includes(q)));
@@ -280,7 +283,14 @@ export default function CharlasTab() {
                 {v === "hoy" ? "Hoy" : v === "semana" ? "Esta semana" : "Todos"}
               </button>
             ))}
-            <select value={filtroTerritorio} onChange={(e) => setFiltroTerritorio(e.target.value)} className="ml-auto border border-gray-300 bg-white px-2 py-1.5 text-[0.85rem]">
+            <button
+              onClick={() => { setFiltroTerritorio(filtroTerritorio === "__instituciones" ? "" : "__instituciones"); setVista("todos"); setFiltroEstado(""); }}
+              className={`rounded-full px-3 py-1 text-[0.8rem] ring-1 ${filtroTerritorio === "__instituciones" ? "bg-[#0F2240] text-white ring-[#0F2240]" : "bg-white text-gray-700 ring-gray-300"}`}
+              title="Ayuntamientos, mancomunidades y Diputación: la vía institucional"
+            >
+              🏛️ Instituciones · {centros.filter((c) => c.tipo === "ayuntamiento").length}
+            </button>
+            <select value={filtroTerritorio === "__instituciones" ? "" : filtroTerritorio} onChange={(e) => setFiltroTerritorio(e.target.value)} className="ml-auto border border-gray-300 bg-white px-2 py-1.5 text-[0.85rem]">
               <option value="">Todos los territorios</option>
               {territorios.map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -326,7 +336,7 @@ export default function CharlasTab() {
             </div>
           )}
           {seleccion && cargandoDetalle && !detalle && <p className="text-gray-500">Cargando ficha…</p>}
-          {seleccion && detalle && <Ficha detalle={detalle} onGuardar={guardar} />}
+          {seleccion && detalle && <Ficha detalle={detalle} onGuardar={guardar} centros={centros} abrir={abrir} />}
         </section>
       </div>
 
@@ -356,8 +366,10 @@ export default function CharlasTab() {
   );
 }
 
-function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: Record<string, unknown>) => Promise<void> }) {
+function Ficha({ detalle, onGuardar, centros, abrir }: { detalle: Detalle; onGuardar: (cambios: Record<string, unknown>) => Promise<void>; centros: CentroLista[]; abrir: (id: string) => void }) {
   const c = detalle.centro;
+  const norm = (v: string | null | undefined) => (v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s*[\/(]/)[0].trim();
+  const delMunicipio = c.tipo === "ayuntamiento" ? centros.filter((x) => x.tipo !== "ayuntamiento" && norm(x.localidad) === norm(c.localidad)) : [];
   const [estado, setEstado] = useState(c.estado);
   const [proxima, setProxima] = useState(c.proxima_accion ?? "");
   const [fecha, setFecha] = useState(c.fecha_proxima_accion ?? "");
@@ -437,6 +449,18 @@ function Ficha({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (cambios: 
             <div>
               <dt className="text-gray-500">Bloqueado por</dt>
               <dd className="text-amber-800">{c.bloqueado_por}</dd>
+            </div>
+          )}
+          {c.tipo === "ayuntamiento" && (
+            <div className="col-span-2 sm:col-span-3">
+              <dt className="text-gray-500">Centros del municipio en el CRM · {delMunicipio.length}</dt>
+              {delMunicipio.length === 0 && <dd className="text-gray-500">Ninguno con esta localidad.</dd>}
+              {delMunicipio.map((x) => (
+                <dd key={x.id} className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => abrir(x.id)} className="text-left text-[#0F2240] underline-offset-2 hover:underline">{x.nombre}</button>
+                  <span className={`rounded-full px-2 py-0.5 text-[0.72rem] ${colorEstado(x.estado)}`}>{x.estado}</span>
+                </dd>
+              ))}
             </div>
           )}
           {otrosContactos.length > 0 && (

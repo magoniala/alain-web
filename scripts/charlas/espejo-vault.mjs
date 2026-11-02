@@ -115,7 +115,9 @@ function escalar(clave, v) {
 }
 
 function frontmatter(c) {
-  const lineas = ["---", "tags:", "  - centro"];
+  // Las instituciones (ayuntamientos, mancomunidades, Diputación) llevan su
+  // propia etiqueta y carpeta para no mezclarse con la cola de centros.
+  const lineas = ["---", "tags:", c.tipo === "ayuntamiento" ? "  - institucion" : "  - centro"];
   for (const k of ORDEN) {
     const v = c[k];
     if (OPCIONALES.has(k) && (v === null || v === undefined || v === "")) continue;
@@ -219,6 +221,8 @@ async function main() {
   }
 
   const dir = join(VAULT, "Centros");
+  const dirInst = join(VAULT, "Instituciones");
+  if (!existsSync(dirInst)) mkdirSync(dirInst, { recursive: true });
   const enVault = new Set(readdirSync(dir).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3)));
 
   let iguales = 0;
@@ -228,7 +232,7 @@ async function main() {
   const diferencias = [];
 
   for (const c of centros) {
-    const ruta = join(dir, `${c.nombre.replace(/[\/\\:*?"<>|]/g, "-")}.md`);
+    const ruta = join(c.tipo === "ayuntamiento" ? dirInst : dir, `${c.nombre.replace(/[\/\\:*?"<>|]/g, "-")}.md`);
     const registro = porCentro.get(c.id) ?? [];
     enVault.delete(c.nombre);
 

@@ -79,6 +79,7 @@ const ETIQUETA: Record<string, string> = {
   mail_cierre: "Mail de cierre",
   mail_b: "Mail al buzón del centro",
   mail_1: "Mail 1 (primer contacto)",
+  mail_1_ayuntamiento: "🏛️ Mail 1 al ayuntamiento",
   reactivacion: "Reactivación",
   seguimiento_conversacion: "Seguimiento de conversación",
   llamada_alain: "📞 Llamada",
