@@ -31,13 +31,14 @@ export const MAPEOS: Record<string, Mapeo> = {
   navarra: {
     codigo: ["codigo", "codigo centro", "cod centro", "id"],
     nombre: ["nombre", "nombre del centro", "centro", "denominacion"],
+    nombre_corto: ["nombre corto"],
     tipo_centro: ["tipo de centro", "tipo centro", "tipo"],
     titularidad: ["titularidad", "naturaleza", "regimen"],
     localidad: ["localidad", "municipio", "poblacion"],
     direccion: ["direccion", "domicilio"],
     cp: ["codigo postal", "cp"],
     telefono: ["telefono", "tfno", "tel"],
-    email: ["email", "e mail", "correo", "correo electronico"],
+    email: ["email", "e mail", "mail", "correo", "correo electronico"],
     web: ["web", "pagina web", "url"],
     ensenanza: ["tipo de ensenanza", "ensenanza", "ensenanzas", "etapa", "nivel"],
     modalidad: ["modalidad", "modelo", "modelo linguistico"],
@@ -45,14 +46,14 @@ export const MAPEOS: Record<string, Mapeo> = {
   // Cantabria (Educantabria / ICANE) y Registro Estatal de Centros Docentes
   cantabria: {
     codigo: ["codigo", "codigo centro", "cod centro", "codigo del centro"],
-    nombre: ["nombre", "denominacion", "denominacion generica", "centro", "nombre del centro"],
-    tipo_centro: ["tipo de centro", "tipo centro", "denominacion generica", "naturaleza"],
+    nombre: ["denominacion especifica", "nombre", "denominacion", "centro", "nombre del centro"],
+    tipo_centro: ["denominacion generica", "tipo de centro", "tipo centro"],
     titularidad: ["titularidad", "naturaleza", "dependencia"],
     localidad: ["localidad", "municipio"],
     direccion: ["direccion", "domicilio"],
     cp: ["codigo postal", "cp", "c postal"],
     telefono: ["telefono", "tfno"],
-    email: ["email", "e mail", "correo", "correo electronico"],
+    email: ["email", "e mail", "mail", "correo", "correo electronico"],
     web: ["web", "pagina web", "url"],
     ensenanza: ["ensenanzas", "ensenanza", "etapas", "etapa", "niveles", "nivel educativo"],
     modalidad: [],
@@ -67,7 +68,8 @@ function tieneSecundaria(f: FilaMapeada): boolean {
   const ens = norm(f.ensenanza);
   if (ens) return SECUNDARIA.test(ens);
   const t = norm(`${f.tipo_centro} ${f.nombre}`);
-  return /\b(ies|instituto|secundaria|bhi|ikastetxea|cpeips|cpi|colegio)\b/.test(t) && !/\b(infantil|primaria|eei|cra|escuela)\b/.test(t);
+  if (SECUNDARIA.test(t)) return true; // "… Infantil, Primaria y ESO" también cuenta
+  return /\b(ies|instituto|bhi|ikastetxea|cpeips|cpi|colegio)\b/.test(t) && !/\b(infantil|primaria|eei|cra|escuela)\b/.test(t);
 }
 
 /** CSV/TSV con comillas ("a;b" y "" dentro de comillas). */
@@ -148,7 +150,33 @@ export function aplicarMapeo(filas: Record<string, unknown>[], mapeo: Mapeo): { 
     return null;
   };
   const col = Object.fromEntries(Object.entries(mapeo).map(([campo, cands]) => [campo, elegir(cands)]));
-  return { col, filas: filas.map((f) => Object.fromEntries(Object.entries(col).map(([campo, c]) => [campo, c ? String(f[c] ?? "").trim() : ""]))) };
+
+  // Ficheros "anchos" (Open Data Navarra): una columna por enseñanza y por
+  // modelo lingüístico con Sí/No. Se juntan en los campos ensenanza y modalidad.
+  const esSiNo = (c: string) => filas.slice(0, 50).every((f) => /^(si|sí|no|)$/i.test(String(f[c] ?? "").trim()));
+  const colsEnsenanza = columnas.filter((c) => /secundaria|bachiller|primaria|infantil|formacion profesional|educacion especial|adultos|idiomas|musica|danza|arte|diseno|distancia/.test(norm(c)) && esSiNo(c));
+  const colsModelo = columnas.filter((c) => /^(a|b|d|g)( - .*)?$|^(castellano|vascuence|euskera)$/i.test(c.trim()) && esSiNo(c));
+  const ancho = colsEnsenanza.length >= 2;
+  if (ancho) {
+    col.ensenanza = `(${colsEnsenanza.length} columnas Sí/No)`;
+    if (colsModelo.length) col.modalidad = `(${colsModelo.length} columnas de modelo)`;
+  }
+  const si = (v: unknown) => /^(si|sí)$/i.test(String(v ?? "").trim());
+
+  return {
+    col,
+    filas: filas
+      .map((f) => {
+        const fila = Object.fromEntries(Object.entries(col).map(([campo, c]) => [campo, c && !c.startsWith("(") ? String(f[c] ?? "").trim() : ""])) as FilaMapeada;
+        if (ancho) {
+          fila.ensenanza = colsEnsenanza.filter((c) => si(f[c])).join(", ");
+          if (colsModelo.length) fila.modalidad = colsModelo.filter((c) => si(f[c])).map((c) => (/^[abdg]( |$)/i.test(c.trim()) ? `Modelo ${c.trim()}` : c.trim())).join(", ");
+        }
+        return fila;
+      })
+      // Cabeceras repetidas en medio del fichero (exportaciones del Registro Estatal).
+      .filter((fila) => !(col.nombre && norm(fila.nombre) === norm(col.nombre))),
+  };
 }
 
 function tipoDesde(titularidad: string, tipo_centro: string, nombre: string) {
@@ -163,9 +191,9 @@ function tipoDesde(titularidad: string, tipo_centro: string, nombre: string) {
 function euskeraDesde(modalidad: string, ensenanza: string, territorio: string) {
   const t = norm(`${modalidad} ${ensenanza}`);
   if (territorio === "Navarra") {
-    if (/\bmodelo d\b|\bd\b.*euskera|euskera/.test(t)) return "sí";
-    if (/\bmodelo a\b|\bmodelo b\b/.test(t)) return "parcial";
-    return "no";
+    if (/\bmodelo d\b/.test(t)) return "sí"; // modelo D: todo en euskera
+    if (/\bmodelo b\b/.test(t)) return "parcial"; // B: mitad y mitad
+    return "no"; // A (euskera como asignatura) y G: la charla va en castellano
   }
   return "no";
 }
@@ -183,7 +211,18 @@ export function aFichas(filas: FilaMapeada[], territorio: string): FichaDirector
   for (const f of filas) {
     if (!f.nombre) continue;
     if (!tieneSecundaria(f)) continue;
-    const nombre = f.nombre.replace(/\s+/g, " ").trim();
+    let nombre = f.nombre.replace(/\s+/g, " ").trim();
+    // Navarra: el tipo va en el "Nombre corto" ("IES Plaza", "CPEIP San Miguel"); se antepone si el nombre no lo lleva.
+    const sigla = /^(IES|IESO|CPEIP|CPEIPS|CP|CPI|CIP|CI|CIFP|CO|Col\.?)\b/i.exec((f.nombre_corto ?? "").trim())?.[1];
+    if (sigla && !new RegExp(`^${sigla}\\b`, "i").test(nombre)) nombre = `${sigla.toUpperCase().replace(/^COL\.?$/, "Colegio")} ${nombre}`;
+    if (nombre === nombre.toUpperCase() && /[A-ZÁÉÍÓÚÑ]{4}/.test(nombre)) {
+      // Registro Estatal: nombres en mayúsculas y el tipo aparte ("Instituto de Educación Secundaria" + "JOSE DEL CAMPO").
+      nombre = nombre.toLowerCase().replace(/(^|[\s(\-.])([a-záéíóúñ])/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Del|La|Las|Los|El|Y|E)\b/g, (m) => m.toLowerCase());
+      const t = norm(f.tipo_centro);
+      const pref = /instituto de educacion secundaria/.test(t) ? "IES " : /colegio|centro privado|centro concertado/.test(t) ? "Colegio " : "";
+      if (pref && !nombre.toLowerCase().startsWith(pref.trim().toLowerCase())) nombre = pref + nombre;
+      if (f.localidad && !nombre.includes(f.localidad)) nombre = `${nombre} (${f.localidad})`;
+    }
     const clave = norm(nombre + " " + f.localidad);
     if (vistos.has(clave)) continue;
     vistos.add(clave);
