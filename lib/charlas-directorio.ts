@@ -211,7 +211,8 @@ export function aFichas(filas: FilaMapeada[], territorio: string): FichaDirector
   for (const f of filas) {
     if (!f.nombre) continue;
     if (!tieneSecundaria(f)) continue;
-    let nombre = f.nombre.replace(/\s+/g, " ").trim();
+    // Sin caracteres que no valen en un nombre de fichero (el nombre es también la nota del vault).
+    let nombre = f.nombre.replace(/\s*[\/\\:*?"<>|]\s*/g, " - ").replace(/\s+/g, " ").trim();
     // Navarra: el tipo va en el "Nombre corto" ("IES Plaza", "CPEIP San Miguel"); se antepone si el nombre no lo lleva.
     const sigla = /^(IES|IESO|CPEIP|CPEIPS|CP|CPI|CIP|CI|CIFP|CO|Col\.?)\b/i.exec((f.nombre_corto ?? "").trim())?.[1];
     if (sigla && !new RegExp(`^${sigla}\\b`, "i").test(nombre)) nombre = `${sigla.toUpperCase().replace(/^COL\.?$/, "Colegio")} ${nombre}`;

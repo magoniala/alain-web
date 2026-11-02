@@ -228,7 +228,7 @@ async function main() {
   const diferencias = [];
 
   for (const c of centros) {
-    const ruta = join(dir, `${c.nombre}.md`);
+    const ruta = join(dir, `${c.nombre.replace(/[\/\\:*?"<>|]/g, "-")}.md`);
     const registro = porCentro.get(c.id) ?? [];
     enVault.delete(c.nombre);
 
