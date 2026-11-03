@@ -89,6 +89,18 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({ ok: true });
       }
+      case "redactar": {
+        // Tarjeta sin mensaje (p. ej. "correo suyo sin respuesta"): la IA contesta al último entrante de la ficha.
+        const t = await cargarTarea(String(body.id));
+        const { data: ult } = await sb.from("crm_mensajes").select("id").eq("ficha_id", t.ficha_id).eq("direccion", "entrante").order("fecha", { ascending: false }).limit(1).maybeSingle();
+        const extra = String(body.instruccion ?? "").trim();
+        if (ult?.id) {
+          await procesarEntranteMagia(ult.id, `Alain quiere contestar a este correo aunque haya pasado tiempo: redacta la respuesta (responder = true). Si decían que avisarían o lo pasaban a otra persona, pregunta con naturalidad si hubo novedades.${extra ? ` Indicación de Alain: ${extra}` : ""}`);
+        } else {
+          await regenerarTareaMagia(t.id, `Redacta un mensaje para esta ficha (conMensaje = true).${extra ? ` Indicación de Alain: ${extra}` : ""}`);
+        }
+        return NextResponse.json({ ok: true });
+      }
       case "reintentar_mensaje": {
         await sb.from("crm_mensajes").update({ estado: "nuevo", intentos: 0, error: null }).eq("id", String(body.mensaje_id)).eq("estado", "error");
         return NextResponse.json({ ok: true });

@@ -13,6 +13,7 @@ import { procesarMensaje } from "@/lib/charlas-proceso";
 //   aplicar     { id }                       tarea sin respuesta: solo aplica los cambios al CRM
 //   descartar   { id, motivo? }
 //   regenerar   { id, instruccion }          rehace el borrador con una indicación de Alain
+//   redactar    { id, instruccion? }         tarea sin borrador (revisar_correo, actualizar_crm): la IA escribe una respuesta al último correo del centro
 //   asignar     { mensaje_id, centro_id }    correo huérfano → centro, y se procesa
 //   ignorar     { mensaje_id }               correo huérfano que no es de charlas
 //   config      { modo_prueba?: boolean, lector_activo?: boolean }
@@ -100,6 +101,23 @@ export async function POST(req: Request) {
         const instruccion = String(body.instruccion ?? "").trim();
         if (!instruccion) throw new Error("Escribe qué quieres que cambie.");
         await procesarMensaje(t.mensaje_entrante_id, instruccion);
+        return NextResponse.json({ ok: true });
+      }
+      case "redactar": {
+        // Tarjeta sin borrador ("correo suyo sin respuesta", "actualizar ficha"):
+        // se le pide a la IA que conteste al último correo entrante del centro,
+        // con la indicación de Alain si la hay. La tarjeta actual queda
+        // sustituida por la nueva (lo hace procesarMensaje).
+        const t = await cargarTarea(String(body.id));
+        let mensajeId: string | null = t.mensaje_entrante_id ?? null;
+        if (!mensajeId) {
+          const { data: ult } = await supabase.from("charlas_mensajes").select("id").eq("centro_id", t.centro_id).eq("direccion", "entrante").order("fecha", { ascending: false }).limit(1).maybeSingle();
+          mensajeId = ult?.id ?? null;
+        }
+        if (!mensajeId) throw new Error("Este centro no tiene ningún correo recibido al que contestar.");
+        const extra = String(body.instruccion ?? "").trim();
+        const instruccion = `Alain quiere contestar a este correo aunque haya pasado tiempo: redacta la respuesta (responder = true). Si el correo decía que lo pasaban a otra persona o que avisarían, pregunta con naturalidad si hubo novedades, sin presionar.${extra ? ` Indicación de Alain: ${extra}` : ""}`;
+        await procesarMensaje(mensajeId, instruccion);
         return NextResponse.json({ ok: true });
       }
       case "asignar": {

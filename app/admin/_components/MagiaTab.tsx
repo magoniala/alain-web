@@ -365,7 +365,12 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           </>
         )}
         {!conMensaje && (
-          <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id })} disabled={!!ocupado} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">Aplicar cambios</button>
+          <>
+            <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id })} disabled={!!ocupado} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">Aplicar cambios</button>
+            <button onClick={() => { const i = prompt("¿Qué quieres decirle? (opcional)") ?? ""; hacer("rehacer", { accion: "redactar", id: t.id, instruccion: i }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
+              {ocupado === "rehacer" ? "Redactando…" : "✍️ Redactar mensaje"}
+            </button>
+          </>
         )}
         {conMensaje && (
           <button onClick={() => { const i = prompt("¿Qué cambio quieres en el borrador?") ?? ""; if (i.trim()) hacer("rehacer", { accion: "rehacer", id: t.id, instruccion: i }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">

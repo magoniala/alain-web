@@ -559,6 +559,14 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
             </button>
           </div>
 
+          {!conRespuesta && !programada && (t.tipo === "revisar_correo" || t.tipo === "actualizar_crm") && (
+            <div className="mt-3 flex gap-2">
+              <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)} placeholder="Qué decirle (opcional): …" className="min-w-0 flex-1 border border-gray-300 px-2 py-1 text-[0.82rem]" />
+              <button onClick={() => hacer("regenerar", { accion: "redactar", id: t.id, instruccion })} disabled={!!ocupado} className="whitespace-nowrap px-3 py-1 text-[0.82rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
+                {ocupado === "regenerar" ? "Redactando…" : "✍️ Redactar respuesta"}
+              </button>
+            </div>
+          )}
           {conRespuesta && !programada && (
             <div className="mt-3 flex gap-2">
               <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)} placeholder="Rehazlo así: …" className="min-w-0 flex-1 border border-gray-300 px-2 py-1 text-[0.82rem]" />

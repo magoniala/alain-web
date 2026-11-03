@@ -185,7 +185,7 @@ export async function procesarMensaje(mensajeId: string, instruccion?: string): 
   const sinNada = !resultado.responder && Object.keys(cambios).length === 0;
   if (sinNada && !importante) return { resultado, tarea: null };
   if (sinNada && importante && !resultado.nota_para_alain) {
-    resultado.nota_para_alain = "La IA no ve necesario contestar ni cambiar la ficha. Revísalo: si hay que cerrar (8 Perdido / 9 Aparcado) o mover la fecha, hazlo desde la ficha o con Rehacer.";
+    resultado.nota_para_alain = "La IA no ve necesario contestar ni cambiar la ficha. Revísalo: si hay que cerrar (8 Perdido / 9 Aparcado) o mover la fecha, hazlo desde la ficha; si quieres contestar, pulsa \"Redactar respuesta\".";
   }
 
   // Una respuesta nueva sustituye a la que hubiera sin enviar para ese centro.

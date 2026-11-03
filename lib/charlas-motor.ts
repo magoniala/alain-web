@@ -450,7 +450,7 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
         conCorreo: false,
         instrucciones: "",
         cambios: { fecha_proxima_accion: sumar(hoy(), 7) },
-        nota: `Tocaba "${etiqueta(d.tipo).toLowerCase()}", pero lo último es un correo suyo del ${ult.fecha.split("-").reverse().join("-")} sin respuesta tuya. Decide: si hay que contestar, abre la ficha y escribe desde Mail o pide un borrador con Rehacer; si no, cierra el estado o mueve la fecha. Al aplicar, la fecha pasa a +7 días.`,
+        nota: `Tocaba "${etiqueta(d.tipo).toLowerCase()}", pero lo último es un correo suyo del ${ult.fecha.split("-").reverse().join("-")} sin respuesta tuya. Decide: si hay que contestar, pulsa "Redactar respuesta" (puedes indicarle qué decir); si no, cierra el estado o mueve la fecha desde la ficha. Al aplicar, la fecha pasa a +7 días.`,
       };
     }
     try {
