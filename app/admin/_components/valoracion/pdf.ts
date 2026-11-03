@@ -326,7 +326,7 @@ export function htmlNotas(d: Datos): string {
 
   // Capturas hechas desde la hoja (valoración presencial): dónde están y qué son.
   const capturas = (d.capturas ?? {}) as Record<string, { ruta: string; tipo: string; en: string; nota?: string }[]>;
-  const filasCap = Object.entries(capturas).flatMap(([test, lista]) => (lista ?? []).map((c, i) => [`${NOMBRE_TEST[test] ?? test} · ${c.tipo} ${i + 1}`, `${nombreCaptura(d, test, i + 1, c)}${c.nota ? ` — ${c.nota}` : ""}`] as [string, string]));
+  const filasCap = Object.entries(capturas).flatMap(([test, lista]) => (lista ?? []).filter((c) => !(c as { borrada?: boolean }).borrada).map((c, i) => [`${NOMBRE_TEST[test] ?? test} · ${c.tipo} ${i + 1}`, `${nombreCaptura(d, test, i + 1, c)}${c.nota ? ` — ${c.nota}` : ""}`] as [string, string]));
   if (filasCap.length) {
     cuerpo += `<h2>Fotos y vídeos</h2><table>${filasCap.map(([k, v]) => `<tr><td class="k">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table><p class="suave">Guardados en privado con la ficha; se descargan desde la hoja con «Descargar capturas».</p>`;
   }

@@ -93,17 +93,23 @@ function hoy() {
   return { fecha: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, hora: `${p(d.getHours())}:${p(d.getMinutes())}` };
 }
 
-async function subir(id: string, datos: Datos, keepalive = false) {
+// Sube solo las claves cambiadas (cambios); el servidor las fusiona con lo
+// que tenga, así dos dispositivos (tablet para escribir, móvil para fotos) no
+// se pisan. `datos` va como base por si la ficha aún no existe en el servidor.
+// Devuelve los datos fusionados.
+async function subir(id: string, datos: Datos, cambios: Datos | null, keepalive = false): Promise<Datos | null> {
   const res = await fetch("/api/admin/valoraciones", {
     method: "PUT",
     headers: cabeceras(),
-    body: JSON.stringify({ id, datos }),
+    body: JSON.stringify(cambios ? { id, datos, cambios } : { id, datos }),
     keepalive,
   });
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.error || `Error ${res.status}`);
   }
+  const j = await res.json().catch(() => ({}));
+  return (j?.datos as Datos | undefined) ?? null;
 }
 
 function IconoPapelera() {
@@ -299,6 +305,8 @@ function Editor({
   const sucio = useRef(false);
   const enVuelo = useRef(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Claves tocadas desde el último guardado con éxito: es lo único que se manda.
+  const pendientes = useRef<Set<string>>(new Set());
   // Tras eliminarla no se vuelve a subir nada: ni el guardado pendiente ni
   // el de «al cerrar», que la resucitarían.
   const borrada = useRef(false);
@@ -312,16 +320,27 @@ function Editor({
     enVuelo.current = true;
     sucio.current = false;
     const enviado = datosRef.current;
+    const claves = [...pendientes.current];
+    pendientes.current = new Set();
+    const cambios: Datos = {};
+    for (const k of claves) cambios[k] = enviado[k];
     setEstado("guardando");
     try {
-      await subir(id, enviado);
-      // Solo se marca como subida si no ha cambiado nada mientras tanto.
-      if (datosRef.current === enviado) escribirLocal(id, enviado, true);
+      const fusionado = await subir(id, enviado, claves.length ? cambios : null);
+      // Solo se marca como subida si no ha cambiado nada mientras tanto; y lo
+      // que haya hecho otro dispositivo entra aquí (fotos del móvil, etc.).
+      if (datosRef.current === enviado) {
+        const nuevo = fusionado ? { ...enviado, ...fusionado } : enviado;
+        datosRef.current = nuevo;
+        setDatos(nuevo);
+        escribirLocal(id, nuevo, true);
+      }
       setUltimo(new Date());
       setErrorGuardado("");
       setEstado(sucio.current ? "pendiente" : "guardado");
     } catch (e) {
       sucio.current = true;
+      for (const k of claves) pendientes.current.add(k);
       setErrorGuardado(e instanceof Error ? e.message : String(e));
       setEstado("error");
       temporizador.current = setTimeout(() => guardar(), 4000);
@@ -337,6 +356,7 @@ function Editor({
       datosRef.current = nuevo;
       setDatos(nuevo);
       escribirLocal(id, nuevo, false);
+      for (const k of Object.keys(cambios)) pendientes.current.add(k);
       sucio.current = true;
       setEstado((e) => (e === "error" ? e : "pendiente"));
       if (temporizador.current) clearTimeout(temporizador.current);
@@ -362,7 +382,9 @@ function Editor({
       if (cancelado) return;
       let inicial: Datos;
       if (local && !local.subido) {
-        inicial = local.datos;
+        // Lo de este navegador que no llegó a subir, encima de lo del servidor (sin perder las fotos de otros dispositivos).
+        inicial = servidor ? { ...servidor, ...local.datos } : local.datos;
+        for (const k of Object.keys(local.datos)) if (!servidor || JSON.stringify(servidor[k]) !== JSON.stringify(local.datos[k])) pendientes.current.add(k);
         sucio.current = true;
         if (servidor) setAviso("Había cambios en este navegador que no llegaron a subir: se han recuperado y se suben ahora.");
       } else if (servidor) {
@@ -384,14 +406,39 @@ function Editor({
     };
   }, [id, guardar]);
 
+  // Cada 15 s, si aquí no hay nada pendiente, se trae lo que hayan guardado
+  // otros dispositivos (las fotos hechas desde el móvil aparecen en la tablet).
+  useEffect(() => {
+    const t = setInterval(async () => {
+      if (borrada.current || sucio.current || enVuelo.current || document.visibilityState === "hidden") return;
+      try {
+        const res = await fetch(`/api/admin/valoraciones?id=${id}`, { headers: cabeceras() });
+        if (!res.ok) return;
+        const srv = (await res.json()).datos as Datos;
+        if (sucio.current || enVuelo.current) return;
+        if (JSON.stringify(srv) !== JSON.stringify(datosRef.current)) {
+          datosRef.current = srv;
+          setDatos(srv);
+          escribirLocal(id, srv, true);
+        }
+      } catch {
+        /* sin red: nada */
+      }
+    }, 15000);
+    return () => clearInterval(t);
+  }, [id]);
+
   // Al cambiar de pestaña o cerrar: subir lo que quede. Y si aún hay algo
   // sin subir al cerrar, que el navegador pregunte.
   useEffect(() => {
     const alOcultar = () => {
       if (borrada.current) return;
       if (document.visibilityState === "hidden" && sucio.current) {
-        subir(id, datosRef.current, true)
+        const cambios: Datos = {};
+        for (const k of pendientes.current) cambios[k] = datosRef.current[k];
+        subir(id, datosRef.current, Object.keys(cambios).length ? cambios : null, true)
           .then(() => {
+            pendientes.current = new Set();
             sucio.current = false;
             escribirLocal(id, datosRef.current, true);
           })
@@ -400,7 +447,9 @@ function Editor({
     };
     const antesDeSalir = (e: BeforeUnloadEvent) => {
       if (!borrada.current && (sucio.current || enVuelo.current)) {
-        subir(id, datosRef.current, true).catch(() => {});
+        const cambios: Datos = {};
+        for (const k of pendientes.current) cambios[k] = datosRef.current[k];
+        subir(id, datosRef.current, Object.keys(cambios).length ? cambios : null, true).catch(() => {});
         e.preventDefault();
       }
     };
@@ -409,7 +458,11 @@ function Editor({
     return () => {
       document.removeEventListener("visibilitychange", alOcultar);
       window.removeEventListener("beforeunload", antesDeSalir);
-      if (sucio.current && !borrada.current) subir(id, datosRef.current, true).catch(() => {});
+      if (sucio.current && !borrada.current) {
+        const cambios: Datos = {};
+        for (const k of pendientes.current) cambios[k] = datosRef.current[k];
+        subir(id, datosRef.current, Object.keys(cambios).length ? cambios : null, true).catch(() => {});
+      }
     };
   }, [id]);
 
@@ -444,7 +497,7 @@ function Editor({
     datosRef.current = actualizado;
     escribirLocal(id, actualizado, false);
     try {
-      await subir(id, actualizado);
+      await subir(id, actualizado, { parejaId: nuevoId });
       escribirLocal(id, actualizado, true);
     } catch {
       // Queda como «sin subir» en este navegador y se sube al volver a abrirla.
@@ -521,12 +574,12 @@ function Editor({
             ))}
           </div>
 
-          {Object.values(((datos?.capturas ?? {}) as Record<string, { ruta: string; tipo: string }[]>)).some((l) => l?.length) && (
+          {Object.values(((datos?.capturas ?? {}) as Record<string, { ruta: string; tipo: string; borrada?: boolean }[]>)).some((l) => l?.some((c) => !c.borrada)) && (
             <button
               onClick={async () => {
                 // Descarga cada captura con la nomenclatura de Alain ([cliente]_[fecha]_[test]_[n].ext).
                 const capturas = (datosRef.current.capturas ?? {}) as Record<string, { ruta: string; tipo: string; en: string }[]>;
-                const todas = Object.entries(capturas).flatMap(([test, l]) => (l ?? []).map((c, i) => ({ test, i: i + 1, c })));
+                const todas = Object.entries(capturas).flatMap(([test, l]) => (l ?? []).filter((c) => !(c as { borrada?: boolean }).borrada).map((c, i) => ({ test, i: i + 1, c })));
                 const r = await fetch(`/api/admin/valoraciones/capturas?rutas=${encodeURIComponent(todas.map((x) => x.c.ruta).join(","))}`, { headers: cabeceras() });
                 const j = await r.json().catch(() => ({ urls: {} }));
                 for (const x of todas) {

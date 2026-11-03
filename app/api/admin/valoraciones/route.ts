@@ -42,19 +42,50 @@ export async function GET(req: Request) {
   return NextResponse.json({ valoraciones: data }, { headers: sinCache });
 }
 
-// PUT { id, datos } → crea o sobrescribe. El id lo genera el navegador, para
-// que una valoración empezada sin conexión tenga ya su identidad y se suba
-// tal cual en cuanto vuelva la red.
+// Unión de capturas: lo que haya en cualquiera de los dos lados se queda (una
+// foto subida desde el móvil nunca la borra un guardado hecho desde la tablet).
+type Captura = { ruta: string };
+function unirCapturas(a: unknown, b: unknown): Record<string, Captura[]> {
+  const out: Record<string, Captura[]> = {};
+  for (const src of [a, b]) {
+    if (!src || typeof src !== "object") continue;
+    for (const [test, lista] of Object.entries(src as Record<string, Captura[]>)) {
+      if (!Array.isArray(lista)) continue;
+      for (const c of lista) {
+        if (!c?.ruta) continue;
+        const i = (out[test] ?? []).findIndex((x) => x.ruta === c.ruta);
+        if (i < 0) out[test] = [...(out[test] ?? []), c];
+        else out[test][i] = { ...out[test][i], ...c, borrada: !!((out[test][i] as { borrada?: boolean }).borrada || (c as { borrada?: boolean }).borrada) } as Captura;
+      }
+    }
+  }
+  return out;
+}
+
+// PUT { id, cambios }  → fusiona solo las claves cambiadas con lo que hay en el servidor
+//                        (varios dispositivos a la vez no se pisan). Devuelve los datos resultantes.
+// PUT { id, datos }    → crea o sobrescribe entera (solo para fichas nuevas / sin servidor).
+// El id lo genera el navegador, para que una valoración empezada sin conexión
+// tenga ya su identidad y se suba tal cual en cuanto vuelva la red.
 export async function PUT(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const body = await req.json().catch(() => null);
   const id = body?.id;
-  const datos = body?.datos;
   if (typeof id !== "string" || !UUID.test(id)) {
     return NextResponse.json({ error: "id inválido." }, { status: 400 });
   }
-  if (!datos || typeof datos !== "object" || Array.isArray(datos)) {
+  const cambios = body?.cambios;
+  let datos = body?.datos;
+  const valido = (x: unknown) => x && typeof x === "object" && !Array.isArray(x);
+  if (!valido(datos) && !valido(cambios)) {
     return NextResponse.json({ error: "datos inválidos." }, { status: 400 });
+  }
+  if (valido(cambios)) {
+    const { data: actual } = await supabase.from("valoraciones_sesion").select("datos").eq("id", id).maybeSingle();
+    const base = (actual?.datos ?? (valido(datos) ? datos : {})) as Record<string, unknown>;
+    const c = cambios as Record<string, unknown>;
+    datos = { ...base, ...c };
+    if ("capturas" in c || "capturas" in base) (datos as Record<string, unknown>).capturas = unirCapturas(base.capturas, c.capturas);
   }
   if (JSON.stringify(datos).length > 500_000) {
     return NextResponse.json({ error: "Demasiado grande." }, { status: 413 });
@@ -84,7 +115,7 @@ export async function PUT(req: Request) {
     if (errHist) console.error("valoraciones: historial:", errHist.message);
   }
 
-  return NextResponse.json({ ok: true, updated_at: ahora }, { headers: sinCache });
+  return NextResponse.json({ ok: true, updated_at: ahora, datos }, { headers: sinCache });
 }
 
 // DELETE ?id=<uuid> → borra la valoración y su historial. Es definitivo: los

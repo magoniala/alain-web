@@ -281,7 +281,7 @@ export function Guion({ children, titulo = "Guion" }: { children: React.ReactNod
 // suben al bucket privado `valoraciones` (API /api/admin/valoraciones/capturas).
 // En datos quedan solo las rutas, en `capturas[test]`, con su tipo y hora.
 
-export type Captura = { ruta: string; tipo: "foto" | "video"; en: string; nota?: string };
+export type Captura = { ruta: string; tipo: "foto" | "video"; en: string; nota?: string; borrada?: boolean };
 
 function cabeceras() {
   return { "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("admin_pw") || "" };
@@ -290,7 +290,7 @@ function cabeceras() {
 export function Capturas({ test, label = "Fotos y vídeos", pista }: { test: string; label?: string; pista?: string }) {
   const { d, set, id } = useDatos();
   const todas = (d.capturas ?? {}) as Record<string, Captura[]>;
-  const lista = todas[test] ?? [];
+  const lista = (todas[test] ?? []).filter((c) => !c.borrada);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -321,7 +321,7 @@ export function Capturas({ test, label = "Fotos y vídeos", pista }: { test: str
       const up = await fetch(j.url, { method: "PUT", headers: { "Content-Type": f.type || (tipo === "foto" ? "image/jpeg" : "video/mp4") }, body: f });
       if (!up.ok) throw new Error(`No se pudo subir (${up.status})`);
       const nueva: Captura = { ruta: j.ruta, tipo, en: new Date().toISOString() };
-      set("capturas", { ...todas, [test]: [...lista, nueva] });
+      set("capturas", { ...todas, [test]: [...(todas[test] ?? []), nueva] });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -331,10 +331,11 @@ export function Capturas({ test, label = "Fotos y vídeos", pista }: { test: str
   async function quitar(c: Captura) {
     if (!window.confirm("¿Quitar esta captura?")) return;
     await fetch(`/api/admin/valoraciones/capturas?ruta=${encodeURIComponent(c.ruta)}`, { method: "DELETE", headers: cabeceras() }).catch(() => null);
-    set("capturas", { ...todas, [test]: lista.filter((x) => x.ruta !== c.ruta) });
+    // Se marca como borrada (no se quita de la lista): así la fusión entre dispositivos no la resucita.
+    set("capturas", { ...todas, [test]: (todas[test] ?? []).map((x) => (x.ruta === c.ruta ? { ...x, borrada: true } : x)) });
   }
   function nota(c: Captura, v: string) {
-    set("capturas", { ...todas, [test]: lista.map((x) => (x.ruta === c.ruta ? { ...x, nota: v || undefined } : x)) });
+    set("capturas", { ...todas, [test]: (todas[test] ?? []).map((x) => (x.ruta === c.ruta ? { ...x, nota: v || undefined } : x)) });
   }
 
   return (
