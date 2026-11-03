@@ -38,7 +38,7 @@ function formato(ms: number) {
   return `${m}:${resto.toFixed(1).padStart(4, "0")}`;
 }
 
-export default function Cronometro() {
+export default function Cronometro({ compacto = false }: { compacto?: boolean }) {
   const [estado, setEstado] = useState<Estado>({ tipo: "parado", ms: 0, total: null });
   const [, setTick] = useState(0);
   const avisado = useRef(false);
@@ -82,6 +82,25 @@ export default function Cronometro() {
   const boton = "border border-gray-300 bg-white px-2 py-1 text-[0.75rem] text-gray-600 hover:border-gray-500";
   const corriendo = estado.tipo === "corriendo";
   const acabado = total !== null && !corriendo && estado.ms >= total;
+
+  if (compacto) {
+    // Barra fija abajo (móvil): tiempo grande y los botones en una fila, para
+    // darle sin buscar mientras se hace el test.
+    const b = "rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-[0.8rem] text-gray-700 active:bg-gray-100";
+    return (
+      <div className="flex items-center gap-2 overflow-x-auto">
+        <p className={`shrink-0 font-mono text-[1.6rem] leading-none tabular-nums ${acabado ? "text-[#B3261E]" : corriendo ? "text-[#1a1a1a]" : "text-gray-500"}`}>{formato(mostrado)}</p>
+        <button type="button" className={`${b} shrink-0 font-medium ${corriendo ? "bg-[#1a1a1a] text-white" : ""}`} onClick={pausar}>{corriendo ? "Parar" : "Seguir"}</button>
+        <button type="button" className={`${b} shrink-0`} onClick={reset}>Cero</button>
+        <span className="mx-1 h-6 w-px shrink-0 bg-gray-200" />
+        <button type="button" className={`${b} shrink-0`} onClick={() => cuenta(10)}>10 s</button>
+        <button type="button" className={`${b} shrink-0`} onClick={() => cuenta(30)}>30 s</button>
+        <button type="button" className={`${b} shrink-0`} onClick={() => cuenta(60)}>1'</button>
+        <button type="button" className={`${b} shrink-0`} onClick={() => cuenta(120)}>2'</button>
+        <button type="button" className={`${b} shrink-0`} onClick={libre}>Libre</button>
+      </div>
+    );
+  }
 
   return (
     <div className="border border-gray-200 bg-white p-3">

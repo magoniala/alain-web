@@ -566,7 +566,9 @@ function Editor({
             ))}
           </nav>
 
-          <Cronometro />
+          <div className="hidden lg:block">
+            <Cronometro />
+          </div>
 
           <div className="mt-3 border border-gray-200 bg-white p-3">
             <p className="mb-1.5 text-[0.68rem] uppercase text-gray-400">No olvidar sacar de la sesión</p>
@@ -614,6 +616,7 @@ function Editor({
               <section id="informe" data-seccion="informe" className="mt-5 scroll-mt-20 rounded-2xl border border-gray-200 bg-[#fbf9f5] p-5 md:p-7 lg:scroll-mt-6">
                 <Informe />
               </section>
+              <div className="h-20 lg:hidden" aria-hidden />
             </>
           ) : (
             <div className="border border-gray-200 bg-[#fafafa] p-6 md:p-10">
@@ -622,6 +625,11 @@ function Editor({
           )}
         </div>
       </div>
+      {vista === "hoja" && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-[#f6f2ec]/95 px-3 py-2 backdrop-blur lg:hidden" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+          <Cronometro compacto />
+        </div>
+      )}
     </DatosCtx.Provider>
   );
 }
