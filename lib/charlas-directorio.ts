@@ -64,7 +64,19 @@ MAPEOS.recd = MAPEOS.cantabria;
 type FilaMapeada = Record<string, string>;
 
 const SECUNDARIA = /\b(eso|e s o|secundaria|bachiller|bachillerato|dbh|batxilergo)\b/;
+// Colegios de Infantil y Primaria. Algunos (CPEIP de pueblo en Navarra, CEIP con
+// sección) tienen 1.º-2.º de ESO y el directorio les marca "secundaria", pero
+// no son público de las charlas: se descartan por la sigla o el nombre.
+const PRIMARIA = /^(cpeip|ceip|cp|cra|eei|cei|lhi|hlhi|cpeb|cee)\b|\b(haur eta lehen|lehen hezkuntza|infantil y primaria|educacion infantil y primaria|primaria)\b/;
+export function esPrimaria(f: FilaMapeada): boolean {
+  const t = norm(`${f.nombre_corto ?? ""} ${f.nombre}`);
+  const tipo = norm(f.tipo_centro ?? "");
+  // "CPEIPS" (… Secundaria) e "IES/BHI/CPI/CI" no son primaria aunque el nombre diga "primaria".
+  if (/\b(cpeips|ies|ieso|bhi|cpi|ci|cifp)\b/.test(t)) return false;
+  return PRIMARIA.test(t) || /^(cpeip|ceip)\b/.test(tipo);
+}
 function tieneSecundaria(f: FilaMapeada): boolean {
+  if (esPrimaria(f)) return false;
   const ens = norm(f.ensenanza);
   if (ens) return SECUNDARIA.test(ens);
   const t = norm(`${f.tipo_centro} ${f.nombre}`);
