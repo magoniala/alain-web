@@ -5,7 +5,7 @@ import { noOlvidar, type Datos } from "@/lib/valoracion";
 import { DatosCtx } from "./valoracion/campos";
 import Hoja, { SECCIONES } from "./valoracion/Hoja";
 import Informe from "./valoracion/Informe";
-import Cronometro from "./valoracion/Cronometro";
+import Cronometro, { useCrono } from "./valoracion/Cronometro";
 import { abrirPdf, htmlInforme, htmlNotas, nombreCaptura } from "./valoracion/pdf";
 
 // Valoración inicial online: la plantilla en PDF hecha formulario.
@@ -616,7 +616,6 @@ function Editor({
               <section id="informe" data-seccion="informe" className="mt-5 scroll-mt-20 rounded-2xl border border-gray-200 bg-[#fbf9f5] p-5 md:p-7 lg:scroll-mt-6">
                 <Informe />
               </section>
-              <div className="h-20 lg:hidden" aria-hidden />
             </>
           ) : (
             <div className="border border-gray-200 bg-[#fafafa] p-6 md:p-10">
@@ -625,11 +624,42 @@ function Editor({
           )}
         </div>
       </div>
-      {vista === "hoja" && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-[#f6f2ec]/95 px-3 py-2 backdrop-blur lg:hidden" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
-          <Cronometro compacto />
+      {vista === "hoja" && <CronoFlotante />}
+    </DatosCtx.Provider>
+  );
+}
+
+
+// Móvil: botón flotante (abajo a la derecha, encima del pulgar) que abre el
+// cronómetro en una pantallita; el crono sigue contando aunque se cierre.
+function CronoFlotante() {
+  const [abierto, setAbierto] = useState(false);
+  const crono = useCrono();
+  return (
+    <div className="lg:hidden">
+      {abierto && (
+        <div className="fixed inset-x-3 z-40 rounded-2xl border border-gray-200 bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.18)]" style={{ bottom: "calc(5.2rem + env(safe-area-inset-bottom))" }}>
+          <Cronometro compacto crono={crono} />
         </div>
       )}
-    </DatosCtx.Provider>
+      <button
+        type="button"
+        onClick={() => setAbierto((x) => !x)}
+        aria-label="Cronómetro"
+        className={`fixed right-4 z-40 flex h-14 items-center justify-center rounded-full shadow-[0_6px_20px_rgba(0,0,0,0.25)] ${crono.corriendo || crono.acabado ? "min-w-[5.6rem] px-4" : "w-14"} ${abierto ? "bg-gray-700 text-white" : crono.acabado ? "bg-[#B3261E] text-white" : "bg-[#1a1a1a] text-white"}`}
+        style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+      >
+        {abierto ? (
+          <span className="text-[1.1rem]">✕</span>
+        ) : crono.corriendo || crono.acabado ? (
+          <span className="font-mono text-[1.15rem] tabular-nums">{crono.texto}</span>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="13" r="8" />
+            <path d="M12 9v4l2.5 2.5M9 2h6M12 2v3" />
+          </svg>
+        )}
+      </button>
+    </div>
   );
 }
