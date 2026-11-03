@@ -42,9 +42,24 @@ ${b.parq ? `PAR-Q+: ${b.parq}\n` : ""}
 CONTEXTO (escrito por Alain):
 ${contexto}`;
   try {
-    const texto = await llamarClaude({ system: [{ type: "text", text: INSTRUCCIONES }], usuario, maxTokens: 2500, proposito: "valoracion_adaptar" });
-    const limpio = texto.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
-    const j = JSON.parse(limpio.slice(limpio.indexOf("{"), limpio.lastIndexOf("}") + 1)) as Record<string, unknown>;
+    const texto = await llamarClaude({ system: [{ type: "text", text: INSTRUCCIONES }], usuario, maxTokens: 3000, proposito: "valoracion_adaptar" });
+    const leer = (t: string) => {
+      const limpio = t.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+      return JSON.parse(limpio.slice(limpio.indexOf("{"), limpio.lastIndexOf("}") + 1)) as Record<string, unknown>;
+    };
+    let j: Record<string, unknown>;
+    try {
+      j = leer(texto);
+    } catch (e) {
+      // Comillas sin escapar o JSON cortado: se le pide que lo devuelva bien formado (llamada corta).
+      const reparado = await llamarClaude({
+        system: [{ type: "text", text: "Devuelve SOLO el JSON que te paso, corregido para que sea JSON válido (comillas internas escapadas, comas, llaves). Si está cortado, ciérralo con lo mínimo. No cambies el contenido." }],
+        usuario: `Error al leerlo: ${(e as Error).message}\n\n${texto}`,
+        maxTokens: 3000,
+        proposito: "reparar_json",
+      });
+      j = leer(reparado);
+    }
     // Saneado: solo ids conocidos.
     const tests: Record<string, { nivel: string; motivo: string }> = {};
     for (const [k, v] of Object.entries((j.tests ?? {}) as Record<string, { nivel?: string; motivo?: string }>)) {
