@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { supabaseCharlas } from "@/lib/charlas";
 import { generarAvisos, copiarSemana, semanaMarkdown, sumarDias, type Aviso, type Sesion } from "@/lib/ent";
+import { aprobarPropuesta, proponerSiguiente, type Propuesta } from "@/lib/ent-ia";
 
 // App de Entrenatzaile · fase 7a (lado de Alain).
 //
@@ -85,6 +86,13 @@ export async function GET(req: Request) {
           ])
         : [{ data: [] }, { data: [] }];
       return NextResponse.json({ cliente: cliente.data, planes: planes.data ?? [], plan, tipos: tipos.data ?? [], semanas: semanas.data ?? [] });
+    }
+
+    // Propuestas de la IA por revisar (fase 7c)
+    if (url.searchParams.get("propuestas") !== null) {
+      const { data, error } = await sb.from("ent_propuestas").select("id, cliente_id, estado, propuesta, error, creado_en, cliente:ent_clientes(nombre), origen:ent_sesiones!ent_propuestas_sesion_origen_id_fkey(id, nombre, fecha, estado, rpe, minutos)").in("estado", ["revisar", "error"]).order("creado_en");
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ propuestas: data ?? [] });
     }
 
     // Lista de clientes
@@ -253,6 +261,21 @@ export async function POST(req: Request) {
         if (j < 0 || j >= lista.length) return NextResponse.json({ ok: true });
         [lista[i], lista[j]] = [lista[j], lista[i]];
         await Promise.all(lista.map((id, k) => sb.from("ent_ejercicios").update({ orden: k + 1 }).eq("id", id)));
+        return NextResponse.json({ ok: true });
+      }
+      case "propuesta_pedir": {
+        // A mano desde el panel, para una sesión cerrada concreta (o para probar).
+        const id = await proponerSiguiente(String(b.sesion_id));
+        if (!id) return NextResponse.json({ error: "No toca: la sesión no está cerrada o ya tiene propuesta." }, { status: 400 });
+        return NextResponse.json({ ok: true, propuesta_id: id });
+      }
+      case "propuesta_aprobar": {
+        const r = await aprobarPropuesta(String(b.id), b.final as Propuesta, Array.isArray(b.correcciones) ? b.correcciones : []);
+        return NextResponse.json({ ok: true, ...r });
+      }
+      case "propuesta_descartar": {
+        const { error } = await sb.from("ent_propuestas").update({ estado: "descartada", motivo: b.motivo ?? null, resuelto_en: new Date().toISOString() }).eq("id", b.id);
+        if (error) throw new Error(error.message);
         return NextResponse.json({ ok: true });
       }
       case "aviso_guardar": {

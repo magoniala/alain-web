@@ -7,6 +7,7 @@ import { rastrearContactos } from "@/lib/charlas-rastreo";
 import { tareasPorFechaMagia, procesarPendientesMagia } from "@/lib/crm-motor";
 import { notificarTareasNuevas, notificarTareasMagia } from "@/lib/charlas-push";
 import { enviarAvisosPendientes, alertasParaAlain } from "@/lib/ent-avisos";
+import { proponerPendientes } from "@/lib/ent-ia";
 import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
@@ -141,12 +142,14 @@ async function ejecutar(req: Request) {
   // App de Entrenatzaile (fase 7b): avisos a clientes que toquen ahora y alertas a Alain. Sin IA, en cada pasada.
   const ent = Date.now() - inicio < 50000 ? await enviarAvisosPendientes({ presupuestoMs: Math.max(0, 55000 - (Date.now() - inicio)) }).catch((e) => ({ activo: true, enviados: 0, omitidos: 0, errores: [(e as Error).message] })) : null;
   const entAlertas = await alertasParaAlain().catch(() => ({ avisos: 0 }));
+  // Fase 7c: propuesta de la siguiente sesión para lo que el cliente cerró (usa IA: solo en ventana).
+  const entPropuestas = toca && Date.now() - inicio < 45000 ? await proponerPendientes({ presupuestoMs: Math.max(0, 55000 - (Date.now() - inicio)) }).catch((e) => ({ creadas: 0, errores: [(e as Error).message] })) : null;
 
   // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
   const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, aprendizaje, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, aprendizaje, ms: Date.now() - inicio });
 }
 
 // cron-job.org espera la respuesta como mucho 30 s y, si falla muchas veces

@@ -111,6 +111,30 @@ interface DetalleSemana {
   formularios: { sesion_id: string; tipo: string; respuestas: Record<string, unknown>; alerta: string | null; fotos_url?: string[]; creado_en: string }[];
 }
 
+interface EjercicioProp {
+  nombre: string;
+  series: number | null;
+  reps: string | null;
+  carga: string | null;
+  tempo: string | null;
+  descanso: string | null;
+  rir: string | null;
+  notas: string | null;
+  video: boolean;
+  campos: string[];
+  cambio: string | null;
+}
+interface PropuestaIA {
+  id: string;
+  cliente_id: string;
+  estado: string;
+  error: string | null;
+  creado_en: string;
+  cliente: { nombre: string } | null;
+  origen: { id: string; nombre: string; fecha: string; estado: string; rpe: number | null; minutos: number | null } | null;
+  propuesta: { nombre: string; fecha: string; duracion_min: number | null; foco: string | null; calentamiento: string | null; notas: string | null; ejercicios: EjercicioProp[]; lectura: string; avisos: string[]; error?: string };
+}
+
 const DIA = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 const DIA_C = ["", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -171,6 +195,16 @@ export default function EntrenatzaileTab() {
   const pw = useCallback(() => sessionStorage.getItem("admin_pw") || "", []);
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": pw() }), [pw]);
   const [clientes, setClientes] = useState<ClienteLista[]>([]);
+  const [propuestas, setPropuestas] = useState<PropuestaIA[]>([]);
+  const cargarPropuestas = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/ent?propuestas", { headers: headers() });
+      const d = await r.json();
+      if (r.ok) setPropuestas(d.propuestas ?? []);
+    } catch {
+      /* sin conexión: se reintenta en la siguiente carga */
+    }
+  }, [headers]);
   const [faltaSql, setFaltaSql] = useState(false);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
@@ -222,7 +256,8 @@ export default function EntrenatzaileTab() {
 
   useEffect(() => {
     cargarClientes();
-  }, [cargarClientes]);
+    cargarPropuestas();
+  }, [cargarClientes, cargarPropuestas]);
   useEffect(() => {
     if (sel) cargarFicha(sel, false);
   }, [sel, cargarFicha]);
@@ -320,6 +355,14 @@ export default function EntrenatzaileTab() {
         </button>
       </div>
 
+      {propuestas.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-[1rem] font-semibold">Propuestas de la IA para revisar ({propuestas.length})</h2>
+          {propuestas.map((pr) => (
+            <TarjetaPropuesta key={pr.id} pr={pr} post={post} hecho={async () => { await cargarPropuestas(); if (sel) cargarFicha(sel); }} />
+          ))}
+        </section>
+      )}
       {ficha && <FichaCliente ficha={ficha} post={post} />}
 
       {/* Semanas */}
@@ -761,5 +804,119 @@ function FilaEjercicio({ e, i, total, guardar, post, registradas }: { e: Ejercic
         </tr>
       )}
     </>
+  );
+}
+
+
+// --- Fase 7c: propuesta de la siguiente sesión --------------------------------------
+const lineaEj = (e: EjercicioProp) => [e.series && e.reps ? `${e.series} × ${e.reps}` : e.reps, e.carga, e.tempo, e.rir ? `RIR ${e.rir}` : null, e.descanso ? `desc. ${e.descanso}` : null].filter(Boolean).join(" · ");
+
+function TarjetaPropuesta({ pr, post, hecho }: { pr: PropuestaIA; post: Post; hecho: () => void }) {
+  const p = pr.propuesta;
+  const [ej, setEj] = useState<EjercicioProp[]>(() => (p.ejercicios ?? []).map((e) => ({ ...e })));
+  const [fecha, setFecha] = useState(p.fecha);
+  const [foco, setFoco] = useState(p.foco ?? "");
+  const [notas, setNotas] = useState(p.notas ?? "");
+  const [motivos, setMotivos] = useState<Record<number, string>>({});
+  const [ocupado, setOcupado] = useState(false);
+  if (pr.estado === "error") {
+    return (
+      <article className="rounded-2xl border border-red-200 bg-red-50 p-4 text-[0.85rem] text-red-900">
+        <p className="font-medium">{pr.cliente?.nombre} · {pr.origen?.nombre}: la IA no devolvió una propuesta válida.</p>
+        <p className="mt-1 text-red-800/80">{pr.error ?? p.error}</p>
+        <div className="mt-2 flex gap-2">
+          <button onClick={() => post({ accion: "propuesta_descartar", id: pr.id, motivo: "error" }, []).then(hecho)} className="px-3 py-1 ring-1 ring-red-300">Quitar</button>
+          {pr.origen && <button onClick={() => post({ accion: "propuesta_descartar", id: pr.id, motivo: "reintento" }, []).then(() => post({ accion: "propuesta_pedir", sesion_id: pr.origen!.id }, [])).then(hecho)} className="px-3 py-1 ring-1 ring-red-300">Volver a pedir</button>}
+        </div>
+      </article>
+    );
+  }
+  const orig = (p.ejercicios ?? []);
+  const cambiado = (i: number) => JSON.stringify(ej[i]) !== JSON.stringify(orig[i]);
+  const cambios = ej.map((_, i) => i).filter(cambiado);
+  const faltaMotivo = cambios.some((i) => !(motivos[i] ?? "").trim());
+  const set = (i: number, k: keyof EjercicioProp, v: unknown) => setEj((xs) => xs.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  const aprobar = async () => {
+    setOcupado(true);
+    try {
+      const final = { ...p, fecha, foco: foco || null, notas: notas || null, ejercicios: ej };
+      const correcciones = cambios.map((i) => ({ ejercicio: ej[i].nombre, antes: lineaEj(orig[i]) + (orig[i].notas ? ` · ${orig[i].notas}` : ""), despues: lineaEj(ej[i]) + (ej[i].notas ? ` · ${ej[i].notas}` : ""), motivo: motivos[i] ?? null }));
+      const r = await post({ accion: "propuesta_aprobar", id: pr.id, final, correcciones }, ["ficha", "clientes"]);
+      if (r) hecho();
+    } finally {
+      setOcupado(false);
+    }
+  };
+  return (
+    <article className="rounded-2xl border border-[#0F2240]/20 bg-white">
+      <header className="border-b border-gray-100 px-5 py-3">
+        <p className="text-[0.75rem] uppercase tracking-wide text-gray-500">{pr.cliente?.nombre} · siguiente {p.nombre}</p>
+        <p className="text-[0.85rem] text-gray-700">
+          Tras la del {pr.origen ? corta(pr.origen.fecha) : "?"} ({pr.origen?.estado}{pr.origen?.rpe !== null && pr.origen?.rpe !== undefined ? ` · RPE ${pr.origen.rpe}` : ""}{pr.origen?.minutos ? ` · ${pr.origen.minutos} min` : ""})
+        </p>
+        <p className="mt-2 rounded-xl bg-[#0F2240]/5 px-3 py-2 text-[0.88rem] text-gray-800">{p.lectura}</p>
+        {p.avisos?.length > 0 && (
+          <ul className="mt-2 space-y-0.5 text-[0.82rem] text-amber-900">
+            {p.avisos.map((a, i) => (
+              <li key={i}>⚠︎ {a}</li>
+            ))}
+          </ul>
+        )}
+      </header>
+      <div className="flex flex-wrap items-center gap-3 px-5 py-2 text-[0.85rem]">
+        <label className="flex items-center gap-1">Fecha <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="border border-gray-200 px-1.5 py-1" /></label>
+        <span className="capitalize text-gray-500">{DIA[dow(fecha)]}</span>
+        <input value={foco} onChange={(e) => setFoco(e.target.value)} placeholder="Foco del día (recordatorio de las 9:00)" className="min-w-[16rem] flex-1 border border-gray-200 px-2 py-1" />
+      </div>
+      <div className="overflow-x-auto px-3 pb-2">
+        <table className="w-full min-w-[52rem] text-[0.84rem]">
+          <thead>
+            <tr className="text-left text-[0.72rem] uppercase tracking-wide text-gray-400">
+              <th className="px-1.5 font-medium">Ejercicio</th>
+              <th className="w-14 px-1.5 font-medium">Series</th>
+              <th className="w-24 px-1.5 font-medium">Reps</th>
+              <th className="w-32 px-1.5 font-medium">Carga</th>
+              <th className="w-28 px-1.5 font-medium">Tempo</th>
+              <th className="w-14 px-1.5 font-medium">RIR</th>
+              <th className="w-20 px-1.5 font-medium">Desc.</th>
+              <th className="px-1.5 font-medium">Nota al cliente</th>
+              <th className="px-1.5 font-medium">Por qué (IA)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ej.map((e, i) => (
+              <>
+                <tr key={i} className={`border-t border-gray-100 align-top ${cambiado(i) ? "bg-amber-50/60" : ""}`}>
+                  <td><Campo valor={e.nombre} onGuardar={(v) => v && set(i, "nombre", v)} className="font-medium" /></td>
+                  <td><Campo tipo="number" valor={e.series} onGuardar={(v) => set(i, "series", v ? Number(v) : null)} /></td>
+                  <td><Campo valor={e.reps} onGuardar={(v) => set(i, "reps", v || null)} /></td>
+                  <td><Campo valor={e.carga} onGuardar={(v) => set(i, "carga", v || null)} /></td>
+                  <td><Campo valor={e.tempo} onGuardar={(v) => set(i, "tempo", v || null)} /></td>
+                  <td><Campo valor={e.rir} onGuardar={(v) => set(i, "rir", v || null)} /></td>
+                  <td><Campo valor={e.descanso} onGuardar={(v) => set(i, "descanso", v || null)} /></td>
+                  <td><Campo valor={e.notas} onGuardar={(v) => set(i, "notas", v || null)} className="text-gray-600" /></td>
+                  <td className="px-1.5 pt-1.5 text-[0.78rem] text-gray-500">{e.cambio ?? <span className="text-gray-300">igual</span>}</td>
+                </tr>
+                {cambiado(i) && (
+                  <tr key={`${i}-m`} className="bg-amber-50/60">
+                    <td colSpan={9} className="px-1.5 pb-2">
+                      <input value={motivos[i] ?? ""} onChange={(x) => setMotivos((m) => ({ ...m, [i]: x.target.value }))} placeholder="¿Por qué lo cambias? (la IA aprende de esto)" className="w-full border border-amber-300 bg-white px-2 py-1 text-[0.82rem]" />
+                    </td>
+                  </tr>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="px-5 pb-2"><Campo area valor={notas} placeholder="Notas de la sesión para el cliente" onGuardar={(v) => setNotas(v)} className="text-gray-700" /></div>
+      <div className="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-3 text-[0.85rem]">
+        <button onClick={aprobar} disabled={ocupado || faltaMotivo} title={faltaMotivo ? "Escribe el motivo de cada cambio" : ""} className="bg-[#0F2240] px-4 py-2 font-medium text-white disabled:opacity-40">
+          {ocupado ? "Creando…" : cambios.length ? `Aprobar con ${cambios.length} cambio${cambios.length > 1 ? "s" : ""}` : "Aprobar tal cual"}
+        </button>
+        <button onClick={() => { const m = prompt("¿Por qué la descartas? (opcional)") ?? ""; post({ accion: "propuesta_descartar", id: pr.id, motivo: m }, []).then(hecho); }} disabled={ocupado} className="px-4 py-2 text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">Descartar</button>
+        <span className="self-center text-[0.78rem] text-gray-500">Al aprobar se crea la sesión en la semana {`${corta(fecha)}`} (en borrador; los avisos los generas al programar la semana).</span>
+      </div>
+    </article>
   );
 }
