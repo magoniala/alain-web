@@ -512,9 +512,23 @@ async function espejoMagia() {
   }
 }
 
+// Reservas de la Hoja de Ruta con WhatsApp enviado desde el panel → ficha del lead en Vías/Entrenatzaile/Leads/.
+async function espejoReservasHojaRuta() {
+  try {
+    const { espejoReservas } = await import("../leads/espejo-reservas.mjs");
+    const dirLeads = join(VAULT, "..", "Entrenatzaile", "Leads");
+    const r = await espejoReservas({ dirLeads, url: URL, key: KEY, comprobar: COMPROBAR });
+    if (r.saltado) return console.log(`Reservas Hoja de Ruta: saltado (${r.saltado})`);
+    if (r.reservas) console.log(`Reservas Hoja de Ruta: ${r.apuntadas} apuntadas en fichas de leads${r.sin_ficha.length ? ` · sin ficha: ${r.sin_ficha.join(", ")}` : ""}`);
+  } catch (e) {
+    console.log(`Reservas Hoja de Ruta: no espejadas (${String(e.message).slice(0, 160)})`);
+  }
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   main()
     .then(espejoMagia)
+    .then(espejoReservasHojaRuta)
     .catch((e) => {
       console.error(e);
       process.exit(1);

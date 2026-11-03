@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Reservas from "./hoja-de-ruta/Reservas";
 
 interface ReservaCalendario {
   id: string;
@@ -215,6 +216,8 @@ export default function HojaDeRutaTab() {
 
   return (
     <div className="space-y-10">
+      <Reservas />
+
       <div>
         <p className="text-[0.7rem] uppercase tracking-[0.22em] text-gray-400 mb-2">Reglas</p>
         <p className="text-sm text-gray-600">
