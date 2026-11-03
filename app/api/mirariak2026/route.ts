@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
 import { altaEmbudo } from "@/lib/embudos";
 import { NextResponse } from "next/server";
+import { contarOcupadas } from "@/lib/mirariak";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -111,26 +112,10 @@ export async function POST(req: Request) {
   // Capacity check (single query)
   const { data: existing } = await supabase
     .from("mirariak2026_reservas")
-    .select("actividad, participantes_taller, participantes_micromagia, horario_micromagia");
+    .select("participantes_taller, participantes_micromagia, horario_micromagia");
 
-  const tallerCounts: Record<string, number> = {};
-  const micromagiaCounts: Record<string, number> = {};
-
-  for (const row of existing ?? []) {
-    if (row.actividad === "taller" || row.actividad === "ambas") {
-      for (const p of row.participantes_taller ?? []) {
-        if (p.sesion_asignada) {
-          tallerCounts[p.sesion_asignada] = (tallerCounts[p.sesion_asignada] || 0) + 1;
-        }
-      }
-    }
-    if (row.actividad === "micromagia" || row.actividad === "ambas") {
-      const h = row.horario_micromagia;
-      if (h) {
-        micromagiaCounts[h] = (micromagiaCounts[h] || 0) + (row.participantes_micromagia ?? []).length;
-      }
-    }
-  }
+  // Las anuladas y las de lista de espera (marcadas desde el panel) no ocupan plaza.
+  const { taller: tallerCounts, micromagia: micromagiaCounts } = contarOcupadas(existing ?? []);
 
   if (hasTaller && participantesTallerConSesion) {
     const demand: Record<string, number> = {};
