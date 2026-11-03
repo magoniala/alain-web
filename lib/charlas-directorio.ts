@@ -64,9 +64,11 @@ MAPEOS.recd = MAPEOS.cantabria;
 type FilaMapeada = Record<string, string>;
 
 const SECUNDARIA = /\b(eso|e s o|secundaria|bachiller|bachillerato|dbh|batxilergo)\b/;
-// Colegios de Infantil y Primaria. Algunos (CPEIP de pueblo en Navarra, CEIP con
-// sección) tienen 1.º-2.º de ESO y el directorio les marca "secundaria", pero
-// no son público de las charlas: se descartan por la sigla o el nombre.
+// Colegios de Infantil y Primaria. Algunos (CPEIP de pueblo en Navarra, CEIP
+// con sección) tienen 1.º-2.º de ESO: son público de las charlas (12-14 años),
+// así que ENTRAN si el directorio les da secundaria, pero marcados en
+// tipo_centro, porque tienen dirección única (el Mail 1 va a dirección, no a
+// jefatura/orientación). Los que no tienen ESO quedan fuera como siempre.
 const PRIMARIA = /^(cpeip|ceip|cp|cra|eei|cei|lhi|hlhi|cpeb|cee)\b|\b(haur eta lehen|lehen hezkuntza|infantil y primaria|educacion infantil y primaria|primaria)\b/;
 export function esPrimaria(f: FilaMapeada): boolean {
   const t = norm(`${f.nombre_corto ?? ""} ${f.nombre}`);
@@ -76,7 +78,6 @@ export function esPrimaria(f: FilaMapeada): boolean {
   return PRIMARIA.test(t) || /^(cpeip|ceip)\b/.test(tipo);
 }
 function tieneSecundaria(f: FilaMapeada): boolean {
-  if (esPrimaria(f)) return false;
   const ens = norm(f.ensenanza);
   if (ens) return SECUNDARIA.test(ens);
   const t = norm(`${f.tipo_centro} ${f.nombre}`);
@@ -247,10 +248,10 @@ export function aFichas(filas: FilaMapeada[], territorio: string): FichaDirector
         territorio,
         localidad: f.localidad || null,
         tipo: tipoDesde(f.titularidad, f.tipo_centro, nombre),
-        tipo_centro: f.tipo_centro || null,
+        tipo_centro: esPrimaria(f) ? "CPEIP con 1.º-2.º ESO" : f.tipo_centro || null,
         modelo_linguistico: f.modalidad || null,
         euskera: euskeraDesde(f.modalidad, f.ensenanza, territorio),
-        etapas: /bachiller|batxilergo/.test(norm(f.ensenanza)) ? ["ESO", "Bachillerato"] : ["ESO"],
+        etapas: /bachiller|batxilergo/.test(norm(f.ensenanza)) ? ["ESO", "Bachillerato"] : esPrimaria(f) ? ["ESO 1-2"] : ["ESO"],
         etapas_confirmadas: f.ensenanza ? "sí" : "no",
         direccion: [f.direccion, f.cp, f.localidad].filter(Boolean).join(", ") || null,
         telefono: f.telefono.replace(/\D/g, "") || null,

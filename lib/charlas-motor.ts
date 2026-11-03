@@ -360,7 +360,7 @@ export async function mail1Automatico(opciones: { presupuestoMs: number }): Prom
 
   const { data: centros } = await supabase
     .from("charlas_centros")
-    .select("id, nombre, estado, euskera, responsable, responsable_email, email_centro, proxima_accion, fecha_proxima_accion, bloqueado_por, nivel_autonomia, mails_enviados, intentos_llamada, via, otros_formatos, prioridad, localidad")
+    .select("id, nombre, estado, euskera, responsable, responsable_email, email_centro, proxima_accion, fecha_proxima_accion, bloqueado_por, nivel_autonomia, mails_enviados, intentos_llamada, via, otros_formatos, prioridad, localidad, tipo_centro, etapas")
     .in("territorio", territorios)
     .like("estado", "0%")
     .is("bloqueado_por", null)
@@ -375,15 +375,20 @@ export async function mail1Automatico(opciones: { presupuestoMs: number }): Prom
   for (const c of cola.slice(0, restantes)) {
     if (Date.now() - inicio > opciones.presupuestoMs) break;
     const directo = !!c.responsable_email;
+    // Colegio de primaria con 1.º-2.º de ESO (CPEIP de pueblo): dirección única, sin jefatura ni orientación de secundaria.
+    const cc = c as Centro & { tipo_centro?: string | null; etapas?: string[] | null };
+    const primariaConEso = /cpeip con/i.test(cc.tipo_centro ?? "") || (cc.etapas ?? []).includes("ESO 1-2");
     const d: Decision = {
       tipo: "mail_1",
       nivel: "B",
       conCorreo: true,
-      instrucciones: directo
-        ? `Primer contacto sin llamada previa. Redacta el Mail 1 A del guion Mail 1 (a ${c.responsable ? c.responsable : "la persona de orientación/jefatura cuyo correo tenemos"}), con el dossier adjunto. Presentación y firma completas: es el primer correo del hilo.`
-        : "Primer contacto sin llamada previa y sin nombre: redacta el Mail 1 B (al buzón del centro, 'a la atención de la persona responsable de actividades / orientación') del guion Mail 1 genérico, con el dossier adjunto. Presentación y firma completas.",
+      instrucciones: primariaConEso
+        ? `Primer contacto sin llamada previa. Es un colegio público de Infantil y Primaria de pueblo que tiene también 1.º y 2.º de ESO (12-14 años): la charla es para esos dos cursos. No hay jefatura ni orientación de secundaria: redacta el Mail 1 ${directo ? "A" : "B"} del guion dirigido a la dirección del centro ("a la atención de la dirección"), adaptando la referencia a "el alumnado de 1.º y 2.º de ESO" (no "secundaria" en general). Con el dossier adjunto. Presentación y firma completas.`
+        : directo
+          ? `Primer contacto sin llamada previa. Redacta el Mail 1 A del guion Mail 1 (a ${c.responsable ? c.responsable : "la persona de orientación/jefatura cuyo correo tenemos"}), con el dossier adjunto. Presentación y firma completas: es el primer correo del hilo.`
+          : "Primer contacto sin llamada previa y sin nombre: redacta el Mail 1 B (al buzón del centro, 'a la atención de la persona responsable de actividades / orientación') del guion Mail 1 genérico, con el dossier adjunto. Presentación y firma completas.",
       cambios: { estado: "3 Mail inicial enviado", via: directo ? "directo" : "generico", proxima_accion: directo ? "Recordatorio 1 si no hay respuesta" : "Recordatorio 1 genérico si no contesta", fecha_proxima_accion: sumar(hoy(), 7) },
-      nota: directo ? undefined : "Mail 1 al buzón general: si prefieres conseguir antes el nombre, descarta esta tarea y pon el centro en '1 Llamando'.",
+      nota: primariaConEso ? "Colegio de primaria con 1.º-2.º de ESO: va a dirección y habla de esos dos cursos." : directo ? undefined : "Mail 1 al buzón general: si prefieres conseguir antes el nombre, descarta esta tarea y pon el centro en '1 Llamando'.",
     };
     try {
       await crearTarea(c, d);
