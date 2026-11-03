@@ -387,6 +387,7 @@ export type Adaptacion = {
   tests: Record<string, { nivel: "vetado" | "precaucion" | "conviene" | "saltar"; motivo: string }>;
   no_repetir: { seccion?: string; tema: string; respuesta?: string }[];
   extra: Record<string, { pregunta: string; por_que?: string }[]>;
+  pruebas_extra?: { nombre: string; seccion: string; como: string; registrar: string[]; parar: string | null }[];
   material: string | null;
   contexto: string;
   generada_en: string;
@@ -449,6 +450,43 @@ export function ExtraDe({ seccion }: { seccion: string }) {
   );
 }
 
+/** Pruebas que no están en la hoja y la IA propone para su caso, con sus campos de registro. Van al final de la sección que toque. */
+export function PruebasExtraDe({ seccion }: { seccion: string }) {
+  const a = useAdaptacion();
+  const { d, set } = useDatos();
+  const lista = (a?.pruebas_extra ?? []).filter((p) => p.seccion === seccion);
+  if (!lista.length) return null;
+  const resp = (d[`pruebas_${seccion}`] ?? {}) as Record<string, Record<string, string>>;
+  return (
+    <div className="space-y-4">
+      {lista.map((p) => {
+        const r = resp[p.nombre] ?? {};
+        const guardar = (campo: string, v: string) => set(`pruebas_${seccion}`, { ...resp, [p.nombre]: { ...r, [campo]: v } });
+        return (
+          <div key={p.nombre} className="rounded-xl border border-[#1E7B3A]/30 bg-[#EAF6EE]/60 p-3">
+            <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#145a2a]">Prueba extra por su caso</p>
+            <p className="text-[0.98rem] font-semibold text-gray-900">{p.nombre}</p>
+            {p.como && <p className="mt-0.5 text-[0.85rem] text-gray-700">{p.como}</p>}
+            {p.parar && <p className="mt-0.5 text-[0.8rem] text-[#8c1d18]"><b>Parar:</b> {p.parar}</p>}
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              {p.registrar.map((campo) => (
+                <label key={campo} className="block">
+                  <span className={etiqueta}>{campo}</span>
+                  <input value={r[campo] ?? ""} onChange={(e) => guardar(campo, e.target.value)} className={caja} />
+                </label>
+              ))}
+            </div>
+            <label className="mt-2 block">
+              <span className={etiqueta}>Notas</span>
+              <textarea value={r.__notas ?? ""} onChange={(e) => guardar("__notas", e.target.value)} rows={2} className={caja} />
+            </label>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Panel de la cabecera: contexto + botón "Adaptar con IA" + resumen. */
 export function AdaptarAlCliente() {
   const { d, set, setMany } = useDatos();
@@ -488,7 +526,7 @@ export function AdaptarAlCliente() {
         {a && (
           <button type="button" onClick={() => setMany({ adaptacion: null })} className="px-3 py-2 text-[0.82rem] text-gray-600 ring-1 ring-gray-300">Quitar adaptación</button>
         )}
-        {a && <span className="text-[0.78rem] text-gray-500">{n} test{n === 1 ? "" : "s"} marcados · {Object.values(a.extra ?? {}).flat().length} preguntas extra</span>}
+        {a && <span className="text-[0.78rem] text-gray-500">{n} test{n === 1 ? "" : "s"} marcados · {Object.values(a.extra ?? {}).flat().length} preguntas extra · {(a.pruebas_extra ?? []).length} pruebas extra · {(a.no_repetir ?? []).length} ya sabidas</span>}
       </div>
       {error && <p className="mt-2 text-[0.82rem] text-red-700">{error}</p>}
       {a && (

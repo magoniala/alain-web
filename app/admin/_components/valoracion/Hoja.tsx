@@ -28,7 +28,7 @@ import {
   stsTecho,
   sugerenciaDorsiflexion,
 } from "@/lib/valoracion";
-import { AdaptacionDe, AdaptarAlCliente, Area, Aviso, Badge, Capturas, Chips, ExtraDe, Fila, Guion, Num, Pista, Seccion, Segun, Sub, Sugerido, Texto, useDatos, usePresencial } from "./campos";
+import { AdaptacionDe, AdaptarAlCliente, PruebasExtraDe, Area, Aviso, Badge, Capturas, Chips, ExtraDe, Fila, Guion, Num, Pista, Seccion, Segun, Sub, Sugerido, Texto, useDatos, usePresencial } from "./campos";
 
 // Índice de la hoja, en el orden de la sesión. La FC en reposo va sola y
 // antes del bloque 3: en la plantilla estaba en el bloque de cardio, pero
@@ -614,6 +614,7 @@ export default function Hoja({
             opciones={["Medicaciones (nombre exacto)", "Cirugías / operaciones", "Lesiones activas relevantes", "Frases textuales para copy"]}
           />
         </Sub>
+        <PruebasExtraDe seccion="s2" />
       </Seccion>
 
       <Seccion
@@ -773,6 +774,7 @@ export default function Hoja({
             <Sugerido nivel={sugerenciaPica(d)} />
           </div>
         </Sub>
+        <PruebasExtraDe seccion="s3" />
       </Seccion>
 
       <Seccion
@@ -820,6 +822,7 @@ export default function Hoja({
             opciones={["Recibidas antes de la sesión", "Protocolo enviado, pendiente", "Rechazadas"]}
           />
         )}
+        <PruebasExtraDe seccion="s4" />
       </Seccion>
 
       <Seccion id="s5" titulo="5 · Fuerza-función + equilibrio" tiempo="15-20 min">
@@ -929,6 +932,7 @@ export default function Hoja({
             </>
           )}
         </Sub>
+        <PruebasExtraDe seccion="s5" />
       </Seccion>
 
       <Seccion
@@ -1006,6 +1010,7 @@ export default function Hoja({
           <Chips k="cuesta" opciones={["Lo hará solo y reportará", "No aplicable / no interesa"]} />
           {txt(d, "cuesta") === "Lo hará solo y reportará" && <Area k="cuestaNotas" label="Notas" />}
         </Sub>
+        <PruebasExtraDe seccion="s6" />
       </Seccion>
 
       <Seccion
