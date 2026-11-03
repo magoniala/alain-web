@@ -156,6 +156,32 @@ export default function Mirariak2026Page() {
     reservasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // Desde una sesión llena: abre el formulario ya en el paso que toca
+  // (taller → participantes; micromagia → con ese horario elegido).
+  function irAListaEspera(tipo: "taller" | "micromagia", horario?: string) {
+    setFormData((f) => ({
+      ...f,
+      actividad: tipo,
+      horarioMicromagia: tipo === "micromagia" && horario ? horario : f.horarioMicromagia,
+    }));
+    setError("");
+    setScreen(tipo === "taller" ? 1 : 2);
+    scrollToForm();
+  }
+  function enlaceEspera(tipo: "taller" | "micromagia", horario?: string) {
+    return (
+      <button
+        type="button"
+        onClick={() => irAListaEspera(tipo, horario)}
+        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontSize: "0.85rem", lineHeight: 1.55, color: "#f0a050" }}
+        className="transition-opacity duration-200 hover:opacity-80"
+      >
+        {eu ? "Orain beteta dago, baina itxaron-zerrendan apunta zaitezke " : "Ahora está lleno, pero puedes apuntarte a la lista de espera "}
+        <span style={{ textDecoration: "underline", textUnderlineOffset: "3px", whiteSpace: "nowrap" }}>{eu ? "Apuntatu →" : "Apuntarme →"}</span>
+      </button>
+    );
+  }
+
   // Participant array resize helpers
   function setNumTaller(n: number) {
     setFormData((f) => {
@@ -981,16 +1007,13 @@ export default function Mirariak2026Page() {
                     )}
                   </span>
                   <span>{slot ? capBadge(slot) : <span style={{ fontSize: "0.78rem", color: VERY_MUTED }}>16 plaza</span>}</span>
+                  {slot && slot.reservados >= slot.total && (
+                    <span style={{ gridColumn: "1 / -1", marginTop: "-0.25rem" }}>{enlaceEspera("taller")}</span>
+                  )}
                 </div>
               );
             })}
           </div>
-          {capacity && Object.values(capacity.taller).some((x) => x.reservados >= x.total) && (
-            <p style={{ fontSize: "0.85rem", color: MUTED, lineHeight: 1.7, marginTop: "-2rem", marginBottom: "2.5rem", maxWidth: "600px" }}>
-              {eu ? "Saio beteetan itxaron-zerrendan apunta zaitezke: " : "En las sesiones completas puedes apuntarte a la lista de espera: "}
-              {eu ? TEXTO_ESPERA_EU.charAt(0).toLowerCase() + TEXTO_ESPERA_EU.slice(1) : TEXTO_ESPERA_ES.charAt(0).toLowerCase() + TEXTO_ESPERA_ES.slice(1)}
-            </p>
-          )}
           <button
             onClick={scrollToForm}
             style={{ background: "transparent", border: `1px solid ${BORDER}`, padding: "0.9rem 2rem", fontSize: "0.85rem", letterSpacing: "0.12em", textTransform: "uppercase", color: FG, cursor: "pointer", transition: "all 0.25s" }}
@@ -1024,8 +1047,10 @@ export default function Mirariak2026Page() {
                   key={i}
                   style={{
                     display: "flex",
+                    flexWrap: "wrap",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    rowGap: "0.5rem",
                     padding: "1rem 0",
                     borderBottom: `1px solid ${BORDER}`,
                     borderTop: i === 0 ? `1px solid ${BORDER}` : "none",
@@ -1033,16 +1058,11 @@ export default function Mirariak2026Page() {
                 >
                   <span style={{ fontSize: "1.05rem", fontWeight: 500 }}>{h}</span>
                   <span>{slot ? capBadge(slot) : <span style={{ fontSize: "0.78rem", color: VERY_MUTED }}>20 plaza</span>}</span>
+                  {slot && slot.reservados >= slot.total && <span style={{ flexBasis: "100%" }}>{enlaceEspera("micromagia", h)}</span>}
                 </div>
               );
             })}
           </div>
-          {capacity && Object.values(capacity.micromagia).some((x) => x.reservados >= x.total) && (
-            <p style={{ fontSize: "0.85rem", color: MUTED, lineHeight: 1.7, marginTop: "-2rem", marginBottom: "2.5rem", maxWidth: "600px" }}>
-              {eu ? "Saio beteetan itxaron-zerrendan apunta zaitezke: " : "En las sesiones completas puedes apuntarte a la lista de espera: "}
-              {eu ? TEXTO_ESPERA_EU.charAt(0).toLowerCase() + TEXTO_ESPERA_EU.slice(1) : TEXTO_ESPERA_ES.charAt(0).toLowerCase() + TEXTO_ESPERA_ES.slice(1)}
-            </p>
-          )}
           <button
             onClick={scrollToForm}
             style={{ background: "transparent", border: `1px solid ${BORDER}`, padding: "0.9rem 2rem", fontSize: "0.85rem", letterSpacing: "0.12em", textTransform: "uppercase", color: FG, cursor: "pointer", transition: "all 0.25s" }}
