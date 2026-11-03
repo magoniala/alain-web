@@ -28,7 +28,7 @@ import {
   stsTecho,
   sugerenciaDorsiflexion,
 } from "@/lib/valoracion";
-import { Area, Aviso, Badge, Capturas, Chips, Fila, Guion, Num, Pista, Seccion, Segun, Sub, Sugerido, Texto, useDatos, usePresencial } from "./campos";
+import { AdaptacionDe, AdaptarAlCliente, Area, Aviso, Badge, Capturas, Chips, ExtraDe, Fila, Guion, Num, Pista, Seccion, Segun, Sub, Sugerido, Texto, useDatos, usePresencial } from "./campos";
 
 // Índice de la hoja, en el orden de la sesión. La FC en reposo va sola y
 // antes del bloque 3: en la plantilla estaba en el bloque de cardio, pero
@@ -118,17 +118,20 @@ const ESTILO_NIVEL = {
 
 function CriterioDe({ t }: { t: Test }) {
   const c = useCriterio()?.get(t);
-  if (!c || c.nivel === "si") return null;
-  const e = ESTILO_NIVEL[c.nivel];
+  const parq =
+    !c || c.nivel === "si" ? null : (
+      <div className={`rounded-lg border-l-[3px] px-3 py-2 text-[0.85rem] leading-snug ${ESTILO_NIVEL[c.nivel].caja}`}>
+        <p className="font-semibold">{ESTILO_NIVEL[c.nivel].etiqueta} · según PAR-Q+</p>
+        {c.motivos.map((m) => (
+          <p key={m}>{m}</p>
+        ))}
+      </div>
+    );
   return (
-    <div className={`rounded-lg border-l-[3px] px-3 py-2 text-[0.85rem] leading-snug ${e.caja}`}>
-      <p className="font-semibold">
-        {e.etiqueta} · según PAR-Q+
-      </p>
-      {c.motivos.map((m) => (
-        <p key={m}>{m}</p>
-      ))}
-    </div>
+    <>
+      {parq}
+      <AdaptacionDe t={t} />
+    </>
   );
 }
 
@@ -439,6 +442,7 @@ export default function Hoja({
         <Chips k="entorno" label="Entorno" opciones={["Online", "Presencial"]} pista={presencial ? "Delante de la persona: guiones, medidas y capturas cambian a presencial." : "Por videollamada (lo de siempre). Elige Presencial si estás con la persona."} />
         <Chips k="modalidad" label="Modalidad" opciones={["Individual (70 min)", "Pareja (90 min)"]} />
         <Chips k="conversacionPrevia" label="Conversación previa" opciones={["Sí (anamnesis abreviada)", "No (anamnesis completa)"]} />
+        <AdaptarAlCliente />
         {pareja && (
           <>
             <Chips
@@ -475,6 +479,7 @@ export default function Hoja({
       </Seccion>
 
       <Seccion id="s1" titulo={presencial ? "1 · Bienvenida + espacio" : "1 · Bienvenida + verificación técnica"} tiempo="5 min">
+        <ExtraDe seccion="s1" />
         {presencial ? (
           <>
             <Guion>«Hoy no hay nada que cerrar: vamos a ver de dónde partes para que lo que hagamos sea tuyo. Son unos tests sencillos y una conversación; si algo duele o no apetece, se dice y se salta.»</Guion>
@@ -500,6 +505,7 @@ export default function Hoja({
       </Seccion>
 
       <Seccion id="s2" titulo="2 · Repaso PAR-Q+ + anamnesis" tiempo="12-20 min">
+        <ExtraDe seccion="s2" />
         <Sub titulo="Repaso PAR-Q+">
           <ParqVinculo soloVer />
           <Chips k="repasoParq" opciones={["Confirmado limpio", "Aclarada bandera(s)"]} />
@@ -634,6 +640,7 @@ export default function Hoja({
         nota={presencial ? "Tú a su lado, vista lateral. Graba la sentadilla con tu móvil (lateral, 3 reps) y haz las fotos que quieras: se guardan en la ficha." : "Móvil apoyado, cámara horizontal, distancia 2-3 m."}
       >
         <SinParq />
+        <ExtraDe seccion="s3" />
         {!presencial && (
           <Guion titulo="Guion · setup de cámara">
             «Vamos a preparar la cámara para este test. Apoya el móvil en [respaldo silla / mesa], gira la cámara horizontal,
@@ -774,6 +781,7 @@ export default function Hoja({
         tiempo="5-8 min"
         nota={presencial ? "Tú mides: cintura y cadera con cinta; peso en báscula si la hay (si no, el enviado). Fotos aquí mismo, con su permiso." : "Online: peso (ya recibido) + cintura auto-medida guiada + fotos. Pliegues y otros perímetros omitidos por diseño."}
       >
+        <ExtraDe seccion="s4" />
         {presencial && (
           <Fila cols={3}>
             <Num k="pesoAqui" label="Peso medido aquí (si hay báscula)" unidad="kg" />
@@ -816,6 +824,7 @@ export default function Hoja({
 
       <Seccion id="s5" titulo="5 · Fuerza-función + equilibrio" tiempo="15-20 min">
         <SinParq />
+        <ExtraDe seccion="s5" />
         {presencial && <Capturas test="fuerza" label="Fotos / vídeos de los tests de fuerza y equilibrio (opcional)" pista="Plancha de lado, monopodal de frente, flexiones de lado." />}
         <Sub titulo="Sit-to-stand 30 s" nota="Silla de 43-44 cm, brazos cruzados sobre el pecho. Cronómetro: 30 s.">
           <CriterioDe t="sitToStand" />
@@ -929,6 +938,7 @@ export default function Hoja({
         nota="Registrar siempre FC reposo + FC pico + Borg 0-10."
       >
         <SinParq />
+        <ExtraDe seccion="s6" />
         <p className="text-[0.88rem] text-gray-600">
           FC en reposo (tomada antes de los tests):{" "}
           <strong className="tabular-nums">{fcR !== null ? `${fcR} ppm` : "sin tomar — ve a «FC en reposo»"}</strong>
@@ -1004,6 +1014,7 @@ export default function Hoja({
         tiempo="10-13 min"
         nota="REGLA: no propongas tú los objetivos primero. Que salgan de ellos; luego engarzas los tuyos. Frases textuales entre comillas."
       >
+        <ExtraDe seccion="s7" />
         <Chips
           k="grabaCierre"
           label="¿Grabas audio también aquí? (con permiso)"
@@ -1037,6 +1048,7 @@ export default function Hoja({
       </Seccion>
 
       <Seccion id="s8" titulo="8 · Notas generales y post-sesión">
+        <ExtraDe seccion="s8" />
         <Area k="senales" label="Señales / observaciones no capturadas arriba" rows={3} />
         {presencial && <Capturas test="general" label="Otras fotos / vídeos / audio de la sesión" pista="Lo que no encaje en un test concreto (espacio, material, una postura que quieras recordar)." />}
         <Area k="rapport" label="Impresión general de rapport y compromiso percibido" />

@@ -373,3 +373,136 @@ export function Capturas({ test, label = "Fotos y vídeos", pista }: { test: str
     </div>
   );
 }
+
+
+// ---------- adaptación al cliente (IA) ----------
+//
+// Alain escribe lo que ya sabe de la persona y la IA devuelve avisos por test,
+// cosas que no hay que repetir y preguntas extra por sección. Todo queda en
+// datos.adaptacion y se pinta en su sitio de la hoja.
+
+export type Adaptacion = {
+  resumen: string;
+  tests: Record<string, { nivel: "vetado" | "precaucion" | "conviene" | "saltar"; motivo: string }>;
+  no_repetir: { seccion?: string; tema: string; respuesta?: string }[];
+  extra: Record<string, { pregunta: string; por_que?: string }[]>;
+  material: string | null;
+  contexto: string;
+  generada_en: string;
+};
+
+export function useAdaptacion(): Adaptacion | null {
+  const { d } = useContext(DatosCtx);
+  return (d.adaptacion as Adaptacion | undefined) ?? null;
+}
+
+const ESTILO_ADAPT = {
+  vetado: { caja: "border-[#B3261E] bg-[#FDECEB] text-[#8c1d18]", etiqueta: "NO HACER" },
+  precaucion: { caja: "border-[#D4860A] bg-[#FFF7E6] text-[#7a4e00]", etiqueta: "CON PRECAUCIÓN" },
+  conviene: { caja: "border-[#1E7B3A] bg-[#EAF6EE] text-[#145a2a]", etiqueta: "CONVIENE MIRAR" },
+  saltar: { caja: "border-gray-400 bg-gray-100 text-gray-600", etiqueta: "SE PUEDE SALTAR" },
+} as const;
+
+/** Aviso de la adaptación para un test concreto. */
+export function AdaptacionDe({ t }: { t: string }) {
+  const a = useAdaptacion()?.tests?.[t];
+  if (!a) return null;
+  const e = ESTILO_ADAPT[a.nivel] ?? ESTILO_ADAPT.precaucion;
+  return (
+    <div className={`rounded-lg border-l-[3px] px-3 py-2 text-[0.85rem] leading-snug ${e.caja}`}>
+      <p className="font-semibold">{e.etiqueta} · por su caso</p>
+      <p>{a.motivo}</p>
+    </div>
+  );
+}
+
+/** Preguntas extra y cosas que no repetir, para una sección. Las respuestas a las extra se guardan en datos.extra_<seccion>. */
+export function ExtraDe({ seccion }: { seccion: string }) {
+  const a = useAdaptacion();
+  const { d, set } = useDatos();
+  if (!a) return null;
+  const extra = a.extra?.[seccion] ?? [];
+  const noRep = (a.no_repetir ?? []).filter((x) => (x.seccion ?? "s2") === seccion);
+  if (!extra.length && !noRep.length) return null;
+  const resp = (d[`extra_${seccion}`] ?? {}) as Record<string, string>;
+  return (
+    <div className="space-y-3 rounded-xl border border-dashed border-[#0F2240]/30 bg-[#0F2240]/[0.03] p-3">
+      {noRep.length > 0 && (
+        <div>
+          <span className={etiqueta}>Ya lo sabes (no repetir)</span>
+          <ul className="space-y-0.5 text-[0.85rem] text-gray-700">
+            {noRep.map((x, i) => (
+              <li key={i}><b>{x.tema}</b>{x.respuesta ? `: ${x.respuesta}` : ""}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {extra.map((q, i) => (
+        <label key={i} className="block">
+          <span className={etiqueta}>Por su caso · {q.pregunta}</span>
+          {q.por_que && <Pista>{q.por_que}</Pista>}
+          <textarea value={resp[q.pregunta] ?? ""} onChange={(e) => set(`extra_${seccion}`, { ...resp, [q.pregunta]: e.target.value })} rows={2} className={caja} />
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** Panel de la cabecera: contexto + botón "Adaptar con IA" + resumen. */
+export function AdaptarAlCliente() {
+  const { d, set, setMany } = useDatos();
+  const a = useAdaptacion();
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState("");
+  const contexto = typeof d.contexto === "string" ? (d.contexto as string) : "";
+  async function adaptar() {
+    setOcupado(true);
+    setError("");
+    try {
+      const parq = d.parq as { resultado?: string; sis?: string[] } | undefined;
+      const r = await fetch("/api/admin/valoraciones/adaptar", {
+        method: "POST",
+        headers: cabeceras(),
+        body: JSON.stringify({ contexto, cliente: d.cliente, edad: d.edad, sexo: d.sexo, entorno: d.entorno, parq: parq ? `${parq.resultado ?? ""}${parq.sis?.length ? ` · sí a: ${parq.sis.join("; ")}` : ""}` : null }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Error");
+      setMany({ adaptacion: j.adaptacion });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setOcupado(false);
+    }
+  }
+  const n = a ? Object.keys(a.tests ?? {}).length : 0;
+  return (
+    <div className="rounded-xl border border-[#0F2240]/20 bg-[#0F2240]/[0.03] p-3">
+      <span className={etiqueta}>Adaptar la hoja a esta persona</span>
+      <Pista>Escribe lo que ya sabes: lesiones o molestias, lo que ya le preguntaste, qué quieres mirar hoy. La IA marca los tests (vetado, precaución, conviene, saltar), señala lo que no hay que repetir y añade preguntas en cada sección. No borra nada.</Pista>
+      <textarea value={contexto} onChange={(e) => set("contexto", e.target.value)} rows={4} placeholder="Ej.: Imanol, 52 años. Hace un mes hicimos una mini valoración: menisco derecho operado en 2019, le molesta al bajar escaleras; ya le pregunté medicación (ninguna) y sueño (bien). Quiero ver bien la sentadilla y el equilibrio; nada de impacto." className={caja} />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={adaptar} disabled={ocupado || contexto.trim().length < 20} className="bg-[#0F2240] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
+          {ocupado ? "Adaptando…" : a ? "Volver a adaptar" : "Adaptar con IA"}
+        </button>
+        {a && (
+          <button type="button" onClick={() => setMany({ adaptacion: null })} className="px-3 py-2 text-[0.82rem] text-gray-600 ring-1 ring-gray-300">Quitar adaptación</button>
+        )}
+        {a && <span className="text-[0.78rem] text-gray-500">{n} test{n === 1 ? "" : "s"} marcados · {Object.values(a.extra ?? {}).flat().length} preguntas extra</span>}
+      </div>
+      {error && <p className="mt-2 text-[0.82rem] text-red-700">{error}</p>}
+      {a && (
+        <div className="mt-3 space-y-1.5 text-[0.85rem]">
+          <p className="font-medium text-gray-900">{a.resumen}</p>
+          {a.material && <p className="text-gray-700"><b>Material:</b> {a.material}</p>}
+          {Object.keys(a.tests ?? {}).length > 0 && (
+            <ul className="flex flex-wrap gap-1.5">
+              {Object.entries(a.tests).map(([t, v]) => (
+                <li key={t} className={`rounded-full border px-2 py-0.5 text-[0.75rem] ${ESTILO_ADAPT[v.nivel]?.caja ?? ""}`} title={v.motivo}>{t} · {ESTILO_ADAPT[v.nivel]?.etiqueta.toLowerCase()}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
