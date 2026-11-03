@@ -99,6 +99,7 @@ export default function Mirariak2026Page() {
   });
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [resultado, setResultado] = useState<{ confirmado: boolean; espera: { taller: string[]; micromagia: boolean } } | null>(null);
 
   const reservasRef = useRef<HTMLElement>(null);
 
@@ -117,6 +118,39 @@ export default function Mirariak2026Page() {
       .then(setCapacity)
       .catch(() => {});
   }, []);
+
+  // Qué entra en lista de espera con lo que hay ahora mismo (el servidor lo decide al final).
+  // Taller: por participante, en orden. Micromagia: la familia va junta; si no caben todos, todos a la espera.
+  function planEspera(): { taller: boolean[]; mm: boolean } {
+    const usadas: Record<string, number> = {};
+    const taller = formData.participantesTaller.map((p) => {
+      const e = parseInt(p.edad);
+      if (isNaN(e) || e < 6 || !capacity) return false;
+      const s = assignSession(e);
+      const slot = capacity.taller[s];
+      if (!slot) return false;
+      if (slot.reservados + (usadas[s] || 0) < slot.total) {
+        usadas[s] = (usadas[s] || 0) + 1;
+        return false;
+      }
+      return true;
+    });
+    const slot = capacity?.micromagia[formData.horarioMicromagia];
+    const mm = !!slot && slot.reservados + formData.participantesMicromagia.length > slot.total;
+    return { taller, mm };
+  }
+  const TEXTO_ESPERA_EU = "Plazak libratzen badira edo eskaera handiagatik saio berriak irekitzen badira, abisatuko dizuegu eta lekua gordeko dizuegu.";
+  const TEXTO_ESPERA_ES = "Si se liberan plazas o se abren nuevos pases por la demanda, os avisaremos y os guardaremos el hueco.";
+  function avisoEspera(texto: string) {
+    return (
+      <div style={{ border: "1px solid rgba(240,160,80,0.4)", background: "rgba(240,160,80,0.07)", padding: "1rem 1.1rem", marginBottom: "1.5rem", fontSize: "0.9rem", lineHeight: 1.7, color: "rgba(242,242,240,0.8)" }}>
+        <span style={{ display: "block", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "#f0a050", marginBottom: "0.35rem" }}>
+          {eu ? "Itxaron-zerrenda" : "Lista de espera"}
+        </span>
+        {texto} {eu ? TEXTO_ESPERA_EU : TEXTO_ESPERA_ES}
+      </div>
+    );
+  }
 
   function scrollToForm() {
     reservasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -180,25 +214,7 @@ export default function Mirariak2026Page() {
           return;
         }
       }
-      // Client-side capacity check for taller
-      if (capacity) {
-        const demand: Record<string, number> = {};
-        for (const p of formData.participantesTaller) {
-          const s = assignSession(parseInt(p.edad));
-          demand[s] = (demand[s] || 0) + 1;
-        }
-        for (const [sesion, n] of Object.entries(demand)) {
-          const slot = capacity.taller[sesion];
-          if (slot && slot.reservados + n > slot.total) {
-            setError(
-              eu
-                ? `${sesion} saioa beteta dago. Jarri harremanetan ${contactEmail} helbidean.`
-                : `La sesión ${sesion} está completa. Escríbenos a ${contactEmail}.`
-            );
-            return;
-          }
-        }
-      }
+      // Si la sesión está llena no se bloquea: esa persona entra en lista de espera.
       if (formData.actividad === "ambas") { setScreen(2); return; }
       setScreen(3); return;
     }
@@ -214,17 +230,7 @@ export default function Mirariak2026Page() {
         setError(eu ? "Aukeratu ordutegia." : "Elige un horario.");
         return;
       }
-      if (capacity) {
-        const slot = capacity.micromagia[formData.horarioMicromagia];
-        if (slot && slot.reservados + formData.participantesMicromagia.length > slot.total) {
-          setError(
-            eu
-              ? `${formData.horarioMicromagia} saioa beteta dago. Aukeratu beste ordutegia.`
-              : `La sesión ${formData.horarioMicromagia} está completa. Elige otro horario.`
-          );
-          return;
-        }
-      }
+      // Horario lleno: no se bloquea, la familia entra en lista de espera.
       setScreen(3); return;
     }
 
@@ -290,6 +296,7 @@ export default function Mirariak2026Page() {
       });
       const data = await res.json();
       if (res.ok) {
+        setResultado({ confirmado: data.confirmado !== false, espera: data.espera ?? { taller: [], micromagia: false } });
         setScreen(6);
         // Refresh capacity after successful reservation
         fetch("/api/mirariak2026/capacity")
@@ -307,9 +314,16 @@ export default function Mirariak2026Page() {
   }
 
   // Capacity badge
-  function capBadge(slot: CapacitySlot | undefined): React.ReactNode {
+  function capBadge(slot: CapacitySlot | undefined, enFormulario = false): React.ReactNode {
     if (!slot) return null;
     const libre = slot.total - slot.reservados;
+    if (libre <= 0 && enFormulario) {
+      return (
+        <span style={{ display: "inline-block", padding: "0.2rem 0.6rem", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#f0a050", border: "1px solid rgba(240,160,80,0.4)", background: "rgba(240,160,80,0.08)", whiteSpace: "nowrap" }}>
+          {eu ? "Itxaron-zerrenda" : "Lista de espera"}
+        </span>
+      );
+    }
     if (libre <= 0) {
       return (
         <span style={{
@@ -495,6 +509,7 @@ export default function Mirariak2026Page() {
             </p>
             {numSelector(formData.numTaller, setNumTaller)}
             {formData.participantesTaller.map((p, i) => {
+              const enEspera = planEspera().taller[i];
               const edadNum = parseInt(p.edad);
               const sesion = !isNaN(edadNum) && edadNum >= 6 ? assignSession(edadNum) : null;
               const sesionSlot = sesion && capacity ? capacity.taller[sesion] : null;
@@ -541,11 +556,11 @@ export default function Mirariak2026Page() {
                     {sesion && (
                       <div style={{ paddingTop: "1.1rem" }}>
                         <span style={{ fontSize: "0.78rem", color: VERY_MUTED }}>{eu ? "Saioa → " : "Sesión → "}</span>
-                        <span style={{ fontSize: "0.88rem", color: libre === 0 ? "#e55" : TEAL }}>{sesion}</span>
+                        <span style={{ fontSize: "0.88rem", color: enEspera ? "#f0a050" : TEAL }}>{sesion}</span>
                         {libre !== null && (
-                          <span style={{ fontSize: "0.75rem", color: libre === 0 ? "#e55" : libre <= 3 ? "#f0a050" : VERY_MUTED, marginLeft: "0.5rem" }}>
-                            {libre === 0
-                              ? eu ? "(beteta)" : "(completo)"
+                          <span style={{ fontSize: "0.75rem", color: enEspera ? "#f0a050" : libre <= 3 ? "#f0a050" : VERY_MUTED, marginLeft: "0.5rem" }}>
+                            {enEspera
+                              ? eu ? "(beteta → itxaron-zerrenda)" : "(completo → lista de espera)"
                               : `(${libre} libre${libre !== 1 && !eu ? "s" : ""})`}
                           </span>
                         )}
@@ -568,6 +583,17 @@ export default function Mirariak2026Page() {
                 </div>
               );
             })}
+            {(() => {
+              const plan = planEspera().taller;
+              const quienes = formData.participantesTaller.filter((_, i) => plan[i]);
+              if (!quienes.length) return null;
+              const sesiones = [...new Set(quienes.map((p) => assignSession(parseInt(p.edad))))];
+              const nombres = quienes.map((p) => p.nombre.trim().split(" ")[0]).filter(Boolean).join(eu ? " eta " : " y ");
+              const unaVarias = sesiones.length === 1;
+              return avisoEspera(eu
+                ? `${sesiones.join(" eta ")} ${unaVarias ? "saioa beteta dago" : "saioak beteta daude"}. Bidali formularioa eta ${nombres || "parte-hartzailea"} itxaron-zerrendan geratuko ${quienes.length > 1 ? "dira" : "da"}.`
+                : `${unaVarias ? "La sesión" : "Las sesiones"} ${sesiones.join(" y ")} ${unaVarias ? "está completa" : "están completas"}. Envía el formulario y ${nombres || "el participante"} ${quienes.length > 1 ? "quedarán" : "quedará"} en la lista de espera.`);
+            })()}
             {error && <p style={{ fontSize: "0.85rem", color: "rgba(242,242,240,0.65)", marginBottom: "0.5rem" }}>{error}</p>}
             {nextBtn()}
             {backBtn()}
@@ -622,8 +648,8 @@ export default function Mirariak2026Page() {
                     alignItems: "center",
                     padding: "0.85rem 0",
                     borderBottom: `1px solid rgba(242,242,240,0.07)`,
-                    cursor: full ? "not-allowed" : "pointer",
-                    opacity: full ? 0.4 : 1,
+                    cursor: "pointer",
+                    opacity: full && !sel ? 0.6 : 1,
                   }}
                 >
                   <span style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -631,19 +657,25 @@ export default function Mirariak2026Page() {
                       type="radio"
                       name="horario"
                       value={h}
-                      disabled={full || false}
                       checked={sel}
-                      onChange={() => !full && setFormData((f) => ({ ...f, horarioMicromagia: h }))}
+                      onChange={() => setFormData((f) => ({ ...f, horarioMicromagia: h }))}
                       style={{ accentColor: TEAL }}
                     />
                     <span style={{ fontSize: "clamp(0.95rem,1.2vw,1.05rem)", color: sel ? FG : MUTED }}>{h}</span>
                   </span>
-                  {slot ? capBadge(slot) : (
+                  {slot ? capBadge(slot, true) : (
                     <span style={{ fontSize: "0.78rem", color: VERY_MUTED }}>20 plaza</span>
                   )}
                 </label>
               );
             })}
+            {formData.horarioMicromagia && planEspera().mm && (
+              <div style={{ marginTop: "1.5rem" }}>
+                {avisoEspera(eu
+                  ? `${formData.horarioMicromagia} ordutegian ez dago lekurik ${formData.participantesMicromagia.length === 1 ? "pertsona batentzat" : `${formData.participantesMicromagia.length} pertsonentzat`}. Bidali formularioa eta itxaron-zerrendan geratuko zarete (denok batera), edo aukeratu lekua duen beste ordutegi bat.`
+                  : `En el horario ${formData.horarioMicromagia} no hay sitio para ${formData.participantesMicromagia.length === 1 ? "una persona" : `${formData.participantesMicromagia.length} personas`}. Envía el formulario y quedaréis en la lista de espera (todos juntos), o elige otro horario con sitio.`)}
+              </div>
+            )}
             {error && <p style={{ fontSize: "0.85rem", color: "rgba(242,242,240,0.65)", marginTop: "1rem" }}>{error}</p>}
             {nextBtn()}
             {backBtn()}
@@ -741,10 +773,11 @@ export default function Mirariak2026Page() {
                 </p>
                 {formData.participantesTaller.map((p, i) => {
                   const sesion = assignSession(parseInt(p.edad));
+                  const enEspera = planEspera().taller[i];
                   return (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.55rem 0", borderBottom: `1px solid rgba(242,242,240,0.07)`, fontSize: "0.9rem" }}>
                       <span style={{ color: MUTED }}>{p.nombre || "—"}</span>
-                      <span style={{ color: TEAL }}>{sesion}</span>
+                      <span style={{ color: enEspera ? "#f0a050" : TEAL }}>{sesion}{enEspera ? (eu ? " · itxaron-zerrenda" : " · lista de espera") : ""}</span>
                     </div>
                   );
                 })}
@@ -758,7 +791,7 @@ export default function Mirariak2026Page() {
                 </p>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "0.55rem 0", borderBottom: `1px solid rgba(242,242,240,0.07)`, fontSize: "0.9rem" }}>
                   <span style={{ color: MUTED }}>{formData.participantesMicromagia.map((p) => p.nombre).join(", ") || "—"}</span>
-                  <span style={{ color: TEAL }}>{formData.horarioMicromagia}</span>
+                  <span style={{ color: planEspera().mm ? "#f0a050" : TEAL }}>{formData.horarioMicromagia}{planEspera().mm ? (eu ? " · itxaron-zerrenda" : " · lista de espera") : ""}</span>
                 </div>
               </div>
             )}
@@ -809,8 +842,17 @@ export default function Mirariak2026Page() {
               {eu ? "Bikain." : "¡Perfecto."}
             </p>
             <p style={{ fontSize: "1rem", color: MUTED, lineHeight: 1.85, marginBottom: "0.5rem" }}>
-              {eu ? "Zure erreserbak baieztatuta daude." : "Tu reserva está confirmada."}
+              {!resultado || (!resultado.espera.taller.length && !resultado.espera.micromagia)
+                ? eu ? "Zure erreserbak baieztatuta daude." : "Tu reserva está confirmada."
+                : resultado.confirmado
+                  ? eu ? "Erreserba jaso dugu: zati bat baieztatuta dago eta beste zatia itxaron-zerrendan." : "Reserva recibida: una parte está confirmada y la otra en lista de espera."
+                  : eu ? "Itxaron-zerrendan zaudete." : "Estáis en la lista de espera."}
             </p>
+            {resultado && (resultado.espera.taller.length > 0 || resultado.espera.micromagia) && (
+              <p style={{ fontSize: "0.95rem", color: MUTED, lineHeight: 1.8, marginBottom: "0.75rem", maxWidth: "460px", marginLeft: "auto", marginRight: "auto" }}>
+                {eu ? TEXTO_ESPERA_EU : TEXTO_ESPERA_ES}
+              </p>
+            )}
             <p style={{ fontSize: "0.88rem", color: VERY_MUTED, lineHeight: 1.75 }}>
               {eu
                 ? "Baieztapena email bidez bidali dizugu. Spam karpetan ikusten ez baduzu, begiratu bertan."
@@ -943,6 +985,12 @@ export default function Mirariak2026Page() {
               );
             })}
           </div>
+          {capacity && Object.values(capacity.taller).some((x) => x.reservados >= x.total) && (
+            <p style={{ fontSize: "0.85rem", color: MUTED, lineHeight: 1.7, marginTop: "-2rem", marginBottom: "2.5rem", maxWidth: "600px" }}>
+              {eu ? "Saio beteetan itxaron-zerrendan apunta zaitezke: " : "En las sesiones completas puedes apuntarte a la lista de espera: "}
+              {eu ? TEXTO_ESPERA_EU.charAt(0).toLowerCase() + TEXTO_ESPERA_EU.slice(1) : TEXTO_ESPERA_ES.charAt(0).toLowerCase() + TEXTO_ESPERA_ES.slice(1)}
+            </p>
+          )}
           <button
             onClick={scrollToForm}
             style={{ background: "transparent", border: `1px solid ${BORDER}`, padding: "0.9rem 2rem", fontSize: "0.85rem", letterSpacing: "0.12em", textTransform: "uppercase", color: FG, cursor: "pointer", transition: "all 0.25s" }}
@@ -989,6 +1037,12 @@ export default function Mirariak2026Page() {
               );
             })}
           </div>
+          {capacity && Object.values(capacity.micromagia).some((x) => x.reservados >= x.total) && (
+            <p style={{ fontSize: "0.85rem", color: MUTED, lineHeight: 1.7, marginTop: "-2rem", marginBottom: "2.5rem", maxWidth: "600px" }}>
+              {eu ? "Saio beteetan itxaron-zerrendan apunta zaitezke: " : "En las sesiones completas puedes apuntarte a la lista de espera: "}
+              {eu ? TEXTO_ESPERA_EU.charAt(0).toLowerCase() + TEXTO_ESPERA_EU.slice(1) : TEXTO_ESPERA_ES.charAt(0).toLowerCase() + TEXTO_ESPERA_ES.slice(1)}
+            </p>
+          )}
           <button
             onClick={scrollToForm}
             style={{ background: "transparent", border: `1px solid ${BORDER}`, padding: "0.9rem 2rem", fontSize: "0.85rem", letterSpacing: "0.12em", textTransform: "uppercase", color: FG, cursor: "pointer", transition: "all 0.25s" }}

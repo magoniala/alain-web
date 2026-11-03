@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendEmail, ALAIN_FROM } from "@/lib/email-ses";
 import { altaEmbudo } from "@/lib/embudos";
 import { NextResponse } from "next/server";
-import { contarOcupadas } from "@/lib/mirariak";
+import { contarOcupadas, PLAZAS_MM, PLAZAS_TALLER } from "@/lib/mirariak";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -117,47 +117,40 @@ export async function POST(req: Request) {
   // Las anuladas y las de lista de espera (marcadas desde el panel) no ocupan plaza.
   const { taller: tallerCounts, micromagia: micromagiaCounts } = contarOcupadas(existing ?? []);
 
-  if (hasTaller && participantesTallerConSesion) {
-    const demand: Record<string, number> = {};
-    for (const p of participantesTallerConSesion) {
-      demand[p.sesion_asignada] = (demand[p.sesion_asignada] || 0) + 1;
-    }
-    for (const [sesion, n] of Object.entries(demand)) {
-      if ((tallerCounts[sesion] || 0) + n > 16) {
-        return NextResponse.json(
-          {
-            error: isEu
-              ? `${sesion} saioa beteta dago. Jarri harremanetan ${contactEmail} helbidean.`
-              : `La sesión ${sesion} está completa. Escríbenos a ${contactEmail}.`,
-          },
-          { status: 409 }
-        );
-      }
-    }
-  }
+  // Lo que no cabe no se rechaza: entra en lista de espera (el panel lo enseña
+  // en su grupo u horario y Alain le da plaza si se libera o se abre otro pase).
+  const desde = new Date().toISOString();
+  const marcaEspera = { desde, origen: "formulario" };
+  const tallerFinal = participantesTallerConSesion
+    ? participantesTallerConSesion.map((p) => {
+        const ocupadas = tallerCounts[p.sesion_asignada] || 0;
+        if (ocupadas < PLAZAS_TALLER) {
+          tallerCounts[p.sesion_asignada] = ocupadas + 1;
+          return p;
+        }
+        return { ...p, espera: marcaEspera };
+      })
+    : null;
+  const tallerEspera = (tallerFinal ?? []).filter((p) => "espera" in p);
+  const tallerConfirmado = (tallerFinal ?? []).filter((p) => !("espera" in p));
 
-  if (hasMicromagia && horarioMicromagia) {
-    const existing_count = micromagiaCounts[horarioMicromagia] || 0;
-    const demand = (participantesMicromagia as ParticipanteMicromagia[]).length;
-    if (existing_count + demand > 20) {
-      return NextResponse.json(
-        {
-          error: isEu
-            ? `${horarioMicromagia} saioa beteta dago. Aukeratu beste ordutegia.`
-            : `La sesión ${horarioMicromagia} está completa. Elige otro horario.`,
-        },
-        { status: 409 }
-      );
-    }
-  }
+  // Micromagia: la familia va junta. Si no caben todos en ese horario, todos a la lista de espera.
+  const mmEspera =
+    hasMicromagia && !!horarioMicromagia &&
+    (micromagiaCounts[horarioMicromagia] || 0) + (participantesMicromagia as ParticipanteMicromagia[]).length > PLAZAS_MM;
+  const mmFinal = hasMicromagia
+    ? (participantesMicromagia as ParticipanteMicromagia[]).map((p) => (mmEspera ? { ...p, espera: marcaEspera } : p))
+    : null;
+  const algoConfirmado = tallerConfirmado.length > 0 || (hasMicromagia && !mmEspera);
+  const algoEnEspera = tallerEspera.length > 0 || mmEspera;
 
   // Insert
   const { error: dbError } = await supabase.from("mirariak2026_reservas").insert({
     nombre_contacto: nombreContacto.trim(),
     email: email.trim().toLowerCase(),
     actividad,
-    participantes_taller: participantesTallerConSesion ?? null,
-    participantes_micromagia: hasMicromagia ? participantesMicromagia : null,
+    participantes_taller: tallerFinal ?? null,
+    participantes_micromagia: mmFinal,
     horario_micromagia: hasMicromagia ? horarioMicromagia : null,
     newsletter: newsletter || false,
     idioma: idioma || "eu",
@@ -195,13 +188,11 @@ export async function POST(req: Request) {
 
   let actividadHtml = "";
 
-  if (hasTaller && participantesTallerConSesion) {
+  const ESPERA_LABEL = isEu ? "ITXARON-ZERRENDA" : "LISTA DE ESPERA";
+  const tablaTaller = (lista: { nombre: string; sesion_asignada: string }[]) => {
     const grouped: Record<string, string[]> = {};
-    for (const p of participantesTallerConSesion) {
-      if (!grouped[p.sesion_asignada]) grouped[p.sesion_asignada] = [];
-      grouped[p.sesion_asignada].push(p.nombre.trim());
-    }
-    const rows = Object.entries(grouped)
+    for (const p of lista) (grouped[p.sesion_asignada] ??= []).push(p.nombre.trim());
+    return Object.entries(grouped)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(
         ([sesion, noms]) => `
@@ -211,19 +202,37 @@ export async function POST(req: Request) {
         </tr>`
       )
       .join("");
+  };
+
+  if (hasTaller && tallerConfirmado.length) {
     actividadHtml += `
       <p style="${labelStyle}">${isEu ? "TAILERRA · LARUNBATA, AZAROAREN 14A" : "TALLER · SÁBADO 14 DE NOVIEMBRE"}</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;">${rows}</table>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;">${tablaTaller(tallerConfirmado)}</table>
+    `;
+  }
+  if (hasTaller && tallerEspera.length) {
+    actividadHtml += `
+      <p style="${labelStyle}">${isEu ? "TAILERRA · LARUNBATA, AZAROAREN 14A" : "TALLER · SÁBADO 14 DE NOVIEMBRE"} · <span style="color:#c27b00;">${ESPERA_LABEL}</span></p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;">${tablaTaller(tallerEspera)}</table>
     `;
   }
 
   if (hasMicromagia && participantesMicromagia) {
     const noms = (participantesMicromagia as ParticipanteMicromagia[]).map((p) => p.nombre.trim()).join(", ");
     actividadHtml += `
-      <p style="${labelStyle}">${isEu ? "MIKROMAGIA · IGANDEA, AZAROAREN 15A" : "MICROMAGIA · DOMINGO 15 DE NOVIEMBRE"}</p>
+      <p style="${labelStyle}">${isEu ? "MIKROMAGIA · IGANDEA, AZAROAREN 15A" : "MICROMAGIA · DOMINGO 15 DE NOVIEMBRE"}${mmEspera ? ` · <span style="color:#c27b00;">${ESPERA_LABEL}</span>` : ""}</p>
       <p style="${pStyle}"><strong>${horarioMicromagia}</strong><br>${noms}</p>
     `;
   }
+
+  const textoEspera = isEu
+    ? "«Itxaron-zerrenda» jarrita duten saioak beteta daude, baina zerrendan zaudete. Plazak libratzen badira edo eskaera handiagatik saio berriak irekitzen badira, abisatuko dizuegu eta lekua gordeko dizuegu."
+    : "Las sesiones marcadas como «lista de espera» están completas, pero estáis apuntados en la lista. Si se liberan plazas o se abren nuevos pases por la demanda, os avisaremos y os guardaremos el hueco.";
+  const textoCabecera = !algoEnEspera
+    ? (isEu ? "Zure erreserbak baieztatuta daude." : "Tu reserva está confirmada.")
+    : algoConfirmado
+      ? (isEu ? "Zure erreserba jaso dugu. Plaza batzuk baieztatuta daude eta beste batzuk itxaron-zerrendan." : "Hemos recibido tu reserva. Parte está confirmada y parte en lista de espera.")
+      : (isEu ? "Itxaron-zerrendan zaudete." : "Estáis en la lista de espera.");
 
   const unsubBlock = bajaUrl
     ? `<p style="margin:0;"><a href="${bajaUrl}" style="color:#bbb;">${isEu ? "Utzi newsletter-a jasotzeari" : "Darse de baja de la newsletter"}</a></p>`
@@ -236,8 +245,9 @@ export async function POST(req: Request) {
         ${isEu ? `Kaixo, ${nombreContacto.trim().split(" ")[0]}` : `Hola, ${nombreContacto.trim().split(" ")[0]}`}
       </p>
       <p style="font-size:1rem;color:#444;margin:0 0 2rem 0;line-height:1.75;">
-        ${isEu ? "Zure erreserbak baieztatuta daude." : "Tu reserva está confirmada."}
+        ${textoCabecera}
       </p>
+      ${algoEnEspera ? `<p style="font-size:0.95rem;color:#444;margin:0 0 2rem 0;line-height:1.75;">${textoEspera}</p>` : ""}
       <div style="border-left:3px solid #2ED3E6;padding-left:1.25rem;margin-bottom:2rem;">
         ${actividadHtml}
         <p style="${labelStyle}">${isEu ? "NON" : "DÓNDE"}</p>
@@ -258,19 +268,21 @@ export async function POST(req: Request) {
 
   await sendEmail(
     email.trim().toLowerCase(),
-    isEu ? "MIRARIAK 2026 — Zure erreserbaren baieztapena" : "MIRARIAK 2026 — Confirmación de reserva",
+    !algoConfirmado
+      ? (isEu ? "MIRARIAK 2026 — Itxaron-zerrendan zaude" : "MIRARIAK 2026 — Estás en la lista de espera")
+      : isEu ? "MIRARIAK 2026 — Zure erreserbaren baieztapena" : "MIRARIAK 2026 — Confirmación de reserva",
     confirmHtml,
     ALAIN_FROM
   );
 
   // Notification to Alain
-  const tallerNotifRows = participantesTallerConSesion
-    ? participantesTallerConSesion
+  const tallerNotifRows = tallerFinal
+    ? tallerFinal
         .map(
           (p) => `<tr>
             <td style="padding:0.3rem 0.6rem;border-bottom:1px solid #eee;">${p.nombre}</td>
             <td style="padding:0.3rem 0.6rem;border-bottom:1px solid #eee;">${p.edad}</td>
-            <td style="padding:0.3rem 0.6rem;border-bottom:1px solid #eee;">${p.sesion_asignada}</td>
+            <td style="padding:0.3rem 0.6rem;border-bottom:1px solid #eee;">${p.sesion_asignada}${"espera" in p ? " · <b>ITXARON-ZERRENDA</b>" : ""}</td>
             <td style="padding:0.3rem 0.6rem;border-bottom:1px solid #eee;">${p.anio_pasado ? "Bai" : "Ez"}</td>
           </tr>`
         )
@@ -293,6 +305,7 @@ export async function POST(req: Request) {
       <p style="margin:0 0 0.3rem;"><strong>Kontaktua:</strong> ${nombreContacto.trim()} · ${email.trim().toLowerCase()}</p>
       <p style="margin:0 0 0.3rem;"><strong>Jarduera:</strong> ${actividad}</p>
       <p style="margin:0 0 1rem;"><strong>Newsletter:</strong> ${newsletter ? "Bai" : "Ez"}</p>
+      ${algoEnEspera ? `<p style="margin:0 0 1rem;color:#b45309;"><strong>Itxaron-zerrenda:</strong> ez zegoen lekurik; panelean dago (Magia → Mirariak 2026 → Itxaron-zerrendak).</p>` : ""}
       ${
         hasTaller && tallerNotifRows
           ? `<p style="margin:0 0 0.4rem;"><strong>Tailerrak:</strong></p>
@@ -307,7 +320,7 @@ export async function POST(req: Request) {
       }
       ${
         hasMicromagia && mmNotifRows
-          ? `<p style="margin:0 0 0.4rem;"><strong>Mikromagia (${horarioMicromagia}):</strong></p>
+          ? `<p style="margin:0 0 0.4rem;"><strong>Mikromagia (${horarioMicromagia})${mmEspera ? " · ITXARON-ZERRENDA" : ""}:</strong></p>
              <table style="width:100%;border-collapse:collapse;margin-bottom:1rem;">
                <thead><tr><th style="${thStyle}">Izena</th></tr></thead>
                <tbody>${mmNotifRows}</tbody>
@@ -319,10 +332,14 @@ export async function POST(req: Request) {
 
   await sendEmail(
     "contacto@alainzulaika.com",
-    `MIRARIAK 2026 — Erreseba berria: ${nombreContacto.trim()}`,
+    `MIRARIAK 2026 — ${algoConfirmado ? "Erreseba berria" : "Itxaron-zerrenda"}: ${nombreContacto.trim()}${algoConfirmado && algoEnEspera ? " (zati bat itxaron-zerrendan)" : ""}`,
     notifHtml,
     "Mirariak 2026 <alain@alainzulaika.com>"
   );
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    espera: { taller: tallerEspera.map((p) => p.nombre.trim()), micromagia: mmEspera },
+    confirmado: algoConfirmado,
+  });
 }
