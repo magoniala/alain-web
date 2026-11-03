@@ -28,7 +28,7 @@ import {
   stsTecho,
   sugerenciaDorsiflexion,
 } from "@/lib/valoracion";
-import { Area, Aviso, Badge, Chips, Fila, Guion, Num, Pista, Seccion, Sub, Sugerido, Texto, useDatos } from "./campos";
+import { Area, Aviso, Badge, Capturas, Chips, Fila, Guion, Num, Pista, Seccion, Segun, Sub, Sugerido, Texto, useDatos, usePresencial } from "./campos";
 
 // Índice de la hoja, en el orden de la sesión. La FC en reposo va sola y
 // antes del bloque 3: en la plantilla estaba en el bloque de cardio, pero
@@ -62,6 +62,26 @@ type ParqFila = {
   respuestas: { id: string; pregunta: string; respuesta: "si" | "no" }[];
   enviado_en: string;
 };
+
+// Botón para mandar el PAR-Q+ por WhatsApp antes de la sesión (presencial: lo
+// rellena en su móvil antes de llegar; también vale online).
+function ParqPorWhatsapp() {
+  const { d } = useDatos();
+  if (d.parqId) return null;
+  const nombre = txt(d, "cliente").trim().split(" ")[0] || "";
+  const tel = txt(d, "telefono").replace(/[^\d+]/g, "");
+  const msg = `${nombre ? `Kaixo ${nombre}! ` : "Kaixo! "}Antes de vernos, ¿me rellenas este cuestionario de salud? Son 2 minutos y me sirve para preparar la valoración: https://entrenatzaile.alainzulaika.com/parq`;
+  const href = `https://wa.me/${tel.replace(/^\+/, "").replace(/^(?!34)/, "34")}?text=${encodeURIComponent(msg)}`;
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <Texto k="telefono" label="Teléfono (para mandarle el PAR-Q+)" ph="6xx xxx xxx" className="max-w-[240px]" />
+      <a href={tel ? href : "#"} target="_blank" rel="noreferrer" className={`border border-[#25D366] px-3 py-2 text-[0.85rem] text-[#128C7E] hover:bg-[#25D366] hover:text-white ${tel ? "" : "pointer-events-none opacity-40"}`}>
+        Mandar PAR-Q+ por WhatsApp
+      </a>
+      <Pista>Lo rellena en su móvil; cuando llegue, aparece arriba en «Vincular PAR-Q+».</Pista>
+    </div>
+  );
+}
 
 function SinParq() {
   const { d } = useDatos();
@@ -395,6 +415,7 @@ export default function Hoja({
   onPareja: () => void;
 }) {
   const { d } = useDatos();
+  const presencial = usePresencial();
   const pareja = txt(d, "modalidad") === "Pareja (90 min)";
   const esHombre = txt(d, "sexo") === "Hombre";
   const oh = txt(d, "sqVariante") === "Overhead squat";
@@ -405,7 +426,7 @@ export default function Hoja({
 
   return (
     <div className="space-y-5">
-      <Seccion id="cabecera" titulo="Valoración inicial · online">
+      <Seccion id="cabecera" titulo={presencial ? "Valoración inicial · presencial" : "Valoración inicial · online"}>
         <Fila cols={3}>
           <Texto k="cliente" label="Cliente" />
           <Texto k="fecha" label="Fecha" ph="aaaa-mm-dd" />
@@ -415,6 +436,7 @@ export default function Hoja({
           <Num k="edad" label="Edad" unidad="años" />
           <Chips k="sexo" label="Sexo (para baremos)" opciones={["Hombre", "Mujer"]} className="md:col-span-2" />
         </Fila>
+        <Chips k="entorno" label="Entorno" opciones={["Online", "Presencial"]} pista={presencial ? "Delante de la persona: guiones, medidas y capturas cambian a presencial." : "Por videollamada (lo de siempre). Elige Presencial si estás con la persona."} />
         <Chips k="modalidad" label="Modalidad" opciones={["Individual (70 min)", "Pareja (90 min)"]} />
         <Chips k="conversacionPrevia" label="Conversación previa" opciones={["Sí (anamnesis abreviada)", "No (anamnesis completa)"]} />
         {pareja && (
@@ -447,18 +469,33 @@ export default function Hoja({
           </div>
         </Fila>
         <ParqVinculo />
+        <ParqPorWhatsapp />
         <Chips k="parqRecibido" label="PAR-Q+ recibido" opciones={["Sí, sin banderas", "Sí, con bandera(s)", "NO recibido"]} />
         <SinParq />
       </Seccion>
 
-      <Seccion id="s1" titulo="1 · Bienvenida + verificación técnica" tiempo="5 min">
-        <Guion>«¿Se me oye bien? ¿Me ves con nitidez? Vale, si en algún momento hay corte o algo raro, avisas y ajustamos.»</Guion>
-        <Chips
-          k="chequeo"
-          label="Chequeo técnico inicial"
-          multi
-          opciones={["Audio OK", "Vídeo OK", "Iluminación OK", "Conexión estable"]}
-        />
+      <Seccion id="s1" titulo={presencial ? "1 · Bienvenida + espacio" : "1 · Bienvenida + verificación técnica"} tiempo="5 min">
+        {presencial ? (
+          <>
+            <Guion>«Hoy no hay nada que cerrar: vamos a ver de dónde partes para que lo que hagamos sea tuyo. Son unos tests sencillos y una conversación; si algo duele o no apetece, se dice y se salta.»</Guion>
+            <Chips
+              k="chequeo"
+              label="Espacio y material"
+              multi
+              opciones={["Sitio despejado (2-3 m)", "Silla 43-44 cm", "Cinta métrica", "Pica / escoba", "Pared libre para dorsiflexión", "Báscula (si pesa aquí)", "Móvil con batería para fotos"]}
+            />
+          </>
+        ) : (
+          <>
+            <Guion>«¿Se me oye bien? ¿Me ves con nitidez? Vale, si en algún momento hay corte o algo raro, avisas y ajustamos.»</Guion>
+            <Chips
+              k="chequeo"
+              label="Chequeo técnico inicial"
+              multi
+              opciones={["Audio OK", "Vídeo OK", "Iluminación OK", "Conexión estable"]}
+            />
+          </>
+        )}
         <Area k="notaClima" label="Clima emocional / dinámica pareja / primeras impresiones" />
       </Seccion>
 
@@ -523,7 +560,7 @@ export default function Hoja({
             </div>
             <Texto k="momentoDia" label="Momento del día preferido" />
           </Fila>
-          <Area k="material" label="Material en casa (que lo enseñe por cámara)" />
+          <Area k="material" label={presencial ? "Material en casa (que lo describa; si estáis en su casa, míralo)" : "Material en casa (que lo enseñe por cámara)"} />
         </Sub>
 
         <Sub titulo="F · Motivación y expectativas" nota="3-4 min · NO comprimir">
@@ -594,23 +631,29 @@ export default function Hoja({
         id="s3"
         titulo="3 · Control postural"
         tiempo="12-15 min"
-        nota="Móvil apoyado, cámara horizontal, distancia 2-3 m."
+        nota={presencial ? "Tú a su lado, vista lateral. Graba la sentadilla con tu móvil (lateral, 3 reps) y haz las fotos que quieras: se guardan en la ficha." : "Móvil apoyado, cámara horizontal, distancia 2-3 m."}
       >
         <SinParq />
-        <Guion titulo="Guion · setup de cámara">
-          «Vamos a preparar la cámara para este test. Apoya el móvil en [respaldo silla / mesa], gira la cámara horizontal,
-          retrocede dos pasos, verifica que se te ve entero de cabeza a pies. Dime cuando esté.»
-        </Guion>
+        {!presencial && (
+          <Guion titulo="Guion · setup de cámara">
+            «Vamos a preparar la cámara para este test. Apoya el móvil en [respaldo silla / mesa], gira la cámara horizontal,
+            retrocede dos pasos, verifica que se te ve entero de cabeza a pies. Dime cuando esté.»
+          </Guion>
+        )}
         <Sub titulo="Sentadilla">
           <CriterioDe t="sentadilla" />
-          <Chips
-            k="sqVideo"
-            multi
-            opciones={["Vídeo lateral grabado (10 s, 3 reps)"]}
-            pista="Una de las dos únicas cosas que se graban."
-          />
+          {presencial ? (
+            <Capturas test="sentadilla" label="Vídeo lateral (10 s, 3 reps) y fotos" pista="Colócate de lado, a 2-3 m, móvil horizontal." />
+          ) : (
+            <Chips
+              k="sqVideo"
+              multi
+              opciones={["Vídeo lateral grabado (10 s, 3 reps)"]}
+              pista="Una de las dos únicas cosas que se graban."
+            />
+          )}
           <Fila>
-            <Chips k="sqModo" label="Modo" opciones={["En directo, cámara lateral", "Vídeo previo autograbado"]} />
+            {!presencial && <Chips k="sqModo" label="Modo" opciones={["En directo, cámara lateral", "Vídeo previo autograbado"]} />}
             <Chips k="sqVariante" label="Variante" opciones={["Overhead squat", "Air squat", "Sentadilla a silla"]} />
           </Fila>
           <Fila cols={3}>
@@ -645,7 +688,7 @@ export default function Hoja({
           <Chips
             k="dfModo"
             label="Modo de registro"
-            opciones={["Cm exactos con cinta", "Referencia visual (rodapié/baldosa)", "Impresión subjetiva por vídeo", "Omitido"]}
+            opciones={presencial ? ["Cm exactos con cinta", "Omitido"] : ["Cm exactos con cinta", "Referencia visual (rodapié/baldosa)", "Impresión subjetiva por vídeo", "Omitido"]}
           />
           {(["Izq", "Dch"] as const).map((l) => (
             <div key={l}>
@@ -681,14 +724,21 @@ export default function Hoja({
 
         <Sub
           titulo="Disociación lumbopélvica con pica"
-          nota="Pica o escoba, cámara lateral. Online: que diga en voz alta cuándo nota que se despega algún contacto."
+          nota={presencial ? "Pica o escoba, tú de lado. Tu mano en los tres contactos (occipital, torácica, sacro): sientes cuál se despega y cuándo." : "Pica o escoba, cámara lateral. Online: que diga en voz alta cuándo nota que se despega algún contacto."}
         >
           <CriterioDe t="pica" />
-          <Guion>
-            «Como no puedo ir a ponerte la mano en la espalda para sentir los contactos, necesito que me lo digas tú. Cuando
-            sientas que la escoba se separa de la espalda por cualquier punto — arriba, media o abajo — me lo dices en voz alta.
-            Yo lo anoto.»
-          </Guion>
+          {presencial ? (
+            <>
+              <Guion>«Voy a ponerte la mano en la espalda para notar tres puntos de contacto con la pica. Inclínate hacia delante despacio, como para coger algo del suelo con la espalda recta, y para cuando notes que tira.»</Guion>
+              <Capturas test="pica" label="Foto / vídeo lateral (opcional)" />
+            </>
+          ) : (
+            <Guion>
+              «Como no puedo ir a ponerte la mano en la espalda para sentir los contactos, necesito que me lo digas tú. Cuando
+              sientas que la escoba se separa de la espalda por cualquier punto — arriba, media o abajo — me lo dices en voz alta.
+              Yo lo anoto.»
+            </Guion>
+          )}
           <Chips
             k="picaObs"
             label="Observación"
@@ -722,8 +772,15 @@ export default function Hoja({
         id="s4"
         titulo="4 · Antropometría"
         tiempo="5-8 min"
-        nota="Online: peso (ya recibido) + cintura auto-medida guiada + fotos. Pliegues y otros perímetros omitidos por diseño."
+        nota={presencial ? "Tú mides: cintura y cadera con cinta; peso en báscula si la hay (si no, el enviado). Fotos aquí mismo, con su permiso." : "Online: peso (ya recibido) + cintura auto-medida guiada + fotos. Pliegues y otros perímetros omitidos por diseño."}
       >
+        {presencial && (
+          <Fila cols={3}>
+            <Num k="pesoAqui" label="Peso medido aquí (si hay báscula)" unidad="kg" />
+            <Num k="alturaAqui" label="Altura medida (opcional)" unidad="cm" />
+            <Chips k="pesoFuente" label="Peso para la ficha" opciones={["El medido aquí", "El enviado"]} />
+          </Fila>
+        )}
         <div>
           <Num k="cintura" label="Perímetro de cintura (mínima, u ombligo si no hay cintura definida)" unidad="cm" className="max-w-[320px]" />
           <Lectura r={baremoCintura(d)} />
@@ -742,15 +799,24 @@ export default function Hoja({
           })()}
           <Pista>Óptimo: H &lt;0,90 · M &lt;0,85</Pista>
         </div>
-        <Chips
-          k="fotos"
-          label="Fotos frontal / lateral / posterior"
-          opciones={["Recibidas antes de la sesión", "Protocolo enviado, pendiente", "Rechazadas"]}
-        />
+        {presencial ? (
+          <>
+            <Guion>«Si te parece, hago tres fotos: de frente, de lado y de espaldas. Son solo para comparar dentro de unos meses; no las ve nadie más que yo.»</Guion>
+            <Capturas test="antropometria" label="Fotos frontal / lateral / posterior" pista="Misma pared, misma distancia, misma luz: así se pueden comparar en la revaloración." />
+            <Chips k="fotos" label="Fotos" opciones={["Hechas aquí", "Las manda después por WhatsApp", "Rechazadas"]} />
+          </>
+        ) : (
+          <Chips
+            k="fotos"
+            label="Fotos frontal / lateral / posterior"
+            opciones={["Recibidas antes de la sesión", "Protocolo enviado, pendiente", "Rechazadas"]}
+          />
+        )}
       </Seccion>
 
       <Seccion id="s5" titulo="5 · Fuerza-función + equilibrio" tiempo="15-20 min">
         <SinParq />
+        {presencial && <Capturas test="fuerza" label="Fotos / vídeos de los tests de fuerza y equilibrio (opcional)" pista="Plancha de lado, monopodal de frente, flexiones de lado." />}
         <Sub titulo="Sit-to-stand 30 s" nota="Silla de 43-44 cm, brazos cruzados sobre el pecho. Cronómetro: 30 s.">
           <CriterioDe t="sitToStand" />
           <div className="max-w-[260px]">
@@ -830,9 +896,18 @@ export default function Hoja({
           </Fila>
         </Sub>
 
-        <Sub titulo="Remo (según material)" nota="Online solo con TRX. Mesa: riesgo de estabilidad y poca verificación por pantalla → mejor omitir.">
+        <Sub titulo="Remo (según material)" nota={presencial ? "Con lo que haya: TRX, mesa robusta (remo invertido) o mancuerna/garrafa a una mano. Tú controlas la técnica." : "Online solo con TRX. Mesa: riesgo de estabilidad y poca verificación por pantalla → mejor omitir."}>
           <CriterioDe t="remo" />
-          <Chips k="reOpcion" label="Opción usada" opciones={["TRX", "Omitido (para sesión con material)"]} />
+          <Chips k="reOpcion" label="Opción usada" opciones={presencial ? ["TRX", "Remo invertido en mesa", "Remo a una mano (mancuerna / garrafa)", "Omitido (para sesión con material)"] : ["TRX", "Omitido (para sesión con material)"]} />
+          {presencial && (txt(d, "reOpcion") === "Remo invertido en mesa" || txt(d, "reOpcion") === "Remo a una mano (mancuerna / garrafa)") && (
+            <>
+              <Fila>
+                <Texto k="reCarga" label={txt(d, "reOpcion") === "Remo invertido en mesa" ? "Altura de la mesa / ángulo del cuerpo" : "Carga usada (kg o qué)"} />
+                <Num k="reReps" label="Reps con técnica (por lado si es a una mano)" />
+              </Fila>
+              <Capturas test="remo" label="Foto del ángulo / carga inicial" />
+            </>
+          )}
           {txt(d, "reOpcion") === "TRX" && (
             <>
               <Chips k="reAngulo" label="Ángulo del cuerpo" opciones={["30°", "45°", "60°", "Otro"]} />
@@ -841,7 +916,7 @@ export default function Hoja({
                 <Texto k="reLongitud" label="Longitud correas (marca)" />
                 <Num k="reReps" label="Reps con técnica" />
               </Fila>
-              <Chips k="reFoto" multi opciones={["Foto del ángulo inicial hecha"]} pista="La otra cosa que se graba." />
+              {presencial ? <Capturas test="remo" label="Foto del ángulo inicial" /> : <Chips k="reFoto" multi opciones={["Foto del ángulo inicial hecha"]} pista="La otra cosa que se graba." />}
             </>
           )}
         </Sub>
@@ -891,9 +966,12 @@ export default function Hoja({
             <>
               <CriterioDe t="step" />
               <Guion>
-                «Para el bloque cardio no vamos a salir a la calle, por dos motivos: uno, sin que yo esté delante hay algún riesgo si
+                <Segun
+                  presencial={<>«Vamos con dos minutos de marcha en el sitio, subiendo la rodilla hasta aquí [marca]. Yo cuento y llevo el tiempo; tú solo mantén el ritmo. Si te mareas o notas algo raro, paras.»</>}
+                  online={<>«Para el bloque cardio no vamos a salir a la calle, por dos motivos: uno, sin que yo esté delante hay algún riesgo si
                 te sobreesfuerzas solo; dos, quiero poder verte durante todo el test para valorarlo bien. Vamos a hacer una marcha en
-                el sitio de 2 minutos que mide lo mismo y me deja verte por la cámara todo el rato.»
+                el sitio de 2 minutos que mide lo mismo y me deja verte por la cámara todo el rato.»</>}
+                />
               </Guion>
               <Pista>
                 Marcha en el sitio 2 min; contar subidas de la rodilla derecha a la altura marcada (punto medio rótula-cresta
@@ -937,28 +1015,32 @@ export default function Hoja({
         <Area k="vis12m" label="Visión a 12 meses (frases textuales)" rows={3} />
         <Area k="miedosCierre" label="Miedos y preocupaciones (no saltar)" rows={3} />
         <Guion titulo="Guion · feedback operativo">
-          «Una última cosa antes de despedirnos. Como es de las primeras veces que hago esto por videollamada, me viene bien tu
+          <Segun
+            presencial={<>«Una última cosa antes de irnos. Me viene bien tu feedback: ¿ha habido algún test o momento raro, o algo que crees que se podría haber hecho mejor? Cualquier cosa que me digas me sirve.»</>}
+            online={<>«Una última cosa antes de despedirnos. Como es de las primeras veces que hago esto por videollamada, me viene bien tu
           feedback: ¿ha habido algún test o momento donde te has visto perdido, o donde crees que se podría haber hecho mejor?
-          Cualquier cosa que me digas me sirve.»
+          Cualquier cosa que me digas me sirve.»</>}
+          />
         </Guion>
         <Area
           k="feedbackOnline"
-          label="Feedback operativo online"
+          label={presencial ? "Feedback operativo" : "Feedback operativo online"}
           pista="¿Algún test o momento en el que se ha visto perdido/a? ¿Se podría haber hecho mejor?"
         />
         <Chips
           k="cierre"
           label="Cierre"
           multi
-          opciones={["Protocolo de fotos enviado por WhatsApp", "Timeline ficha comunicada (2-3 días)", "Dudas de última hora respondidas"]}
+          opciones={presencial ? ["Cómo funciona el acompañamiento explicado (app, avisos, formularios)", "Timeline ficha comunicada (2-3 días)", "Dudas de última hora respondidas", "Fotos hechas o protocolo enviado"] : ["Protocolo de fotos enviado por WhatsApp", "Timeline ficha comunicada (2-3 días)", "Dudas de última hora respondidas"]}
         />
         <Chips k="canalFicha" label="Canal para enviar la ficha" opciones={["WhatsApp", "Email"]} />
       </Seccion>
 
       <Seccion id="s8" titulo="8 · Notas generales y post-sesión">
         <Area k="senales" label="Señales / observaciones no capturadas arriba" rows={3} />
+        {presencial && <Capturas test="general" label="Otras fotos / vídeos / audio de la sesión" pista="Lo que no encaje en un test concreto (espacio, material, una postura que quieras recordar)." />}
         <Area k="rapport" label="Impresión general de rapport y compromiso percibido" />
-        <Chips k="pendientes" label="Datos pendientes de recibir por WhatsApp" multi opciones={["Fotos", "Peso", "Otras"]} />
+        <Chips k="pendientes" label="Datos pendientes de recibir por WhatsApp" multi opciones={presencial ? ["Fotos (si no se hicieron aquí)", "Otras"] : ["Fotos", "Peso", "Otras"]} />
         {(d.pendientes as string[] | undefined)?.includes("Otras") && <Texto k="pendientesOtras" label="¿Cuáles?" />}
       </Seccion>
 
@@ -974,7 +1056,7 @@ export default function Hoja({
             "Anotar aprendizaje operativo en §11 del protocolo",
           ]}
         />
-        <Pista>Vídeos: [cliente]_[fecha]_[test]_[vista].mp4 → antxon_20260805_sentadilla_lateral.mp4</Pista>
+        <Pista>{presencial ? "Las capturas hechas desde esta hoja ya están guardadas con la ficha (privadas) y salen en el informe; no hace falta renombrarlas." : "Vídeos: [cliente]_[fecha]_[test]_[vista].mp4 → antxon_20260805_sentadilla_lateral.mp4"}</Pista>
       </Seccion>
     </div>
   );

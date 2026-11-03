@@ -1,17 +1,28 @@
 "use client";
 
-import { createContext, useContext, useLayoutEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NIVEL_ETIQUETA, type Datos, type Nivel } from "@/lib/valoracion";
 
 // Todos los campos de la hoja leen y escriben en el mismo objeto `datos` a
 // través de este contexto. Cada cambio llega a setMany, que es quien guarda
 // (navegador al instante, servidor con un pequeño retardo).
-type Ctx = { d: Datos; setMany: (cambios: Datos) => void };
+type Ctx = { d: Datos; setMany: (cambios: Datos) => void; id?: string };
 export const DatosCtx = createContext<Ctx>({ d: {}, setMany: () => {} });
 
 export function useDatos() {
-  const { d, setMany } = useContext(DatosCtx);
-  return { d, set: (k: string, v: unknown) => setMany({ [k]: v }), setMany };
+  const { d, setMany, id } = useContext(DatosCtx);
+  return { d, set: (k: string, v: unknown) => setMany({ [k]: v }), setMany, id };
+}
+
+/** Entorno de la valoración: presencial (delante de la persona) u online (videollamada, lo de siempre). */
+export function usePresencial() {
+  const { d } = useContext(DatosCtx);
+  return d.entorno === "Presencial";
+}
+
+/** Texto distinto según el entorno. */
+export function Segun({ presencial, online }: { presencial: React.ReactNode; online: React.ReactNode }) {
+  return <>{usePresencial() ? presencial : online}</>;
 }
 
 const etiqueta = "block text-[0.72rem] font-medium uppercase tracking-[0.12em] text-gray-500 mb-1.5";
@@ -259,6 +270,106 @@ export function Guion({ children, titulo = "Guion" }: { children: React.ReactNod
     <div className="rounded-lg border-l-[3px] border-[#C47800] bg-[#FBF6EE] px-3.5 py-2.5">
       <p className="mb-0.5 text-[0.68rem] font-medium uppercase text-[#C47800]">{titulo}</p>
       <div className="text-[0.88rem] italic leading-relaxed text-[#433d36]">{children}</div>
+    </div>
+  );
+}
+
+
+// ---------- fotos y vídeos (valoración presencial) ----------
+//
+// Cada test puede llevar sus capturas: se hacen con la cámara del móvil y
+// suben al bucket privado `valoraciones` (API /api/admin/valoraciones/capturas).
+// En datos quedan solo las rutas, en `capturas[test]`, con su tipo y hora.
+
+export type Captura = { ruta: string; tipo: "foto" | "video"; en: string; nota?: string };
+
+function cabeceras() {
+  return { "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("admin_pw") || "" };
+}
+
+export function Capturas({ test, label = "Fotos y vídeos", pista }: { test: string; label?: string; pista?: string }) {
+  const { d, set, id } = useDatos();
+  const todas = (d.capturas ?? {}) as Record<string, Captura[]>;
+  const lista = todas[test] ?? [];
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [subiendo, setSubiendo] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const fotoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const rutas = lista.map((c) => c.ruta).join(",");
+
+  useEffect(() => {
+    if (!rutas) return;
+    const faltan = lista.filter((c) => !urls[c.ruta]);
+    if (!faltan.length) return;
+    fetch(`/api/admin/valoraciones/capturas?rutas=${encodeURIComponent(faltan.map((c) => c.ruta).join(","))}`, { headers: cabeceras() })
+      .then((r) => r.json())
+      .then((j) => setUrls((u) => ({ ...u, ...(j.urls ?? {}) })))
+      .catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rutas]);
+
+  async function subir(f: File, tipo: "foto" | "video") {
+    if (!id) return setError("Guarda la valoración antes de subir fotos.");
+    setSubiendo(tipo);
+    setError("");
+    try {
+      const ext = (f.name.split(".").pop() ?? (tipo === "foto" ? "jpg" : "mp4")).toLowerCase();
+      const r = await fetch("/api/admin/valoraciones/capturas", { method: "POST", headers: cabeceras(), body: JSON.stringify({ id, test, ext, tipo }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Error");
+      const up = await fetch(j.url, { method: "PUT", headers: { "Content-Type": f.type || (tipo === "foto" ? "image/jpeg" : "video/mp4") }, body: f });
+      if (!up.ok) throw new Error(`No se pudo subir (${up.status})`);
+      const nueva: Captura = { ruta: j.ruta, tipo, en: new Date().toISOString() };
+      set("capturas", { ...todas, [test]: [...lista, nueva] });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubiendo(null);
+    }
+  }
+  async function quitar(c: Captura) {
+    if (!window.confirm("¿Quitar esta captura?")) return;
+    await fetch(`/api/admin/valoraciones/capturas?ruta=${encodeURIComponent(c.ruta)}`, { method: "DELETE", headers: cabeceras() }).catch(() => null);
+    set("capturas", { ...todas, [test]: lista.filter((x) => x.ruta !== c.ruta) });
+  }
+  function nota(c: Captura, v: string) {
+    set("capturas", { ...todas, [test]: lista.map((x) => (x.ruta === c.ruta ? { ...x, nota: v || undefined } : x)) });
+  }
+
+  return (
+    <div>
+      <span className={etiqueta}>{label}</span>
+      {pista && <Pista>{pista}</Pista>}
+      <input ref={fotoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) subir(f, "foto"); e.target.value = ""; }} />
+      <input ref={videoRef} type="file" accept="video/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) subir(f, "video"); e.target.value = ""; }} />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => fotoRef.current?.click()} disabled={!!subiendo} className="border border-[#1a1a1a] px-3 py-2 text-[0.85rem] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-40">
+          {subiendo === "foto" ? "Subiendo…" : "📷 Foto"}
+        </button>
+        <button type="button" onClick={() => videoRef.current?.click()} disabled={!!subiendo} className="border border-[#1a1a1a] px-3 py-2 text-[0.85rem] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-40">
+          {subiendo === "video" ? "Subiendo…" : "🎥 Vídeo"}
+        </button>
+        {lista.length > 0 && <span className="self-center text-[0.8rem] text-gray-500">{lista.length} guardada{lista.length > 1 ? "s" : ""}</span>}
+      </div>
+      {error && <p className="mt-1 text-[0.8rem] text-red-700">{error}</p>}
+      {lista.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {lista.map((c) => (
+            <div key={c.ruta} className="w-[7.5rem]">
+              <a href={urls[c.ruta] ?? "#"} target="_blank" rel="noreferrer" className="block h-[7.5rem] overflow-hidden rounded-lg bg-gray-100">
+                {urls[c.ruta] ? (
+                  c.tipo === "foto" ? <img src={urls[c.ruta]} alt="" className="h-full w-full object-cover" /> : <video src={urls[c.ruta]} className="h-full w-full object-cover" muted playsInline />
+                ) : (
+                  <span className="flex h-full items-center justify-center text-[0.75rem] text-gray-400">{c.tipo === "foto" ? "📷" : "🎥"}</span>
+                )}
+              </a>
+              <input value={c.nota ?? ""} onChange={(e) => nota(c, e.target.value)} placeholder="nota (lateral, 2.ª rep…)" className="mt-1 w-full border border-gray-200 px-1.5 py-1 text-[0.75rem]" />
+              <button type="button" onClick={() => quitar(c)} className="mt-0.5 text-[0.72rem] text-gray-400 hover:text-red-600">quitar</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -270,6 +270,16 @@ function nombreArchivo(d: Datos, tipo: string): string {
   return ["valoracion", limpio(txt(d, "cliente")) || "sin-nombre", txt(d, "fecha"), tipo].filter(Boolean).join("_");
 }
 
+export const NOMBRE_TEST: Record<string, string> = { sentadilla: "Sentadilla", pica: "Pica", antropometria: "Antropometría", fuerza: "Fuerza y equilibrio", remo: "Remo", general: "General" };
+
+/** Nombre de archivo con la nomenclatura de Alain: [cliente]_[fecha]_[test]_[n].ext */
+export function nombreCaptura(d: Datos, test: string, n: number, c: { ruta: string; tipo: string }): string {
+  const cli = txt(d, "cliente").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "cliente";
+  const fecha = (txt(d, "fecha") || "").replace(/-/g, "") || "sinfecha";
+  const ext = c.ruta.split(".").pop() ?? (c.tipo === "foto" ? "jpg" : "mp4");
+  return `${cli}_${fecha}_${test}_${n}.${ext}`;
+}
+
 export function htmlNotas(d: Datos): string {
   let cuerpo = cabecera(d, "Notas de la valoración inicial");
 
@@ -313,6 +323,13 @@ export function htmlNotas(d: Datos): string {
   }
 
   if (txt(d, "informeNotas")) cuerpo += `<h2>Mi lectura</h2><p>${esc(txt(d, "informeNotas"))}</p>`;
+
+  // Capturas hechas desde la hoja (valoración presencial): dónde están y qué son.
+  const capturas = (d.capturas ?? {}) as Record<string, { ruta: string; tipo: string; en: string; nota?: string }[]>;
+  const filasCap = Object.entries(capturas).flatMap(([test, lista]) => (lista ?? []).map((c, i) => [`${NOMBRE_TEST[test] ?? test} · ${c.tipo} ${i + 1}`, `${nombreCaptura(d, test, i + 1, c)}${c.nota ? ` — ${c.nota}` : ""}`] as [string, string]));
+  if (filasCap.length) {
+    cuerpo += `<h2>Fotos y vídeos</h2><table>${filasCap.map(([k, v]) => `<tr><td class="k">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table><p class="suave">Guardados en privado con la ficha; se descargan desde la hoja con «Descargar capturas».</p>`;
+  }
   cuerpo += `<p class="pie">Documento interno. Contiene datos de salud.</p>`;
   return documento(nombreArchivo(d, "notas"), cuerpo);
 }

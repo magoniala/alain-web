@@ -6,7 +6,7 @@ import { DatosCtx } from "./valoracion/campos";
 import Hoja, { SECCIONES } from "./valoracion/Hoja";
 import Informe from "./valoracion/Informe";
 import Cronometro from "./valoracion/Cronometro";
-import { abrirPdf, htmlInforme, htmlNotas } from "./valoracion/pdf";
+import { abrirPdf, htmlInforme, htmlNotas, nombreCaptura } from "./valoracion/pdf";
 
 // Valoración inicial online: la plantilla en PDF hecha formulario.
 //
@@ -427,7 +427,7 @@ function Editor({
     return () => obs.disconnect();
   }, [vista, datos !== null]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ctx = useMemo(() => ({ d: datos ?? {}, setMany }), [datos, setMany]);
+  const ctx = useMemo(() => ({ d: datos ?? {}, setMany, id }), [datos, setMany, id]);
 
   const parejaId = typeof datos?.parejaId === "string" ? datos.parejaId : null;
   const parejaNombre = parejaId ? filas.find((f) => f.id === parejaId)?.cliente ?? null : null;
@@ -520,6 +520,34 @@ function Editor({
               </button>
             ))}
           </div>
+
+          {Object.values(((datos?.capturas ?? {}) as Record<string, { ruta: string; tipo: string }[]>)).some((l) => l?.length) && (
+            <button
+              onClick={async () => {
+                // Descarga cada captura con la nomenclatura de Alain ([cliente]_[fecha]_[test]_[n].ext).
+                const capturas = (datosRef.current.capturas ?? {}) as Record<string, { ruta: string; tipo: string; en: string }[]>;
+                const todas = Object.entries(capturas).flatMap(([test, l]) => (l ?? []).map((c, i) => ({ test, i: i + 1, c })));
+                const r = await fetch(`/api/admin/valoraciones/capturas?rutas=${encodeURIComponent(todas.map((x) => x.c.ruta).join(","))}`, { headers: cabeceras() });
+                const j = await r.json().catch(() => ({ urls: {} }));
+                for (const x of todas) {
+                  const u = j.urls?.[x.c.ruta];
+                  if (!u) continue;
+                  const a = document.createElement("a");
+                  a.href = u;
+                  a.download = nombreCaptura(datosRef.current, x.test, x.i, x.c);
+                  a.target = "_blank";
+                  a.rel = "noreferrer";
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  await new Promise((res) => setTimeout(res, 400));
+                }
+              }}
+              className="mb-3 w-full border border-gray-300 bg-white py-1.5 text-[0.8rem] text-gray-700 hover:border-gray-500"
+            >
+              Descargar capturas (con nombre)
+            </button>
+          )}
 
           <nav className="mb-4 hidden border border-gray-200 bg-white lg:block">
             {SECCIONES.map((s) => (
