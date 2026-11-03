@@ -106,15 +106,15 @@ async function ejecutar(req: Request) {
       ? await tareasPorFecha({ presupuestoMs: Math.max(0, 45000 - (Date.now() - inicio)) })
       : null;
 
-  // Fase 3: Mail 1 sin llamada previa en los territorios activados en
-  // charlas_config (ninguno por defecto). Usa IA, así que va en ventana.
-  const mail1 =
+  // Fase 3 (Mail 1 automático) y carril de magia comparten lo que queda de
+  // ventana. Para que ninguno se quede siempre sin tiempo, van alternando el
+  // orden en cada pasada (los minutos pares, magia primero).
+  const magiaPrimero = Math.floor(Date.now() / 600000) % 2 === 0;
+  const correrMail1 = async () =>
     lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 40000
       ? await mail1Automatico({ presupuestoMs: Math.max(0, 50000 - (Date.now() - inicio)) }).catch((e) => ({ activo: true, territorios: [], cupo_dia: 0, hoy_ya: 0, creadas: 0, candidatos: 0, errores: [(e as Error).message] }))
       : null;
-
-  // Carril de magia (fase 6a): correos entrantes de prospectos y pasos por fecha. Mismas ventanas que la IA de charlas.
-  const magia =
+  const correrMagia = async () =>
     lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 42000
       ? await (async () => {
           const entrantes = await procesarPendientesMagia({ presupuestoMs: Math.max(0, 48000 - (Date.now() - inicio)), limite: 3 }).catch((e) => ({ procesados: 0, tareas: 0, errores: [(e as Error).message] }));
@@ -122,6 +122,15 @@ async function ejecutar(req: Request) {
           return { entrantes, motor };
         })()
       : null;
+  let mail1: Awaited<ReturnType<typeof correrMail1>> = null;
+  let magia: Awaited<ReturnType<typeof correrMagia>> = null;
+  if (magiaPrimero) {
+    magia = await correrMagia();
+    mail1 = await correrMail1();
+  } else {
+    mail1 = await correrMail1();
+    magia = await correrMagia();
+  }
 
   // Rastreo web de correos de contacto (sin IA, solo red): se hace en las
   // ejecuciones fuera de ventana, que si no estarían ociosas. Unos pocos
