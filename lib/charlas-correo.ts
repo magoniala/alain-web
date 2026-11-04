@@ -9,6 +9,7 @@
 // exacta o por dominio propio del centro). Lo demás no se almacena.
 
 import { ImapFlow, type FetchMessageObject } from "imapflow";
+import { cuerpoCorreo } from "@/lib/correo-cuerpo";
 import { simpleParser } from "mailparser";
 import nodemailer from "nodemailer";
 import MailComposer from "nodemailer/lib/mail-composer";
@@ -578,7 +579,7 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
     from: remitente,
     to: para,
     subject: e.prueba ? `[PRUEBA → ${e.para}] ${e.asunto}` : e.asunto,
-    text: e.texto,
+    ...cuerpoCorreo(e.texto),
     messageId: `<${messageId}>`,
     inReplyTo: !e.prueba && e.inReplyTo ? `<${e.inReplyTo}>` : undefined,
     references: !e.prueba && e.referencias?.length ? e.referencias.map((r) => `<${r}>`).join(" ") : undefined,
@@ -669,7 +670,7 @@ export async function reponerEnviados(opciones: { presupuestoMs: number }): Prom
           from: remitente,
           to: (m.para ?? []).join(", "),
           subject: m.asunto ?? "",
-          text: m.texto ?? "",
+          ...cuerpoCorreo(m.texto ?? ""),
           date: m.fecha ? new Date(m.fecha) : new Date(),
           messageId: id,
           inReplyTo: m.in_reply_to ? `<${String(m.in_reply_to).replace(/^<|>$/g, "")}>` : undefined,

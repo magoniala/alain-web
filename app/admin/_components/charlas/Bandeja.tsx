@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import VistaCorreo from "../VistaCorreo";
 
 // Bandeja de charlas · fase 1.
 //
@@ -507,6 +508,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
                   </select>
                 )}
               </div>
+              <VistaCorreo texto={texto} adjunto={dossier ? (idiomaDossier === "eu" ? "Dossierra - Arreta aro digitalean.pdf" : "Dossier - La atencion en la era digital.pdf") : null} />
               {editado && (
                 <label className="mt-3 block text-[0.75rem] text-gray-500">
                   ¿Por qué lo cambias? (una frase; así aprende)

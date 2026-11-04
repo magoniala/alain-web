@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import VistaCorreo from "./VistaCorreo";
 
 // Pestaña Magia · fase 6a del sistema automático: el CRM de prospectos
 // (antiguos clientes, recuperar, intermediarios, referidos) con su bandeja.
@@ -336,6 +337,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           <p className="text-[0.78rem] text-gray-500">Para: {t.destinatario ?? "—"}</p>
           {t.canal === "mail" && <input value={asunto} onChange={(e) => setAsunto(e.target.value)} className="w-full border border-gray-300 px-2 py-1.5 text-[0.88rem]" placeholder="Asunto" />}
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={Math.min(14, Math.max(4, texto.split("\n").length + 1))} className="w-full border border-gray-300 px-2 py-1.5 text-[0.9rem] leading-relaxed" />
+          {t.canal === "mail" && <VistaCorreo texto={texto} />}
           {editado && (
             <label className="block text-[0.75rem] text-gray-500">
               ¿Por qué lo cambias? (una frase; así aprende)
