@@ -47,3 +47,8 @@ scripts/charlas/_conocimiento.tgz
 _vapid_para_vercel.txt
 scripts/charlas/espejo-launchd/espejo.log
 .espejo-mtimes.json
+
+# Claude Code: configuración local y bloqueo de tareas programadas (la de equipo es .claude/settings.json)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/backup-claude-md-antiguo.txt

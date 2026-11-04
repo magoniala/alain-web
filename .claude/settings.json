@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.next/**)",
+      "Read(./public/**)",
+      "Read(./scripts/charlas/vault-export.json)",
+      "Read(./scripts/charlas/_conocimiento/**)",
+      "Read(./**/*.tgz)",
+      "Read(./.env.local)",
+      "Read(./_vapid_para_vercel.txt)"
+    ]
+  }
+}
