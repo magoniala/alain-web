@@ -12,7 +12,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseFicha, CLAVES } from "./prospectos-lib.mjs";
+import { filaDesdeFicha } from "./prospectos-lib.mjs";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const envPath = join(RAIZ, ".env.local");
@@ -44,22 +44,15 @@ const ficheros = readdirSync(DIR).filter((f) => f.endsWith(".md"));
 const filas = [];
 const registros = new Map();
 for (const f of ficheros) {
-  const txt = readFileSync(join(DIR, f), "utf8");
-  let p;
+  let leido;
   try {
-    p = parseFicha(txt);
+    leido = filaDesdeFicha(f.slice(0, -3), readFileSync(join(DIR, f), "utf8"));
   } catch (e) {
     console.error(`  ${f}: ${e.message}`);
     continue;
   }
-  const fm = p.frontmatter;
-  const fila = { carril: "magia", nombre: f.slice(0, -3), frontmatter_raw: p.frontmatter_raw, cuerpo_antes: p.cuerpo_antes, cuerpo_despues: p.cuerpo_despues, actualizado_por: "vault", datos: {} };
-  for (const k of CLAVES) if (k in fm) fila[k] = fm[k];
-  for (const k of Object.keys(fm)) if (!CLAVES.includes(k)) fila.datos[k] = fm[k];
-  if (typeof fila.enviado !== "boolean") fila.enviado = fila.enviado == null ? null : String(fila.enviado) === "true";
-  if (!fila.estado) fila.estado = "0 Por contactar";
-  filas.push(fila);
-  registros.set(fila.nombre, p.registro);
+  filas.push(leido.fila);
+  registros.set(leido.fila.nombre, leido.registro);
 }
 
 let nuevas = 0;

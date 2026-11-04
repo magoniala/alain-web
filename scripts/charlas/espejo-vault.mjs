@@ -224,9 +224,26 @@ function normal(v, clave) {
   return clave && NUMERICOS.has(clave) && s === "" ? "0" : s;
 }
 
+// --- altas vault → Supabase ------------------------------------------------------
+// Primer paso de la pasada, ANTES de espejar: las fichas que Alain ha creado
+// en Obsidian y no están en Supabase se dan de alta, así salen en el panel y
+// el motor les crea tareas en esta misma pasada. Solo altas; para las fichas
+// que ya existen sigue mandando Supabase. Si falla, el espejo continúa.
+async function altas() {
+  try {
+    const { altasVault, resumenAltas, detalleAltas } = await import("../crm/altas-vault.mjs");
+    const informe = await altasVault({ url: URL, key: KEY, vaultCharlas: VAULT, comprobar: COMPROBAR });
+    console.log(resumenAltas(informe, COMPROBAR));
+    for (const l of detalleAltas(informe)) console.log(l);
+  } catch (e) {
+    console.log(`Altas vault → Supabase: no se han podido hacer (${String(e.message).slice(0, 200)})`);
+  }
+}
+
 // --- principal -------------------------------------------------------------------
 async function main() {
   comprobarEntorno();
+  await altas();
   const [centros, interacciones] = await Promise.all([
     todas("charlas_centros", "*", "nombre"),
     todas("charlas_interacciones", "*", "centro_id,fecha,orden"),

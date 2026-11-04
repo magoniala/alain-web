@@ -83,6 +83,22 @@ export function parseRegistro(seccion) {
   });
 }
 
+/**
+ * Ficha de Prospectos/ (texto de la nota) → fila de crm_fichas + su Registro.
+ * La usan el importador (importar-prospectos.mjs) y las altas del espejo
+ * (altas-vault.mjs), para que las dos metan exactamente lo mismo.
+ */
+export function filaDesdeFicha(nombre, texto, carril = "magia") {
+  const p = parseFicha(texto);
+  const fm = p.frontmatter;
+  const fila = { carril, nombre, frontmatter_raw: p.frontmatter_raw, cuerpo_antes: p.cuerpo_antes, cuerpo_despues: p.cuerpo_despues, actualizado_por: "vault", datos: {} };
+  for (const k of CLAVES) if (k in fm) fila[k] = fm[k];
+  for (const k of Object.keys(fm)) if (!CLAVES.includes(k)) fila.datos[k] = fm[k];
+  if (typeof fila.enviado !== "boolean") fila.enviado = fila.enviado == null ? null : String(fila.enviado) === "true";
+  if (!fila.estado) fila.estado = "0 Por contactar";
+  return { fila, registro: p.registro };
+}
+
 /** Línea de Registro para una interacción nueva (sin raw). */
 export function lineaRegistro(i) {
   if (i.raw) return i.raw;
