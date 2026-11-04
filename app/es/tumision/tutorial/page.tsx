@@ -72,8 +72,8 @@ export default function TutorialPage() {
         </div>
 
         <p style={{ marginTop: "2rem", fontSize: "1rem", color: "rgba(242,242,240,0.50)", textAlign: "center", lineHeight: 1.75 }}>
-          Cuando lo hayas hecho, respóndeme al mail y cuéntame cómo fue.<br />
-          Tengo un segundo truco esperándote.
+          ¿Te ha salido? Responde a mi correo y dime: ¿a tu peque le gustaría aprender más magia?<br />
+          Con un sí o un no me vale.
         </p>
       </div>
     </main>

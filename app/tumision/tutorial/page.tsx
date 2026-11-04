@@ -63,8 +63,8 @@ export default function TutorialPage() {
         </div>
 
         <p style={{ marginTop: "2rem", fontSize: "1rem", color: "rgba(242,242,240,0.50)", textAlign: "center", lineHeight: 1.75 }}>
-          Egin duzunean, erantzun iezadazu postaz eta kontatu nola joan den.<br />
-          Bigarren truko bat daukat zure zain.
+          Atera zaizu? Erantzun nire mezuari eta esadazu: zure txikiari gustatuko litzaioke magia gehiago ikastea?<br />
+          Bai edo ez batekin nahikoa dut.
         </p>
       </div>
     </main>
