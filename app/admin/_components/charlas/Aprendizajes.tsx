@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 // configurada, está listo para pasar a automático. Debajo, el embudo y el
 // coste de la IA.
 
-interface Propuesta {
+export interface Propuesta {
   id: string;
   creado_en: string;
   regla: string;
@@ -246,7 +246,7 @@ function Cifra({ titulo, valor, detalle }: { titulo: string; valor: string | num
   );
 }
 
-function PropuestaCard({ p, ocupado, onAprobar, onDescartar }: { p: Propuesta; ocupado: boolean; onAprobar: (texto: string) => void; onDescartar: () => void }) {
+export function PropuestaCard({ p, ocupado, onAprobar, onDescartar }: { p: Propuesta; ocupado: boolean; onAprobar: (texto: string) => void; onDescartar: () => void }) {
   const [texto, setTexto] = useState(p.regla);
   return (
     <div className="rounded-xl border border-gray-200 bg-[#fbf9f5] p-4">

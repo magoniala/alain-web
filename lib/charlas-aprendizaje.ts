@@ -109,10 +109,7 @@ Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["da_mes","recordatori
   ].join("\n\n");
 
   const texto = await llamarClaude({ system, usuario, proposito: "aprender", maxTokens: 1500 });
-  const ini = texto.indexOf("{");
-  const fin = texto.lastIndexOf("}");
-  const json = JSON.parse(texto.slice(ini, fin + 1)) as { propuestas?: { regla: string; tipos?: string[]; evidencia?: string; n?: number }[] };
-  const propuestas = (json.propuestas ?? []).filter((p) => p.regla?.trim()).slice(0, 5);
+  const propuestas = leerPropuestas(texto);
 
   if (propuestas.length) {
     await supabase.from("charlas_reglas_propuestas").insert(
@@ -122,14 +119,18 @@ Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["da_mes","recordatori
   return { correcciones: correcciones.length, propuestas: propuestas.length };
 }
 
-/** ¿Toca la pasada semanal ahora? (día y hora de config, una vez por semana) */
-export async function tocaAprender(): Promise<boolean> {
+/**
+ * ¿Toca la pasada semanal ahora? (día y hora de config, una vez por semana)
+ * Compartido con el carril de magia: solo cambian los nombres de las claves
+ * de config (charlas: aprendizaje_*, magia: magia_aprendizaje_*).
+ */
+export async function tocaSemanal(claves: { ultima: string; dia: string; hora: string }): Promise<boolean> {
   // Se ejecuta en la primera pasada del cron posterior al momento semanal
   // configurado (domingo 20:00 por defecto). El cron no corre en fin de
   // semana, así que en la práctica es el lunes a las 7:00: lo que importa es
   // que pase una vez por semana, no la hora exacta.
   const supabase = supabaseCharlas();
-  const { data } = await supabase.from("charlas_config").select("clave, valor").in("clave", ["aprendizaje_ultima", "aprendizaje_dia", "aprendizaje_hora"]);
+  const { data } = await supabase.from("charlas_config").select("clave, valor").in("clave", [claves.ultima, claves.dia, claves.hora]);
   const cfg = Object.fromEntries((data ?? []).map((c) => [c.clave, c.valor]));
   const ahora = new Date();
   const madrid = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(ahora);
@@ -137,15 +138,42 @@ export async function tocaAprender(): Promise<boolean> {
   const dia = dias[(madrid.find((p) => p.type === "weekday")?.value ?? "").replace(".", "").toLowerCase()] ?? -1;
   if (dia < 0) return false;
   const h = Number(madrid.find((p) => p.type === "hour")?.value) * 60 + Number(madrid.find((p) => p.type === "minute")?.value);
-  const [hh, mm] = String(cfg.aprendizaje_hora ?? "20:00").split(":").map(Number);
-  const objetivoDia = Number(cfg.aprendizaje_dia ?? 0);
+  const [hh, mm] = String(cfg[claves.hora] ?? "20:00").split(":").map(Number);
+  const objetivoDia = Number(cfg[claves.dia] ?? 0);
   const objetivoMin = hh * 60 + mm;
   // Minutos transcurridos desde la última vez que se cumplió (día, hora) objetivo.
   let desde = ((dia - objetivoDia + 7) % 7) * 1440 + (h - objetivoMin);
   if (desde < 0) desde += 7 * 1440;
   const ultimaOcurrencia = Date.now() - desde * 60000;
-  const ultima = cfg.aprendizaje_ultima ? new Date(String(cfg.aprendizaje_ultima)).getTime() : 0;
+  const ultima = cfg[claves.ultima] ? new Date(String(cfg[claves.ultima])).getTime() : 0;
   return ultima < ultimaOcurrencia;
+}
+
+export async function tocaAprender(): Promise<boolean> {
+  return tocaSemanal({ ultima: "aprendizaje_ultima", dia: "aprendizaje_dia", hora: "aprendizaje_hora" });
+}
+
+export interface PropuestaIA {
+  regla: string;
+  tipos?: string[];
+  evidencia?: string;
+  n?: number;
+}
+
+/** Lee el JSON de propuestas que devuelve la IA (tolera texto alrededor). */
+export function leerPropuestas(texto: string): PropuestaIA[] {
+  const ini = texto.indexOf("{");
+  const fin = texto.lastIndexOf("}");
+  if (ini < 0 || fin < ini) throw new Error("La IA no devolvió JSON.");
+  const json = JSON.parse(texto.slice(ini, fin + 1)) as { propuestas?: PropuestaIA[] };
+  return (json.propuestas ?? []).filter((p) => p.regla?.trim()).slice(0, 5);
+}
+
+/** Añade una regla numerada y fechada al texto de reglas_aprendidas. */
+export function añadirReglaNumerada(actual: string, regla: string, tipos?: string[] | null): string {
+  const n = (actual.match(/^\d+\.\s/gm)?.length ?? 0) + 1;
+  const fecha = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date()).split("-").reverse().join("-");
+  return `${actual.replace(/\s+$/, "")}\n\n${n}. (${fecha}) ${regla}${tipos?.length ? ` [tipos: ${tipos.join(", ")}]` : ""}`;
 }
 
 /** Aprueba una propuesta: la añade a reglas_aprendidas numerada y fechada. */
@@ -156,9 +184,7 @@ export async function aprobarPropuesta(id: string, textoFinal?: string): Promise
   const regla = (textoFinal ?? p.regla).trim();
   const { data: k } = await supabase.from("charlas_conocimiento").select("texto").eq("clave", "reglas_aprendidas").maybeSingle();
   const actual = k?.texto ?? "Reglas que Alain ha fijado revisando la bandeja. Tienen prioridad sobre los guiones cuando chocan.\n";
-  const n = (actual.match(/^\d+\.\s/gm)?.length ?? 0) + 1;
-  const fecha = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date()).split("-").reverse().join("-");
-  const nuevo = `${actual.replace(/\s+$/, "")}\n\n${n}. (${fecha}) ${regla}${p.tipos?.length ? ` [tipos: ${p.tipos.join(", ")}]` : ""}`;
+  const nuevo = añadirReglaNumerada(actual, regla, p.tipos);
   await supabase.from("charlas_conocimiento").upsert({ clave: "reglas_aprendidas", titulo: "Reglas aprendidas de las correcciones de Alain", tipo: "reglas", orden: 5, texto: nuevo, activo: true, actualizado_en: new Date().toISOString() });
   await supabase.from("charlas_reglas_propuestas").update({ estado: "aprobada", texto_final: regla, resuelto_en: new Date().toISOString() }).eq("id", id);
   await supabase.from("charlas_correcciones").update({ aplicada_en: new Date().toISOString() }).is("aplicada_en", null).lte("creado_en", p.creado_en);

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import VistaCorreo from "./VistaCorreo";
+import AprendizajesMagia from "./magia/Aprendizajes";
 
 // Pestaña Magia · fase 6a del sistema automático: el CRM de prospectos
 // (antiguos clientes, recuperar, intermediarios, referidos) con su bandeja.
@@ -72,7 +73,7 @@ const fmtFecha = (iso: string | null) => (iso ? iso.slice(0, 10).split("-").reve
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
 export default function MagiaTab() {
-  const [seccion, setSeccion] = useState<"bandeja" | "crm">("bandeja");
+  const [seccion, setSeccion] = useState<"bandeja" | "crm" | "aprendizajes">("bandeja");
   const pw = useCallback(() => sessionStorage.getItem("admin_pw") || "", []);
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": pw() }), [pw]);
 
@@ -169,9 +170,9 @@ export default function MagiaTab() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-200">
-        {(["bandeja", "crm"] as const).map((s) => (
+        {(["bandeja", "crm", "aprendizajes"] as const).map((s) => (
           <button key={s} onClick={() => setSeccion(s)} className={`-mb-px border-b-2 px-4 py-2 text-[0.9rem] ${seccion === s ? "border-[#0F2240] font-medium text-[#0F2240]" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
-            {s === "bandeja" ? `Bandeja${tareas.length ? ` · ${tareas.length}` : ""}` : "CRM de magia"}
+            {s === "bandeja" ? `Bandeja${tareas.length ? ` · ${tareas.length}` : ""}` : s === "crm" ? "CRM de magia" : "Aprendizajes"}
           </button>
         ))}
         <span className="ml-auto text-[0.78rem] text-gray-500">
@@ -180,6 +181,8 @@ export default function MagiaTab() {
         </span>
       </div>
       {aviso && <p className="rounded-xl bg-amber-50 px-4 py-2 text-[0.85rem] text-amber-900">{aviso}</p>}
+
+      {seccion === "aprendizajes" && <AprendizajesMagia />}
 
       {seccion === "bandeja" && (
         <div className="space-y-5">
