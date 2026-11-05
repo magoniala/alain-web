@@ -20,6 +20,33 @@ export interface EstadisticaTipo {
   ultimo_envio: string | null;
 }
 
+/**
+ * Agrupa envíos (ordenados del más reciente al más antiguo) por la clave que
+ * se le pase y cuenta, por clave, cuántos hay, cuántos se corrigieron y la
+ * racha actual sin corrección. Compartido con el carril de magia.
+ */
+export function calcularRachas<T extends { editado?: boolean | null; resuelto_en: string | null }>(filas: T[], clave: (f: T) => string): EstadisticaTipo[] {
+  const porTipo = new Map<string, EstadisticaTipo & { rachaCerrada: boolean }>();
+  for (const f of filas) {
+    const k = clave(f);
+    let e = porTipo.get(k);
+    if (!e) {
+      e = { tipo: k, enviados: 0, editados: 0, racha_sin_editar: 0, ultimo_envio: f.resuelto_en, rachaCerrada: false };
+      porTipo.set(k, e);
+    }
+    e.enviados++;
+    if (f.editado) {
+      e.editados++;
+      e.rachaCerrada = true;
+    } else if (!e.rachaCerrada) {
+      e.racha_sin_editar++;
+    }
+  }
+  return [...porTipo.values()]
+    .map((e) => ({ tipo: e.tipo, enviados: e.enviados, editados: e.editados, racha_sin_editar: e.racha_sin_editar, ultimo_envio: e.ultimo_envio }))
+    .sort((a, b) => b.enviados - a.enviados);
+}
+
 /** Envíos por tipo de mensaje y racha sin corrección (los más recientes primero). */
 export async function estadisticasPorTipo(): Promise<EstadisticaTipo[]> {
   const supabase = supabaseCharlas();
@@ -29,29 +56,7 @@ export async function estadisticasPorTipo(): Promise<EstadisticaTipo[]> {
     .eq("estado", "enviada")
     .order("resuelto_en", { ascending: false })
     .limit(2000);
-
-  const porTipo = new Map<string, EstadisticaTipo & { rachaCerrada: boolean }>();
-  for (const t of data ?? []) {
-    const clave = t.tipo === "respuesta" ? `respuesta:${(t.contexto as { clasificacion?: string })?.clasificacion ?? "otro"}` : t.tipo;
-    let e = porTipo.get(clave);
-    if (!e) {
-      e = { tipo: clave, enviados: 0, editados: 0, racha_sin_editar: 0, ultimo_envio: t.resuelto_en, rachaCerrada: false };
-      porTipo.set(clave, e);
-    }
-    e.enviados++;
-    if (t.editado) {
-      e.editados++;
-      e.rachaCerrada = true;
-    } else if (!e.rachaCerrada) {
-      e.racha_sin_editar++;
-    }
-  }
-  return [...porTipo.values()]
-    .map(({ rachaCerrada, ...e }) => {
-      void rachaCerrada;
-      return e;
-    })
-    .sort((a, b) => b.enviados - a.enviados);
+  return calcularRachas(data ?? [], (t) => (t.tipo === "respuesta" ? `respuesta:${(t.contexto as { clasificacion?: string })?.clasificacion ?? "otro"}` : t.tipo));
 }
 
 export interface ResumenAprendizaje {

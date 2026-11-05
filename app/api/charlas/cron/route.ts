@@ -146,8 +146,8 @@ async function ejecutar(req: Request) {
   // Aprendizaje semanal (domingo 20:00 por defecto): propone reglas a partir
   // de las correcciones de la semana. Barato: una llamada sin conocimiento.
   const aprendizaje = !panel && (await tocaAprender()) ? await aprender().catch((e) => ({ correcciones: 0, propuestas: 0, saltado: (e as Error).message })) : null;
-  // Lo mismo para el carril de magia (config magia_aprendizaje_*). Solo si
-  // queda margen en la función: si no, tocaAprenderMagia sigue en true y lo
+  // Lo mismo para el carril de magia (lib/crm-aprendizaje.ts, config
+  // magia_aprendizaje_*). Solo si queda margen: si no, sigue tocando y lo
   // recoge la pasada siguiente (las de fuera de ventana son rápidas).
   const aprendizajeMagia =
     !panel && Date.now() - inicio < 35000 && (await tocaAprenderMagia())
@@ -185,7 +185,7 @@ async function entrada(req: Request) {
     try {
       const r = await ejecutar(req);
       const d = await r.json().catch(() => null);
-      console.log("[charlas-cron]", JSON.stringify({ ok: d?.ok, leidos: d?.lectura?.carpetas, proceso: d?.proceso, motor: d?.motor?.creadas, ms: d?.ms }).slice(0, 800));
+      console.log("[charlas-cron]", JSON.stringify({ ok: d?.ok, leidos: d?.lectura?.carpetas, proceso: d?.proceso, motor: d?.motor?.creadas, aprendizaje: d?.aprendizaje ?? undefined, aprendizaje_magia: d?.aprendizaje_magia ?? undefined, ms: d?.ms }).slice(0, 800));
     } catch (e) {
       console.error("[charlas-cron] error", (e as Error).message);
     }
