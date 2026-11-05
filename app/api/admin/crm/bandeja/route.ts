@@ -217,6 +217,6 @@ async function aplicarCambios(t: Tarea, envio: { canal: "Mail" | "WhatsApp"; tex
 }
 
 function etiqueta(tipo: string) {
-  return ({ reactivacion: "Reactivación", recordatorio_1: "Recordatorio 1", recordatorio_2: "Recordatorio 2", recuperacion: "Mensaje de recuperación", check_in: "Check-in", primer_contacto: "Primer contacto", propuesta: "Propuesta", seguimiento: "Seguimiento", cierre: "Cierre suave" } as Record<string, string>)[tipo] ?? tipo.replace(/_/g, " ");
+  return ({ reactivacion: "Reactivación", recordatorio_1: "Recordatorio 1", recordatorio_2: "Recordatorio 2", recuperacion: "Mensaje de recuperación", check_in: "Check-in", primer_contacto: "Primer contacto", agencia_1a: "Agencia · primer mail (formato)", agencia_1b: "Agencia · primer mail (a quién escribir)", localizar_contacto: "Localizar email de la agencia", propuesta: "Propuesta", seguimiento: "Seguimiento", cierre: "Cierre suave" } as Record<string, string>)[tipo] ?? tipo.replace(/_/g, " ");
 }
 

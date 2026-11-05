@@ -46,6 +46,9 @@ add("flujo_recuperar", "Flujo — Recuperar", "guion", leer("Vías/Recuperar/00 
 add("recuperar_mensaje", "Recuperar · Mensaje", "guion", leer("Vías/Recuperar/Recuperar · Mensaje.md"), 31);
 add("flujo_intermediarios", "Flujo — Intermediarios", "guion", leer("Vías/Intermediarios/00 Flujo intermediarios.md"), 40);
 add("intermediarios_checkin", "Intermediarios · Check-in", "guion", leer("Vías/Intermediarios/Intermediarios · Check-in.md"), 41);
+add("flujo_agencias", "Flujo — Agencias de eventos", "guion", leer("Vías/Agencias/00 Flujo agencias.md"), 42);
+add("agencias_guion", "Agencias · Guion del primer mail (1-A, 1-B y seguimiento)", "guion", leer("Vías/Agencias/2026-11-05 Guion — primer mail a agencias.md"), 43);
+add("agencias_investigacion", "Agencias · Investigación (qué piden a un mago y censo)", "guion", leer("Vías/Agencias/2026-11-05 Investigación agencias de eventos.md"), 44);
 add("protocolo_fecha_provisional", "Protocolo — Fecha provisional", "guion", leer("Protocolo — Fecha provisional.md"), 45);
 
 const comunesDir = join(DIR, "Mensajes comunes");

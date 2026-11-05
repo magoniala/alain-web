@@ -13,6 +13,8 @@
 //             particular (variante C) → 9 Aparcado directo, no se persigue
 //   recuperar 9 → mensaje de recuperación → 3, recordatorio único a +5 laborables → 9 a +12 meses (dos intentos en años distintos → 8 Perdido)
 //   intermediario 9 → check-in → 9 a +6 meses
+//   agencia   0 → mail 1-B (pide a quién escribir; sin responsable) o 1-A (pregunta por el formato; con responsable), texto fijo → 3, recordatorio único a +4 laborables
+//             3 → recordatorio único (texto fijo) → 9, check-in a +6 meses · nunca se llama hasta tener contacto con nombre (regla de Alain, 5-11-2026)
 //   4 Ha respondido → propuesta (Alain, con borrador) · 5/6 → seguimiento de propuesta (+3 laborables) / cierre suave · "Esperar…" → aviso
 //   7 Ganado con fecha → recordatorio para Alain (cobro, confirmación, post-evento)
 
@@ -125,7 +127,36 @@ interface Decision {
   instrucciones: string;
   cambios: Record<string, unknown>;
   nota?: string;
+  /** Texto fijo (sin IA): se usa tal cual cuando el canal es correo. */
+  borrador?: { asunto: string | null; cuerpo: string };
 }
+
+
+// ── Agencias de eventos (guion: vault, Vías/Agencias/Guion — primer mail a agencias) ──
+const FIRMA_AGENCIA = "Alain Zulaika · Niala\n688 821 488 · contacto@alainzulaika.com · alainzulaika.com";
+const PRESENTACION_AGENCIA = "Soy Alain Zulaika, mago profesional de Elgoibar (Niala). Llevo 12 años actuando, con más de 200 eventos en empresas, ferias, congresos y celebraciones familiares.";
+
+/** Primer nombre de "Nombre Apellido (cargo…)"; null si no hay responsable. */
+function primerNombre(r: string | null | undefined): string | null {
+  const n = (r ?? "").replace(/\(.*?\)/g, "").trim().split(/\s+/)[0];
+  return n ? n : null;
+}
+
+function mailAgencia1B(): { asunto: string; cuerpo: string } {
+  return {
+    asunto: "¿A quién puedo escribir para proveedores de espectáculos?",
+    cuerpo: `Hola:\n\n${PRESENTACION_AGENCIA}\n\nMe gustaría trabajar con agencias como proveedor. ¿Podríais decirme con quién de vuestro equipo me conviene hablar para proveedores de espectáculos o animación?\n\nCon un nombre o un email me vale. Gracias,\n\n${FIRMA_AGENCIA}`,
+  };
+}
+function mailAgencia1A(nombre: string): { asunto: string; cuerpo: string } {
+  return {
+    asunto: "Una pregunta rápida sobre espectáculos para vuestros eventos",
+    cuerpo: `Hola ${nombre}:\n\n${PRESENTACION_AGENCIA}\n\nMe gustaría trabajar con agencias como proveedor y prefiero acertar con lo que os hace falta antes que mandaros un catálogo.\n\nUna pregunta: cuando un cliente os pide magia o un espectáculo, ¿qué formato os cuesta más encontrar bien resuelto? (cóctel itinerante, presentador, show de sobremesa, algo para público familiar…)\n\nCon una línea me vale. Gracias,\n\n${FIRMA_AGENCIA}`,
+  };
+}
+// Dentro de un hilo abierto: sin saludo ni firma (regla aprendida 1).
+const RECORDATORIO_AGENCIA_1B = "Escribo de nuevo por si mi mensaje se quedó entre los demás: ¿me podéis decir con quién de vuestro equipo hablar para proveedores de espectáculos? Con un nombre me vale.";
+const RECORDATORIO_AGENCIA_1A = "Te escribo de nuevo por si se te pasó: ¿qué formato de espectáculo os cuesta más encontrar bien resuelto? Con una línea me vale.";
 
 export function decidirMagia(f: Ficha): Decision | null {
   const fase = faseMagia(f.estado);
@@ -142,6 +173,9 @@ export function decidirMagia(f: Ficha): Decision | null {
   if (pa.startsWith("esperar") || pa.startsWith("espera ")) {
     return { tipo: "seguimiento", nivel: "C", conMensaje: true, instrucciones: `La ficha dice: "${f.proxima_accion}". Ha llegado la fecha. Si procede un toque suave (Mensajes comunes · Seguimiento corto), redáctalo en dos frases por el canal de la ficha; si no procede, responder = false y propón mover la fecha.`, cambios: { fecha_proxima_accion: laborables(h, 3) }, nota: `Estabas esperando: ${f.proxima_accion}` };
   }
+  if (seg === "agencia" && canal === "llamada" && fase !== 7) {
+    return { tipo: "localizar_contacto", nivel: "C", conMensaje: false, instrucciones: "", cambios: { fecha_proxima_accion: sumar(h, 3) }, nota: "Agencia sin email: localiza el email general en su web, Google Maps o Instagram y ponlo en la ficha. No se llama hasta tener contacto con nombre. Al aplicar, la fecha pasa a +3 días." };
+  }
   if (canal === "llamada" && fase !== 7) {
     return { tipo: "llamada_alain", nivel: "C", conMensaje: false, instrucciones: "", cambios: { fecha_proxima_accion: sumar(h, 7) }, nota: "La ficha no tiene correo ni teléfono con el que escribir: toca llamar o conseguir el contacto. Al aplicar, la fecha pasa a +7." };
   }
@@ -149,6 +183,52 @@ export function decidirMagia(f: Ficha): Decision | null {
   // 7 Ganado: lo que haya programado es de Alain (cobro, confirmación, post-evento).
   if (fase === 7) {
     return { tipo: "revisar_ganado", nivel: "C", conMensaje: false, instrucciones: "", cambios: {}, nota: `Cliente ganado con acción programada: "${f.proxima_accion ?? "sin texto"}". Si el evento ya se hizo, aplica la regla post-evento (segmento antiguo, 9 Aparcado, 2 meses antes del aniversario) desde la ficha.` };
+  }
+
+  if (seg === "agencia") {
+    const nombre = primerNombre(f.responsable);
+    if (fase === 0 || fase === 1 || fase === 2) {
+      const m = nombre ? mailAgencia1A(nombre) : mailAgencia1B();
+      return {
+        tipo: nombre ? "agencia_1a" : "agencia_1b",
+        nivel: "B",
+        conMensaje: true,
+        instrucciones: `Primer mail a una agencia de eventos (${nombre ? "con persona de contacto: pregunta por el formato" : "a un email general: pide a quién escribir"}). Texto fijo del guion, sin cambiar nada salvo que Alain indique otra cosa:\nAsunto: ${m.asunto}\n\n${m.cuerpo}`,
+        cambios: { estado: "3 Primer mensaje enviado", proxima_accion: "Recordatorio único (4 días laborables). Sin llamar hasta tener contacto con nombre", fecha_proxima_accion: laborables(h, 4) },
+        borrador: m,
+        nota: nombre ? undefined : "Solo hay email general: este mail pide a quién escribir. No llamar.",
+      };
+    }
+    if (fase === 3) {
+      const texto = nombre ? RECORDATORIO_AGENCIA_1A : RECORDATORIO_AGENCIA_1B;
+      return {
+        tipo: "recordatorio_1",
+        nivel: "A",
+        conMensaje: true,
+        instrucciones: `Recordatorio único a una agencia, dentro del mismo hilo, sin saludo ni firma. Texto fijo: ${texto}`,
+        cambios: { estado: "9 Aparcado", proxima_accion: "Check-in (agencia)", fecha_proxima_accion: sumarMeses(h, 6) },
+        borrador: { asunto: null, cuerpo: texto },
+        nota: "Último toque: si no contesta, la ficha queda aparcada y vuelve a +6 meses.",
+      };
+    }
+    if (fase === 9) {
+      return {
+        tipo: "check_in",
+        nivel: "B",
+        conMensaje: true,
+        instrucciones: "Check-in semestral a una agencia de eventos: mensaje corto y cercano. Recuerda que sigues disponible y haz UNA pregunta fácil (qué formato les ha costado encontrar este año). Sin catálogo ni precios. Por el canal indicado.",
+        cambios: { estado: "9 Aparcado", proxima_accion: "Check-in (agencia)", fecha_proxima_accion: sumarMeses(h, 6) },
+      };
+    }
+    if (fase === 4) {
+      return {
+        tipo: "propuesta",
+        nivel: "C",
+        conMensaje: true,
+        instrucciones: "Una agencia de eventos ha respondido. Mira en el Registro y en su respuesta QUÉ FORMATO dicen que les cuesta encontrar y propón solo ese formato (no un catálogo): una frase de qué incluye, que puedes mandar vídeo y condiciones, y que tienes seguro de responsabilidad civil. Sin precio si la ficha no lo trae; en ese caso pregunta fecha y tipo de evento. En nota_para_alain deja el formato que han dicho.",
+        cambios: { estado: "5 Propuesta enviada", proxima_accion: "Seguimiento de la propuesta (3 días laborables)", fecha_proxima_accion: laborables(h, 3) },
+      };
+    }
   }
 
   if (seg === "intermediario") {
@@ -341,6 +421,16 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
     await sb.from("crm_tareas").insert({ ...base, contexto: { programada: true, resumen: etiquetaMagia(d.tipo), clasificacion: d.tipo } });
     return;
   }
+  if (d.borrador && canal === "mail") {
+    // Texto fijo del guion: sin llamada a la IA, el borrador sale exacto.
+    await sb.from("crm_tareas").insert({
+      ...base,
+      contexto: { programada: true, clasificacion: d.tipo, instrucciones: d.instrucciones, canal_ia: "mail", resumen: etiquetaMagia(d.tipo), confianza: 1, etiqueta_principal: null, alternativa: null, redaccion: "texto_fijo" },
+      borrador_asunto: d.borrador.asunto,
+      borrador_texto: d.borrador.cuerpo,
+    });
+    return;
+  }
   const [{ data: ficha }, { data: registro }, { data: hilo }] = await Promise.all([
     sb.from("crm_fichas").select("*").eq("id", f.id).single(),
     sb.from("crm_interacciones").select("fecha, canal, texto").eq("ficha_id", f.id).order("fecha", { ascending: true, nullsFirst: true }).order("orden"),
@@ -493,6 +583,9 @@ export function etiquetaMagia(tipo: string): string {
       recuperacion: "Mensaje de recuperación",
       check_in: "Check-in",
       primer_contacto: "Primer contacto",
+      agencia_1a: "Agencia · primer mail (pregunta por el formato)",
+      agencia_1b: "Agencia · primer mail (pide a quién escribir)",
+      localizar_contacto: "Localizar el email de la agencia",
       propuesta: "Propuesta",
       seguimiento: "Seguimiento",
       cierre: "Cierre suave",
