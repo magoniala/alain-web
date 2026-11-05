@@ -37,14 +37,14 @@ export default function AprendizajesMagia() {
   const [reglas, setReglas] = useState("");
   const [editandoReglas, setEditandoReglas] = useState(false);
   const [ocupado, setOcupado] = useState("");
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ texto: string; error?: boolean } | null>(null);
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("admin_pw") || "" }), []);
 
   const cargar = useCallback(async () => {
     const r = await fetch("/api/admin/crm/aprendizaje", { headers: headers() });
     const j = await r.json();
     if (!r.ok) {
-      setMsg(`Error al cargar: ${j.error ?? r.status}`);
+      setMsg({ texto: `Error al cargar: ${j.error ?? r.status}`, error: true });
       return;
     }
     setD(j as Datos);
@@ -57,21 +57,23 @@ export default function AprendizajesMagia() {
 
   async function accion(nombre: string, body: Record<string, unknown>) {
     setOcupado(nombre);
-    setMsg("");
+    setMsg(null);
     try {
       const r = await fetch("/api/admin/crm/aprendizaje", { method: "POST", headers: headers(), body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Error");
       if (nombre === "guardar") setEditandoReglas(false);
+      if (nombre === "aprender")
+        setMsg({ texto: j.propuestas ? `${j.correcciones} correcciones leídas → ${j.propuestas} propuestas nuevas, abajo.` : `Ninguna propuesta nueva: ${j.saltado ?? `${j.correcciones} correcciones leídas y ningún patrón que merezca regla`}.` });
       await cargar();
     } catch (e) {
-      setMsg(`Error: ${(e as Error).message}`);
+      setMsg({ texto: `Error: ${(e as Error).message}`, error: true });
     } finally {
       setOcupado("");
     }
   }
 
-  if (!d) return <p className="text-gray-500">{msg || "Cargando…"}</p>;
+  if (!d) return <p className="text-gray-500">{msg?.texto ?? "Cargando…"}</p>;
 
   const pendientes = d.propuestas.filter((p) => p.estado === "pendiente");
   const resueltas = d.propuestas.filter((p) => p.estado !== "pendiente").slice(0, 10);
@@ -94,7 +96,7 @@ export default function AprendizajesMagia() {
           <br />
           Esta semana: {d.correcciones_7d.total} correcciones{d.correcciones_7d.sin_motivo ? `, ${d.correcciones_7d.sin_motivo} sin motivo (con motivo aprende más y antes)` : ""}.
         </p>
-        {msg && <p className="mb-3 text-[0.85rem] text-red-700">{msg}</p>}
+        {msg && <p className={`mb-3 rounded-lg px-3 py-2 text-[0.85rem] ${msg.error ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-900"}`}>{msg.texto}</p>}
         {pendientes.length === 0 && <p className="text-[0.88rem] text-gray-500">Nada pendiente. Las propuestas salen de lo que corriges, eliges como opción B o descartas en la bandeja de magia.</p>}
         <div className="space-y-3">
           {pendientes.map((p) => (

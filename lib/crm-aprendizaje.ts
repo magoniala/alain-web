@@ -19,7 +19,7 @@
 
 import { supabaseCharlas } from "./charlas";
 import { llamarClaude } from "./charlas-ia";
-import { tocaSemanal, leerPropuestas, añadirReglaNumerada, calcularRachas, type EstadisticaTipo } from "./charlas-aprendizaje";
+import { tocaSemanal, leerPropuestas, añadirReglaNumerada, calcularRachas, SOLO_JSON, type EstadisticaTipo } from "./charlas-aprendizaje";
 
 const CARRIL = "magia";
 const CFG = {
@@ -115,7 +115,7 @@ Tu trabajo: sacar REGLAS nuevas, concretas y cortas, que eviten que el sistema v
 - No repitas reglas vigentes ni pendientes, y no vuelvas a proponer las descartadas, ni con otras palabras.
 - Máximo 5. Si nada merece regla, lista vacía.
 
-Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["recordatorio_1"],"evidencia":"2 correcciones del 3 y 5-11: quitó …","n":2}]}`;
+Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["recordatorio_1"],"evidencia":"2 correcciones del 3 y 5-11: quitó …","n":2}]}${SOLO_JSON}`;
 
 function describir(c: Correccion, i: number): string {
   const ficha = uno(c.tarea?.ficha);
@@ -135,7 +135,7 @@ async function pasada(dias: number, forzar: boolean): Promise<ResultadoAprendiza
   if (error) throw new Error(error.message);
   const correcciones = (data ?? []) as unknown as Correccion[];
 
-  if (!correcciones.length) return { correcciones: 0, propuestas: 0, saltado: "sin correcciones en el periodo" };
+  if (!correcciones.length) return { correcciones: 0, propuestas: 0, saltado: `no hay correcciones en los últimos ${dias} días` };
   // Magia mueve poco volumen: basta una corrección con motivo (puede ser general) o dos sin él.
   if (!forzar && correcciones.length < 2 && !correcciones[0].motivo) return { correcciones: 1, propuestas: 0, saltado: "una sola corrección y sin motivo" };
 
@@ -154,14 +154,14 @@ async function pasada(dias: number, forzar: boolean): Promise<ResultadoAprendiza
   ].join("\n\n");
 
   const texto = await llamarClaude({ system: [{ type: "text", text: INSTRUCCIONES }], usuario, proposito: "magia_aprender", maxTokens: 1500 });
-  const nuevas = leerPropuestas(texto);
+  const { propuestas: nuevas, nota } = leerPropuestas(texto);
   if (nuevas.length) {
     const { error: e } = await sb
       .from("crm_reglas_propuestas")
       .insert(nuevas.map((p) => ({ carril: CARRIL, regla: p.regla.trim(), tipos: p.tipos ?? [], evidencia: p.evidencia ?? null, n_correcciones: p.n ?? 0 })));
     if (e) throw new Error(e.message);
   }
-  return { correcciones: correcciones.length, propuestas: nuevas.length };
+  return { correcciones: correcciones.length, propuestas: nuevas.length, ...(nota ? { saltado: nota } : {}) };
 }
 
 /**

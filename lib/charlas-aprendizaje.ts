@@ -98,7 +98,7 @@ Tu trabajo: sacar REGLAS nuevas, concretas y cortas, que eviten que el sistema v
 - Si una corrección es un cambio puntual sin patrón (un nombre, un dato), no la conviertas en regla.
 - Máximo 5 propuestas. Si no hay nada que merezca una regla, devuelve lista vacía.
 
-Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["da_mes","recordatorio_1"],"evidencia":"2 correcciones del 28 y 30-10: quitó …","n":2}]}`,
+Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["da_mes","recordatorio_1"],"evidencia":"2 correcciones del 28 y 30-10: quitó …","n":2}]}${SOLO_JSON}`,
     },
   ];
 
@@ -114,14 +114,14 @@ Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["da_mes","recordatori
   ].join("\n\n");
 
   const texto = await llamarClaude({ system, usuario, proposito: "aprender", maxTokens: 1500 });
-  const propuestas = leerPropuestas(texto);
+  const { propuestas, nota } = leerPropuestas(texto);
 
   if (propuestas.length) {
     await supabase.from("charlas_reglas_propuestas").insert(
       propuestas.map((p) => ({ regla: p.regla.trim(), tipos: p.tipos ?? [], evidencia: p.evidencia ?? null, n_correcciones: p.n ?? 0 }))
     );
   }
-  return { correcciones: correcciones.length, propuestas: propuestas.length };
+  return { correcciones: correcciones.length, propuestas: propuestas.length, ...(nota ? { saltado: nota } : {}) };
 }
 
 /**
@@ -165,13 +165,27 @@ export interface PropuestaIA {
   n?: number;
 }
 
-/** Lee el JSON de propuestas que devuelve la IA (tolera texto alrededor). */
-export function leerPropuestas(texto: string): PropuestaIA[] {
-  const ini = texto.indexOf("{");
-  const fin = texto.lastIndexOf("}");
-  if (ini < 0 || fin < ini) throw new Error("La IA no devolvió JSON.");
-  const json = JSON.parse(texto.slice(ini, fin + 1)) as { propuestas?: PropuestaIA[] };
-  return (json.propuestas ?? []).filter((p) => p.regla?.trim()).slice(0, 5);
+/** Cierre común de los prompts de aprendizaje: sin esto, cuando no ve nada, la IA a veces contesta en prosa. */
+export const SOLO_JSON = `\n\nResponde SIEMPRE con el JSON y nada más, también cuando no haya nada que proponer: {"propuestas":[]}.`;
+
+/**
+ * Lee el JSON de propuestas que devuelve la IA (tolera texto alrededor).
+ * Si contesta en prosa sin JSON, no es un error: no hay propuestas, y se
+ * devuelve lo que dijo en `nota` para enseñarlo en el panel.
+ */
+export function leerPropuestas(texto: string): { propuestas: PropuestaIA[]; nota?: string } {
+  const t = texto.trim();
+  if (!t) throw new Error("La IA devolvió una respuesta vacía.");
+  const ini = t.indexOf("{");
+  const fin = t.lastIndexOf("}");
+  if (ini < 0 || fin < ini) return { propuestas: [], nota: `la IA no vio nada que proponer: «${t.slice(0, 220)}${t.length > 220 ? "…" : ""}»` };
+  let json: { propuestas?: PropuestaIA[] };
+  try {
+    json = JSON.parse(t.slice(ini, fin + 1));
+  } catch {
+    throw new Error(`La IA devolvió un JSON roto: «${t.slice(0, 160)}…»`);
+  }
+  return { propuestas: (json.propuestas ?? []).filter((p) => p.regla?.trim()).slice(0, 5) };
 }
 
 /** Añade una regla numerada y fechada al texto de reglas_aprendidas. */
