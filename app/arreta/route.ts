@@ -3,7 +3,8 @@
 // queda fuera del layout raíz y no carga el píxel de Whop, Vercel Analytics ni
 // Speed Insights. Sin cookies, sin analítica, sin scripts de terceros.
 // El diseño y los textos son los de arreta-index.html tal cual; solo se ha
-// rellenado ENDPOINT y añadido el campo señuelo «web».
+// rellenado ENDPOINT, añadido el campo señuelo «web» y la charla por ?c=slug
+// (se envía como `saioa`; sin parámetro sigue siendo «hernani-2026-11»).
 
 export const dynamic = "force-static";
 
@@ -143,6 +144,8 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
 // Dónde se guardan las respuestas. Rellenar antes de publicar (ver nota «Landing y encuesta anónima de alumnos»).
 // Debe aceptar un POST JSON y NO guardar IP, ni cookies, ni identificadores.
 var ENDPOINT = "/api/arreta";
+// Charla: ?c=<slug> en el QR. Sin parámetro (tarjetas de Hernani ya impresas), la de Hernani.
+var SAIOA = (function(){try{var c=(new URLSearchParams(location.search).get("c")||"").toLowerCase();return /^[a-z0-9-]{1,60}$/.test(c)?c:"hernani-2026-11"}catch(e){return "hernani-2026-11"}})();
 
 var f=document.getElementById("f"),err=document.getElementById("err"),btn=document.getElementById("send"),th=document.getElementById("thanks");
 f.addEventListener("submit",function(e){
@@ -150,7 +153,7 @@ f.addEventListener("submit",function(e){
   err.style.display="none";
   var d=new FormData(f), probatu=d.get("probatu");
   if(!probatu){err.textContent="Aukeratu erantzun bat 1. galderan.";err.style.display="block";return}
-  var body={probatu:probatu,ikasi:d.get("ikasi")||"",gustatu:d.get("gustatu")||"",gehitu:d.get("gehitu")||"",saioa:"hernani-2026-11",web:d.get("web")||""};
+  var body={probatu:probatu,ikasi:d.get("ikasi")||"",gustatu:d.get("gustatu")||"",gehitu:d.get("gehitu")||"",saioa:SAIOA,web:d.get("web")||""};
   btn.disabled=true;
   if(!ENDPOINT){btn.disabled=false;err.textContent="Oraindik ez dago konektatuta (ENDPOINT hutsik).";err.style.display="block";return}
   fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),credentials:"omit",referrerPolicy:"no-referrer"})

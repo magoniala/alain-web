@@ -23,11 +23,13 @@ type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
 const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
-  { titulo: "Comercial", tabs: ["Charlas", "Arreta", "Prospectos magia"] },
+  { titulo: "Comercial", tabs: ["Charlas", "Prospectos magia"] },
   { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
   { titulo: "Correo", tabs: ["Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
-  { titulo: "Magia", tabs: ["Mirariak 2026", "Opiniones eventos", "Magic"] },
+  { titulo: "Magia", tabs: ["Mirariak 2026", "Magic"] },
+  // Lo que dicen de mí: alumnos de las charlas (Arreta) y quienes contratan magia (Opiniones eventos).
+  { titulo: "Testimonios", tabs: ["Arreta", "Opiniones eventos"] },
   { titulo: "Otros", tabs: ["Arrogante"] },
 ];
 
@@ -176,7 +178,7 @@ export default function AdminPage() {
     );
   }
 
-  const ancho = tab === "Valoración" || tab === "PAR-Q+" || tab === "Opiniones eventos" || tab === "Charlas" || tab === "Mirariak 2026" ? "max-w-[1320px]" : "max-w-[1040px]";
+  const ancho = tab === "Valoración" || tab === "PAR-Q+" || tab === "Opiniones eventos" || tab === "Charlas" || tab === "Mirariak 2026" || tab === "Arreta" ? "max-w-[1320px]" : "max-w-[1040px]";
 
   return (
     <main className="admin min-h-screen">
