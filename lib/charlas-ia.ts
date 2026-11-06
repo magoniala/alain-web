@@ -135,52 +135,63 @@ export async function llamarClaude(opciones: {
   const supabase = supabaseCharlas();
   const { data: cfg } = await supabase.from("charlas_config").select("valor").eq("clave", "modelo").maybeSingle();
   const modelo = (cfg?.valor as string) || "claude-sonnet-5-5";
-  const inicio = Date.now();
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: modelo,
-      max_tokens: opciones.maxTokens ?? 2000,
-      system: opciones.system,
-      messages: [{ role: "user", content: opciones.usuario }],
-    }),
-  });
+  // A veces la API contesta 200 con el contenido vacío (sin bloques de texto).
+  // Es transitorio: se reintenta hasta 2 veces más antes de rendirse, y si
+  // sigue vacío el error dice por qué (stop_reason y tipos de bloque).
+  let ultimo = "";
+  for (let intento = 1; intento <= 3; intento++) {
+    const inicio = Date.now();
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: modelo,
+        max_tokens: opciones.maxTokens ?? 2000,
+        system: opciones.system,
+        messages: [{ role: "user", content: opciones.usuario }],
+      }),
+    });
 
-  const cuerpo = await r.json().catch(() => ({}));
-  const uso = cuerpo?.usage ?? {};
-  const p = PRECIOS[modelo] ?? PRECIOS["claude-sonnet-5-5"];
-  const escritura1h = uso.cache_creation?.ephemeral_1h_input_tokens ?? 0;
-  const escritura5m = uso.cache_creation?.ephemeral_5m_input_tokens ?? Math.max(0, (uso.cache_creation_input_tokens ?? 0) - escritura1h);
-  const coste =
-    ((uso.input_tokens ?? 0) * p.entrada +
-      (uso.output_tokens ?? 0) * p.salida +
-      escritura5m * p.cacheEscritura +
-      escritura1h * p.cacheEscritura1h +
-      (uso.cache_read_input_tokens ?? 0) * p.cacheLectura) /
-    1_000_000;
+    const cuerpo = await r.json().catch(() => ({}));
+    const uso = cuerpo?.usage ?? {};
+    const p = PRECIOS[modelo] ?? PRECIOS["claude-sonnet-5-5"];
+    const escritura1h = uso.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+    const escritura5m = uso.cache_creation?.ephemeral_5m_input_tokens ?? Math.max(0, (uso.cache_creation_input_tokens ?? 0) - escritura1h);
+    const coste =
+      ((uso.input_tokens ?? 0) * p.entrada +
+        (uso.output_tokens ?? 0) * p.salida +
+        escritura5m * p.cacheEscritura +
+        escritura1h * p.cacheEscritura1h +
+        (uso.cache_read_input_tokens ?? 0) * p.cacheLectura) /
+      1_000_000;
 
-  await supabase.from("charlas_ia_uso").insert({
-    modelo,
-    proposito: opciones.proposito,
-    mensaje_id: opciones.mensajeId ?? null,
-    tokens_entrada: uso.input_tokens ?? 0,
-    tokens_salida: uso.output_tokens ?? 0,
-    tokens_cache_escritura: uso.cache_creation_input_tokens ?? 0,
-    tokens_cache_lectura: uso.cache_read_input_tokens ?? 0,
-    coste_usd: Number(coste.toFixed(5)),
-    duracion_ms: Date.now() - inicio,
-    error: r.ok ? null : JSON.stringify(cuerpo?.error ?? cuerpo).slice(0, 500),
-  });
+    const bloques: { type: string; text?: string }[] = Array.isArray(cuerpo.content) ? cuerpo.content : [];
+    const texto = bloques.filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+    const vacio = r.ok && !texto.trim();
+    ultimo = `stop_reason=${cuerpo?.stop_reason ?? "?"}, bloques=[${bloques.map((b) => b.type).join(",") || "ninguno"}]`;
 
-  if (!r.ok) throw new Error(`Anthropic ${r.status}: ${cuerpo?.error?.message ?? "error"}`);
-  const texto = (cuerpo.content ?? []).filter((b: { type: string }) => b.type === "text").map((b: { text: string }) => b.text).join("");
-  return texto;
+    await supabase.from("charlas_ia_uso").insert({
+      modelo,
+      proposito: opciones.proposito,
+      mensaje_id: opciones.mensajeId ?? null,
+      tokens_entrada: uso.input_tokens ?? 0,
+      tokens_salida: uso.output_tokens ?? 0,
+      tokens_cache_escritura: uso.cache_creation_input_tokens ?? 0,
+      tokens_cache_lectura: uso.cache_read_input_tokens ?? 0,
+      coste_usd: Number(coste.toFixed(5)),
+      duracion_ms: Date.now() - inicio,
+      error: r.ok ? (vacio ? `respuesta vacía (intento ${intento}): ${ultimo}` : null) : JSON.stringify(cuerpo?.error ?? cuerpo).slice(0, 500),
+    });
+
+    if (!r.ok) throw new Error(`Anthropic ${r.status}: ${cuerpo?.error?.message ?? "error"}`);
+    if (!vacio) return texto;
+  }
+  throw new Error(`La IA devolvió una respuesta vacía tres veces seguidas (${ultimo}).`);
 }
 
 function extraerJSON(texto: string): unknown {
