@@ -113,7 +113,7 @@ Devuelve SOLO JSON: {"propuestas":[{"regla":"…","tipos":["da_mes","recordatori
       .join("\n\n")}\n</correcciones>`,
   ].join("\n\n");
 
-  const texto = await llamarClaude({ system, usuario, proposito: "aprender", maxTokens: 1500 });
+  const texto = await llamarClaude({ system, usuario, proposito: "aprender", maxTokens: 6000 });
   const { propuestas, nota } = leerPropuestas(texto);
 
   if (propuestas.length) {

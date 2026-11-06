@@ -139,7 +139,10 @@ export async function llamarClaude(opciones: {
   // A veces la API contesta 200 con el contenido vacío (sin bloques de texto).
   // Es transitorio: se reintenta hasta 2 veces más antes de rendirse, y si
   // sigue vacío el error dice por qué (stop_reason y tipos de bloque).
+  // Si se corta por max_tokens habiendo solo "thinking", el modelo gastó todo el
+  // presupuesto pensando: el siguiente intento le da el triple de margen.
   let ultimo = "";
+  let maxTokens = opciones.maxTokens ?? 2000;
   for (let intento = 1; intento <= 3; intento++) {
     const inicio = Date.now();
     const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -151,7 +154,7 @@ export async function llamarClaude(opciones: {
       },
       body: JSON.stringify({
         model: modelo,
-        max_tokens: opciones.maxTokens ?? 2000,
+        max_tokens: maxTokens,
         system: opciones.system,
         messages: [{ role: "user", content: opciones.usuario }],
       }),
@@ -190,6 +193,7 @@ export async function llamarClaude(opciones: {
 
     if (!r.ok) throw new Error(`Anthropic ${r.status}: ${cuerpo?.error?.message ?? "error"}`);
     if (!vacio) return texto;
+    if (cuerpo?.stop_reason === "max_tokens") maxTokens = Math.min(maxTokens * 3, 16000);
   }
   throw new Error(`La IA devolvió una respuesta vacía tres veces seguidas (${ultimo}).`);
 }

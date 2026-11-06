@@ -153,7 +153,7 @@ async function pasada(dias: number, forzar: boolean): Promise<ResultadoAprendiza
     `<correcciones>\n${correcciones.map(describir).join("\n\n")}\n</correcciones>`,
   ].join("\n\n");
 
-  const texto = await llamarClaude({ system: [{ type: "text", text: INSTRUCCIONES }], usuario, proposito: "magia_aprender", maxTokens: 1500 });
+  const texto = await llamarClaude({ system: [{ type: "text", text: INSTRUCCIONES }], usuario, proposito: "magia_aprender", maxTokens: 6000 });
   const { propuestas: nuevas, nota } = leerPropuestas(texto);
   if (nuevas.length) {
     const { error: e } = await sb
