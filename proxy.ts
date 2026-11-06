@@ -16,6 +16,8 @@ const NO_REDIRECT_PATHS = [
   "/entrenatzaile",
   "/magic",
   "/creadores",
+  // Encuesta anónima de alumnos (QR de las tarjetas): una sola página en euskera.
+  "/arreta",
   // Una sola página con selector ES/EU dentro, sin mirror en /es.
   "/quetal",
   // Tiene mirror en /es, pero el QR de la tarjeta del show familiar abre

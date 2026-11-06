@@ -16,13 +16,14 @@ import CharlasTab from "./_components/CharlasTab";
 import MagiaTab from "./_components/MagiaTab";
 import EntrenatzaileTab from "./_components/EntrenatzaileTab";
 import MirariakTab from "./_components/MirariakTab";
+import ArretaTab from "./_components/ArretaTab";
 
-const TABS = ["Charlas", "Prospectos magia", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Mirariak 2026"] as const;
+const TABS = ["Charlas", "Prospectos magia", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Mirariak 2026", "Arreta"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
 const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
-  { titulo: "Comercial", tabs: ["Charlas", "Prospectos magia"] },
+  { titulo: "Comercial", tabs: ["Charlas", "Arreta", "Prospectos magia"] },
   { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
   { titulo: "Correo", tabs: ["Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
@@ -47,6 +48,7 @@ const ICONO: Record<Tab, React.ReactNode> = {
   "Embudo espalda": <path d="M3 4h14l-5 6v5l-4 2v-7z" />,
   Magic: <path d="M4 16 14 6m-1-3 1 2 2 1-2 1-1 2-1-2-2-1 2-1zM15 11l.6 1.4L17 13l-1.4.6L15 15l-.6-1.4L13 13l1.4-.6z" />,
   "Mirariak 2026": <path d="M10 3a7 7 0 1 0 7 7h-7V3Zm2 0v5h5a7 7 0 0 0-5-5Z" />,
+  Arreta: <path d="M4 4h12v12H4zM7 8h6M7 11h6M7 14h3" />,
   "Opiniones eventos": <path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm6 2.5.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L7.1 8.6l2-.3z" />,
 };
 
@@ -298,6 +300,7 @@ export default function AdminPage() {
               {tab === "Magic" && <MagicTab />}
               {tab === "Opiniones eventos" && <QuetalTab />}
               {tab === "Mirariak 2026" && <MirariakTab />}
+              {tab === "Arreta" && <ArretaTab />}
             </div>
           </div>
         </div>
