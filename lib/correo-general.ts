@@ -259,6 +259,127 @@ export async function indexarHistorico(opciones: { presupuestoMs: number }): Pro
 }
 
 // ---------------------------------------------------------------------------
+// Otros buzones (newsletter@, entrenatzaile@, los de niala.es). Lector aparte
+// y solo de cabeceras: el de alain@ (leerBuzon, con charlas y magia) no se
+// toca. Cada buzón se activa solo cuando su contraseña está en Vercel:
+//   MAIL_PASS_<CLAVE>   obligatoria
+//   MAIL_USER_<CLAVE>   opcional (por defecto, la propia dirección)
+//   MAIL_HOST_<CLAVE>   opcional (por defecto, imap.serviciodecorreo.es, Arsys)
+// La primera vez lee los últimos 30 días; después, solo lo nuevo. El avance
+// va en charlas_config.correo_cursor_<id>.
+// ---------------------------------------------------------------------------
+export const BUZONES_EXTRA = [
+  { id: "newsletter", direccion: "newsletter@alainzulaika.com", clave: "NEWSLETTER" },
+  { id: "entrenatzaile", direccion: "entrenatzaile@alainzulaika.com", clave: "ENTRENATZAILE" },
+  { id: "registros_niala", direccion: "registros@niala.es", clave: "REGISTROS_NIALA" },
+  { id: "newsletter_niala", direccion: "newsletter@niala.es", clave: "NEWSLETTER_NIALA" },
+] as const;
+
+export function configBuzon(b: (typeof BUZONES_EXTRA)[number]) {
+  return {
+    ...b,
+    host: process.env[`MAIL_HOST_${b.clave}`] || IMAP_HOST,
+    user: process.env[`MAIL_USER_${b.clave}`] || b.direccion,
+    pass: process.env[`MAIL_PASS_${b.clave}`] || "",
+  };
+}
+
+interface Cursor {
+  uidvalidity?: string;
+  ultimo_uid?: number;
+  guardadas?: number;
+  al_dia?: boolean;
+  error?: string | null;
+  en?: string;
+}
+
+async function leerUnBuzon(b: ReturnType<typeof configBuzon>, reglas: Reglas, hasta: number): Promise<Cursor> {
+  const supabase = supabaseCharlas();
+  const clave = `correo_cursor_${b.id}`;
+  const { data } = await supabase.from("charlas_config").select("valor").eq("clave", clave).maybeSingle();
+  const previo = (data?.valor as Cursor) ?? {};
+  const guardar = async (c: Cursor) => {
+    await supabase
+      .from("charlas_config")
+      .upsert({ clave, valor: { ...c, en: new Date().toISOString() }, actualizado_en: new Date().toISOString() })
+      .then(() => null, () => null);
+    return c;
+  };
+  const cliente = new ImapFlow({ host: b.host, port: 993, secure: true, auth: { user: b.user, pass: b.pass }, logger: false });
+  let estado: Cursor = { ...previo, error: null };
+  try {
+    await cliente.connect();
+    const lock = await cliente.getMailboxLock("INBOX");
+    try {
+      const uidvalidity = String(cliente.mailbox ? cliente.mailbox.uidValidity : "");
+      const mismo = previo.uidvalidity === uidvalidity && Number(previo.ultimo_uid) > 0;
+      let ultimo = mismo ? Number(previo.ultimo_uid) : 0;
+      let uids = (mismo
+        ? ((await cliente.search({ uid: `${ultimo + 1}:*` }, { uid: true })) || [])
+        : ((await cliente.search({ since: new Date(Date.now() - 30 * 86400000) }, { uid: true })) || [])) as number[];
+      uids = uids.filter((u) => u > ultimo).sort((a, b) => a - b);
+      let guardadas = mismo ? Number(previo.guardadas ?? 0) : 0;
+      estado = { uidvalidity, ultimo_uid: ultimo, guardadas, al_dia: uids.length === 0, error: null };
+      for (let i = 0; i < uids.length; i += 100) {
+        if (Date.now() > hasta) break;
+        const tanda = uids.slice(i, i + 100);
+        const msgs: FetchMessageObject[] = await cliente.fetchAll(tanda.join(","), { uid: true, envelope: true, flags: true, headers: CABECERAS_LECTOR }, { uid: true });
+        const filas = msgs.map((m) => {
+          const env = m.envelope ?? {};
+          const messageId = limpiarId(env.messageId) || `sin-id-${b.id}-${uidvalidity}-${m.uid}`;
+          const refs = [...new Set([limpiarId(env.inReplyTo), ...Array.from(String(extraerCabecera(m.headers, "references") ?? "").matchAll(/<([^>]+)>/g)).map((x) => x[1].trim())].filter(Boolean))];
+          return filaEntrada({ m, carpeta: "INBOX", messageId, referencias: refs, via: null, viaRef: null, reglas, buzon: b.id });
+        });
+        const r = await guardarEntradas(filas);
+        if (r.error) return await guardar({ ...estado, error: r.error });
+        guardadas += r.guardadas;
+        ultimo = tanda[tanda.length - 1];
+        estado = { uidvalidity, ultimo_uid: ultimo, guardadas, al_dia: ultimo >= uids[uids.length - 1], error: null };
+        await guardar(estado);
+      }
+      return await guardar(estado);
+    } finally {
+      lock.release();
+    }
+  } catch (e) {
+    const x = e as Error & { authenticationFailed?: boolean; responseText?: string };
+    const msg = x.authenticationFailed ? "Usuario o contraseña incorrectos" : x.responseText || x.message;
+    return await guardar({ ...estado, error: msg });
+  } finally {
+    await cliente.logout().catch(() => {});
+  }
+}
+
+/** Lee lo nuevo de los buzones con contraseña. Nunca lanza. */
+export async function leerBuzonesExtra(opciones: { presupuestoMs: number }): Promise<Record<string, Cursor | "sin_contraseña"> | null> {
+  const reglas = await cargarReglas().catch(() => null);
+  if (!reglas) return null; // SQL sin ejecutar
+  const hasta = Date.now() + opciones.presupuestoMs;
+  const res: Record<string, Cursor | "sin_contraseña"> = {};
+  for (const base of BUZONES_EXTRA) {
+    const b = configBuzon(base);
+    if (!b.pass) {
+      res[b.id] = "sin_contraseña";
+      continue;
+    }
+    if (Date.now() > hasta) break;
+    res[b.id] = await leerUnBuzon(b, reglas, hasta).catch((e) => ({ error: (e as Error).message }));
+  }
+  return res;
+}
+
+/** Estado de cada buzón para el panel (sin enseñar nunca contraseñas). */
+export async function estadoBuzones() {
+  const claves = ["correo_historico", ...BUZONES_EXTRA.map((b) => `correo_cursor_${b.id}`)];
+  const { data } = await supabaseCharlas().from("charlas_config").select("clave, valor").in("clave", claves);
+  const v = new Map((data ?? []).map((r) => [r.clave as string, r.valor as Record<string, unknown>]));
+  return [
+    { id: "alain", direccion: "alain@alainzulaika.com", configurado: true, variable: null as string | null, estado: v.get("correo_historico") ?? null },
+    ...BUZONES_EXTRA.map((b) => ({ id: b.id, direccion: b.direccion, configurado: !!configBuzon(b).pass, variable: `MAIL_PASS_${b.clave}`, estado: v.get(`correo_cursor_${b.id}`) ?? null })),
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Panel · Bandeja general › Remitentes (F0)
 // ---------------------------------------------------------------------------
 
@@ -282,6 +403,7 @@ export interface FilaRemitente {
   ultima_fecha: string | null;
   categoria: Categoria;
   via: string | null;
+  buzones: string[];
 }
 
 export interface PanelRemitentes {
@@ -296,6 +418,7 @@ export interface PanelRemitentes {
   sugerencias_silenciar: { dominio: string; n: number }[];
   historico: Record<string, unknown> | null;
   genericos: string[];
+  buzones: Awaited<ReturnType<typeof estadoBuzones>>;
 }
 
 function diasLaborables(desde: Date, hasta: Date): number {
@@ -312,24 +435,25 @@ function diasLaborables(desde: Date, hasta: Date): number {
 export async function panelRemitentes(dias = 30): Promise<PanelRemitentes> {
   const supabase = supabaseCharlas();
   const desde = new Date(Date.now() - dias * 86400000);
-  const filas: { de: string | null; de_nombre: string | null; dominio: string | null; masivo: boolean; asunto: string | null; fecha: string | null; categoria: Categoria; via: string | null }[] = [];
+  const filas: { buzon: string; de: string | null; de_nombre: string | null; dominio: string | null; masivo: boolean; asunto: string | null; fecha: string | null; categoria: Categoria; via: string | null }[] = [];
   for (let i = 0; i < 30000; i += 1000) {
     const { data, error } = await supabase
       .from("correo_entrada")
-      .select("de, de_nombre, dominio, masivo, asunto, fecha, categoria, via")
+      .select("buzon, de, de_nombre, dominio, masivo, asunto, fecha, categoria, via")
       .eq("direccion", "entrante")
       .gte("fecha", desde.toISOString())
       .order("fecha", { ascending: false })
       .range(i, i + 999);
     if (error) {
-      return { sin_tabla: true, desde: null, total: 0, dias_laborables: 1, por_categoria: {}, remitentes: [], reglas: [], sugerencias_silenciar: [], historico: null, genericos: [...DOMINIOS_GENERICOS] };
+      return { sin_tabla: true, desde: null, total: 0, dias_laborables: 1, por_categoria: {}, remitentes: [], reglas: [], sugerencias_silenciar: [], historico: null, genericos: [...DOMINIOS_GENERICOS], buzones: [] };
     }
     filas.push(...((data ?? []) as typeof filas));
     if (!data || data.length < 1000) break;
   }
-  const [{ data: reglas }, { data: hist }] = await Promise.all([
+  const [{ data: reglas }, { data: hist }, buzones] = await Promise.all([
     supabase.from("correo_remitentes").select("patron, tratamiento, categoria, nota, creado_por").order("patron"),
     supabase.from("charlas_config").select("valor").eq("clave", "correo_historico").maybeSingle(),
+    estadoBuzones(),
   ]);
 
   const porCategoria: Record<string, number> = {};
@@ -342,11 +466,12 @@ export async function panelRemitentes(dias = 30): Promise<PanelRemitentes> {
     const r = porDe.get(de);
     if (!r) {
       // Las filas vienen de la más nueva a la más vieja: la primera manda en asunto, fecha y categoría.
-      porDe.set(de, { de, nombre: f.de_nombre, dominio: f.dominio ?? "", n: 1, masivos: f.masivo ? 1 : 0, ultimo_asunto: f.asunto, ultima_fecha: f.fecha, categoria: f.categoria, via: f.via });
+      porDe.set(de, { de, nombre: f.de_nombre, dominio: f.dominio ?? "", n: 1, masivos: f.masivo ? 1 : 0, ultimo_asunto: f.asunto, ultima_fecha: f.fecha, categoria: f.categoria, via: f.via, buzones: [f.buzon] });
     } else {
       r.n++;
       if (f.masivo) r.masivos++;
       if (!r.via && f.via) r.via = f.via;
+      if (!r.buzones.includes(f.buzon)) r.buzones.push(f.buzon);
     }
   }
 
@@ -375,6 +500,7 @@ export async function panelRemitentes(dias = 30): Promise<PanelRemitentes> {
     sugerencias_silenciar: sugerencias,
     historico: (hist?.valor as Record<string, unknown>) ?? null,
     genericos: [...DOMINIOS_GENERICOS],
+    buzones,
   };
 }
 

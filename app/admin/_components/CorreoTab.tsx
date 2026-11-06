@@ -26,6 +26,7 @@ interface Remitente {
   ultima_fecha: string | null;
   categoria: Categoria;
   via: string | null;
+  buzones: string[];
 }
 interface Regla {
   patron: string;
@@ -45,7 +46,10 @@ interface Panel {
   sugerencias_silenciar: { dominio: string; n: number }[];
   historico: { hecho?: boolean; guardadas?: number; error?: string; en?: string } | null;
   genericos: string[];
+  buzones: { id: string; direccion: string; configurado: boolean; variable: string | null; estado: { hecho?: boolean; al_dia?: boolean; guardadas?: number; error?: string | null; en?: string } | null }[];
 }
+
+const corto = (dir: string) => dir.replace(/@alainzulaika\.com$/, "@");
 
 const TRATAMIENTOS = [
   { v: "completo", t: "Completo", d: "La IA lo lee y propone respuesta." },
@@ -93,6 +97,7 @@ interface Fila {
   ultima_fecha: string | null;
   categoria: Categoria;
   remitentes?: number;
+  buzones: string[];
 }
 
 function Editor({ fila, porDominio, regla, genericos, alGuardar, alCerrar }: {
@@ -170,6 +175,8 @@ export default function CorreoTab() {
   const [q, setQ] = useState("");
   const [abierta, setAbierta] = useState<string | null>(null);
   const [limite, setLimite] = useState(80);
+  const [buzon, setBuzon] = useState("todos");
+  const [leyendo, setLeyendo] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -203,22 +210,24 @@ export default function CorreoTab() {
 
   const filas: Fila[] = useMemo(() => {
     if (!datos) return [];
+    const base = buzon === "todos" ? datos.remitentes : datos.remitentes.filter((r) => r.buzones.includes(buzon));
     if (agrupar === "remitente")
-      return datos.remitentes.map((r) => ({ clave: r.de, titulo: r.nombre || r.de, sub: r.nombre ? r.de : null, dominio: r.dominio, n: r.n, masivos: r.masivos, ultimo_asunto: r.ultimo_asunto, ultima_fecha: r.ultima_fecha, categoria: r.categoria }));
+      return base.map((r) => ({ clave: r.de, titulo: r.nombre || r.de, sub: r.nombre ? r.de : null, dominio: r.dominio, n: r.n, masivos: r.masivos, ultimo_asunto: r.ultimo_asunto, ultima_fecha: r.ultima_fecha, categoria: r.categoria, buzones: r.buzones }));
     const m = new Map<string, Fila>();
-    for (const r of datos.remitentes) {
+    for (const r of base) {
       const k = "@" + (r.dominio || "?");
       const f = m.get(k);
-      if (!f) m.set(k, { clave: k, titulo: k, sub: null, dominio: r.dominio, n: r.n, masivos: r.masivos, ultimo_asunto: r.ultimo_asunto, ultima_fecha: r.ultima_fecha, categoria: r.categoria, remitentes: 1 });
+      if (!f) m.set(k, { clave: k, titulo: k, sub: null, dominio: r.dominio, n: r.n, masivos: r.masivos, ultimo_asunto: r.ultimo_asunto, ultima_fecha: r.ultima_fecha, categoria: r.categoria, remitentes: 1, buzones: [...r.buzones] });
       else {
         f.n += r.n;
         f.masivos += r.masivos;
         f.remitentes = (f.remitentes ?? 0) + 1;
+        for (const b of r.buzones) if (!f.buzones.includes(b)) f.buzones.push(b);
         if ((r.ultima_fecha ?? "") > (f.ultima_fecha ?? "")) Object.assign(f, { ultima_fecha: r.ultima_fecha, ultimo_asunto: r.ultimo_asunto, categoria: r.categoria });
       }
     }
     return [...m.values()].sort((a, b) => b.n - a.n);
-  }, [datos, agrupar]);
+  }, [datos, agrupar, buzon]);
 
   const visibles = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -252,6 +261,25 @@ export default function CorreoTab() {
     }
   };
 
+  const leerAhora = async () => {
+    setLeyendo(true);
+    try {
+      const r = await api("/api/admin/correo", { method: "POST", body: JSON.stringify({ accion: "leer" }) });
+      const partes: string[] = [];
+      if (r.historico) partes.push(`alain@: ${r.historico.guardadas ?? 0} apuntados${r.historico.hecho ? " (histórico completo)" : r.historico.error ? ` · error: ${r.historico.error}` : " (sigue en la próxima)"}`);
+      for (const [id, v] of Object.entries((r.otros ?? {}) as Record<string, { guardadas?: number; error?: string | null; al_dia?: boolean } | string>)) {
+        if (typeof v === "string") continue;
+        partes.push(`${id}: ${v.error ? `error: ${v.error}` : `${v.guardadas ?? 0} apuntados${v.al_dia ? "" : " (sigue en la próxima)"}`}`);
+      }
+      setAviso(partes.length ? `Leído. ${partes.join(" · ")}.` : "Nada nuevo que leer.");
+      await cargar();
+    } catch (e) {
+      setAviso((e as Error).message);
+    } finally {
+      setLeyendo(false);
+    }
+  };
+
   if (error) return <p className="text-[0.9rem] text-red-700">{error}</p>;
   if (!datos) return <p className="text-[0.9rem] text-gray-500">Cargando…</p>;
   if (datos.sin_tabla)
@@ -266,15 +294,42 @@ export default function CorreoTab() {
   const vias = pc.via ?? 0;
   const dl = datos.dias_laborables;
   const sugeridas = datos.reglas.filter((r) => r.creado_por === "sugerencia");
-  const h = datos.historico;
 
   return (
     <div className="space-y-5">
       <p className="text-[0.85rem] text-gray-500">
         Fase 0: solo se mide. Nada de esto toca el buzón ni usa IA. Marca aquí el tratamiento de cada remitente; con eso arranca la bandeja (F1).{" "}
         {datos.desde ? `Datos desde el ${fecha(datos.desde)} (${dl} días laborables).` : "Aún no hay correos apuntados."}{" "}
-        {h?.hecho ? "Histórico de 30 días ya leído." : h ? `Leyendo el histórico de 30 días: ${h.guardadas ?? 0} apuntados${h.error ? ` · error: ${h.error}` : ""}.` : "El histórico de 30 días se lee en las pasadas fuera de las ventanas de IA."}
       </p>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <h2 className="mr-auto text-[0.95rem] font-semibold text-gray-900">Buzones</h2>
+          <button className={botonOscuro} disabled={leyendo} onClick={leerAhora}>{leyendo ? "Leyendo… (hasta 1 min)" : "Leer ahora"}</button>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {datos.buzones.map((b) => {
+            const e = b.estado;
+            const listo = b.id === "alain" ? e?.hecho : e?.al_dia;
+            return (
+              <div key={b.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2 text-[0.83rem]">
+                <span className="w-64 shrink-0 font-medium text-gray-900">{b.direccion}</span>
+                {!b.configurado ? (
+                  <span className="text-amber-700">Falta la contraseña en Vercel: <code className="rounded bg-amber-50 px-1">{b.variable}</code></span>
+                ) : e?.error ? (
+                  <span className="text-red-700">Error: {e.error}</span>
+                ) : !e ? (
+                  <span className="text-gray-500">{b.id === "alain" ? "Leyendo lo nuevo; el último mes, pendiente (pulsa Leer ahora)." : "Pendiente de la primera lectura (pulsa Leer ahora)."}</span>
+                ) : (
+                  <span className="text-gray-600">
+                    {listo ? "Al día" : "Leyendo el último mes"} · {e.guardadas ?? 0} apuntados{b.id === "alain" ? " del último mes" : ""}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Cifra titulo="Correos / día laborable" valor={(datos.total / dl).toFixed(1)} detalle={`${datos.total} en total`} />
@@ -346,6 +401,12 @@ export default function CorreoTab() {
             <option value="personas">Personas (no masivo)</option>
             <option value="masivos">Masivos</option>
           </select>
+          <select className={`${campo} !w-auto`} value={buzon} onChange={(e) => setBuzon(e.target.value)}>
+            <option value="todos">Todos los buzones</option>
+            {datos.buzones.filter((b) => b.configurado).map((b) => (
+              <option key={b.id} value={b.id}>{b.direccion}</option>
+            ))}
+          </select>
           <input className={`${campo} !w-40`} placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <p className="mb-2 text-[0.75rem] text-gray-400">{visibles.length} {agrupar === "dominio" ? "dominios" : "remitentes"}</p>
@@ -361,6 +422,11 @@ export default function CorreoTab() {
                   <p className="truncate text-[0.78rem] text-gray-500">
                     {fecha(f.ultima_fecha)} · {f.ultimo_asunto || "(sin asunto)"}
                   </p>
+                  {(f.buzones.length > 1 || f.buzones[0] !== "alain") && (
+                    <p className="text-[0.72rem] text-gray-400">
+                      en {f.buzones.map((id) => corto(datos.buzones.find((b) => b.id === id)?.direccion ?? id)).join(", ")}
+                    </p>
+                  )}
                 </div>
                 <div className="w-24 text-[0.8rem] tabular-nums text-gray-600">
                   <b className="text-gray-900">{f.n}</b> correos
