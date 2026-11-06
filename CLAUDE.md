@@ -10,8 +10,8 @@ Esta versión de Next tiene cambios que no conoces (ver `AGENTS.md`). **Antes de
 ## Mapa (ir directo, no explorar)
 - `app/<ruta>/page.tsx` → páginas públicas. Euskera en la raíz, castellano bajo `app/es/…`. Un cambio de texto suele tocar **las dos** versiones.
 - `app/api/<ruta>/route.ts` → endpoints. Los `cron` (`charlas/cron`, `newsletter/cron`, `sequence/cron`) son tareas programadas.
-- `app/admin/_components/<X>Tab.tsx` → pestañas del panel (Charlas, Newsletter, Entrenatzaile, HojaDeRuta, Mirariak, Valoracion, Parq, Quetal, Nurture, Magia…). Su API está en `app/api/admin/<x>/`.
-- `lib/` → lógica por dominio, un fichero por tema con prefijo: `charlas-*`, `entrenatzaile-*`, `ent-*`, `crm-*`, `newsletter-*`, `secuencia*`, `acompanamiento*`, `hoja-ruta-*`, `quetal*`, `parq*`, `mirariak`, `stripe`, `email-*`. Busca primero aquí.
+- `app/admin/_components/<X>Tab.tsx` → pestañas del panel (Charlas, Correo = «Bandeja general», Newsletter, Entrenatzaile, HojaDeRuta, Mirariak, Valoracion, Parq, Quetal, Nurture, Magia…). Su API está en `app/api/admin/<x>/`.
+- `lib/` → lógica por dominio, un fichero por tema con prefijo: `charlas-*`, `correo-general` (bandeja general: apunta todo lo que entra en el buzón; enganchada en `leerBuzon`), `entrenatzaile-*`, `ent-*`, `crm-*`, `newsletter-*`, `secuencia*`, `acompanamiento*`, `hoja-ruta-*`, `quetal*`, `parq*`, `mirariak`, `stripe`, `email-*`. Busca primero aquí.
 - `scripts/charlas/` y `scripts/crm/` → espejo **Supabase → vault de Obsidian** (`espejo-vault.mjs`, `espejo-prospectos.mjs`) e importadores. Supabase manda; el vault es copia. **Excepción, las altas:** `espejo-vault.mjs` llama primero a `scripts/crm/altas-vault.mjs`, que sube a Supabase las fichas nuevas del vault (`Prospectos/` → `crm_fichas` · `Centros/` e `Instituciones/` → `charlas_centros`) con guardia de duplicados. La conversión ficha → fila está en `prospectos-lib.mjs` (`filaDesdeFicha`) y `centros-lib.mjs`; no duplicar esa lógica.
 - `sql/` → migraciones ya aplicadas a mano en Supabase, una por funcionalidad. Solo se miran si la tarea toca ese esquema.
 

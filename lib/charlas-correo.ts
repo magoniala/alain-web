@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { supabaseCharlas } from "./charlas";
+import { CABECERAS_LECTOR, cargarReglas, extraerCabecera, filaEntrada, guardarEntradas } from "./correo-general";
 
 const IMAP_HOST = "imap.serviciodecorreo.es";
 const SMTP_HOST = "smtp.serviciodecorreo.es";
@@ -168,6 +169,8 @@ const ASUNTO_CHARLAS = /(calendario de actividades|jardueren egutegia|egutegia|c
 // ---------------------------------------------------------------------------
 export interface ResumenLectura {
   magia?: number;
+  /** Bandeja general (F0): filas apuntadas en correo_entrada en esta pasada. */
+  correo_general?: { registrados: number; error?: string };
   carpetas: Record<string, { revisados: number; asociados: number; pendientes_asignar: number; nuevos_uid: number }>;
   respondidos_desde_mail: number;
   huerfanos_asociados: number;
@@ -303,7 +306,10 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
   const resumen: ResumenLectura = { carpetas: {}, respondidos_desde_mail: 0, huerfanos_asociados: 0, al_dia: true };
   const diasInicial = Number(await config("lectura_inicial_dias", 10));
   const diasHistoricoEnviados = Number(await config("enviados_historico_dias", 75));
-  const [indice, conocidos, magia] = await Promise.all([construirIndice(), cargarConocidos(), indiceMagia()]);
+  const [indice, conocidos, magia, reglasCorreo] = await Promise.all([construirIndice(), cargarConocidos(), indiceMagia(), cargarReglas().catch(() => null)]);
+  // Bandeja general (F0): si correo_remitentes no existe aún, reglasCorreo es null y no se apunta nada.
+  let pendientesCorreo: Record<string, unknown>[] = [];
+  resumen.correo_general = { registrados: 0 };
   const hilosCambiados = new Set<string>();
   let pendientesMagia: Record<string, unknown>[] = [];
   resumen.magia = 0;
@@ -353,6 +359,14 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
         let ultimoEnCola = ultimoLeido;
 
         const volcar = async () => {
+          // Bandeja general (F0): primero, y sin lanzar nunca (guardarEntradas no lanza).
+          if (pendientesCorreo.length) {
+            const lote = pendientesCorreo;
+            pendientesCorreo = [];
+            const r = await guardarEntradas(lote);
+            resumen.correo_general!.registrados += r.guardadas;
+            if (r.error) resumen.correo_general!.error = r.error;
+          }
           if (pendientes.length) {
             const { data: insertados, error } = await supabase
               .from("charlas_mensajes")
@@ -406,7 +420,7 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
               break;
             }
             const tanda = uids.slice(i, i + 100);
-            const cabeceras: FetchMessageObject[] = await cliente.fetchAll(tanda.join(","), { uid: true, envelope: true, headers: ["references"] }, { uid: true });
+            const cabeceras: FetchMessageObject[] = await cliente.fetchAll(tanda.join(","), { uid: true, envelope: true, flags: true, headers: CABECERAS_LECTOR }, { uid: true });
             cabeceras.sort((a, b) => a.uid - b.uid);
 
             for (const m of cabeceras) {
@@ -420,7 +434,7 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
               ultimoEnCola = m.uid;
               if (conocidos.guardados.has(messageId)) continue;
 
-              const refs = [...new Set([limpiarId(env.inReplyTo), ...idsDeReferencias(m.headers)].filter(Boolean))];
+              const refs = [...new Set([limpiarId(env.inReplyTo), ...idsDeReferencias(extraerCabecera(m.headers, "references"))].filter(Boolean))];
               const de = norm(env.from?.[0]?.address);
               const destinos = [...(env.to ?? []), ...(env.cc ?? [])].map((a) => norm(a.address)).filter(Boolean);
               const contraparte = t.direccion === "entrante" ? [de, ...(env.replyTo ?? []).map((a) => norm(a.address))] : destinos.filter((d) => !PROPIOS.has(d));
@@ -434,6 +448,12 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
               let fichaMagia: string | null = null;
               if (!centro && !pendiente && magia && !magia.guardados.has(messageId)) {
                 fichaMagia = refs.map((r) => magia.porId.get(r)).find(Boolean) ?? contraparte.map((e) => magia.porEmail.get(e)).find(Boolean) ?? null;
+              }
+              // Bandeja general (F0): todo lo que entra en INBOX queda apuntado, solo con cabeceras.
+              if (reglasCorreo && t.direccion === "entrante") {
+                pendientesCorreo.push(
+                  filaEntrada({ m, carpeta: t.carpeta, messageId, referencias: refs, via: centro || pendiente ? "charlas" : fichaMagia ? "magia" : null, viaRef: centro ?? fichaMagia ?? null, reglas: reglasCorreo }),
+                );
               }
               if (!centro && !pendiente && !fichaMagia) continue;
 
@@ -523,7 +543,7 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
           if (uids.length === 0) await volcar();
         } finally {
           // Lo que esté en cola se guarda aunque se acabe el tiempo.
-          if (pendientes.length || pendientesMagia.length || hilosCambiados.size) await volcar().catch(() => {});
+          if (pendientes.length || pendientesMagia.length || pendientesCorreo.length || hilosCambiados.size) await volcar().catch(() => {});
         }
       } finally {
         lock.release();

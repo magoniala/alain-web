@@ -11,6 +11,7 @@ import { proponerPendientes } from "@/lib/ent-ia";
 import { notificarReservasHojaRuta } from "@/lib/hoja-ruta-bandeja";
 import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 import { aprenderMagia, tocaAprenderMagia } from "@/lib/crm-aprendizaje";
+import { indexarHistorico } from "@/lib/correo-general";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -138,6 +139,14 @@ async function ejecutar(req: Request) {
   // ejecuciones fuera de ventana, que si no estarían ociosas. Unos pocos
   // centros por pasada; en un par de días recorre todos los que no tienen
   // correo directo.
+  // Bandeja general (F0): una sola vez, las cabeceras de los últimos 30 días
+  // de INBOX (sin cuerpo, sin IA), por tandas y fuera de ventana. Va antes
+  // del rastreo para no quedarse siempre sin margen; se apaga sola al acabar.
+  const correoHistorico =
+    !panel && !toca && lectura?.al_dia && !errorLectura && Date.now() - inicio < 25000
+      ? await indexarHistorico({ presupuestoMs: Math.max(0, 30000 - (Date.now() - inicio)) }).catch((e) => ({ hecho: false, guardadas: 0, error: (e as Error).message }))
+      : null;
+
   const rastreo =
     !panel && lectura?.al_dia && !errorLectura && !toca
       ? await rastrearContactos({ presupuestoMs: Math.max(0, 48000 - (Date.now() - inicio)) }).catch((e) => ({ revisados: 0, con_emails: 0, propuestos: 0, errores: [(e as Error).message] }))
@@ -170,7 +179,7 @@ async function ejecutar(req: Request) {
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
   const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
 }
 
 // cron-job.org espera la respuesta como mucho 30 s y, si falla muchas veces

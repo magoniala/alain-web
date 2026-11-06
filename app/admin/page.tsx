@@ -17,15 +17,16 @@ import MagiaTab from "./_components/MagiaTab";
 import EntrenatzaileTab from "./_components/EntrenatzaileTab";
 import MirariakTab from "./_components/MirariakTab";
 import ArretaTab from "./_components/ArretaTab";
+import CorreoTab from "./_components/CorreoTab";
 
-const TABS = ["Charlas", "Prospectos magia", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Mirariak 2026", "Arreta"] as const;
+const TABS = ["Charlas", "Prospectos magia", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Mirariak 2026", "Arreta", "Bandeja general"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
 const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
   { titulo: "Comercial", tabs: ["Charlas", "Prospectos magia"] },
   { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
-  { titulo: "Correo", tabs: ["Newsletter", "Nurture"] },
+  { titulo: "Correo", tabs: ["Bandeja general", "Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
   { titulo: "Magia", tabs: ["Mirariak 2026", "Magic"] },
   // Lo que dicen de mí: alumnos de las charlas (Arreta) y quienes contratan magia (Opiniones eventos).
@@ -51,6 +52,7 @@ const ICONO: Record<Tab, React.ReactNode> = {
   Magic: <path d="M4 16 14 6m-1-3 1 2 2 1-2 1-1 2-1-2-2-1 2-1zM15 11l.6 1.4L17 13l-1.4.6L15 15l-.6-1.4L13 13l1.4-.6z" />,
   "Mirariak 2026": <path d="M10 3a7 7 0 1 0 7 7h-7V3Zm2 0v5h5a7 7 0 0 0-5-5Z" />,
   Arreta: <path d="M4 4h12v12H4zM7 8h6M7 11h6M7 14h3" />,
+  "Bandeja general": <path d="M3 11l2.5-6h9L17 11v5H3zm0 0h4l1 2h4l1-2h4" />,
   "Opiniones eventos": <path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm6 2.5.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L7.1 8.6l2-.3z" />,
 };
 
@@ -178,7 +180,7 @@ export default function AdminPage() {
     );
   }
 
-  const ancho = tab === "Valoración" || tab === "PAR-Q+" || tab === "Opiniones eventos" || tab === "Charlas" || tab === "Mirariak 2026" || tab === "Arreta" ? "max-w-[1320px]" : "max-w-[1040px]";
+  const ancho = tab === "Valoración" || tab === "PAR-Q+" || tab === "Opiniones eventos" || tab === "Charlas" || tab === "Mirariak 2026" || tab === "Arreta" || tab === "Bandeja general" ? "max-w-[1320px]" : "max-w-[1040px]";
 
   return (
     <main className="admin min-h-screen">
@@ -303,6 +305,7 @@ export default function AdminPage() {
               {tab === "Opiniones eventos" && <QuetalTab />}
               {tab === "Mirariak 2026" && <MirariakTab />}
               {tab === "Arreta" && <ArretaTab />}
+              {tab === "Bandeja general" && <CorreoTab />}
             </div>
           </div>
         </div>
