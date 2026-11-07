@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  PROBATU,
-  PROBATU_ES,
   diaMadrid,
   resumenPostits,
   type Charla,
@@ -84,20 +82,24 @@ function Barra({ texto, valor, max, color, detalle }: { texto: string; valor: nu
   );
 }
 
-function Reparto({ filas }: { filas: Respuesta[] }) {
-  const total = filas.length;
-  if (!total) return <p className="text-[0.85rem] text-gray-400">Sin respuestas en esta selección.</p>;
+const TRAMOS = [
+  ["Menos de 2 h", 0, 2, "#1baf7a"],
+  ["2-4 h", 2, 4, "#2a78d6"],
+  ["4-6 h", 4, 6, "#e8a317"],
+  ["6 h o más", 6, 25, "#d64545"],
+] as const;
+const fmtH = (n: number | null) => (n == null ? "—" : String(Math.round(n * 10) / 10).replace(".", ","));
+const mediaDe = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
+
+// Horas de móvil al día (media actual) repartidas en tramos.
+function HorasMovil({ filas }: { filas: Respuesta[] }) {
+  const v = filas.map((f) => f.ordu_orain).filter((x): x is number => x != null);
+  if (!v.length) return <p className="text-[0.85rem] text-gray-400">Sin respuestas con horas en esta selección.</p>;
   return (
     <div className="space-y-3">
-      <div className="flex h-3 w-full overflow-hidden rounded-full" style={{ background: PISTA }}>
-        {PROBATU.map((k) => {
-          const n = filas.filter((f) => f.probatu === k).length;
-          return n ? <div key={k} style={{ width: `${(n / total) * 100}%`, background: COLOR[k] }} title={`${PROBATU_ES[k]}: ${n}`} /> : null;
-        })}
-      </div>
-      {PROBATU.map((k) => {
-        const n = filas.filter((f) => f.probatu === k).length;
-        return <Barra key={k} texto={PROBATU_ES[k]} valor={n} max={total} color={COLOR[k]} detalle={`${pct(n, total)} %`} />;
+      {TRAMOS.map(([texto, a, b, color]) => {
+        const n = v.filter((x) => x >= a && x < b).length;
+        return <Barra key={texto} texto={texto} valor={n} max={v.length} color={color} detalle={`${pct(n, v.length)} %`} />;
       })}
     </div>
   );
@@ -404,7 +406,10 @@ export default function ArretaTab() {
   if (!datos) return <p className="text-sm text-gray-400">Cargando…</p>;
 
   const nombreCharla = (s: string | null) => (s ? datos.charlas.find((c) => c.slug === s)?.nombre ?? s : "Sin charla");
-  const bai = filtradas.filter((r) => r.probatu === "bai").length;
+  const horasOrain = filtradas.map((r) => r.ordu_orain).filter((x): x is number => x != null);
+  const horasNahi = filtradas.map((r) => r.ordu_nahi).filter((x): x is number => x != null);
+  const mediaOrain = mediaDe(horasOrain);
+  const mediaNahi = mediaDe(horasNahi);
   const destacadas = filtradas.filter((r) => r.destacada).length;
   const hayFiltros = desde || hasta || busca;
 
@@ -455,15 +460,19 @@ export default function ArretaTab() {
       {/* Cifras */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Cifra titulo="Respuestas" valor={filtradas.length} detalle={charlaSel && rp.alumnos ? `${pct(filtradas.length, rp.alumnos)} % de ${rp.alumnos} alumnos` : undefined} />
-        <Cifra titulo="Ya lo han probado" valor={`${pct(bai, filtradas.length)} %`} detalle={`${bai} de ${filtradas.length}`} />
+        <Cifra
+          titulo="Móvil · media al día"
+          valor={mediaOrain == null ? "—" : `${fmtH(mediaOrain)} h`}
+          detalle={mediaOrain == null ? "sin horas" : `querrían ${fmtH(mediaNahi)} h · ${horasOrain.length} resp. · ${pct(horasOrain.filter((x) => x >= 4).length, horasOrain.length)} % con 4 h o más`}
+        />
         <Cifra titulo="Post-its · media" valor={rp.media == null ? "—" : rp.media.toFixed(2).replace(".", ",")} detalle={rp.total ? `${rp.total} post-its de 1 a 5` : "sin apuntar"} />
         <Cifra titulo="Post-its 4-5" valor={rp.pctAltas == null ? "—" : `${Math.round(rp.pctAltas)} %`} detalle={rp.total ? `${rp.notas[3] + rp.notas[4]} de ${rp.total}` : undefined} />
       </div>
 
       {/* Gráficas */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Tarjeta titulo="¿Lo has probado ya?">
-          <Reparto filas={filtradas} />
+        <Tarjeta titulo="Horas de móvil al día (ahora)">
+          <HorasMovil filas={filtradas} />
         </Tarjeta>
         <Tarjeta titulo="Respuestas por día">
           <PorDia filas={filtradas} />
@@ -504,7 +513,11 @@ export default function ArretaTab() {
                     {fechaLarga(r.created_at)}
                     {!charla && <> · {nombreCharla(r.charla)}</>}
                     {" · "}
-                    <span className="font-medium" style={{ color: COLOR[r.probatu] }}>{CORTO[r.probatu]}</span>
+                    {r.ordu_orain != null ? (
+                      <span className="font-medium text-gray-700">{fmtH(r.ordu_orain)} h → {fmtH(r.ordu_nahi)} h</span>
+                    ) : r.probatu ? (
+                      <span className="font-medium" style={{ color: COLOR[r.probatu] }}>{CORTO[r.probatu]}</span>
+                    ) : null}
                   </p>
                   <button
                     onClick={() => destacar(r)}

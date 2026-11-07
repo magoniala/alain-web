@@ -6,6 +6,13 @@ export const PROBATU = ["bai", "oraindik-ez", "ez"] as const;
 export type Probatu = (typeof PROBATU)[number];
 export const PROBATU_ES: Record<Probatu, string> = { bai: "Sí, ya lo ha probado", "oraindik-ez": "Aún no, pero lo probará", ez: "No" };
 
+/** Horas de móvil al día: número de 0 a 24 (acepta coma), con un decimal; si no, null. */
+export function horas(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" ? parseFloat(v.trim().replace(",", ".")) : NaN;
+  if (!Number.isFinite(n) || n < 0 || n > 24) return null;
+  return Math.round(n * 10) / 10;
+}
+
 export const SLUG_RE = /^[a-z0-9-]{1,60}$/;
 export const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -21,7 +28,9 @@ export type Charla = {
 export type Respuesta = {
   id: string;
   created_at: string;
-  probatu: Probatu;
+  probatu: Probatu | null; // ya no se pregunta (7-nov); solo respuestas antiguas
+  ordu_orain: number | null; // horas de móvil al día, ahora
+  ordu_nahi: number | null; // horas que le gustaría
   ikasi: string | null;
   gustatu: string | null;
   gehitu: string | null;

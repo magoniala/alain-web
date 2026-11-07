@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { horas } from "@/lib/arreta";
 
 // Encuesta anónima de /arreta. ANONIMATO ESTRICTO: este endpoint no lee ni
 // guarda IP, user-agent, cabeceras ni cookies; solo el cuerpo JSON. No hay rate
@@ -34,12 +35,19 @@ export async function POST(req: Request) {
   // Señuelo relleno = bot. Se le dice que ha ido bien y no se guarda nada.
   if (typeof b.web === "string" && b.web.trim()) return NextResponse.json({ ok: true });
 
-  if (typeof b.probatu !== "string" || !PROBATU.includes(b.probatu)) {
-    return NextResponse.json({ error: "probatu no válido." }, { status: 400 });
+  // Desde el 7-nov la pregunta 1 son las horas de móvil (ahora y deseadas).
+  // `probatu` solo se acepta por si alguien tiene abierta la versión anterior.
+  const ordu_orain = horas(b.ordu_orain);
+  const ordu_nahi = horas(b.ordu_nahi);
+  const probatu = typeof b.probatu === "string" && PROBATU.includes(b.probatu) ? b.probatu : null;
+  if (!probatu && (ordu_orain === null || ordu_nahi === null)) {
+    return NextResponse.json({ error: "horas no válidas." }, { status: 400 });
   }
 
   const fila = {
-    probatu: b.probatu,
+    probatu,
+    ordu_orain,
+    ordu_nahi,
     ikasi: texto(b.ikasi),
     gustatu: texto(b.gustatu),
     gehitu: texto(b.gehitu),

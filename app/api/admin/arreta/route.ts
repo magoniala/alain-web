@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const [r, c, p] = await Promise.all([
     supabase
       .from("arreta_respuestas")
-      .select("id, created_at, probatu, ikasi, gustatu, gehitu, saioa, destacada")
+      .select("id, created_at, probatu, ordu_orain, ordu_nahi, ikasi, gustatu, gehitu, saioa, destacada")
       .order("created_at", { ascending: false })
       .limit(5000),
     supabase.from("arreta_charlas").select("slug, nombre, centro, fecha_inicio, fecha_fin, margen_hasta").order("fecha_inicio", { ascending: false }),
