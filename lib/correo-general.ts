@@ -190,11 +190,47 @@ async function viasConocidas(desde: Date): Promise<Map<string, { via: string; re
   return vias;
 }
 
+// Pausa de buzones (botón del panel). Se guarda en charlas_config.correo_buzones_pausados
+// = { ids: [...] } y dura hasta que se reactive. En alain@ solo se pausa la bandeja
+// general (histórico y apunte de cabeceras): charlas y magia siguen leyendo igual.
+const CLAVE_PAUSADOS = "correo_buzones_pausados";
+const idsBuzones = (): string[] => ["alain", ...BUZONES_EXTRA.map((b) => b.id)];
+
+export async function buzonesPausados(): Promise<Set<string>> {
+  try {
+    const { data } = await supabaseCharlas().from("charlas_config").select("valor").eq("clave", CLAVE_PAUSADOS).maybeSingle();
+    const ids = (data?.valor as { ids?: unknown } | null)?.ids;
+    return new Set(Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export async function ponerBuzonPausado(id: unknown, pausado: unknown): Promise<{ ok: true; pausados: string[] }> {
+  if (typeof id !== "string" || !idsBuzones().includes(id)) throw new Error("Buzón desconocido.");
+  const set = await buzonesPausados();
+  if (pausado) set.add(id);
+  else set.delete(id);
+  const ids = [...set];
+  const { error } = await supabaseCharlas()
+    .from("charlas_config")
+    .upsert({ clave: CLAVE_PAUSADOS, valor: { ids }, actualizado_en: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+  return { ok: true, pausados: ids };
+}
+
+/** Reglas para el lector de alain@: null si la bandeja general de alain@ está pausada (no se apunta nada; charlas y magia no cambian). */
+export async function reglasParaAlain(): Promise<Reglas | null> {
+  if ((await buzonesPausados()).has("alain")) return null;
+  return cargarReglas();
+}
+
 export async function indexarHistorico(opciones: { presupuestoMs: number }): Promise<{ hecho: boolean; guardadas: number; restantes?: number; error?: string } | null> {
   const inicio = Date.now();
   const supabase = supabaseCharlas();
   const estado = await leerEstado();
   if (estado.hecho) return null;
+  if ((await buzonesPausados()).has("alain")) return null;
   const reglas = await cargarReglas();
   if (!reglas) return null; // SQL sin ejecutar
   const user = process.env.CHARLAS_MAIL_USER;
@@ -356,7 +392,9 @@ export async function leerBuzonesExtra(opciones: { presupuestoMs: number }): Pro
   if (!reglas) return null; // SQL sin ejecutar
   const hasta = Date.now() + opciones.presupuestoMs;
   const res: Record<string, Cursor | "sin_contraseña"> = {};
+  const pausados = await buzonesPausados();
   for (const base of BUZONES_EXTRA) {
+    if (pausados.has(base.id)) continue;
     const b = configBuzon(base);
     if (!b.pass) {
       res[b.id] = "sin_contraseña";
@@ -370,12 +408,13 @@ export async function leerBuzonesExtra(opciones: { presupuestoMs: number }): Pro
 
 /** Estado de cada buzón para el panel (sin enseñar nunca contraseñas). */
 export async function estadoBuzones() {
-  const claves = ["correo_historico", ...BUZONES_EXTRA.map((b) => `correo_cursor_${b.id}`)];
+  const claves = ["correo_historico", CLAVE_PAUSADOS, ...BUZONES_EXTRA.map((b) => `correo_cursor_${b.id}`)];
   const { data } = await supabaseCharlas().from("charlas_config").select("clave, valor").in("clave", claves);
   const v = new Map((data ?? []).map((r) => [r.clave as string, r.valor as Record<string, unknown>]));
+  const pausados = new Set(Array.isArray((v.get(CLAVE_PAUSADOS) as { ids?: unknown } | undefined)?.ids) ? ((v.get(CLAVE_PAUSADOS) as { ids: string[] }).ids) : []);
   return [
-    { id: "alain", direccion: "alain@alainzulaika.com", configurado: true, variable: null as string | null, estado: v.get("correo_historico") ?? null },
-    ...BUZONES_EXTRA.map((b) => ({ id: b.id, direccion: b.direccion, configurado: !!configBuzon(b).pass, variable: `MAIL_PASS_${b.clave}`, estado: v.get(`correo_cursor_${b.id}`) ?? null })),
+    { id: "alain", direccion: "alain@alainzulaika.com", configurado: true, pausado: pausados.has("alain"), variable: null as string | null, estado: v.get("correo_historico") ?? null },
+    ...BUZONES_EXTRA.map((b) => ({ id: b.id, direccion: b.direccion, configurado: !!configBuzon(b).pass, pausado: pausados.has(b.id), variable: `MAIL_PASS_${b.clave}`, estado: v.get(`correo_cursor_${b.id}`) ?? null })),
   ];
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
-import { guardarRegla, indexarHistorico, leerBuzonesExtra, panelRemitentes, quitarRegla } from "@/lib/correo-general";
+import { guardarRegla, indexarHistorico, ponerBuzonPausado, leerBuzonesExtra, panelRemitentes, quitarRegla } from "@/lib/correo-general";
 
 // Bandeja general de correo · F0 (la lógica está en lib/correo-general.ts).
 //
@@ -8,6 +8,7 @@ import { guardarRegla, indexarHistorico, leerBuzonesExtra, panelRemitentes, quit
 // POST { accion }
 //   regla  { patron, tratamiento, categoria?, nota? }  (crea o confirma una regla; reclasifica lo ya apuntado)
 //   quitar { patron }                                   (borra la regla o descarta la sugerencia)
+//   pausar { id, pausado }                              (pausa o reactiva la lectura de un buzón, indefinidamente)
 //   leer                                                ("Leer ahora": avanza el histórico de alain@ y lee los otros buzones)
 
 export const maxDuration = 60;
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
   try {
     if (b.accion === "regla") return NextResponse.json(await guardarRegla(b as Parameters<typeof guardarRegla>[0]));
     if (b.accion === "quitar") return NextResponse.json(await quitarRegla(b.patron));
+    if (b.accion === "pausar") return NextResponse.json(await ponerBuzonPausado(b.id, b.pausado === true));
     if (b.accion === "leer") {
       const inicio = Date.now();
       const historico = await indexarHistorico({ presupuestoMs: 22000 }).catch((e) => ({ hecho: false, guardadas: 0, error: (e as Error).message }));

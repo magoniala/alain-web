@@ -46,7 +46,7 @@ interface Panel {
   sugerencias_silenciar: { dominio: string; n: number }[];
   historico: { hecho?: boolean; guardadas?: number; error?: string; en?: string } | null;
   genericos: string[];
-  buzones: { id: string; direccion: string; configurado: boolean; variable: string | null; estado: { hecho?: boolean; al_dia?: boolean; guardadas?: number; error?: string | null; en?: string } | null }[];
+  buzones: { id: string; direccion: string; configurado: boolean; pausado: boolean; variable: string | null; estado: { hecho?: boolean; al_dia?: boolean; guardadas?: number; error?: string | null; en?: string } | null }[];
 }
 
 const corto = (dir: string) => dir.replace(/@alainzulaika\.com$/, "@");
@@ -261,6 +261,16 @@ export default function CorreoTab() {
     }
   };
 
+  const pausar = async (id: string, pausado: boolean) => {
+    try {
+      await api("/api/admin/correo", { method: "POST", body: JSON.stringify({ accion: "pausar", id, pausado }) });
+      setAviso(pausado ? "Buzón pausado: no se lee hasta que lo reactives." : "Buzón reactivado: se lee en la próxima pasada.");
+      await cargar();
+    } catch (e) {
+      setAviso((e as Error).message);
+    }
+  };
+
   const leerAhora = async () => {
     setLeyendo(true);
     try {
@@ -314,7 +324,11 @@ export default function CorreoTab() {
             return (
               <div key={b.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2 text-[0.83rem]">
                 <span className="w-64 shrink-0 font-medium text-gray-900">{b.direccion}</span>
-                {!b.configurado ? (
+                {b.pausado ? (
+                  <span className="text-gray-500">
+                    Pausado: no se lee{b.id === "alain" ? " en la bandeja general (charlas y magia siguen como siempre)" : ""}.
+                  </span>
+                ) : !b.configurado ? (
                   <span className="text-amber-700">Falta la contraseña en Vercel: <code className="rounded bg-amber-50 px-1">{b.variable}</code></span>
                 ) : e?.error ? (
                   <span className="text-red-700">Error: {e.error}</span>
@@ -325,6 +339,12 @@ export default function CorreoTab() {
                     {listo ? "Al día" : "Leyendo el último mes"} · {e.guardadas ?? 0} apuntados{b.id === "alain" ? " del último mes" : ""}
                   </span>
                 )}
+                <button
+                  className="ml-auto border border-gray-300 px-2 py-0.5 text-[0.75rem] text-gray-700 hover:bg-gray-50"
+                  onClick={() => pausar(b.id, !b.pausado)}
+                >
+                  {b.pausado ? "Reactivar" : "Pausar"}
+                </button>
               </div>
             );
           })}

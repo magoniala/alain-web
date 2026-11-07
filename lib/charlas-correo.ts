@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { supabaseCharlas } from "./charlas";
-import { CABECERAS_LECTOR, cargarReglas, extraerCabecera, filaEntrada, guardarEntradas } from "./correo-general";
+import { CABECERAS_LECTOR, extraerCabecera, filaEntrada, guardarEntradas, reglasParaAlain } from "./correo-general";
 
 const IMAP_HOST = "imap.serviciodecorreo.es";
 const SMTP_HOST = "smtp.serviciodecorreo.es";
@@ -306,7 +306,7 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
   const resumen: ResumenLectura = { carpetas: {}, respondidos_desde_mail: 0, huerfanos_asociados: 0, al_dia: true };
   const diasInicial = Number(await config("lectura_inicial_dias", 10));
   const diasHistoricoEnviados = Number(await config("enviados_historico_dias", 75));
-  const [indice, conocidos, magia, reglasCorreo] = await Promise.all([construirIndice(), cargarConocidos(), indiceMagia(), cargarReglas().catch(() => null)]);
+  const [indice, conocidos, magia, reglasCorreo] = await Promise.all([construirIndice(), cargarConocidos(), indiceMagia(), reglasParaAlain().catch(() => null)]);
   // Bandeja general (F0): si correo_remitentes no existe aún, reglasCorreo es null y no se apunta nada.
   let pendientesCorreo: Record<string, unknown>[] = [];
   resumen.correo_general = { registrados: 0 };
