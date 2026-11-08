@@ -155,7 +155,7 @@ function frontmatter(c) {
 }
 
 function lineaRegistro(r) {
-  if (r.raw && r.origen === "vault") return r.raw;
+  if (r.raw && (r.origen === "vault" || r.origen === "manual")) return r.raw;
   const fecha = r.fecha ?? "";
   const canal = r.canal ? ` · ${r.canal}` : "";
   const texto = (r.texto ?? "").replace(/\n/g, "\n    ");
@@ -170,9 +170,19 @@ function ficha(c, registro, registroVault = null) {
   const resto = registro
     .filter((r) => r.origen !== "vault")
     .sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? "") || a.creado_en.localeCompare(b.creado_en));
+  // Bug 8-nov-2026: antes se añadían TODAS las líneas no-vault en cada pasada
+  // (la ficha ya las contenía de la vez anterior) y el Registro crecía cada
+  // hora. Ahora solo se añade lo que el Registro actual no tiene ya.
+  const quitaManual = (t) => t.replace(/( · Manual)+/g, "").trim();
+  const yaEnVault = registroVault !== null ? registroVault.split("\n").map((l) => quitaManual(l)).filter(Boolean) : [];
+  const yaEsta = (r) =>
+    lineaRegistro(r).split("\n").every((l) => {
+      const n = quitaManual(l);
+      return !n || yaEnVault.some((v) => v === n || v.startsWith(n));
+    }) || (!!r.raw && yaEnVault.includes(quitaManual(r.raw)));
   const bloque =
     registroVault !== null
-      ? [registroVault.replace(/\s+$/, ""), ...resto.map(lineaRegistro)].filter(Boolean).join("\n")
+      ? [registroVault.replace(/\s+$/, ""), ...resto.filter((r) => !yaEsta(r)).map(lineaRegistro)].filter(Boolean).join("\n")
       : [...vault, ...resto].map(lineaRegistro).join("\n");
 
   let cuerpo = `${frontmatter(c)}\n\n## Registro\n\n${bloque}\n\n## Notas\n\n${c.notas ?? ""}`;
@@ -287,9 +297,10 @@ async function main() {
     const conocidas = new Set(
       registro.flatMap((r) => [r.raw ?? "", lineaRegistro(r)]).flatMap((t) => t.split("\n")).map((l) => l.trimEnd()).filter(Boolean)
     );
-    const conocidasTexto = conocidas;
+    const quitaManual = (t) => t.replace(/( · Manual)+/g, "").trim();
+    const conocidasTexto = new Set([...conocidas].map(quitaManual));
     for (const l of registroDe(cuerpo)) {
-      if (conocidas.has(l) || conocidasTexto.has(l)) continue;
+      if (conocidas.has(l) || conocidasTexto.has(quitaManual(l))) continue;
       const m = /^-\s*(\d{4}-\d{2}-\d{2})?\s*(?:[·\-]\s*)?(.*)$/.exec(l.trim());
       const nueva = {
         centro_id: c.id,
@@ -330,7 +341,8 @@ async function main() {
       if (!COMPROBAR) await rest(`charlas_centros?id=eq.${c.id}`, { method: "PATCH", body: JSON.stringify(cambios) });
       continue;
     }
-    const nuevo = ficha(c, registro);
+    const mRegCmp = /## Registro\n([\s\S]*?)(?=\n## |$)/.exec(cuerpo);
+    const nuevo = ficha(c, registro, mRegCmp ? mRegCmp[1] : null);
     const regVault = registroDe(cuerpo).map((l) => l.trim());
     const regNuevo = registroDe(nuevo.split("\n---\n")[1] ?? nuevo).map((l) => l.trim());
     if (regVault.join("\n") !== regNuevo.join("\n")) {
