@@ -37,10 +37,9 @@ main{max-width:560px;margin:0 auto;padding:28px 16px 64px}
 .brand:after{content:"";display:block;width:44px;height:3px;background:var(--cyan);margin:10px auto 0}
 h1{font-size:30px;line-height:1.15;margin:28px 0 8px;text-align:center}
 .lead{color:var(--muted);text-align:center;margin:0 0 18px}
-.jump{display:block;text-align:center;margin:0 auto 26px;width:max-content;max-width:100%;background:var(--cyan);color:#0b0b0b;font-weight:800;font-size:14px;padding:6px 12px;text-decoration:none;border-radius:2px}
 form{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 16px}
 fieldset{border:0;margin:0 0 22px;padding:0}
-legend,label.q{display:block;font-weight:700;font-size:17px;margin-bottom:10px;padding:0}
+legend,label.q,p.q{display:block;font-weight:700;font-size:19px;line-height:1.3;margin:0 0 14px;padding:0}
 .opt{color:var(--muted);font-weight:400;font-size:13px;margin-left:6px}
 .choices{display:grid;gap:8px}
 .choices input{position:absolute;opacity:0;pointer-events:none}
@@ -144,29 +143,52 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
 .books li{font-size:15px;margin:0 0 4px}
 .books li span{color:var(--muted)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.prog{display:flex;align-items:center;gap:10px;margin:0 0 20px}
+.pn{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar{flex:1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:20%;background:var(--cyan);transition:width .3s ease}
+.step{animation:slide .25s ease both}
+.step[hidden]{display:none}
+.nav{display:flex;gap:10px;margin-top:24px}
+.nav .back{flex:0 0 auto;width:auto;background:none;color:var(--muted);border:1.5px solid var(--line);padding:15px 16px;font-weight:700}
+.nav .back[hidden]{display:none}
+.flowlink{text-align:center;margin:18px 0 0;font-size:14px}
+.flowlink a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.cta{border:1.5px solid var(--cyan);border-radius:10px;padding:20px 16px;margin:30px 0 0;background:rgba(0,212,255,.06);text-align:center}
+.cta p{margin:0 0 6px;color:#d6d6d6;font-size:15px}
+.cta .hint{color:var(--text)}
+.btn{display:block;background:var(--cyan);color:#0b0b0b;font-weight:800;font-size:17px;text-decoration:none;border-radius:8px;padding:15px;margin:14px 0 0}
+.btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.slabels{display:flex;margin:0 0 4px}
+.slabels span{display:block;font-size:11px;line-height:1.2;color:#d6d6d6;overflow:hidden;white-space:nowrap;text-overflow:clip;padding-left:2px}
+.slabels span.free{color:var(--cyan);font-weight:700}
+.empty{color:var(--muted);font-size:14px;margin:12px 0 0}
+@keyframes slide{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.gift{animation:none}}
+@media (prefers-reduced-motion:reduce){.gift,.step{animation:none}.bar i{transition:none}}
 </style>
 </head>
 <body>
 <main>
 <div class="brand">ALAIN ZULAIKA</div>
 <h1>Zer iruditu zaizu hitzaldia?</h1>
-<p class="lead">Galdetegi anonimoa · minutu 1</p>
-<a class="jump" href="#flow">+ Flow-aren azalpena ↓</a>
+<p class="lead">Galdetegi anonimoa · 5 galdera · minutu 1</p>
 
-<div class="teaser">
-  <p class="hint">Bidali eta ireki zure oparitxoak 🎁</p>
+<div class="teaser" id="teaser">
+  <p class="hint">🎁 Erantzun galdetegia eta zure opariak irekiko dira</p>
   <ul>
-    <li><strong>Gorila ikusezina:</strong> esperimentu famatua, etxean probatzeko.</li>
+    <li><strong>Zenbat urte emango dituzu mugikorrari begira?</strong> Kalkulatu zurea.</li>
     <li><strong>Katu batek zure karta asmatuko du.</strong> Bai, katu batek.</li>
-    <li><strong>Nor da hiltzailea?</strong> Zure arreta proban.</li>
+    <li><strong>Nor da hiltzailea?</strong> Arreta-proba bat.</li>
   </ul>
-  <p class="more">…eta gehiago: zure denboraren kalkulagailua, hitzaldiaren gakoak eta liburuak.</p>
+  <p class="more">…eta beste batzuk, sorpresa. Amaitzean ikusiko dituzu.</p>
 </div>
+
 <form id="f" novalidate>
-  <fieldset>
-    <legend>1. Zer nota jarriko zenioke hitzaldiari?</legend>
+  <div class="prog" aria-hidden="true"><span class="pn" id="pn">1 / 5</span><div class="bar"><i id="pb"></i></div></div>
+
+  <div class="step" id="s1" role="group" aria-labelledby="q1">
+    <p class="q" id="q1">Zer nota jarriko zenioke hitzaldiari?</p>
     <div class="choices nota">
       <input type="radio" name="nota" id="n1" value="1"><label for="n1">1</label>
       <input type="radio" name="nota" id="n2" value="2"><label for="n2">2</label>
@@ -175,32 +197,41 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
       <input type="radio" name="nota" id="n5" value="5"><label for="n5">5</label>
     </div>
     <div class="scale"><span>1 = oso gaizki</span><span>5 = oso ondo</span></div>
-  </fieldset>
-  <fieldset>
-    <legend>2. Zenbat ordu ematen dituzu egunean mugikorrari begira?<span class="opt">aukerazkoa</span></legend>
+  </div>
+
+  <div class="step" id="s2" role="group" aria-labelledby="q2" hidden>
+    <p class="q" id="q2">Zenbat ordu ematen dituzu egunean mugikorrari begira?<span class="opt">aukerazkoa</span></p>
     <p class="help">Batez beste. Mugikorraren ezarpenetan ikus dezakezu («Pantaila-denbora» edo «Ongizate digitala»).</p>
     <div class="hours">
       <div><label for="ordu_orain">Orain</label><input type="text" inputmode="decimal" autocomplete="off" id="ordu_orain" name="ordu_orain" maxlength="4"><span class="unit">ordu egunean</span></div>
       <div><label for="ordu_nahi">Nahiko nuke</label><input type="text" inputmode="decimal" autocomplete="off" id="ordu_nahi" name="ordu_nahi" maxlength="4"><span class="unit">ordu egunean</span></div>
     </div>
-  </fieldset>
-  <div style="margin-bottom:22px">
-    <label class="q" for="ikasi">3. Zer ikasi duzu zure buruari buruz?<span class="opt">aukerazkoa</span></label>
+  </div>
+
+  <div class="step" id="s3" hidden>
+    <label class="q" for="ikasi">Zer ikasi duzu zure buruari buruz?<span class="opt">aukerazkoa</span></label>
     <textarea id="ikasi" name="ikasi" maxlength="1000"></textarea>
   </div>
-  <div style="margin-bottom:22px">
-    <label class="q" for="gustatu">4. Zer gustatu zaizu gehien?<span class="opt">aukerazkoa</span></label>
+
+  <div class="step" id="s4" hidden>
+    <label class="q" for="gustatu">Zer gustatu zaizu gehien?<span class="opt">aukerazkoa</span></label>
     <textarea id="gustatu" name="gustatu" maxlength="1000"></textarea>
   </div>
-  <div style="margin-bottom:22px">
-    <label class="q" for="gehitu">5. Zerbait gehitu nahi duzu?<span class="opt">aukerazkoa</span></label>
+
+  <div class="step" id="s5" hidden>
+    <label class="q" for="gehitu">Zerbait gehitu nahi duzu?<span class="opt">aukerazkoa</span></label>
     <textarea id="gehitu" name="gehitu" maxlength="1000"></textarea>
   </div>
+
   <div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><label>Web <input type="text" name="web" tabindex="-1" autocomplete="off"></label></div>
-  <button type="submit" id="send">Bidali</button>
+  <div class="nav">
+    <button type="button" class="back" id="back" hidden>← Atzera</button>
+    <button type="submit" id="send">Ados →</button>
+  </div>
   <p class="err" id="err" role="alert"></p>
   <p class="note">Anonimoa da: ez dugu izenik, posta elektronikorik ez beste daturik jasotzen. Erantzunak, izenik gabe, hitzaldia hobetzeko eta ikastetxeari erakusteko erabil daitezke.</p>
 </form>
+<p class="flowlink" id="flowlink"><a href="#flow">Txartelako flow-aren azalpena, behean ↓</a></p>
 
 <div class="thanks" id="thanks" tabindex="-1">
   <div role="status">
@@ -211,26 +242,26 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
     <h3 id="oparitxoak">Oparitxoak 🎁</h3>
     <p class="intro">Hitzaldia ez da hemen amaitzen. Hona hemen etxean probatzeko eta ikasten jarraitzeko zerbait.</p>
 
-    <details open>
-      <summary>⏳ Zenbat denbora irabazten duzu?</summary>
+    <details>
+      <summary>⏳ Zenbat denbora irabaziko zenuke mugikorra gutxiago erabilita?</summary>
       <div class="body">
         <div class="calc">
-          <div class="hero" id="c-hero" aria-live="polite"></div>
-          <p class="t">Aldatu zenbakiak eta ikusi nola aldatzen den. Kalkulagailua zure mugikorrean bakarrik dabil: ez da ezer bidaltzen.</p>
+          <p class="t">Idatzi egunean zenbat ordu ematen dituzun mugikorrean eta zenbatera jaitsi nahiko zenukeen. 80 urte bete arte zenbat denbora den ikusiko duzu, eta zenbat irabaziko zenukeen. Kalkulagailua zure mugikorrean bakarrik dabil: ez da ezer bidaltzen.</p>
           <div class="hours three">
             <div><label for="c-orain">Orain</label><input type="text" inputmode="decimal" autocomplete="off" id="c-orain" maxlength="4"><span class="unit">ordu egunean</span></div>
             <div><label for="c-nahi">Nahiko nuke</label><input type="text" inputmode="decimal" autocomplete="off" id="c-nahi" maxlength="4"><span class="unit">ordu egunean</span></div>
-            <div><label for="c-adina">Zure adina</label><input type="text" inputmode="numeric" autocomplete="off" id="c-adina" maxlength="2" value="16"><span class="unit">urte</span></div>
+            <div><label for="c-adina">Zure adina</label><input type="text" inputmode="numeric" autocomplete="off" id="c-adina" maxlength="2" value="14"><span class="unit">urte</span></div>
           </div>
+          <div class="hero" id="c-hero" aria-live="polite"></div>
           <div class="cout" id="c-out"></div>
           <div id="c-bars" aria-hidden="true"></div>
           <div id="c-table"></div>
-          <p class="fine">Gutxi gorabeherako balioak, ikasturteko egun arrunt baterako (lo 8 ordu, ikasi / lan egin 7, jan eta garbitasuna 2). Gainerakoa, denbora librea eta mugikorra. Mugikorraren zati bat beste gauzekin batera gertatzen da (ikastetxean, jaten…), baina hemen denbora libretik kentzen da. Adina kalkulurako bakarrik da: ez da gordetzen eta ez da bidaltzen.</p>
+          <p class="fine">Gutxi gorabeherako balioak, ikasturteko egun arrunt baterako. Gainerako orduak (7), denbora librea eta mugikorra dira. Mugikorraren zati bat beste gauzekin batera gertatzen da (ikastetxean, jaten…), baina hemen denbora libretik kentzen da. Adina kalkulurako bakarrik da: ez da gordetzen eta ez da bidaltzen.</p>
         </div>
       </div>
     </details>
 
-    <details open>
+    <details>
       <summary>🧪 Probatu etxean</summary>
       <div class="body">
         <a class="gift" href="https://www.youtube.com/watch?v=vJG698U2Mvo" target="_blank" rel="noopener noreferrer">
@@ -244,8 +275,8 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
           <span class="go">Ikusi bideoa ↗<span class="sr"> (fitxa berrian)</span></span>
         </a>
         <a class="gift" href="https://www.youtube.com/watch?v=j8bcu4_r_v4" target="_blank" rel="noopener noreferrer">
-          <strong>Nor da hiltzailea? (aldaketaren itsutasuna)</strong>
-          <span class="t">Begiratu bideoa arretaz: gauzak aldatzen dira eta askok ez dute nabaritzen. Zenbat aldaketa topatzen dituzu? Ingelesez dago, baina gakoa ez dago hitzetan.</span>
+          <strong>Nor da hiltzailea?</strong>
+          <span class="t">Arreta-proba bat da. Ikusi bideoa eta asmatu nor den hiltzailea. Ingelesez dago.</span>
           <span class="go">Ikusi bideoa ↗<span class="sr"> (fitxa berrian)</span></span>
         </a>
       </div>
@@ -267,7 +298,7 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
     </details>
 
     <details>
-      <summary>🛠️ Arreta berreskuratzeko 4 arau</summary>
+      <summary>🛠️ Arreta berreskuratzeko 4 gomendio</summary>
       <div class="body">
         <ul class="keys">
           <li><strong>I. Urrundu tentazioa.</strong> Mugikorra beste gela batean, edo blokeatzeko aplikazio bat (Freedom, adibidez). Ulisesek bezala: lotu zaitez mastara.</li>
@@ -394,6 +425,12 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
   <span class="go">Ikusi hitzaldia ↗<span class="sr"> (fitxa berrian)</span></span>
 </a>
 
+<div class="cta" id="cta">
+  <p class="hint">🎁 Zure opariak zain daude</p>
+  <p>Erantzun galdetegia (minutu 1) eta ireki: zure mugikor-denboraren kalkulagailua, karta asmatzen duen katua, hiltzailearen proba eta gehiago.</p>
+  <a class="btn" href="#teaser">Erantzun galdetegia →</a>
+</div>
+
 <footer>© Alain Zulaika</footer>
 </main>
 
@@ -410,7 +447,7 @@ var setCalc=function(){};
 var A=document.getElementById("c-orain"),B=document.getElementById("c-nahi"),Y=document.getElementById("c-adina"),H=document.getElementById("c-hero"),O=document.getElementById("c-out"),S=document.getElementById("c-bars"),T=document.getElementById("c-table");
 if(!A)return;
 // Bloques fijos en grises parecidos: lo que tiene que verse es el rojo (móvil) frente al cian (libre).
-var BASE=[["Lo egin",8,"#4a4a52"],["Ikasi / lan egin",7,"#5d5d66"],["Jan eta garbitasuna",2,"#73737c"]];
+var BASE=[["Lo egin",8,"#4a4a52","Lo · 8 h"],["Ikasi / lan egin",7,"#5d5d66","Ikasi · 7 h"],["Jan eta garbitasuna",2,"#73737c","Jan"]];
 var PHONE="#ff4d4d",FREE="#00D4FF",ROOM=7;
 function num(e){var v=parseFloat(String(e.value).replace(",","."));return isFinite(v)?v:NaN}
 function fmt(n){return String(Math.round(n*10)/10).replace(".",",")}
@@ -419,13 +456,14 @@ function yrs(y){var x=yu(y);return x[0]+" "+x[1]}
 function seg(h,c){return '<span style="width:'+(h/24*100)+'%;background:'+c+'"></span>'}
 function stack(p){var ph=Math.min(p,ROOM),r="";for(var i=0;i<BASE.length;i++)r+=seg(BASE[i][1],BASE[i][2]);return r+seg(ph,PHONE)+seg(ROOM-ph,FREE)}
 function dot(c){return '<span class="dot" style="background:'+c+'"></span>'}
+function labels(){var r="";for(var i=0;i<BASE.length;i++)r+='<span style="width:'+(BASE[i][1]/24*100)+'%">'+BASE[i][3]+'</span>';return '<div class="slabels" aria-hidden="true">'+r+'<span class="free" style="width:'+(ROOM/24*100)+'%">'+ROOM+' ordu libre</span></div>'}
 function bar(lbl,p,R){return '<p class="blabel">'+lbl+'</p><div class="stack">'+stack(p)+'</div><p class="leg">'+dot(PHONE)+'Mugikorra '+yrs(p/24*R)+' &nbsp; '+dot(FREE)+'Libre '+yrs(Math.max(0,ROOM-p)/24*R)+'</p>'}
 function cell(h,R){return '<strong>'+fmt(h)+' h</strong><span class="yr">'+yrs(h/24*R)+'</span>'}
 function row(c,n,h1,h2,R){return '<tr><td>'+dot(c)+n+'</td><td>'+cell(h1,R)+'</td><td>'+cell(h2,R)+'</td></tr>'}
 function render(){
  var a=num(A),b=num(B),age=num(Y);
- if(!(a>=0&&a<=24&&b>=0&&b<=24)){H.innerHTML="";O.innerHTML="";S.innerHTML="";T.innerHTML="";return}
- if(!(age>=5&&age<=79))age=16;
+ if(!(a>=0&&a<=24&&b>=0&&b<=24)){H.innerHTML="";O.innerHTML='<p class="empty">Idatzi bi zenbakiak (orain eta nahiko nuke) emaitza ikusteko.</p>';S.innerHTML="";T.innerHTML="";return}
+ if(!(age>=5&&age<=79))age=14;
  var R=80-age,diff=a-b,L=yu(a/24*R),h;
  h='<div class="tile loss"><span class="n">'+L[0]+'</span><span class="u">'+L[1]+'</span><span class="l">mugikorrari begira, 80 urtera arte (egunean '+fmt(a)+' ordu)</span></div>';
  if(diff>0){var G=yu(diff/24*R);h+='<div class="tile gain"><span class="n">+'+G[0]+'</span><span class="u">'+G[1]+'</span><span class="l">zuretzat, egunean '+fmt(b)+' ordura jaitsiz gero</span></div>'}
@@ -434,31 +472,50 @@ function render(){
  o+=diff>0?'<p>'+fmt(b)+' ordura jaitsiz gero: egunean '+fmt(diff)+' ordu eta urtean '+Math.round(diff*365/24)+' egun gehiago zuretzat.</p>':'<p class="big">Zenbaki hauekin ez duzu denborarik irabazten. Jaitsi «Nahiko nuke» zenbakia.</p>';
  o+='<p class="fine">Urteak 24 orduko egun osoetan neurtuta.</p>';
  O.innerHTML=o;
- S.innerHTML=bar("ZURE BIZITZA, ORAIN",a,R)+bar("ALDATUTA",b,R);
+ S.innerHTML=labels()+bar("ZURE EGUNA, ORAIN",a,R)+bar("ALDATUTA",b,R);
  var t='<table class="tbl"><thead><tr><th></th><th>Orain</th><th>Aldatuta</th></tr></thead><tbody>';
- for(var i=0;i<BASE.length;i++)t+=row(BASE[i][2],BASE[i][0],BASE[i][1],BASE[i][1],R);
  t+=row(PHONE,"Mugikorra",a,b,R)+row(FREE,"Denbora librea",Math.max(0,ROOM-a),Math.max(0,ROOM-b),R);
- T.innerHTML=t+'</tbody></table>';
+ T.innerHTML=t+'</tbody></table><p class="fine">Gainerakoa ez da aldatzen: lo (8 h), ikasi / lan egin (7 h) eta jan eta garbitasuna (2 h) berdin jarraitzen dute.</p>';
 }
 A.addEventListener("input",render);B.addEventListener("input",render);Y.addEventListener("input",render);
 setCalc=function(a,b){A.value=String(a).replace(".",",");B.value=String(b).replace(".",",");render()};
 })();
 
-var f=document.getElementById("f"),err=document.getElementById("err"),btn=document.getElementById("send"),th=document.getElementById("thanks");
+var f=document.getElementById("f"),err=document.getElementById("err"),btn=document.getElementById("send"),th=document.getElementById("thanks"),back=document.getElementById("back"),pn=document.getElementById("pn"),pb=document.getElementById("pb");
+var TOTAL=5,cur=1;
 function hrs(v){var n=parseFloat(String(v==null?"":v).replace(",","."));return isFinite(n)&&n>=0&&n<=24?Math.round(n*10)/10:null}
+function show(n,foco){
+  cur=n;
+  for(var i=1;i<=TOTAL;i++)document.getElementById("s"+i).hidden=(i!==n);
+  pn.textContent=n+" / "+TOTAL;pb.style.width=(n/TOTAL*100)+"%";
+  back.hidden=(n===1);btn.textContent=(n===TOTAL?"Bidali ✓":"Ados →");
+  err.style.display="none";
+  if(foco){var e=document.querySelector("#s"+n+" input[type=text],#s"+n+" textarea");if(e)try{e.focus({preventScroll:true})}catch(x){}}
+}
+function problema(n){
+  if(n===1&&!f.querySelector("input[name=nota]:checked"))return "Aukeratu nota bat (1etik 5era).";
+  if(n===2){
+    var ro=f.ordu_orain.value.trim(),rn=f.ordu_nahi.value.trim();
+    if((ro&&hrs(ro)===null)||(rn&&hrs(rn)===null))return "Idatzi ordu kopuru bat 0 eta 24 artean (edo utzi hutsik).";
+  }
+  return "";
+}
+back.addEventListener("click",function(){if(cur>1)show(cur-1,true)});
 f.addEventListener("submit",function(e){
   e.preventDefault();
+  var m=problema(cur);
+  if(m){err.textContent=m;err.style.display="block";return}
+  if(cur<TOTAL){show(cur+1,true);return}
   err.style.display="none";
   var d=new FormData(f), nt=parseInt(d.get("nota"),10), ro=String(d.get("ordu_orain")||"").trim(), rn=String(d.get("ordu_nahi")||"").trim(), oa=ro?hrs(ro):null, na=rn?hrs(rn):null;
-  if(!(nt>=1&&nt<=5)){err.textContent="Aukeratu nota bat 1. galderan (1etik 5era).";err.style.display="block";return}
-  if((ro&&oa===null)||(rn&&na===null)){err.textContent="2. galderan, idatzi ordu kopuru bat 0 eta 24 artean (edo utzi hutsik).";err.style.display="block";return}
   var body={nota:nt,ordu_orain:oa,ordu_nahi:na,ikasi:d.get("ikasi")||"",gustatu:d.get("gustatu")||"",gehitu:d.get("gehitu")||"",saioa:SAIOA,web:d.get("web")||""};
   btn.disabled=true;
   if(!ENDPOINT){btn.disabled=false;err.textContent="Oraindik ez dago konektatuta (ENDPOINT hutsik).";err.style.display="block";return}
   fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),credentials:"omit",referrerPolicy:"no-referrer"})
-  .then(function(r){if(!r.ok)throw 0;if(oa!==null&&na!==null)setCalc(oa,na);f.style.display="none";th.style.display="block";th.focus()})
+  .then(function(r){if(!r.ok)throw 0;if(oa!==null&&na!==null)setCalc(oa,na);f.style.display="none";document.getElementById("flowlink").style.display="none";document.getElementById("teaser").style.display="none";th.style.display="block";th.focus();window.scrollTo(0,0)})
   .catch(function(){btn.disabled=false;err.textContent="Ezin izan da bidali. Saiatu berriro.";err.style.display="block"});
 });
+show(1,false);
 </script>
 </body>
 </html>

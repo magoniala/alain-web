@@ -91,6 +91,21 @@ const TRAMOS = [
 const fmtH = (n: number | null) => (n == null ? "—" : String(Math.round(n * 10) / 10).replace(".", ","));
 const mediaDe = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
 
+// Nota de 1 a 5 a la charla: cuántos la han puesto y qué % es.
+function NotaReparto({ filas }: { filas: Respuesta[] }) {
+  const v = filas.map((f) => f.nota).filter((x): x is number => x != null);
+  if (!v.length) return <p className="text-[0.85rem] text-gray-400">Sin notas en esta selección.</p>;
+  const COL = ["#d64545", "#e8a317", "#9aa0a6", "#2a78d6", "#1baf7a"];
+  return (
+    <div className="space-y-3">
+      {[5, 4, 3, 2, 1].map((n) => {
+        const c = v.filter((x) => x === n).length;
+        return <Barra key={n} texto={String(n)} valor={c} max={v.length} color={COL[n - 1]} detalle={`${c} · ${pct(c, v.length)} %`} />;
+      })}
+    </div>
+  );
+}
+
 // Horas de móvil al día (media actual) repartidas en tramos.
 function HorasMovil({ filas }: { filas: Respuesta[] }) {
   const v = filas.map((f) => f.ordu_orain).filter((x): x is number => x != null);
@@ -473,6 +488,9 @@ export default function ArretaTab() {
 
       {/* Gráficas */}
       <div className="grid gap-4 lg:grid-cols-2">
+        <Tarjeta titulo="Nota a la charla (1-5)">
+          <NotaReparto filas={filtradas} />
+        </Tarjeta>
         <Tarjeta titulo="Horas de móvil al día (ahora)">
           <HorasMovil filas={filtradas} />
         </Tarjeta>
@@ -515,6 +533,8 @@ export default function ArretaTab() {
                     {fechaLarga(r.created_at)}
                     {!charla && <> · {nombreCharla(r.charla)}</>}
                     {" · "}
+                    {r.nota != null && <span className="font-semibold text-gray-800">Nota {r.nota}</span>}
+                    {r.nota != null && (r.ordu_orain != null || r.probatu) && " · "}
                     {r.ordu_orain != null ? (
                       <span className="font-medium text-gray-700">{fmtH(r.ordu_orain)} h → {fmtH(r.ordu_nahi)} h</span>
                     ) : r.probatu ? (
@@ -538,7 +558,7 @@ export default function ArretaTab() {
                     </p>
                   ))
                 ) : (
-                  <p className="text-[0.82rem] italic text-gray-400">Sin texto, solo la pregunta 1.</p>
+                  <p className="text-[0.82rem] italic text-gray-400">Sin texto, solo la nota.</p>
                 )}
               </div>
             );
@@ -546,11 +566,12 @@ export default function ArretaTab() {
         </div>
       </Tarjeta>
 
-      {/* Post-its */}
-      <Tarjeta titulo={charlaSel ? `Post-its · ${charlaSel.nombre}` : "Post-its · todas las charlas"}>
-        <TablaPostits postits={postits} charlas={datos.charlas} mostrarCharla={!charla} onBorrar={borrarPostit} />
-        <NuevoPostit charlas={datos.charlas} charla={charla} onHecho={cargar} />
-      </Tarjeta>
+      {/* Post-its en papel: ya no se usan (la nota va en /arreta desde el 8-nov); solo se muestra si hay alguno apuntado */}
+      {postits.length > 0 && (
+        <Tarjeta titulo={charlaSel ? `Post-its (antiguos) · ${charlaSel.nombre}` : "Post-its (antiguos) · todas las charlas"}>
+          <TablaPostits postits={postits} charlas={datos.charlas} mostrarCharla={!charla} onBorrar={borrarPostit} />
+        </Tarjeta>
+      )}
 
       <NuevaCharla
         onHecho={async (slug) => {
