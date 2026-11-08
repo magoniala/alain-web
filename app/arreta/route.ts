@@ -426,9 +426,9 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
 </a>
 
 <div class="cta" id="cta">
-  <p class="hint">🎁 Zure opariak zain daude</p>
-  <p>Erantzun galdetegia (minutu 1) eta ireki: zure mugikor-denboraren kalkulagailua, karta asmatzen duen katua, hiltzailearen proba eta gehiago.</p>
-  <a class="btn" href="#teaser">Erantzun galdetegia →</a>
+  <p class="hint" id="cta-t">🎁 Zure opariak zain daude</p>
+  <p id="cta-p">Erantzun galdetegia (minutu 1) eta ireki: zure mugikor-denboraren kalkulagailua, karta asmatzen duen katua, hiltzailearen proba eta gehiago.</p>
+  <a class="btn" id="cta-b" href="#teaser">Erantzun galdetegia →</a>
 </div>
 
 <footer>© Alain Zulaika</footer>
@@ -512,7 +512,7 @@ f.addEventListener("submit",function(e){
   btn.disabled=true;
   if(!ENDPOINT){btn.disabled=false;err.textContent="Oraindik ez dago konektatuta (ENDPOINT hutsik).";err.style.display="block";return}
   fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),credentials:"omit",referrerPolicy:"no-referrer"})
-  .then(function(r){if(!r.ok)throw 0;if(oa!==null&&na!==null)setCalc(oa,na);f.style.display="none";document.getElementById("flowlink").style.display="none";document.getElementById("teaser").style.display="none";th.style.display="block";th.focus();window.scrollTo(0,0)})
+  .then(function(r){if(!r.ok)throw 0;if(oa!==null&&na!==null)setCalc(oa,na);f.style.display="none";document.getElementById("flowlink").style.display="none";document.getElementById("teaser").style.display="none";document.getElementById("cta-t").textContent="🎁 Zure opariak goian daude";document.getElementById("cta-p").textContent="Eskerrik asko erantzuteagatik! Kalkulagailua, bideoak eta gainerakoak orrialdearen hasieran dituzu.";var cb=document.getElementById("cta-b");cb.textContent="Ireki oparitxoak ↑";cb.setAttribute("href","#oparitxoak");th.style.display="block";th.focus();window.scrollTo(0,0)})
   .catch(function(){btn.disabled=false;err.textContent="Ezin izan da bidali. Saiatu berriro.";err.style.display="block"});
 });
 show(1,false);
