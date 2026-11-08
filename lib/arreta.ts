@@ -13,6 +13,12 @@ export function horas(v: unknown): number | null {
   return Math.round(n * 10) / 10;
 }
 
+/** Nota de 1 a 5 a la charla: entero; si no, null. */
+export function nota(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.trim()) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+}
+
 export const SLUG_RE = /^[a-z0-9-]{1,60}$/;
 export const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -29,6 +35,7 @@ export type Respuesta = {
   id: string;
   created_at: string;
   probatu: Probatu | null; // ya no se pregunta (7-nov); solo respuestas antiguas
+  nota: number | null; // nota 1-5 a la charla (desde el 8-nov; antes, post-its en papel)
   ordu_orain: number | null; // horas de móvil al día, ahora
   ordu_nahi: number | null; // horas que le gustaría
   ikasi: string | null;

@@ -99,6 +99,9 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
 .keys li li{margin:0 0 6px}
 .books .sub{margin:18px 0 0;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
 .help{color:var(--muted);font-size:14px;margin:-4px 0 12px}
+.nota{grid-template-columns:repeat(5,1fr)}
+.nota label{text-align:center;font-weight:700;font-size:20px;padding:14px 0}
+.scale{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:8px}
 .hours{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hours.three{grid-template-columns:1fr 1fr 1fr}
 .hours label{display:block;font-size:14px;color:#d6d6d6;margin:0 0 6px}
@@ -163,7 +166,18 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
 </div>
 <form id="f" novalidate>
   <fieldset>
-    <legend>1. Zenbat ordu ematen dituzu egunean mugikorrari begira?</legend>
+    <legend>1. Zer nota jarriko zenioke hitzaldiari?</legend>
+    <div class="choices nota">
+      <input type="radio" name="nota" id="n1" value="1"><label for="n1">1</label>
+      <input type="radio" name="nota" id="n2" value="2"><label for="n2">2</label>
+      <input type="radio" name="nota" id="n3" value="3"><label for="n3">3</label>
+      <input type="radio" name="nota" id="n4" value="4"><label for="n4">4</label>
+      <input type="radio" name="nota" id="n5" value="5"><label for="n5">5</label>
+    </div>
+    <div class="scale"><span>1 = oso gaizki</span><span>5 = oso ondo</span></div>
+  </fieldset>
+  <fieldset>
+    <legend>2. Zenbat ordu ematen dituzu egunean mugikorrari begira?<span class="opt">aukerazkoa</span></legend>
     <p class="help">Batez beste. Mugikorraren ezarpenetan ikus dezakezu («Pantaila-denbora» edo «Ongizate digitala»).</p>
     <div class="hours">
       <div><label for="ordu_orain">Orain</label><input type="text" inputmode="decimal" autocomplete="off" id="ordu_orain" name="ordu_orain" maxlength="4"><span class="unit">ordu egunean</span></div>
@@ -171,15 +185,15 @@ footer{margin-top:44px;text-align:center;color:var(--muted);font-size:13px}
     </div>
   </fieldset>
   <div style="margin-bottom:22px">
-    <label class="q" for="ikasi">2. Zer ikasi duzu zure buruari buruz?<span class="opt">aukerazkoa</span></label>
+    <label class="q" for="ikasi">3. Zer ikasi duzu zure buruari buruz?<span class="opt">aukerazkoa</span></label>
     <textarea id="ikasi" name="ikasi" maxlength="1000"></textarea>
   </div>
   <div style="margin-bottom:22px">
-    <label class="q" for="gustatu">3. Zer gustatu zaizu gehien?<span class="opt">aukerazkoa</span></label>
+    <label class="q" for="gustatu">4. Zer gustatu zaizu gehien?<span class="opt">aukerazkoa</span></label>
     <textarea id="gustatu" name="gustatu" maxlength="1000"></textarea>
   </div>
   <div style="margin-bottom:22px">
-    <label class="q" for="gehitu">4. Zerbait gehitu nahi duzu?<span class="opt">aukerazkoa</span></label>
+    <label class="q" for="gehitu">5. Zerbait gehitu nahi duzu?<span class="opt">aukerazkoa</span></label>
     <textarea id="gehitu" name="gehitu" maxlength="1000"></textarea>
   </div>
   <div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><label>Web <input type="text" name="web" tabindex="-1" autocomplete="off"></label></div>
@@ -435,13 +449,14 @@ function hrs(v){var n=parseFloat(String(v==null?"":v).replace(",","."));return i
 f.addEventListener("submit",function(e){
   e.preventDefault();
   err.style.display="none";
-  var d=new FormData(f), oa=hrs(d.get("ordu_orain")), na=hrs(d.get("ordu_nahi"));
-  if(oa===null||na===null){err.textContent="Idatzi ordu kopurua 1. galderan: orain zenbat eta zenbat nahiko zenukeen (0 eta 24 artean).";err.style.display="block";return}
-  var body={ordu_orain:oa,ordu_nahi:na,ikasi:d.get("ikasi")||"",gustatu:d.get("gustatu")||"",gehitu:d.get("gehitu")||"",saioa:SAIOA,web:d.get("web")||""};
+  var d=new FormData(f), nt=parseInt(d.get("nota"),10), ro=String(d.get("ordu_orain")||"").trim(), rn=String(d.get("ordu_nahi")||"").trim(), oa=ro?hrs(ro):null, na=rn?hrs(rn):null;
+  if(!(nt>=1&&nt<=5)){err.textContent="Aukeratu nota bat 1. galderan (1etik 5era).";err.style.display="block";return}
+  if((ro&&oa===null)||(rn&&na===null)){err.textContent="2. galderan, idatzi ordu kopuru bat 0 eta 24 artean (edo utzi hutsik).";err.style.display="block";return}
+  var body={nota:nt,ordu_orain:oa,ordu_nahi:na,ikasi:d.get("ikasi")||"",gustatu:d.get("gustatu")||"",gehitu:d.get("gehitu")||"",saioa:SAIOA,web:d.get("web")||""};
   btn.disabled=true;
   if(!ENDPOINT){btn.disabled=false;err.textContent="Oraindik ez dago konektatuta (ENDPOINT hutsik).";err.style.display="block";return}
   fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),credentials:"omit",referrerPolicy:"no-referrer"})
-  .then(function(r){if(!r.ok)throw 0;setCalc(oa,na);f.style.display="none";th.style.display="block";th.focus()})
+  .then(function(r){if(!r.ok)throw 0;if(oa!==null&&na!==null)setCalc(oa,na);f.style.display="none";th.style.display="block";th.focus()})
   .catch(function(){btn.disabled=false;err.textContent="Ezin izan da bidali. Saiatu berriro.";err.style.display="block"});
 });
 </script>

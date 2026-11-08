@@ -408,6 +408,8 @@ export default function ArretaTab() {
   const nombreCharla = (s: string | null) => (s ? datos.charlas.find((c) => c.slug === s)?.nombre ?? s : "Sin charla");
   const horasOrain = filtradas.map((r) => r.ordu_orain).filter((x): x is number => x != null);
   const horasNahi = filtradas.map((r) => r.ordu_nahi).filter((x): x is number => x != null);
+  const notas = filtradas.map((r) => r.nota).filter((x): x is number => x != null);
+  const mediaNota = mediaDe(notas);
   const mediaOrain = mediaDe(horasOrain);
   const mediaNahi = mediaDe(horasNahi);
   const destacadas = filtradas.filter((r) => r.destacada).length;
@@ -465,8 +467,8 @@ export default function ArretaTab() {
           valor={mediaOrain == null ? "—" : `${fmtH(mediaOrain)} h`}
           detalle={mediaOrain == null ? "sin horas" : `querrían ${fmtH(mediaNahi)} h · ${horasOrain.length} resp. · ${pct(horasOrain.filter((x) => x >= 4).length, horasOrain.length)} % con 4 h o más`}
         />
-        <Cifra titulo="Post-its · media" valor={rp.media == null ? "—" : rp.media.toFixed(2).replace(".", ",")} detalle={rp.total ? `${rp.total} post-its de 1 a 5` : "sin apuntar"} />
-        <Cifra titulo="Post-its 4-5" valor={rp.pctAltas == null ? "—" : `${Math.round(rp.pctAltas)} %`} detalle={rp.total ? `${rp.notas[3] + rp.notas[4]} de ${rp.total}` : undefined} />
+        <Cifra titulo="Nota · media" valor={mediaNota == null ? "—" : mediaNota.toFixed(2).replace(".", ",")} detalle={notas.length ? `${notas.length} resp. de 1 a 5 · reparto ${[1, 2, 3, 4, 5].map((n) => notas.filter((x) => x === n).length).join("/")}` : "sin notas"} />
+        <Cifra titulo="Nota 4-5" valor={notas.length ? `${Math.round(pct(notas.filter((x) => x >= 4).length, notas.length))} %` : "—"} detalle={notas.length ? `${notas.filter((x) => x >= 4).length} de ${notas.length}` : undefined} />
       </div>
 
       {/* Gráficas */}

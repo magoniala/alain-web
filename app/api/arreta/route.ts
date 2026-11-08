@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { horas } from "@/lib/arreta";
+import { horas, nota as parseNota } from "@/lib/arreta";
 
 // Encuesta anónima de /arreta. ANONIMATO ESTRICTO: este endpoint no lee ni
 // guarda IP, user-agent, cabeceras ni cookies; solo el cuerpo JSON. No hay rate
@@ -37,15 +37,20 @@ export async function POST(req: Request) {
 
   // Desde el 7-nov la pregunta 1 son las horas de móvil (ahora y deseadas).
   // `probatu` solo se acepta por si alguien tiene abierta la versión anterior.
+  // Desde el 8-nov la pregunta 1 es la nota de 1 a 5 (única obligatoria) y las
+  // horas pasan a ser opcionales. Las versiones anteriores abiertas (solo horas
+  // o `probatu`) se siguen aceptando.
   const ordu_orain = horas(b.ordu_orain);
   const ordu_nahi = horas(b.ordu_nahi);
+  const nota = parseNota(b.nota);
   const probatu = typeof b.probatu === "string" && PROBATU.includes(b.probatu) ? b.probatu : null;
-  if (!probatu && (ordu_orain === null || ordu_nahi === null)) {
-    return NextResponse.json({ error: "horas no válidas." }, { status: 400 });
+  if (nota === null && !probatu && (ordu_orain === null || ordu_nahi === null)) {
+    return NextResponse.json({ error: "nota no válida." }, { status: 400 });
   }
 
   const fila = {
     probatu,
+    nota,
     ordu_orain,
     ordu_nahi,
     ikasi: texto(b.ikasi),
@@ -54,7 +59,14 @@ export async function POST(req: Request) {
     saioa: typeof b.saioa === "string" && SAIOA_RE.test(b.saioa) ? b.saioa : null,
   };
 
-  const { error } = await supabase.from("arreta_respuestas").insert(fila);
+  let { error } = await supabase.from("arreta_respuestas").insert(fila);
+  if (error && /nota/i.test(error.message)) {
+    // Si falta la columna (sql/arreta_nota.sql sin ejecutar) no se pierde la respuesta.
+    console.error("arreta: falta la columna nota; se guarda sin ella:", error.message);
+    const { nota: _nota, ...sinNota } = fila;
+    void _nota;
+    ({ error } = await supabase.from("arreta_respuestas").insert(sinNota));
+  }
   if (error) {
     console.error("arreta: error al guardar:", error.message);
     return NextResponse.json({ error: "No se pudo guardar." }, { status: 500 });
