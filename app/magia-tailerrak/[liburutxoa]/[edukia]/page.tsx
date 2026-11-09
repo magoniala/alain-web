@@ -3,7 +3,7 @@
 // mientras tanto, en el librillo sale como «Grabatzen» y no se puede abrir.
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { kartaOf, liburutxoSarbidea } from "@/lib/magia-sarbidea";
+import { gorria, kartaOf, liburutxoSarbidea } from "@/lib/magia-sarbidea";
 import Bideoa from "../../_components/Bideoa";
 import Goiburua from "../../_components/Goiburua";
 import Oharrak from "../../_components/Oharrak";
@@ -49,7 +49,7 @@ export default async function EdukiOrria({
             {karta ? (
               <>
                 <span className={css.izkinaZenb} style={{ fontSize: "1.4rem" }}>{karta.zenbakia}</span>
-                <span className={css.izkinaPaloa} style={{ fontSize: "1.2rem" }}>{karta.paloa}</span>
+                <span className={`${css.izkinaPaloa} ${gorria(karta.paloa) ? css.gorria : ""}`} style={{ fontSize: "1.2rem" }}>{karta.paloa}</span>
               </>
             ) : (
               <span style={{ fontSize: "1.5rem" }}>★</span>

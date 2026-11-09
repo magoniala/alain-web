@@ -46,8 +46,9 @@ export default function Sartu() {
   return (
     <main style={main}>
       <Goiburua email={null} />
-      <section style={{ ...contenedor, maxWidth: "460px", padding: "3rem 1.25rem 5rem" }}>
-        <p style={{ ...etiqueta, marginBottom: "1rem" }}>Zure magia-gunea</p>
+      <section style={{ ...contenedor, maxWidth: "460px", padding: "1.5rem 1.25rem 5rem", textAlign: "center" }}>
+        <div aria-hidden style={{ width: 64, height: 90, margin: "0 auto 1.5rem", borderRadius: 9, background: K.fg, color: K.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", boxShadow: `0 0 0 1px ${K.cyan}, 0 8px 22px rgba(46,211,230,0.18)`, transform: "rotate(-4deg)" }}>♠</div>
+        <p style={{ ...etiqueta, marginBottom: "0.5rem" }}>Zure magia-gunea</p>
         <h1 style={{ fontSize: "2.2rem", fontWeight: 500, letterSpacing: "-0.03em", marginBottom: "1rem" }}>Sartu</h1>
 
         {urratsa === "ezDago" ? (

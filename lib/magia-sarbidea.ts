@@ -3,6 +3,7 @@ import { ikusgaiak, katalogoa, liburutxoaDago, liburutxokoEdukiak, type Edukia }
 import { nireLiburutxoak, nireSaioa } from "@/lib/magia-plataforma";
 
 export const PALOAK = ["♠", "♥", "♦", "♣"] as const;
+export const gorria = (paloa: string) => paloa === "♥" || paloa === "♦";
 
 export async function liburutxoSarbidea(liburutxoa: string) {
   const k = ikusgaiak(await katalogoa());
