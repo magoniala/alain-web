@@ -8,14 +8,15 @@ import { notFound } from "next/navigation";
 import { LIBURUTXO_IZENA } from "@/lib/magia-catalogo";
 import { ikusgaiak, katalogoa, liburutxoaDago, liburutxokoEdukiak, type Edukia } from "@/lib/magia-edukiak";
 import { nireLiburutxoak, nireSaioa } from "@/lib/magia-plataforma";
-import Bideoa from "../_components/Bideoa";
 import Goiburua from "../_components/Goiburua";
 import GiltzaForm from "../_components/GiltzaForm";
 import Gogoratu from "../_components/Gogoratu";
 import HauDaNirea from "../_components/HauDaNirea";
 import OpariForm from "../_components/OpariForm";
 import Oina from "../_components/Oina";
-import { K, contenedor, etiqueta, main, tarjeta } from "../_components/estiloa";
+import { K, contenedor, etiqueta, main } from "../_components/estiloa";
+import css from "../_components/magia.module.css";
+import { PALOAK } from "@/lib/magia-sarbidea";
 
 export const dynamic = "force-dynamic";
 
@@ -28,58 +29,31 @@ function Giltzarrapoa({ tamaina = 18 }: { tamaina?: number }) {
   );
 }
 
-function Laster() {
-  return (
-    <div style={{ aspectRatio: "16 / 9", border: `1px dashed ${K.borde}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.35rem", textAlign: "center", padding: "1rem" }}>
-      <span style={{ ...etiqueta, fontSize: "0.7rem" }}>Laster: bideoa</span>
-      <span style={{ fontSize: "0.85rem", color: K.muy }}>emanaldia + azalpena, pausoz pauso</span>
-    </div>
-  );
-}
-
 const h1 = { fontSize: "clamp(2.1rem, 6vw, 3.2rem)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.05 } as const;
-const h2 = { fontSize: "1.6rem", fontWeight: 500, letterSpacing: "-0.02em", marginBottom: "0.75rem" } as const;
+const h2 = { fontSize: "1.45rem", fontWeight: 500, letterSpacing: "-0.02em", marginBottom: "0.75rem" } as const;
 
-function Jolasa({ e }: { e: Edukia }) {
+/** La baraja del librillo: boca arriba los juegos con vídeo, boca abajo los que se están grabando. */
+function Abanikoa({ jolasak }: { jolasak: Edukia[] }) {
+  const n = jolasak.length;
+  const zabalera = Math.min(64, n * 16);
   return (
-    <article style={tarjeta}>
-      {e.etiketa && <p style={{ ...etiqueta, fontSize: "0.7rem", marginBottom: "0.5rem" }}>{e.etiketa}</p>}
-      <h2 style={{ fontSize: "1.35rem", fontWeight: 500, marginBottom: "0.6rem" }}>{e.izenburua}</h2>
-      {e.sarrera && <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "0.6rem" }}>{e.sarrera}</p>}
-      {e.materiala && <p style={{ color: K.muy, fontSize: "0.85rem", lineHeight: 1.6, marginBottom: "1.1rem" }}><b>Behar duzuna:</b> {e.materiala}</p>}
-      {e.youtube ? <Bideoa id={e.youtube} izenburua={e.izenburua} /> : <Laster />}
-    </article>
-  );
-}
-
-function Itxita({ e }: { e: Edukia }) {
-  const sekretua = e.egoera === "sekretua";
-  return (
-    <div aria-label={sekretua ? `Sekretu blokeatua: ${e.izenburua}` : `Itxita: ${e.izenburua}`} style={{ ...tarjeta, padding: "1.25rem 0.75rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.6rem", textAlign: "center", opacity: 0.85 }}>
-      <Giltzarrapoa tamaina={22} />
-      {sekretua ? (
-        <span style={{ fontSize: "1.4rem", letterSpacing: "0.2em", color: K.muy }}>???</span>
-      ) : (
-        <span style={{ fontSize: "1rem", fontWeight: 500, lineHeight: 1.3 }}>{e.izenburua}</span>
-      )}
-      <span style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.12em", color: K.muy, whiteSpace: "nowrap" }}>
-        {sekretua ? `#${e.izenburua.replace(/\D/g, "") || "?"}` : "Laster"}
-      </span>
+    <div className={css.abanikoa} aria-hidden>
+      {jolasak.map((e, i) => {
+        const angelua = n === 1 ? 0 : -zabalera / 2 + (i * zabalera) / (n - 1);
+        return (
+          <span key={e.slug} className={`${css.karta} ${e.youtube ? css.aurpegia : css.atzea}`} style={{ ["--angelua" as string]: `${angelua}deg`, zIndex: i }}>
+            {e.youtube ? PALOAK[i % PALOAK.length] : ""}
+          </span>
+        );
+      })}
     </div>
   );
 }
 
-export default async function LiburutxoOrria({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ liburutxoa: string }>;
-  searchParams: Promise<{ desblokeatuta?: string }>;
-}) {
+export default async function LiburutxoOrria({ params }: { params: Promise<{ liburutxoa: string }> }) {
   const { liburutxoa } = await params;
   const k = ikusgaiak(await katalogoa());
   if (!liburutxoaDago(k, liburutxoa)) notFound();
-  const { desblokeatuta } = await searchParams;
   const l = k.liburutxoak.find((x) => x.slug === liburutxoa)!;
   const etiketaOf = (slug: string) => k.liburutxoak.find((x) => x.slug === slug)?.etiketa ?? slug;
 
@@ -143,46 +117,47 @@ export default async function LiburutxoOrria({
   const opariak = edukiak.filter((e) => e.egoera === "emaila");
   const jolasak = edukiak.filter((e) => e.egoera === "irekia");
   const itxiak = edukiak.filter((e) => e.egoera === "ordainpekoa" || e.egoera === "sekretua");
+  const prest = jolasak.filter((e) => e.youtube).length;
   // Con cuenta (ha dejado el email) se abren todos los contenidos «emaila».
   const emailaUtzita = !!saioa;
+  const orria = (slug: string) => `/magia-tailerrak/${liburutxoa}/${slug}`;
 
   return (
     <main style={main}>
       {nireak.length === 0 && <Gogoratu librillo={liburutxoa} />}
       <Goiburua email={saioa?.email ?? null} />
 
-      <section style={{ ...contenedor, padding: "1.5rem 1.25rem 0" }}>
-        <p style={{ ...etiqueta, marginBottom: "1rem" }}>{LIBURUTXO_IZENA} · {l.etiketa}</p>
-        <h1 style={{ ...h1, marginBottom: "1.5rem" }}>Zure magia-gunea</h1>
-        <div style={{ borderLeft: `2px solid ${K.cyan}`, padding: "0.25rem 0 0.25rem 1rem", color: K.tenue, lineHeight: 1.7, fontSize: "0.98rem", marginBottom: "2.5rem" }}>
-          Liburutxo hauek berri-berriak dira, eta zuek zarete lehenak. Jolas bakoitzaren bideoa (ikusleen aurrean nola egiten den eta sekretua, pausoz pauso) astez aste grabatzen eta igotzen ari naiz. Itzuli laster!
-        </div>
+      <section style={{ ...contenedor, padding: "1.75rem 1.25rem 0", textAlign: "center" }}>
+        <p style={{ color: K.cyan, fontSize: "0.9rem", marginBottom: "0.6rem" }}>{LIBURUTXO_IZENA}</p>
+        <h1 style={{ ...h1, marginBottom: "0.4rem" }}>Zure magia-gunea</h1>
+        <p style={{ color: K.tenue, marginBottom: "1.75rem" }}>{l.etiketa}ko liburutxoa</p>
+        {jolasak.length > 0 && <Abanikoa jolasak={jolasak} />}
+        <p style={{ fontSize: "1.05rem", fontWeight: 500, marginBottom: "0.5rem" }}>
+          {prest === 0 ? `${jolasak.length} jolas, bideoak bidean` : `${prest}/${jolasak.length} bideo prest`}
+        </p>
+        <p style={{ color: K.tenue, lineHeight: 1.7, fontSize: "0.95rem", maxWidth: "34rem", margin: "0 auto 2.75rem" }}>
+          Liburutxo hauek berri-berriak dira, eta zuek zarete lehenak. Jolas bakoitza bideoan grabatzen ari naiz: ikusleen aurrean nola egiten den eta sekretua, pausoz pauso. Prest dagoen bakoitza hemen irekiko da.
+        </p>
       </section>
 
       {opariak.length > 0 && (
-        <section id="oparia" style={{ ...contenedor, padding: "0 1.25rem 3rem", scrollMarginTop: "1rem", display: "grid", gap: "1.25rem" }}>
+        <section id="oparia" style={{ ...contenedor, padding: "0 1.25rem 3rem", scrollMarginTop: "1rem", display: "grid", gap: "1rem" }}>
           {opariak.map((e, i) => (
-            <div key={e.slug} style={{ ...tarjeta, borderColor: "rgba(46,211,230,0.45)" }}>
-              <p style={{ ...etiqueta, marginBottom: "0.75rem" }}>{e.etiketa ?? "Opari extra bat"}</p>
+            <div key={e.slug} style={{ border: "1px solid rgba(46,211,230,0.5)", borderRadius: 14, background: "linear-gradient(160deg, rgba(46,211,230,0.10), rgba(46,211,230,0.02) 60%)", padding: "1.4rem 1.25rem" }}>
+              <p style={{ color: K.cyan, fontSize: "0.9rem", marginBottom: "0.5rem" }}>{e.etiketa ?? "Opari extra bat"}</p>
               <h2 style={h2}>{e.izenburua}</h2>
-              {e.sarrera && <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.5rem" }}>{e.sarrera}</p>}
+              {e.sarrera && <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.25rem" }}>{e.sarrera}</p>}
               {emailaUtzita ? (
-                <>
-                  {desblokeatuta && i === 0 && (
-                    <div role="status" style={{ background: "rgba(46,211,230,0.10)", border: "1px solid rgba(46,211,230,0.45)", padding: "0.9rem 1rem", marginBottom: "1.25rem", lineHeight: 1.6 }}>
-                      <p style={{ fontWeight: 600, color: K.cyan, marginBottom: "0.2rem" }}>Desblokeatuta!</p>
-                      <p style={{ fontSize: "0.9rem", color: K.tenue }}>Bideoa zurea da. Begiratu zure posta ere: gunera itzultzeko esteka bidali dizugu.</p>
-                    </div>
-                  )}
-                  {e.materiala && <p style={{ color: K.muy, fontSize: "0.85rem", lineHeight: 1.6, marginBottom: "1.1rem" }}><b>Behar duzuna:</b> {e.materiala}</p>}
-                  {e.youtube ? <Bideoa id={e.youtube} izenburua={e.izenburua} /> : <Laster />}
-                </>
+                <Link href={orria(e.slug)} className={css.botoia}>
+                  <span aria-hidden className={`${css.play} ${css.playIluna}`} />
+                  Ikusi bideoa
+                </Link>
               ) : i === 0 ? (
                 <>
                   <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.25rem" }}>
                     Utzi zure emaila eta desblokeatu bideoa. Heldu batek bete behar du: eskatu laguntza aitari edo amari.
                   </p>
-                  <OpariForm librillo={liburutxoa} />
+                  <OpariForm librillo={liburutxoa} helburua={orria(e.slug)} />
                 </>
               ) : (
                 <p style={{ color: K.muy, fontSize: "0.9rem" }}>Goiko emailarekin irekitzen da hau ere.</p>
@@ -194,22 +169,51 @@ export default async function LiburutxoOrria({
 
       {jolasak.length > 0 && (
         <section style={{ ...contenedor, padding: "0 1.25rem" }}>
-          <p style={{ ...etiqueta, marginBottom: "1.25rem" }}>Liburutxoko jolasak</p>
-          <div style={{ display: "grid", gap: "1.25rem" }}>
-            {jolasak.map((e) => <Jolasa key={e.slug} e={e} />)}
-          </div>
+          <h2 style={{ ...h2, marginBottom: "0.35rem" }}>Liburutxoko jolasak</h2>
+          <p style={{ color: K.muy, fontSize: "0.9rem", marginBottom: "1.1rem" }}>Liburutxoan duzun ordena berean.</p>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "0.65rem" }}>
+            {jolasak.map((e, i) => {
+              const izkina = (
+                <span className={css.izkina} aria-hidden>
+                  <span className={css.izkinaZenb}>{i + 1}</span>
+                  <span className={css.izkinaPaloa}>{PALOAK[i % PALOAK.length]}</span>
+                </span>
+              );
+              return (
+                <li key={e.slug}>
+                  {e.youtube ? (
+                    <Link href={orria(e.slug)} className={css.lerroa}>
+                      {izkina}
+                      <span className={css.izenburua}>{e.izenburua}</span>
+                      <span className={css.play} aria-label="Ikusi bideoa" />
+                    </Link>
+                  ) : (
+                    <div className={css.lerroa} aria-label={`${e.izenburua}: bideoa grabatzen`}>
+                      {izkina}
+                      <span className={css.izenburua} style={{ color: K.tenue }}>{e.izenburua}</span>
+                      <span className={css.egoera}><span className={css.rec} aria-hidden />Grabatzen</span>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 
       {itxiak.length > 0 && (
-        <section style={{ ...contenedor, padding: "3.5rem 1.25rem 4rem" }}>
-          <p style={{ ...etiqueta, marginBottom: "0.75rem" }}>Sekretuak</p>
-          <h2 style={h2}>Oraindik itxita</h2>
-          <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.5rem" }}>
+        <section style={{ ...contenedor, padding: "3.5rem 1.25rem 3.5rem" }}>
+          <h2 style={{ ...h2, marginBottom: "0.35rem" }}>Sekretuak</h2>
+          <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.25rem" }}>
             Gune honetan sekretu gehiago daude gordeta. Oraindik ezin dira ireki… baina laster!
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(3, itxiak.length)}, minmax(0, 1fr))`, gap: "0.75rem" }}>
-            {itxiak.map((e) => <Itxita key={e.slug} e={e} />)}
+          <div className={css.sekretuak}>
+            {itxiak.map((e) => (
+              <div key={e.slug} className={`${css.sekretua} ${css.atzea}`} aria-label={e.egoera === "sekretua" ? "Sekretu itxia" : `Itxita: ${e.izenburua}`}>
+                <span className={css.sekretuaGaldera} aria-hidden>?</span>
+                {e.egoera === "ordainpekoa" && <span className={css.sekretuaIzena}>{e.izenburua}</span>}
+              </div>
+            ))}
           </div>
         </section>
       )}

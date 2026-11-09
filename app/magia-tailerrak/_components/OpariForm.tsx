@@ -7,7 +7,7 @@ import { K, boton, input } from "./estiloa";
 type Egoera = "hasiera" | "bidaltzen" | "kodea" | "errorea";
 
 /** Formulario del extra: email del adulto + casilla. Si ya tenía cuenta, pide el código. */
-export default function OpariForm({ librillo }: { librillo: string }) {
+export default function OpariForm({ librillo, helburua }: { librillo: string; helburua: string }) {
   const [email, setEmail] = useState("");
   const [baimena, setBaimena] = useState(false);
   const [kodea, setKodea] = useState("");
@@ -26,7 +26,7 @@ export default function OpariForm({ librillo }: { librillo: string }) {
       body: JSON.stringify({ email: email.trim(), baimena, librillo }),
     });
     const d = await res.json().catch(() => ({}));
-    if (res.ok && d.ok) { window.location.href = `/magia-tailerrak/${librillo}?desblokeatuta=1#oparia`; return; }
+    if (res.ok && d.ok) { window.location.href = `${helburua}?desblokeatuta=1`; return; }
     if (res.ok && d.kodea) {
       setEgoera("kodea");
       setMezua(d.kodea === "itxaron"
@@ -47,7 +47,7 @@ export default function OpariForm({ librillo }: { librillo: string }) {
       body: JSON.stringify({ email: email.trim(), kodea }),
     });
     const d = await res.json().catch(() => ({}));
-    if (res.ok && d.ok) { window.location.href = `/magia-tailerrak/${librillo}?desblokeatuta=1#oparia`; return; }
+    if (res.ok && d.ok) { window.location.href = `${helburua}?desblokeatuta=1`; return; }
     setEgoera("kodea");
     setMezua(d.error || "Kode hori ez da zuzena.");
   }
