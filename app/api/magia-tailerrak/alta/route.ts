@@ -7,7 +7,7 @@
 // (ver newsletter_alta_at en sql/magia_plataforma.sql).
 
 import { NextResponse } from "next/server";
-import { liburutxoaDa, OPARIA } from "@/lib/magia-catalogo";
+import { katalogoa, liburutxoaDago } from "@/lib/magia-edukiak";
 import { db, emailGarbia, kodeaBidali, ongiEtorriaBidali, saioaIreki } from "@/lib/magia-plataforma";
 
 export async function POST(req: Request) {
@@ -15,7 +15,8 @@ export async function POST(req: Request) {
   const email = emailGarbia(body.email);
   if (!email) return NextResponse.json({ error: "Sartu posta elektroniko baliodun bat." }, { status: 400 });
   if (body.baimena !== true) return NextResponse.json({ error: "Markatu laukia jarraitzeko." }, { status: 400 });
-  const librillo = liburutxoaDa(body.librillo) ? body.librillo : null;
+  const k = await katalogoa();
+  const librillo = liburutxoaDago(k, body.librillo) ? body.librillo : null;
 
   const { data: badago } = await db().from("magia_usuarios").select("email").eq("email", email).maybeSingle();
   if (badago) {
@@ -30,7 +31,9 @@ export async function POST(req: Request) {
     console.error("magia: error en el alta:", error.message);
     return NextResponse.json({ error: "Zerbait gaizki joan da. Saiatu berriro." }, { status: 500 });
   }
-  await db().from("magia_accesos").insert({ email, contenido: OPARIA.slug, origen: "email" });
+  // Queda apuntado qué se abrió con el email (todo lo «emaila» de ese momento).
+  const opariak = k.edukiak.filter((e) => e.egoera === "emaila").map((e) => ({ email, contenido: e.slug, origen: "email" }));
+  if (opariak.length) await db().from("magia_accesos").insert(opariak);
   await saioaIreki(email, librillo);
 
   const host = req.headers.get("host") || "alainzulaika.com";

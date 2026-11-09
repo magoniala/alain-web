@@ -18,8 +18,9 @@ import EntrenatzaileTab from "./_components/EntrenatzaileTab";
 import MirariakTab from "./_components/MirariakTab";
 import ArretaTab from "./_components/ArretaTab";
 import CorreoTab from "./_components/CorreoTab";
+import MagiaTailerrakTab from "./_components/MagiaTailerrakTab";
 
-const TABS = ["Charlas", "Prospectos magia", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Mirariak 2026", "Arreta", "Bandeja general"] as const;
+const TABS = ["Charlas", "Prospectos magia", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Mirariak 2026", "Arreta", "Bandeja general", "Magia-tailerrak"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
@@ -28,7 +29,7 @@ const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
   { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
   { titulo: "Correo", tabs: ["Bandeja general", "Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
-  { titulo: "Magia", tabs: ["Mirariak 2026", "Magic"] },
+  { titulo: "Magia", tabs: ["Mirariak 2026", "Magia-tailerrak", "Magic"] },
   // Lo que dicen de mí: alumnos de las charlas (Arreta) y quienes contratan magia (Opiniones eventos).
   { titulo: "Testimonios", tabs: ["Arreta", "Opiniones eventos"] },
   { titulo: "Otros", tabs: ["Arrogante"] },
@@ -50,6 +51,8 @@ const ICONO: Record<Tab, React.ReactNode> = {
   "Estadísticas guías": <path d="M4 16V9m4 7V5m4 11v-5m4 5V7" />,
   "Embudo espalda": <path d="M3 4h14l-5 6v5l-4 2v-7z" />,
   Magic: <path d="M4 16 14 6m-1-3 1 2 2 1-2 1-1 2-1-2-2-1 2-1zM15 11l.6 1.4L17 13l-1.4.6L15 15l-.6-1.4L13 13l1.4-.6z" />,
+  // Libro abierto: los librillos de los talleres.
+  "Magia-tailerrak": <path d="M10 5.5C8.5 4.3 6.3 4 3 4v11c3.3 0 5.5.3 7 1.5m0-11c1.5-1.2 3.7-1.5 7-1.5v11c-3.3 0-5.5.3-7 1.5m0-11v11" />,
   "Mirariak 2026": <path d="M10 3a7 7 0 1 0 7 7h-7V3Zm2 0v5h5a7 7 0 0 0-5-5Z" />,
   Arreta: <path d="M4 4h12v12H4zM7 8h6M7 11h6M7 14h3" />,
   "Bandeja general": <path d="M3 11l2.5-6h9L17 11v5H3zm0 0h4l1 2h4l1-2h4" />,
@@ -306,6 +309,7 @@ export default function AdminPage() {
               {tab === "Mirariak 2026" && <MirariakTab />}
               {tab === "Arreta" && <ArretaTab />}
               {tab === "Bandeja general" && <CorreoTab />}
+              {tab === "Magia-tailerrak" && <MagiaTailerrakTab />}
             </div>
           </div>
         </div>

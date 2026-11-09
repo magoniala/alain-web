@@ -42,6 +42,9 @@ export const LIBURUTXOAK: Record<LiburutxoSlug, Liburutxoa> = {
   "11": { slug: "11", etiketa: "+11 urte", jolasak: ["reloj", "pulgar", "billete", "uno"] },
 };
 
+/** Orden en pantalla (una clave numérica como "11" iría primero en Object.keys). */
+export const LIBURUTXO_ORDENA: LiburutxoSlug[] = ["6-7", "8-10", "11"];
+
 export const LIBURUTXO_IZENA = "Sekretu handiak mago txikientzat";
 
 export function liburutxoaDa(s: unknown): s is LiburutxoSlug {
@@ -55,3 +58,23 @@ export const OPARIA = {
   azpititulua: "Edalontzi bat. Aluminio papera. Hiru minutu.",
   bideoa: "YeVxIkatxlw",
 } as const;
+
+/** Todo lo que puede llevar vídeo: los juegos de los librillos y el extra. */
+export function bideoSlugak(): string[] {
+  return [...Object.keys(JOLASAK), OPARIA.slug];
+}
+
+/** Saca el id de YouTube de una URL (watch, youtu.be, shorts, embed) o de un id suelto. */
+export function youtubeId(s: string): string | null {
+  const v = s.trim();
+  if (/^[\w-]{11}$/.test(v)) return v;
+  const m = v.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Bloques secretos: se ven con candado y todavía no se pueden abrir (decisión
+ * de Alain, 9-nov: por ahora ni venta de librillos ni forma de desbloquearlos).
+ */
+export const SEKRETUAK = [1, 2, 3];
+

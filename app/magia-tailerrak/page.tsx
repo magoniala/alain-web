@@ -2,16 +2,20 @@
 // Si ya sabemos qué librillo tiene, va directo a él; ?aldatu=1 deja elegir otro.
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { JOLASAK, LIBURUTXOAK, LIBURUTXO_IZENA } from "@/lib/magia-catalogo";
+import { LIBURUTXO_IZENA } from "@/lib/magia-catalogo";
+import { ikusgaiak, katalogoa, liburutxokoEdukiak } from "@/lib/magia-edukiak";
 import { nireLiburutxoak, nireSaioa } from "@/lib/magia-plataforma";
 import Goiburua from "./_components/Goiburua";
 import Oina from "./_components/Oina";
 import { K, contenedor, etiqueta, main, tarjeta } from "./_components/estiloa";
 
+export const dynamic = "force-dynamic";
+
 export default async function Portada({ searchParams }: { searchParams: Promise<{ aldatu?: string }> }) {
   const { aldatu } = await searchParams;
+  const k = ikusgaiak(await katalogoa());
   const saioa = await nireSaioa();
-  const nireak = await nireLiburutxoak(saioa);
+  const nireak = await nireLiburutxoak(saioa, k.liburutxoak.map((l) => l.slug));
   if (nireak.length && !aldatu) redirect(`/magia-tailerrak/${nireak[0]}`);
 
   return (
@@ -26,14 +30,15 @@ export default async function Portada({ searchParams }: { searchParams: Promise<
           Aukeratu zurea eta ikusi bere jolasak bideoan. Eta opari bat ere badago!
         </p>
         <div style={{ display: "grid", gap: "1rem" }}>
-          {Object.values(LIBURUTXOAK).map((l) => (
-            <Link key={l.slug} href={`/magia-tailerrak/${l.slug}`} style={{ ...tarjeta, display: "block", textDecoration: "none", color: K.fg }}>
-              <p style={{ fontSize: "1.6rem", fontWeight: 500, marginBottom: "0.4rem" }}>{l.etiketa}</p>
-              <p style={{ fontSize: "0.9rem", color: K.muy, lineHeight: 1.6 }}>
-                {l.jolasak.map((j) => JOLASAK[j].izenburua).join(" · ")}
-              </p>
-            </Link>
-          ))}
+          {k.liburutxoak.map((l) => {
+            const jolasak = liburutxokoEdukiak(k, l.slug).filter((e) => e.mota === "jolasa" && e.liburutxoak.length > 0);
+            return (
+              <Link key={l.slug} href={`/magia-tailerrak/${l.slug}`} style={{ ...tarjeta, display: "block", textDecoration: "none", color: K.fg }}>
+                <p style={{ fontSize: "1.6rem", fontWeight: 500, marginBottom: "0.4rem" }}>{l.etiketa}</p>
+                <p style={{ fontSize: "0.9rem", color: K.muy, lineHeight: 1.6 }}>{jolasak.map((j) => j.izenburua).join(" · ")}</p>
+              </Link>
+            );
+          })}
         </div>
       </section>
       <Oina />

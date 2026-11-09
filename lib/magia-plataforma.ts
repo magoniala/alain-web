@@ -6,7 +6,6 @@ import { createHash, randomBytes, randomInt } from "crypto";
 import { cookies } from "next/headers";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
-import { OPARIA, liburutxoaDa, type LiburutxoSlug } from "@/lib/magia-catalogo";
 
 export const COOKIE_SAIOA = "magia_saioa";
 export const COOKIE_LIBURUTXOA = "magia_liburutxoa";
@@ -47,7 +46,7 @@ export async function saioaIreki(email: string, librillo?: string | null) {
   if (error) throw new Error(`magia: no se ha podido abrir la sesión: ${error.message}`);
   const c = await cookies();
   c.set(COOKIE_SAIOA, token, cookieAukerak(URTE_BAT_S));
-  if (liburutxoaDa(librillo)) c.set(COOKIE_LIBURUTXOA, librillo, { ...cookieAukerak(URTE_BAT_S), httpOnly: false });
+  if (typeof librillo === "string" && /^[a-z0-9-]{1,40}$/.test(librillo)) c.set(COOKIE_LIBURUTXOA, librillo, { ...cookieAukerak(URTE_BAT_S), httpOnly: false });
 }
 
 export async function saioaItxi() {
@@ -59,7 +58,8 @@ export async function saioaItxi() {
 
 export interface NireSaioa {
   email: string;
-  librillo: LiburutxoSlug | null;
+  /** El librillo con el que se registró, tal cual está guardado (se valida contra el catálogo al usarlo). */
+  librilloRaw: string | null;
   accesos: string[];
 }
 
@@ -80,22 +80,24 @@ export async function nireSaioa(): Promise<NireSaioa | null> {
   ]);
   return {
     email: s.email,
-    librillo: liburutxoaDa(u?.librillo) ? u!.librillo : null,
+    librilloRaw: typeof u?.librillo === "string" ? u.librillo : null,
     accesos: (a ?? []).map((r: { contenido: string }) => r.contenido),
   };
 }
 
-/** Los librillos que son de quien visita: los de su cuenta o, sin cuenta, el que eligió. */
-export async function nireLiburutxoak(saioa: NireSaioa | null): Promise<LiburutxoSlug[]> {
+/**
+ * Los librillos que son de quien visita: los de su cuenta (el que eligió al
+ * registrarse + los comprados) o, sin cuenta, el que eligió (cookie).
+ * `badaude` son los slugs que existen ahora en el catálogo.
+ */
+export async function nireLiburutxoak(saioa: NireSaioa | null, badaude: string[]): Promise<string[]> {
+  const ona = (s: unknown): s is string => typeof s === "string" && badaude.includes(s);
   if (saioa) {
-    const erosiak = saioa.accesos
-      .filter((a) => a.startsWith("liburutxoa:"))
-      .map((a) => a.slice("liburutxoa:".length))
-      .filter(liburutxoaDa);
-    return [...new Set([...(saioa.librillo ? [saioa.librillo] : []), ...erosiak])];
+    const erosiak = saioa.accesos.filter((a) => a.startsWith("liburutxoa:")).map((a) => a.slice("liburutxoa:".length));
+    return [...new Set([saioa.librilloRaw, ...erosiak].filter(ona))];
   }
   const aukeratua = (await cookies()).get(COOKIE_LIBURUTXOA)?.value;
-  return liburutxoaDa(aukeratua) ? [aukeratua] : [];
+  return ona(aukeratua) ? [aukeratua] : [];
 }
 
 // ---------- Códigos por email ----------
@@ -173,7 +175,7 @@ export async function ongiEtorriaBidali(email: string, baseUrl: string) {
     "Zure magia-gunea prest dago",
     wrap(`
       <p>Kaixo!</p>
-      <p>Eskerrik asko zure emaila uzteagatik. «${OPARIA.izenburua}» desblokeatuta dago zure magia-gunean.</p>
+      <p>Eskerrik asko zure emaila uzteagatik. Opari extra dagoeneko desblokeatuta dago zure magia-gunean.</p>
       <p>Gunera itzultzeko: <a href="${url}" style="color:#1a1a1a;font-weight:bold;">alainzulaika.com/magia-tailerrak</a>.
       Beste gailu batetik sartzen bazara, sakatu «Sartu», idatzi zure emaila eta bidaliko dizudan kodea.</p>
       <p>Liburutxo hauek berri-berriak dira, eta zuek zarete lehenak. Jolas bakoitzaren bideoa astez aste igotzen ari naiz.</p>

@@ -26,7 +26,7 @@ export default function OpariForm({ librillo }: { librillo: string }) {
       body: JSON.stringify({ email: email.trim(), baimena, librillo }),
     });
     const d = await res.json().catch(() => ({}));
-    if (res.ok && d.ok) return window.location.reload();
+    if (res.ok && d.ok) { window.location.href = `/magia-tailerrak/${librillo}?desblokeatuta=1#oparia`; return; }
     if (res.ok && d.kodea) {
       setEgoera("kodea");
       setMezua(d.kodea === "itxaron"
@@ -47,7 +47,7 @@ export default function OpariForm({ librillo }: { librillo: string }) {
       body: JSON.stringify({ email: email.trim(), kodea }),
     });
     const d = await res.json().catch(() => ({}));
-    if (res.ok && d.ok) return window.location.reload();
+    if (res.ok && d.ok) { window.location.href = `/magia-tailerrak/${librillo}?desblokeatuta=1#oparia`; return; }
     setEgoera("kodea");
     setMezua(d.error || "Kode hori ez da zuzena.");
   }
