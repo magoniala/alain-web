@@ -13,6 +13,18 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/admin/charlas/bandeja": ["./assets/charlas/**/*"],
   },
+  redirects() {
+    return [
+      // QR impreso en los librillos de los talleres de Mirariak (sáb 14-nov-2026).
+      // Temporal (307, no se cachea): hasta que exista la plataforma de magia,
+      // lleva al regalo de /tumision (euskera por defecto; hay botón ES).
+      {
+        source: "/magia-tailerrak",
+        destination: "/tumision?e=librillo",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
