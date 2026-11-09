@@ -1,12 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+// Canal de entrada: ?e=librillo (QR de los librillos), ?e=tarjeta… Solo letras,
+// números, guion y guion bajo, para no guardar nada raro que venga en la URL.
+function canalDeLaUrl(): string {
+  const e = new URLSearchParams(window.location.search).get("e") ?? "";
+  return /^[a-z0-9_-]{1,30}$/i.test(e) ? e.toLowerCase() : "";
+}
 
 export default function MisionPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState("");
+  // El canal se lee tras montar (no en el render) para no romper la hidratación.
+  const [canal, setCanal] = useState("");
+  useEffect(() => { setCanal(canalDeLaUrl()); }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +30,7 @@ export default function MisionPage() {
     const res = await fetch("/api/mision", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), lang: "eu" }),
+      body: JSON.stringify({ email: email.trim(), lang: "eu", canal: canalDeLaUrl() }),
     });
 
     if (res.ok) {
@@ -60,7 +70,7 @@ export default function MisionPage() {
         <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(242,242,240,0.16)", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
           <span style={{ padding: "0.3rem 0.65rem", color: "#2ED3E6", background: "rgba(46,211,230,0.06)" }}>EUS</span>
           <span style={{ width: "1px", alignSelf: "stretch", background: "rgba(242,242,240,0.12)" }} />
-          <Link href="/es/tumision" style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>ES</Link>
+          <Link href={`/es/tumision${canal ? `?e=${canal}` : ""}`} style={{ padding: "0.3rem 0.65rem", color: "rgba(242,242,240,0.55)", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "rgba(242,242,240,0.90)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(242,242,240,0.55)")}>ES</Link>
         </div>
       </header>
 

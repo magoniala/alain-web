@@ -11,7 +11,9 @@ const supabase = createClient(
 );
 
 export async function POST(req: Request) {
-  const { email, lang } = await req.json();
+  const { email, lang, canal } = await req.json();
+  // Canal de entrada (?e= de la URL): solo un código corto, nada más.
+  const canalLimpio = typeof canal === "string" && /^[a-z0-9_-]{1,30}$/.test(canal) ? canal : null;
   const isEu = lang === "eu";
   const contactEmail = isEu ? "info@alainzulaika.com" : "contacto@alainzulaika.com";
   const host = req.headers.get("host") || "alainzulaika.com";
@@ -28,6 +30,14 @@ export async function POST(req: Request) {
 
   if (dbError && dbError.code !== "23505") {
     return NextResponse.json({ error: "Error al guardar." }, { status: 500 });
+  }
+
+  // Por dónde llegó (librillo, tarjeta…), solo en un alta nueva. Aparte del
+  // insert para que, si sql/mision_canal.sql aún no está ejecutado, el alta
+  // salga igual (solo se pierde el canal).
+  if (canalLimpio && !dbError) {
+    const { error: canalError } = await supabase.from("mision_contactos").update({ canal: canalLimpio }).eq("email", email);
+    if (canalError) console.error("mision: no se ha podido guardar el canal:", canalError.message);
   }
 
   // Alta en la newsletter según el embudo «tumision» (ver lib/embudos.ts):
