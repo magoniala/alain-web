@@ -25,6 +25,8 @@ const NO_REDIRECT_PATHS = [
   // euskaldunes con el móvil en castellano, y la redirección por idioma del
   // navegador las mandaba a /es/tumision.
   "/tumision",
+  // Plataforma de magia del QR de los librillos: solo en euskera (de momento).
+  "/magia-tailerrak",
 ];
 
 export function proxy(request: NextRequest) {
