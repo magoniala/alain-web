@@ -424,6 +424,29 @@ function TarjetaReserva({ r, libres, accion }: { r: Reserva; libres: { taller: R
   );
 }
 
+// Lista de espera del taller: dar plaza directamente en OTRO grupo con sitio
+// (p. ej. un niño de 10 años del 8-10 completo al +11). No manda correo:
+// deja preparado el aviso, como «Dar plaza».
+function DarPlazaEnOtro({ e, actual, libres, nombre, accion }: { e: EnEspera; actual: string; libres: Record<string, number>; nombre: string; accion: ReturnType<typeof useAccion> }) {
+  const opciones = Object.keys(NOMBRE_GRUPO).filter((s) => s !== actual && (libres[s] ?? 0) > 0);
+  const [destino, setDestino] = useState("");
+  if (!opciones.length) return null;
+  return (
+    <span className="flex items-center gap-1">
+      <select value={destino} onChange={(ev) => setDestino(ev.target.value)} className="border border-gray-300 px-1 py-0.5 text-[0.75rem]" aria-label={`Dar plaza a ${e.nombre} en otro grupo`}>
+        <option value="">Otro grupo…</option>
+        {opciones.map((s) => <option key={s} value={s}>{NOMBRE_GRUPO[s]} · {libres[s]} libres</option>)}
+      </select>
+      {destino && (
+        <button className={btnFuerte} disabled={accion.ocupado} onClick={async () => {
+          const t = textoPlaza("taller", destino, e.nombre, e.contacto, e.idioma);
+          if (await accion.lanzar({ accion: "dar_plaza", id: e.id, lista: "taller", idx: e.idx, nombre, destino }, `${e.nombre} ya tiene plaza en ${NOMBRE_GRUPO[destino]}. Avisa a la familia:`, enlaceAviso(e, t.asunto, t.cuerpo))) setDestino("");
+        }}>Dar plaza ahí</button>
+      )}
+    </span>
+  );
+}
+
 function NuevoEnEspera({ accion, onHecho }: { accion: ReturnType<typeof useAccion>; onHecho: () => void }) {
   const [lista, setLista] = useState<Lista>("taller");
   const [destino, setDestino] = useState("11:10 – 12:05");
@@ -535,6 +558,7 @@ function Gestion({ g, libres, recargar, inicial = "" }: { g: DatosGestion; libre
                         <span className="w-full pl-7 text-[0.72rem] text-gray-400">desde {fecha(e.desde)}</span>
                         <span className="flex w-full gap-1 pl-7">
                           <button className={btnFuerte} disabled={accion.ocupado} onClick={() => accion.lanzar({ accion: "dar_plaza", id: e.id, lista: x.lista, idx: e.idx, nombre: p?.nombre ?? e.nombre }, `${e.nombre} ya tiene plaza. Avisa a la familia:`, enlaceAviso(e, t.asunto, t.cuerpo))}>Dar plaza</button>
+                          {x.lista === "taller" && <DarPlazaEnOtro e={e} actual={x.destino} libres={libres.taller} nombre={p?.nombre ?? e.nombre} accion={accion} />}
                           <button className={btn} disabled={accion.ocupado} onClick={() => { const m = window.prompt(`Quitar a ${e.nombre} de la lista de espera. Motivo:`, "Ya no lo necesita"); if (m !== null) accion.lanzar({ accion: "quitar_espera", id: e.id, lista: x.lista, idx: e.idx, nombre: e.nombre, motivo: m }, `${e.nombre} quitado de la lista de espera.`); }}>Quitar</button>
                         </span>
                       </li>

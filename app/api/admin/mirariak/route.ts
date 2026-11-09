@@ -281,10 +281,18 @@ export async function POST(req: Request) {
     if (b.accion === "reactivar" || b.accion === "dar_plaza") {
       // Vuelve a ocupar plaza: hay que comprobar el aforo del destino.
       const p = ps[indices[0]];
-      const destino = lista === "taller" ? (p as ParticipanteTaller).sesion_asignada ?? "" : fila.horario_micromagia ?? "";
+      const actual = lista === "taller" ? (p as ParticipanteTaller).sesion_asignada ?? "" : fila.horario_micromagia ?? "";
+      // Taller: «Dar plaza en…» otro grupo desde la lista de espera (mover + dar plaza en un paso, sin correo).
+      const otroGrupo = lista === "taller" && b.accion === "dar_plaza" && b.destino && b.destino !== actual;
+      if (otroGrupo && !TALLER_SESIONES.includes(b.destino!)) return err("Grupo desconocido.");
+      const destino = otroGrupo ? b.destino! : actual;
       const quedan = libres(filas, lista, destino);
       if (quedan < 1 && !b.forzar) return completo(lista, destino, quedan);
       const desde = b.accion === "reactivar" ? "Reactivada" : "Sale de la lista de espera: plaza dada";
+      if (otroGrupo) {
+        apuntar(p, `Movido de la lista de espera del ${nombreGrupo(actual)} al ${nombreGrupo(destino)}`);
+        (p as ParticipanteTaller).sesion_asignada = destino;
+      }
       p.anulada = null;
       p.espera = null;
       apuntar(p, `${desde} en ${etiquetaDestino(lista, destino)}${quedan < 1 ? " (por encima del aforo)" : ""}`);
