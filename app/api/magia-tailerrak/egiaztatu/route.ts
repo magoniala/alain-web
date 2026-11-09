@@ -1,5 +1,6 @@
 // Comprueba el código del email y abre la sesión.
 import { NextResponse } from "next/server";
+import { katalogoa } from "@/lib/magia-edukiak";
 import { db, emailGarbia, kodeaEgiaztatu, saioaIreki } from "@/lib/magia-plataforma";
 
 export async function POST(req: Request) {
@@ -10,6 +11,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Kode hori ez da zuzena edo iraungi da." }, { status: 400 });
   }
   const { data: u } = await db().from("magia_usuarios").select("librillo").eq("email", email).maybeSingle();
-  await saioaIreki(email, u?.librillo);
+  const l = (await katalogoa()).liburutxoak.find((x) => x.slug === u?.librillo) ?? null;
+  await saioaIreki(email, l);
   return NextResponse.json({ ok: true, librillo: u?.librillo ?? null });
 }

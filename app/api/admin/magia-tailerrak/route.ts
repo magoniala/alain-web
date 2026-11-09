@@ -79,7 +79,10 @@ function leerLiburutxoa(x: Record<string, unknown>): Liburutxoa | string {
   if (!SLUG_ONA.test(slug)) return "El identificador solo puede llevar minúsculas, números y guiones (p. ej. «6-7»).";
   const etiketa = texto(x.etiketa, 60);
   if (!etiketa) return "Falta el nombre del librillo.";
-  return { slug, etiketa, ordena: typeof x.ordena === "number" ? x.ordena : 0, ikusgai: x.ikusgai !== false };
+  const l: Liburutxoa = { slug, etiketa, ordena: typeof x.ordena === "number" ? x.ordena : 0, ikusgai: x.ikusgai !== false };
+  // Solo si viene: sin la columna (sql/magia_giltza.sql sin ejecutar) no se toca.
+  if ("giltza" in x) l.giltza = texto(x.giltza, 40);
+  return l;
 }
 
 export async function PUT(req: Request) {

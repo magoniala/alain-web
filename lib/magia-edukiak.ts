@@ -6,7 +6,7 @@
 
 import { JOLASAK, LIBURUTXOAK, LIBURUTXO_ORDENA, OPARIA, SEKRETUAK } from "@/lib/magia-catalogo";
 import { db } from "@/lib/magia-plataforma";
-import type { Edukia, Katalogoa, Liburutxoa } from "@/lib/magia-edukiak-motak";
+import { giltzaGarbia, type Edukia, type Katalogoa, type Liburutxoa } from "@/lib/magia-edukiak-motak";
 
 export * from "@/lib/magia-edukiak-motak";
 
@@ -33,7 +33,9 @@ const porOrden = <T extends { ordena: number; slug: string }>(a: T, b: T) => a.o
 /** El catálogo que manda ahora mismo (BD si tiene filas; si no, el del código). */
 export async function katalogoa(): Promise<Katalogoa> {
   const [l, e] = await Promise.all([
-    db().from("magia_liburutxoak").select("slug, etiketa, ordena, ikusgai"),
+    // «*» y no la lista de columnas: así, si aún no existe la columna giltza
+    // (sql/magia_giltza.sql sin ejecutar), el catálogo sigue saliendo de la BD.
+    db().from("magia_liburutxoak").select("*"),
     db().from("magia_edukiak").select("slug, mota, egoera, izenburua, etiketa, sarrera, materiala, youtube, liburutxoak, ordena, ikusgai, prezioa_cent"),
   ]);
   const error = l.error ?? e.error;
@@ -43,7 +45,13 @@ export async function katalogoa(): Promise<Katalogoa> {
   }
   if (!l.data?.length || !e.data?.length) return katalogoaKodetik();
   return {
-    liburutxoak: (l.data as Liburutxoa[]).sort(porOrden),
+    liburutxoak: (l.data as (Liburutxoa & Record<string, unknown>)[])
+      .map((x) => {
+        const b: Liburutxoa = { slug: x.slug, etiketa: x.etiketa, ordena: x.ordena, ikusgai: x.ikusgai };
+        if ("giltza" in x) b.giltza = typeof x.giltza === "string" && giltzaGarbia(x.giltza) ? x.giltza : null;
+        return b;
+      })
+      .sort(porOrden),
     edukiak: (e.data as Edukia[]).map((x) => ({ ...x, liburutxoak: x.liburutxoak ?? [] })).sort(porOrden),
     iturria: "db",
     errorea: null,

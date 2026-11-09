@@ -162,6 +162,7 @@ export default function MagiaTailerrakTab() {
   const [ocupado, setOcupado] = useState(false);
   const [nuevoLib, setNuevoLib] = useState<{ slug: string; etiketa: string } | null>(null);
   const [editLib, setEditLib] = useState<Record<string, string>>({});
+  const [editGiltza, setEditGiltza] = useState<Record<string, string>>({});
 
   const cargar = useCallback(async () => {
     try {
@@ -198,6 +199,8 @@ export default function MagiaTailerrakTab() {
   const etiketaOf = (s: string) => k.liburutxoak.find((l) => l.slug === s)?.etiketa ?? s;
   const juegos = k.edukiak.filter((e) => e.mota === "jolasa");
   const conVideo = juegos.filter((e) => e.youtube).length;
+  // La columna giltza existe si la API la devuelve (aunque sea null).
+  const giltzaBai = enBd && k.liburutxoak.some((l) => "giltza" in l);
 
   return (
     <div className="space-y-4">
@@ -224,6 +227,12 @@ export default function MagiaTailerrakTab() {
         </div>
       )}
 
+      {enBd && !giltzaBai && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[0.82rem] text-amber-900">
+          Falta un paso para la <b>palabra mágica</b> de cada librillo: ejecuta <code>sql/magia_giltza.sql</code> en el SQL editor de Supabase. Hasta entonces cualquiera puede abrir cualquier librillo.
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Cifra titulo="Emails" valor={resumen.total} detalle={`${resumen.hoy} hoy`} />
         <Cifra titulo="Vídeos" valor={`${conVideo}/${juegos.length}`} detalle="juegos con vídeo" />
@@ -232,7 +241,7 @@ export default function MagiaTailerrakTab() {
 
       <Tarjeta
         titulo="Librillos"
-        nota="Cada librillo tiene su página (alainzulaika.com/magia-tailerrak/<identificador>). El orden es el de la portada."
+        nota="Cada librillo tiene su página (alainzulaika.com/magia-tailerrak/<identificador>). El orden es el de la portada. Palabra mágica: la que escribes a mano en cada ejemplar; sin ella no se abre ese librillo (da igual mayúsculas, tildes y espacios). Vacía = abierto a cualquiera. Si la cambias, quien ya entró tendrá que escribir la nueva (salvo que ya dejara su email con ese librillo)."
         extra={enBd && !nuevoLib && <button className={boton} onClick={() => setNuevoLib({ slug: "", etiketa: "" })}>+ Nuevo librillo</button>}
       >
         <ul className="divide-y divide-gray-100">
@@ -246,6 +255,16 @@ export default function MagiaTailerrakTab() {
               <code className="text-[0.75rem] text-gray-500">/{l.slug}</code>
               <span className="text-[0.75rem] text-gray-500">{k.edukiak.filter((e) => e.mota === "jolasa" && e.liburutxoak.includes(l.slug)).length} juegos · {resumen.porLibrillo[l.slug] ?? 0} emails</span>
               {!l.ikusgai && <span className="rounded border border-gray-300 bg-gray-100 px-1.5 text-[0.68rem] text-gray-600">Oculto</span>}
+              {giltzaBai && (
+                <span className="flex items-center gap-1">
+                  <span className="text-[0.72rem] text-gray-500">🔑</span>
+                  <input className={`${campo} w-[150px]`} disabled={ocupado} value={editGiltza[l.slug] ?? l.giltza ?? ""} onChange={(e) => setEditGiltza((x) => ({ ...x, [l.slug]: e.target.value }))} placeholder="Palabra mágica" aria-label={`Palabra mágica de ${l.etiketa}`} />
+                  {editGiltza[l.slug] != null && editGiltza[l.slug] !== (l.giltza ?? "") && (
+                    <button className={botonOscuro} disabled={ocupado} onClick={() => accion(async () => { await api({ method: "PUT", body: JSON.stringify({ mota: "liburutxoa", liburutxoa: { ...l, giltza: editGiltza[l.slug] } }) }); setEditGiltza((x) => { const y = { ...x }; delete y[l.slug]; return y; }); })}>Guardar</button>
+                  )}
+                  {!l.giltza && <span className="whitespace-nowrap rounded border border-amber-200 bg-amber-50 px-1.5 text-[0.68rem] text-amber-800">Abierto a cualquiera</span>}
+                </span>
+              )}
               <span className="ml-auto flex gap-1">
                 {editLib[l.slug] != null && editLib[l.slug] !== l.etiketa && (
                   <button className={botonOscuro} disabled={ocupado} onClick={() => accion(async () => { await api({ method: "PUT", body: JSON.stringify({ mota: "liburutxoa", liburutxoa: { ...l, etiketa: editLib[l.slug] } }) }); setEditLib((x) => { const y = { ...x }; delete y[l.slug]; return y; }); })}>Guardar</button>

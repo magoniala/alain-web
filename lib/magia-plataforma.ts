@@ -2,10 +2,11 @@
 // sesiones (cookie) y códigos de acceso por email. Tablas en
 // sql/magia_plataforma.sql. Catálogo en lib/magia-catalogo.ts.
 
-import { createHash, randomBytes, randomInt } from "crypto";
+import { createHash, createHmac, randomBytes, randomInt } from "crypto";
 import { cookies } from "next/headers";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
+import { giltzaGarbia, type Liburutxoa } from "@/lib/magia-edukiak-motak";
 
 export const COOKIE_SAIOA = "magia_saioa";
 export const COOKIE_LIBURUTXOA = "magia_liburutxoa";
@@ -38,15 +39,54 @@ const cookieAukerak = (maxAge: number) => ({
 
 // ---------- Sesión ----------
 
+// ---------- Librillo elegido (cookie) y palabra mágica ----------
+//
+// El QR es el mismo en todos los librillos, así que la web no sabe cuál tiene
+// cada familia. Si el librillo tiene palabra mágica (escrita a mano por Alain
+// en cada ejemplar), la cookie solo vale si se ganó escribiéndola: lleva una
+// firma de servidor ligada al librillo y a la palabra. Cambiar la palabra en
+// /admin invalida las cookies viejas (se vuelve a pedir).
+
+function zigilua(slug: string, giltza: string) {
+  return createHmac("sha256", process.env.SUPABASE_SERVICE_KEY || "magia")
+    .update(`liburutxoa:${slug}:${giltzaGarbia(giltza)}`)
+    .digest("base64url")
+    .slice(0, 24);
+}
+
+/** Valor de la cookie para un librillo ya ganado: «slug» o, con palabra, «slug.firma». */
+export function liburutxoCookie(l: Liburutxoa): string {
+  return l.giltza ? `${l.slug}.${zigilua(l.slug, l.giltza)}` : l.slug;
+}
+
+/** ¿La palabra escrita es la de este librillo? (sin palabra puesta: siempre sí). */
+export function giltzaZuzena(l: Liburutxoa, idatzia: unknown): boolean {
+  if (!l.giltza) return true;
+  const a = giltzaGarbia(idatzia);
+  return a.length > 0 && a === giltzaGarbia(l.giltza);
+}
+
+export async function liburutxoCookieaJarri(l: Liburutxoa) {
+  (await cookies()).set(COOKIE_LIBURUTXOA, liburutxoCookie(l), { ...cookieAukerak(URTE_BAT_S), httpOnly: false });
+}
+
+/** El librillo que eligió quien visita (cookie), solo si sigue siendo válido. */
+export async function liburutxoAukeratua(liburutxoak: Liburutxoa[]): Promise<string | null> {
+  const balioa = (await cookies()).get(COOKIE_LIBURUTXOA)?.value ?? "";
+  const slug = balioa.split(".")[0];
+  const l = liburutxoak.find((x) => x.slug === slug);
+  return l && balioa === liburutxoCookie(l) ? l.slug : null;
+}
+
 /** Abre una sesión para `email` y deja la cookie puesta (solo en Route Handlers). */
-export async function saioaIreki(email: string, librillo?: string | null) {
+export async function saioaIreki(email: string, librillo?: Liburutxoa | null) {
   const token = randomBytes(32).toString("hex");
   const expira = new Date(Date.now() + URTE_BAT_S * 1000).toISOString();
   const { error } = await db().from("magia_sesiones").insert({ token_hash: hash(token), email, expira });
   if (error) throw new Error(`magia: no se ha podido abrir la sesión: ${error.message}`);
   const c = await cookies();
   c.set(COOKIE_SAIOA, token, cookieAukerak(URTE_BAT_S));
-  if (typeof librillo === "string" && /^[a-z0-9-]{1,40}$/.test(librillo)) c.set(COOKIE_LIBURUTXOA, librillo, { ...cookieAukerak(URTE_BAT_S), httpOnly: false });
+  if (librillo) c.set(COOKIE_LIBURUTXOA, liburutxoCookie(librillo), { ...cookieAukerak(URTE_BAT_S), httpOnly: false });
 }
 
 export async function saioaItxi() {
@@ -87,16 +127,18 @@ export async function nireSaioa(): Promise<NireSaioa | null> {
 
 /**
  * Los librillos que son de quien visita: los de su cuenta (el que eligió al
- * registrarse + los comprados) o, sin cuenta, el que eligió (cookie).
- * `badaude` son los slugs que existen ahora en el catálogo.
+ * registrarse + los abiertos con su palabra mágica o comprados) y, además,
+ * el que eligió en este navegador (cookie válida).
+ * `liburutxoak` son los librillos que existen ahora en el catálogo.
  */
-export async function nireLiburutxoak(saioa: NireSaioa | null, badaude: string[]): Promise<string[]> {
+export async function nireLiburutxoak(saioa: NireSaioa | null, liburutxoak: Liburutxoa[]): Promise<string[]> {
+  const badaude = liburutxoak.map((l) => l.slug);
   const ona = (s: unknown): s is string => typeof s === "string" && badaude.includes(s);
+  const aukeratua = await liburutxoAukeratua(liburutxoak);
   if (saioa) {
-    const erosiak = saioa.accesos.filter((a) => a.startsWith("liburutxoa:")).map((a) => a.slice("liburutxoa:".length));
-    return [...new Set([saioa.librilloRaw, ...erosiak].filter(ona))];
+    const besteak = saioa.accesos.filter((a) => a.startsWith("liburutxoa:")).map((a) => a.slice("liburutxoa:".length));
+    return [...new Set([saioa.librilloRaw, ...besteak, aukeratua].filter(ona))];
   }
-  const aukeratua = (await cookies()).get(COOKIE_LIBURUTXOA)?.value;
   return ona(aukeratua) ? [aukeratua] : [];
 }
 

@@ -11,6 +11,18 @@ export interface Liburutxoa {
   etiketa: string;
   ordena: number;
   ikusgai: boolean;
+  /**
+   * Palabra mágica escrita a mano en el librillo: sin ella no se abre su
+   * página (el QR es el mismo en todos los librillos). Vacía = abierto.
+   * Solo viene si la columna existe (sql/magia_giltza.sql). Nunca al cliente público.
+   */
+  giltza?: string | null;
+}
+
+/** Para comparar la palabra mágica: sin mayúsculas, tildes, espacios ni signos. */
+export function giltzaGarbia(s: unknown): string {
+  if (typeof s !== "string") return "";
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
 }
 
 export interface Edukia {

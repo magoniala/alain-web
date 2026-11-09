@@ -7,8 +7,8 @@
 // (ver newsletter_alta_at en sql/magia_plataforma.sql).
 
 import { NextResponse } from "next/server";
-import { katalogoa, liburutxoaDago } from "@/lib/magia-edukiak";
-import { db, emailGarbia, kodeaBidali, ongiEtorriaBidali, saioaIreki } from "@/lib/magia-plataforma";
+import { ikusgaiak, katalogoa } from "@/lib/magia-edukiak";
+import { db, emailGarbia, kodeaBidali, liburutxoAukeratua, ongiEtorriaBidali, saioaIreki } from "@/lib/magia-plataforma";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -16,7 +16,10 @@ export async function POST(req: Request) {
   if (!email) return NextResponse.json({ error: "Sartu posta elektroniko baliodun bat." }, { status: 400 });
   if (body.baimena !== true) return NextResponse.json({ error: "Markatu laukia jarraitzeko." }, { status: 400 });
   const k = await katalogoa();
-  const librillo = liburutxoaDago(k, body.librillo) ? body.librillo : null;
+  // El librillo solo se apunta en la cuenta si este navegador ya lo tiene
+  // abierto (con su palabra mágica, si la tiene).
+  const aukeratua = await liburutxoAukeratua(ikusgaiak(k).liburutxoak);
+  const librillo = aukeratua && aukeratua === body.librillo ? aukeratua : null;
 
   const { data: badago } = await db().from("magia_usuarios").select("email").eq("email", email).maybeSingle();
   if (badago) {
@@ -34,7 +37,7 @@ export async function POST(req: Request) {
   // Queda apuntado qué se abrió con el email (todo lo «emaila» de ese momento).
   const opariak = k.edukiak.filter((e) => e.egoera === "emaila").map((e) => ({ email, contenido: e.slug, origen: "email" }));
   if (opariak.length) await db().from("magia_accesos").insert(opariak);
-  await saioaIreki(email, librillo);
+  await saioaIreki(email);
 
   const host = req.headers.get("host") || "alainzulaika.com";
   const base = `${host.includes("localhost") ? "http" : "https"}://${host}`;

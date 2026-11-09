@@ -15,7 +15,7 @@ export default async function Portada({ searchParams }: { searchParams: Promise<
   const { aldatu } = await searchParams;
   const k = ikusgaiak(await katalogoa());
   const saioa = await nireSaioa();
-  const nireak = await nireLiburutxoak(saioa, k.liburutxoak.map((l) => l.slug));
+  const nireak = await nireLiburutxoak(saioa, k.liburutxoak);
   if (nireak.length && !aldatu) redirect(`/magia-tailerrak/${nireak[0]}`);
 
   return (

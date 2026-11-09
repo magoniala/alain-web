@@ -10,6 +10,7 @@ import { ikusgaiak, katalogoa, liburutxoaDago, liburutxokoEdukiak, type Edukia }
 import { nireLiburutxoak, nireSaioa } from "@/lib/magia-plataforma";
 import Bideoa from "../_components/Bideoa";
 import Goiburua from "../_components/Goiburua";
+import GiltzaForm from "../_components/GiltzaForm";
 import Gogoratu from "../_components/Gogoratu";
 import HauDaNirea from "../_components/HauDaNirea";
 import OpariForm from "../_components/OpariForm";
@@ -83,10 +84,38 @@ export default async function LiburutxoOrria({
   const etiketaOf = (slug: string) => k.liburutxoak.find((x) => x.slug === slug)?.etiketa ?? slug;
 
   const saioa = await nireSaioa();
-  const nireak = await nireLiburutxoak(saioa, k.liburutxoak.map((x) => x.slug));
+  const nireak = await nireLiburutxoak(saioa, k.liburutxoak);
   const nirea = nireak.length === 0 || nireak.includes(liburutxoa);
 
-  // Librillo ajeno: no se ve. Sin cuenta se puede cambiar (se eligió el que no era).
+  // Librillo con palabra mágica y aún sin abrir en este navegador ni en la
+  // cuenta: se pide la palabra (escrita a mano en cada ejemplar). El QR es el
+  // mismo en todos los librillos; esto es lo que impide abrir el que no tienes.
+  if (l.giltza && !nireak.includes(liburutxoa)) {
+    return (
+      <main style={main}>
+        <Goiburua email={saioa?.email ?? null} />
+        <section style={{ ...contenedor, padding: "2rem 1.25rem 4rem" }}>
+          <p style={{ ...etiqueta, marginBottom: "1rem" }}>{LIBURUTXO_IZENA} · {l.etiketa}</p>
+          <div style={{ marginBottom: "0.75rem" }}><Giltzarrapoa tamaina={22} /></div>
+          <h1 style={{ ...h1, marginBottom: "1.25rem" }}>Hitz magikoa</h1>
+          <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "2rem" }}>
+            Zure liburutxoan hitz magiko bat dago, eskuz idatzita. Idatzi hemen eta zure magia-gunea irekiko da.
+          </p>
+          <GiltzaForm librillo={liburutxoa} />
+          <p style={{ marginTop: "2rem", fontSize: "0.85rem", color: K.muy, textAlign: "center" }}>
+            {nireak.length ? (
+              <Link href={`/magia-tailerrak/${nireak[0]}`} style={{ color: K.tenue }}>Itzuli nire liburutxora ({etiketaOf(nireak[0])})</Link>
+            ) : (
+              <>Ez da hau zure liburutxoa? <Link href="/magia-tailerrak?aldatu=1" style={{ color: K.tenue }}>Aldatu</Link></>
+            )}
+          </p>
+        </section>
+        <Oina />
+      </main>
+    );
+  }
+
+  // Librillo ajeno sin palabra mágica: no se ve. Sin cuenta se puede cambiar (se eligió el que no era).
   if (!nirea) {
     return (
       <main style={main}>
