@@ -3,6 +3,7 @@ import { requireAdminAuth } from "@/lib/admin-auth";
 import { supabaseCharlas } from "@/lib/charlas";
 import { enviarCorreo } from "@/lib/charlas-correo";
 import { procesarMensaje } from "@/lib/charlas-proceso";
+import { fusionarCambios } from "@/lib/bandeja-cambios";
 
 // Bandeja de charlas en el panel.
 //
@@ -10,7 +11,7 @@ import { procesarMensaje } from "@/lib/charlas-proceso";
 //        configuración (modo prueba) y coste de la IA.
 // POST { accion, … }
 //   enviar      { id, asunto, texto, destinatario, adjuntar_dossier, dossier_idioma, motivo? }
-//   aplicar     { id }                       tarea sin respuesta: solo aplica los cambios al CRM
+//   aplicar     { id, cambios? }             solo aplica los cambios al CRM, sin enviar nada (también con borrador). `cambios` = lo que Alain corrigió a mano (ver lib/bandeja-cambios)
 //   descartar   { id, motivo? }
 //   regenerar   { id, instruccion }          rehace el borrador con una indicación de Alain
 //   redactar    { id, instruccion? }         tarea sin borrador (revisar_correo, actualizar_crm): la IA escribe una respuesta al último correo del centro
@@ -20,6 +21,12 @@ import { procesarMensaje } from "@/lib/charlas-proceso";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
+
+// Se lanza cuando ya salió un correo real a este centro hace poco: el panel
+// pregunta a Alain antes de mandar otro (evita duplicados por no ver que el
+// anterior ya se envió).
+class EnvioDuplicado extends Error {}
+const VENTANA_DUPLICADO_MIN = 30;
 
 const hoy = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
 
@@ -31,7 +38,7 @@ export async function GET(req: Request) {
     supabase
       .from("charlas_tareas")
       .select(
-        "*, centro:charlas_centros(id, nombre, estado, responsable, euskera, localidad, territorio), entrante:charlas_mensajes!charlas_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion, clasificacion_confianza)"
+        "*, centro:charlas_centros(id, nombre, estado, responsable, responsable_email, proxima_accion, fecha_proxima_accion, euskera, localidad, territorio), entrante:charlas_mensajes!charlas_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion, clasificacion_confianza)"
       )
       .in("estado", ["revisar", "error"])
       .order("nivel", { ascending: false })
@@ -74,8 +81,10 @@ export async function POST(req: Request) {
         return NextResponse.json(await enviar(body));
       case "aplicar": {
         const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
         await aplicarCambios(t, null);
-        await supabase.from("charlas_tareas").update({ estado: "hecha", resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        await supabase.from("charlas_tareas").update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "descartar": {
@@ -117,7 +126,18 @@ export async function POST(req: Request) {
         if (!mensajeId) throw new Error("Este centro no tiene ningún correo recibido al que contestar.");
         const extra = String(body.instruccion ?? "").trim();
         const instruccion = `Alain quiere contestar a este correo aunque haya pasado tiempo: redacta la respuesta (responder = true). Si el correo decía que lo pasaban a otra persona o que avisarían, pregunta con naturalidad si hubo novedades, sin presionar.${extra ? ` Indicación de Alain: ${extra}` : ""}`;
-        await procesarMensaje(mensajeId, instruccion);
+        const r = await procesarMensaje(mensajeId, instruccion);
+        if (!r.tarea) throw new Error("La IA no ha generado ningún borrador. Prueba a decirle qué quieres contestar.");
+        // Si ha salido una tarjeta nueva, la de partida (p. ej. "correo suyo sin
+        // respuesta", que no tiene correo entrante asociado) se cierra: si no,
+        // se queda debajo del borrador y parece que no se ha enviado nada.
+        if (r.tarea !== t.id) {
+          await supabase
+            .from("charlas_tareas")
+            .update({ estado: "descartada", motivo: "Sustituida por el borrador redactado", resuelto_en: new Date().toISOString(), resuelto_por: "sistema" })
+            .eq("id", t.id)
+            .in("estado", ["revisar", "pendiente"]);
+        }
         return NextResponse.json({ ok: true });
       }
       case "asignar": {
@@ -146,6 +166,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Acción desconocida." }, { status: 400 });
     }
   } catch (e) {
+    if (e instanceof EnvioDuplicado) return NextResponse.json({ error: e.message, duplicado: true }, { status: 409 });
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 }
@@ -165,6 +186,8 @@ async function enviar(body: Record<string, unknown>) {
   const supabase = supabaseCharlas();
   const t = await cargarTarea(String(body.id));
   if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+  // Lo que Alain haya corregido a mano en «Qué se apunta en el CRM».
+  t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
 
   const asunto = String(body.asunto ?? t.borrador_asunto ?? "").trim();
   const texto = String(body.texto ?? t.borrador_texto ?? "").trim();
@@ -174,6 +197,25 @@ async function enviar(body: Record<string, unknown>) {
 
   const { data: cfg } = await supabase.from("charlas_config").select("valor").eq("clave", "modo_prueba").maybeSingle();
   const prueba = cfg?.valor !== false;
+
+  // Freno anti-duplicados: si ya salió un correo real a este centro hace poco,
+  // no se manda otro sin confirmación expresa de Alain.
+  if (!prueba && body.confirmar_duplicado !== true) {
+    const desde = new Date(Date.now() - VENTANA_DUPLICADO_MIN * 60000).toISOString();
+    const { data: previos } = await supabase
+      .from("charlas_mensajes")
+      .select("fecha, asunto")
+      .eq("centro_id", t.centro_id)
+      .eq("direccion", "saliente")
+      .or("tipo_salida.is.null,tipo_salida.neq.prueba")
+      .gte("fecha", desde)
+      .order("fecha", { ascending: false })
+      .limit(1);
+    if (previos?.length) {
+      const min = Math.max(1, Math.round((Date.now() - new Date(previos[0].fecha).getTime()) / 60000));
+      throw new EnvioDuplicado(`Ya enviaste un correo a este centro hace ${min} min («${previos[0].asunto ?? "sin asunto"}»).`);
+    }
+  }
 
   // Hilo: se responde al correo que llegó, con sus referencias.
   let inReplyTo: string | null = null;
@@ -267,8 +309,19 @@ async function enviar(body: Record<string, unknown>) {
 
   await supabase
     .from("charlas_tareas")
-    .update({ estado: "enviada", texto_final: texto, editado, mensaje_salida_id: saliente?.id ?? null, resuelto_en: ahora, resuelto_por: "alain", adjuntar_dossier: !!dossier })
+    .update({ estado: "enviada", texto_final: texto, editado, cambios_crm: t.cambios_crm, mensaje_salida_id: saliente?.id ?? null, resuelto_en: ahora, resuelto_por: "alain", adjuntar_dossier: !!dossier })
     .eq("id", t.id);
+
+  // Ya ha salido un correo a este centro: cualquier otra tarjeta de correo
+  // abierta para él queda obsoleta (si no, se queda en la bandeja y invita a
+  // enviar lo mismo otra vez). Las llamadas no se tocan.
+  await supabase
+    .from("charlas_tareas")
+    .update({ estado: "descartada", motivo: "Ya se envió un correo a este centro desde otra tarjeta", resuelto_en: ahora, resuelto_por: "sistema" })
+    .eq("centro_id", t.centro_id)
+    .eq("estado", "revisar")
+    .neq("id", t.id)
+    .neq("tipo", "llamada_alain");
 
   await supabase
     .from("charlas_hilos")
@@ -284,6 +337,14 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
 
   const cambios: Record<string, unknown> = { actualizado_por: "sistema", fecha_ultimo_contacto: hoy() };
   for (const k of ["estado", "proxima_accion", "fecha_proxima_accion", "calendario_abierto", "via"]) if (c[k]) cambios[k] = c[k];
+  const persona = c.contacto_nuevo as { nombre?: string; email?: string; cargo?: string; telefono?: string; responsable?: boolean } | undefined;
+  // Persona que ha escrito por otro camino y Alain marca como responsable de la ficha.
+  if (persona?.responsable) {
+    if (persona.nombre) cambios.responsable = persona.nombre;
+    if (persona.email) cambios.responsable_email = persona.email.toLowerCase();
+    if (persona.cargo) cambios.responsable_cargo = persona.cargo;
+    if (persona.telefono) cambios.responsable_tel = persona.telefono;
+  }
   if (envio) cambios.mails_enviados = (centro?.mails_enviados ?? 0) + 1;
   // Qué otro formato se le ha ofrecido al centro (plan de noviembre): se acumula con la fecha, no se pisa.
   if (envio && typeof c.otros_formatos === "string" && c.otros_formatos.trim()) {
@@ -292,11 +353,11 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
   }
   await supabase.from("charlas_centros").update(cambios).eq("id", t.centro_id);
 
-  const persona = c.contacto_nuevo as { nombre?: string; email?: string; cargo?: string } | undefined;
   if (persona?.email) {
+    // Si el email ya estaba en los contactos del centro, el índice único lo rechaza y no pasa nada.
     await supabase
       .from("charlas_contactos")
-      .insert({ centro_id: t.centro_id, nombre: persona.nombre ?? null, email: persona.email.toLowerCase(), cargo: persona.cargo ?? null, rol: "otro", origen: "correo" })
+      .insert({ centro_id: t.centro_id, nombre: persona.nombre ?? null, email: persona.email.toLowerCase(), cargo: persona.cargo ?? null, telefono: persona.telefono ?? null, rol: "otro", origen: "panel" })
       .then(() => null, () => null);
   }
 
@@ -306,6 +367,9 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
   else if (t.tipo === "aparcar") partes.push("Aparcado sin respuesta");
   if (c.estado) partes.push(`→ ${c.estado}`);
   if (c.fecha_proxima_accion) partes.push(`siguiente: ${c.proxima_accion ?? "acción"} el ${c.fecha_proxima_accion}`);
+  else if (c.proxima_accion) partes.push(`siguiente: ${c.proxima_accion}`);
+  if (persona?.nombre || persona?.email) partes.push(`contacto${persona.responsable ? " (responsable)" : ""}: ${[persona.nombre, persona.cargo, persona.email, persona.telefono].filter(Boolean).join(" · ")}`);
+  if (typeof c.nota === "string" && c.nota) partes.push(c.nota);
   await supabase.from("charlas_interacciones").insert({
     centro_id: t.centro_id,
     fecha: hoy(),

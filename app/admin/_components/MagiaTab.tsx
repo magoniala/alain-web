@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import VistaCorreo from "./VistaCorreo";
+import EditorCrm, { cambiosDeForm, formCrmInicial, type FormCrm } from "./EditorCrm";
 import AprendizajesMagia from "./magia/Aprendizajes";
 
 // Pestaña Magia · fase 6a del sistema automático: el CRM de prospectos
@@ -51,7 +52,7 @@ interface Tarea {
   nota_para_alain: string | null;
   contexto: { resumen?: string; clasificacion?: string; etiqueta_principal?: string | null; alternativa?: { etiqueta: string; asunto: string | null; cuerpo: string } | null; programada?: boolean } | null;
   creado_en: string;
-  ficha: { id: string; nombre: string; segmento: string | null; tipo_entidad: string | null; estado: string; canal: string | null; responsable: string | null; localidad: string | null; ultimo_evento: string | null } | null;
+  ficha: { id: string; nombre: string; segmento: string | null; tipo_entidad: string | null; estado: string; canal: string | null; responsable: string | null; localidad: string | null; ultimo_evento: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null; clasificacion: string | null } | null;
 }
 interface Detalle {
@@ -145,7 +146,7 @@ export default function MagiaTab() {
   async function accion(body: Record<string, unknown>) {
     const r = await fetch("/api/admin/crm/bandeja", { method: "POST", headers: headers(), body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || "Error");
+    if (!r.ok) throw Object.assign(new Error(d.error || "Error"), { duplicado: !!d.duplicado });
     return d;
   }
 
@@ -281,6 +282,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
   const [motivo, setMotivo] = useState("");
   const [ocupado, setOcupado] = useState("");
   const [err, setErr] = useState("");
+  const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm));
   useEffect(() => {
     setTexto((opcion === "b" ? alt?.cuerpo : t.borrador_texto) ?? "");
     setAsunto((opcion === "b" ? alt?.asunto : t.borrador_asunto) ?? "");
@@ -299,7 +301,13 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
       await accion(body);
       alTerminar();
     } catch (e) {
-      setErr((e as Error).message);
+      const er = e as Error & { duplicado?: boolean };
+      // Ya salió un correo a esta ficha hace poco: solo se manda otro si Alain lo confirma.
+      if (er.duplicado && body.accion === "enviar" && confirm(`${er.message}\n\n¿Quieres enviar este otro igualmente?`)) {
+        await hacer(nombre, { ...body, confirmar_duplicado: true });
+        return;
+      }
+      setErr(er.message);
     } finally {
       setOcupado("");
     }
@@ -349,33 +357,33 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           )}
         </div>
       )}
-      {cambios.length > 0 && (
-        <div className="mt-3 bg-gray-50 px-3 py-2 text-[0.8rem] text-gray-700">
-          <p className="mb-1 font-medium text-gray-500">{conMensaje ? "Al enviar, en la ficha:" : "Al aplicar, en la ficha:"}</p>
-          {cambios.map(([k, v]) => <p key={k}>{k.replace(/_/g, " ")}: <strong>{String(v)}</strong></p>)}
-        </div>
-      )}
+      <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.ficha?.estado} responsableActual={t.ficha?.responsable} abierto={cambios.length > 0} etiquetaFicha="prospecto" />
       <div className="mt-4 flex flex-wrap gap-2">
         {t.canal === "mail" && (
-          <button onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, motivo, opcion: alt ? opcion : null })} disabled={!!ocupado || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
+          <button onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
             {ocupado === "enviar" ? "Enviando…" : "Enviar correo"}
           </button>
         )}
         {t.canal === "whatsapp" && (
           <>
             <a href={wa ?? "#"} target="_blank" rel="noreferrer" className={`bg-[#25D366] px-4 py-2 text-[0.85rem] font-medium text-white ${wa ? "" : "pointer-events-none opacity-40"}`}>Abrir en WhatsApp</a>
-            <button onClick={() => hacer("wa", { accion: "whatsapp_enviado", id: t.id, texto, motivo, opcion: alt ? opcion : null })} disabled={!!ocupado || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
+            <button onClick={() => hacer("wa", { accion: "whatsapp_enviado", id: t.id, texto, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
               {ocupado === "wa" ? "Guardando…" : "Ya lo he enviado"}
             </button>
           </>
         )}
         {!conMensaje && (
           <>
-            <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id })} disabled={!!ocupado} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">Aplicar cambios</button>
+            <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })} disabled={!!ocupado} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">{ocupado === "aplicar" ? "Aplicando…" : "Aplicar cambios"}</button>
             <button onClick={() => { const i = prompt("¿Qué quieres decirle? (opcional)") ?? ""; hacer("rehacer", { accion: "redactar", id: t.id, instruccion: i }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
               {ocupado === "rehacer" ? "Redactando…" : "✍️ Redactar mensaje"}
             </button>
           </>
+        )}
+        {conMensaje && (
+          <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })} disabled={!!ocupado} title="Apunta lo de «Qué se apunta en el CRM» y cierra la tarjeta sin enviar nada" className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
+            {ocupado === "aplicar" ? "Actualizando…" : "Solo actualizar la ficha (no envía)"}
+          </button>
         )}
         {conMensaje && (
           <button onClick={() => { const i = prompt("¿Qué cambio quieres en el borrador?") ?? ""; if (i.trim()) hacer("rehacer", { accion: "rehacer", id: t.id, instruccion: i }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">

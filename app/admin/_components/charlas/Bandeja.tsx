@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import VistaCorreo from "../VistaCorreo";
+import EditorCrm, { cambiosDeForm, formCrmInicial, type FormCrm } from "../EditorCrm";
+import { ESTADOS } from "@/lib/charlas";
 
 // Bandeja de charlas · fase 1.
 //
@@ -36,7 +38,7 @@ interface Tarea {
     alternativa?: { etiqueta: string; asunto: string; cuerpo: string; adjuntar_dossier: boolean } | null;
   };
   creado_en: string;
-  centro: { id: string; nombre: string; estado: string; responsable: string | null; euskera: string | null; localidad: string | null; territorio: string | null } | null;
+  centro: { id: string; nombre: string; estado: string; responsable: string | null; responsable_email?: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null; euskera: string | null; localidad: string | null; territorio: string | null } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null } | null;
 }
 
@@ -146,7 +148,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
   async function accion(body: Record<string, unknown>) {
     const r = await fetch("/api/admin/charlas/bandeja", { method: "POST", headers: headers(), body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || "Error");
+    if (!r.ok) throw Object.assign(new Error(d.error || "Error"), { duplicado: !!d.duplicado });
     return d;
   }
 
@@ -395,6 +397,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
   const [instruccion, setInstruccion] = useState("");
   const [verOriginal, setVerOriginal] = useState(!movil);
   const [opcion, setOpcion] = useState<"a" | "b">("a");
+  const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm));
   const alt = t.contexto?.alternativa ?? null;
 
   function elegir(o: "a" | "b") {
@@ -427,7 +430,13 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
       if (r?.prueba) setMensaje(`Prueba enviada a ${r.enviado_a}. Revisa tu correo (también Spam); la tarea sigue aquí. Servidor: ${r.smtp || "sin respuesta"}`);
       else alTerminar();
     } catch (e) {
-      setMensaje(`Error: ${(e as Error).message}`);
+      const err = e as Error & { duplicado?: boolean };
+      // Ya salió un correo a este centro hace poco: solo se manda otro si Alain lo confirma.
+      if (err.duplicado && body.accion === "enviar" && confirm(`${err.message}\n\n¿Quieres enviar este otro igualmente?`)) {
+        await hacer(nombre, { ...body, confirmar_duplicado: true });
+        return;
+      }
+      setMensaje(`Error: ${err.message}`);
     } finally {
       setOcupado("");
     }
@@ -522,22 +531,13 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
             </p>
           )}
 
-          {(cambios.length > 0 || persona?.email) && (
-            <div className="mt-3 bg-gray-50 px-3 py-2 text-[0.8rem] text-gray-700">
-              <p className="mb-1 font-medium text-gray-500">{prueba ? "En el CRM (no se aplica en modo prueba)" : "Al enviar, en el CRM"}:</p>
-              {cambios.map(([k, v]) => (
-                <p key={k}>
-                  {k.replace(/_/g, " ")}: <strong>{String(v)}</strong>
-                </p>
-              ))}
-              {persona?.email && <p>contacto nuevo: <strong>{persona.nombre ?? ""} {persona.email}</strong></p>}
-            </div>
-          )}
+          <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.centro?.estado} responsableActual={t.centro?.responsable} abierto={cambios.length > 0 || !!persona?.email} />
+          {prueba && <p className="mt-1 text-[0.75rem] text-amber-800">Modo prueba: los cambios de CRM no se aplican.</p>}
 
           <div className={`mt-4 flex flex-wrap gap-2 ${movil ? "sticky bottom-0 -mx-5 -mb-5 border-t border-gray-100 bg-white px-5 py-3 [&>button]:min-h-[44px] [&>button]:flex-1" : ""}`}>
             {conRespuesta ? (
               <button
-                onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, adjuntar_dossier: dossier, dossier_idioma: idiomaDossier, motivo, opcion: alt ? opcion : null })}
+                onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, adjuntar_dossier: dossier, dossier_idioma: idiomaDossier, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })}
                 disabled={!!ocupado || (editado && !motivo.trim())}
                 title={editado && !motivo.trim() ? "Escribe por qué lo cambias" : ""}
                 className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40"
@@ -545,8 +545,18 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
                 {ocupado === "enviar" ? "Enviando…" : prueba ? "Enviar (prueba, a ti)" : "Enviar"}
               </button>
             ) : (
-              <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id })} disabled={!!ocupado || prueba} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
+              <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || prueba} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
                 {prueba ? "Aplicar (desactiva el modo prueba)" : "Aplicar cambios"}
+              </button>
+            )}
+            {conRespuesta && (
+              <button
+                onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })}
+                disabled={!!ocupado || prueba}
+                title={prueba ? "Desactiva el modo prueba para tocar el CRM" : "Apunta lo de «Qué se apunta en el CRM» y cierra la tarjeta sin enviar ningún correo"}
+                className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40"
+              >
+                {ocupado === "aplicar" ? "Actualizando…" : "Solo actualizar la ficha (no envía)"}
               </button>
             )}
             <button
