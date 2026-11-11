@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import VistaCorreo from "./VistaCorreo";
-import EditorCrm, { cambiosDeForm, formCrmInicial, type FormCrm } from "./EditorCrm";
+import EditorCrm, { cambiosDeForm, faltaPedido, formCrmInicial, pedidoDe, type FormCrm } from "./EditorCrm";
 import UltimosMensajes, { type Ultimos } from "./UltimosMensajes";
 import AplazarTarea from "./AplazarTarea";
 import AprendizajesMagia from "./magia/Aprendizajes";
@@ -288,7 +288,8 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
   const [motivo, setMotivo] = useState("");
   const [ocupado, setOcupado] = useState("");
   const [err, setErr] = useState("");
-  const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm));
+  const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm, t.tipo));
+  const sinPedido = faltaPedido(pedidoDe(t.tipo), crm);
   const [para, setPara] = useState(t.destinatario ?? "");
   useEffect(() => {
     setTexto((opcion === "b" ? alt?.cuerpo : t.borrador_texto) ?? "");
@@ -373,7 +374,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           )}
         </div>
       )}
-      <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.ficha?.estado} responsableActual={t.ficha?.responsable} abierto={cambios.length > 0} etiquetaFicha="prospecto" />
+      <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.ficha?.estado} responsableActual={t.ficha?.responsable} abierto={cambios.length > 0} etiquetaFicha="prospecto" tipo={t.tipo} />
       <div className="mt-4 flex flex-wrap gap-2">
         {t.canal === "mail" && (
           <button onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || !para.includes("@") || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
@@ -390,7 +391,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
         )}
         {!conMensaje && (
           <>
-            <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })} disabled={!!ocupado} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">{ocupado === "aplicar" ? "Aplicando…" : "Aplicar cambios"}</button>
+            <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || sinPedido} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">{ocupado === "aplicar" ? "Aplicando…" : "Aplicar cambios"}</button>
             <button onClick={() => { const i = prompt("¿Qué quieres decirle? (opcional)") ?? ""; hacer("rehacer", { accion: "redactar", id: t.id, instruccion: i }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
               {ocupado === "rehacer" ? "Redactando…" : "✍️ Redactar mensaje"}
             </button>

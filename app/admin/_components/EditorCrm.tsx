@@ -19,8 +19,57 @@ export interface FormCrm {
   responsable: boolean;
 }
 
-export function formCrmInicial(cambios: Record<string, unknown> | null | undefined): FormCrm {
-  const c = cambios ?? {};
+// Lo único que Alain tiene que aportar en una tarjeta (el resto va prerrellenado).
+export interface Pedido {
+  titulo: string;
+  ayuda: string;
+  campo: "email" | "nota";
+  obligatorio: boolean;
+}
+
+/** Qué se le pide a Alain según el tipo de tarea. Sin entrada = la tarjeta no pide nada concreto. */
+export function pedidoDe(tipo: string | null | undefined): Pedido | null {
+  if (tipo === "localizar_contacto")
+    return {
+      titulo: "Lo único que tienes que hacer: encontrar el email de la agencia",
+      ayuda: "Búscalo en su web, Google Maps o Instagram y pégalo aquí. Al aplicar queda en la ficha y se apunta que toca mandarles el primer mail. Si no lo encuentras, usa «Aplazar».",
+      campo: "email",
+      obligatorio: true,
+    };
+  if (tipo === "llamada_alain")
+    return {
+      titulo: "Lo único que tienes que hacer: llamar y anotar cómo fue",
+      ayuda: "Si conseguiste un email o teléfono, ponlo en «Contacto» al desplegar lo de abajo. Si no contestó, usa «Aplazar».",
+      campo: "nota",
+      obligatorio: false,
+    };
+  return null;
+}
+
+/** true si falta lo que la tarjeta pide y no se puede aplicar todavía. */
+export function faltaPedido(p: Pedido | null, f: FormCrm): boolean {
+  if (!p || !p.obligatorio) return false;
+  if (p.campo === "email") return !/.+@.+\..+/.test(f.email.trim());
+  return !f.nota.trim();
+}
+
+const hoyMadrid = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
+function siguienteLaborable(): string {
+  const d = new Date(hoyMadrid() + "T00:00:00Z");
+  do d.setUTCDate(d.getUTCDate() + 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
+}
+
+export function formCrmInicial(cambios: Record<string, unknown> | null | undefined, tipo?: string | null): FormCrm {
+  const c = { ...(cambios ?? {}) } as Record<string, unknown>;
+  // Tareas «de buscar»: lo que el sistema dejó en `nota` es una instrucción para Alain, no algo que apuntar.
+  if (tipo === "localizar_contacto" || tipo === "llamada_alain") c.nota = "";
+  // Al encontrar el email de una agencia, lo siguiente es mandarle el primer mail (por defecto, el siguiente día laborable).
+  if (tipo === "localizar_contacto") {
+    c.proxima_accion = "Enviar el primer mail a la agencia";
+    c.fecha_proxima_accion = siguienteLaborable();
+  }
   const p = (c.contacto_nuevo ?? {}) as { nombre?: string; email?: string; cargo?: string; telefono?: string; responsable?: boolean };
   return {
     estado: String(c.estado ?? ""),
@@ -31,8 +80,9 @@ export function formCrmInicial(cambios: Record<string, unknown> | null | undefin
     email: p.email ?? "",
     cargo: p.cargo ?? "",
     telefono: p.telefono ?? "",
-    // Si hay un contacto nuevo con email, por defecto pasa a ser el responsable de la ficha.
-    responsable: p.responsable ?? true,
+    // Si hay un contacto nuevo con email, por defecto pasa a ser el responsable de la ficha
+    // (salvo el email general de una agencia: solo se guarda como email de la ficha).
+    responsable: tipo === "localizar_contacto" ? false : (p.responsable ?? true),
   };
 }
 
@@ -58,6 +108,7 @@ export default function EditorCrm({
   responsableActual,
   abierto,
   etiquetaFicha = "centro",
+  tipo,
 }: {
   f: FormCrm;
   setF: Dispatch<SetStateAction<FormCrm>>;
@@ -66,11 +117,34 @@ export default function EditorCrm({
   responsableActual?: string | null;
   abierto: boolean;
   etiquetaFicha?: string;
+  tipo?: string | null;
 }) {
+  const pedido = pedidoDe(tipo);
+  const resumen = [
+    f.email.trim() && `email → ${f.email.trim()}`,
+    f.estado && `estado → ${f.estado}`,
+    (f.proxima_accion || f.fecha_proxima_accion) && `siguiente: ${f.proxima_accion || "acción"}${f.fecha_proxima_accion ? ` el ${f.fecha_proxima_accion}` : ""}`,
+    f.nota.trim() && "nota",
+  ].filter(Boolean);
   const set = <K extends keyof FormCrm>(k: K, v: FormCrm[K]) => setF((x) => ({ ...x, [k]: v }));
   return (
-    <details open={abierto} className="mt-3 bg-gray-50 px-3 py-2 text-[0.8rem] text-gray-700">
-      <summary className="cursor-pointer font-medium text-gray-600">Qué se apunta en el CRM (editable)</summary>
+    <>
+    {pedido && (
+      <div className="mt-3 border-l-4 border-[#0F2240] bg-blue-50 px-3 py-2">
+        <p className="text-[0.82rem] font-semibold text-[#0F2240]">{pedido.titulo}</p>
+        <p className="mt-0.5 text-[0.75rem] text-gray-600">{pedido.ayuda}</p>
+        {pedido.campo === "email" ? (
+          <input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="email@agencia.com" className={campo + " mt-2"} />
+        ) : (
+          <textarea value={f.nota} onChange={(e) => set("nota", e.target.value)} rows={2} placeholder="Cómo fue la llamada (opcional)" className={campo + " mt-2"} />
+        )}
+        <p className="mt-2 text-[0.75rem] text-gray-600">
+          <span className="font-medium">Se apuntará:</span> {resumen.length ? resumen.join(" · ") : "nada todavía"}
+        </p>
+      </div>
+    )}
+    <details open={pedido ? false : abierto} className="mt-3 bg-gray-50 px-3 py-2 text-[0.8rem] text-gray-700">
+      <summary className="cursor-pointer font-medium text-gray-600">{pedido ? "Lo demás se rellena solo (ver o cambiar)" : "Qué se apunta en el CRM (editable)"}</summary>
       <p className="mt-1 text-[0.75rem] text-gray-500">Va relleno con lo que propone el sistema. Corrígelo o rellénalo a mano; lo que dejes vacío no se toca en la ficha.</p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <label className="block text-[0.75rem] text-gray-500">
@@ -124,5 +198,6 @@ export default function EditorCrm({
         <textarea value={f.nota} onChange={(e) => set("nota", e.target.value)} rows={2} placeholder="p. ej. La subdirectora dice que le escriba en mayo, cuando organizan las actividades" className={campo} />
       </label>
     </details>
+    </>
   );
 }
