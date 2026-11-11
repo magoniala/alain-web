@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import VistaCorreo from "../VistaCorreo";
 import EditorCrm, { cambiosDeForm, formCrmInicial, type FormCrm } from "../EditorCrm";
+import UltimosMensajes, { type Ultimos } from "../UltimosMensajes";
+import AplazarTarea from "../AplazarTarea";
 import { ESTADOS } from "@/lib/charlas";
+import CajaFaltanDatos, { type FaltaDato } from "../CajaFaltanDatos";
 
 // Bandeja de charlas · fase 1.
 //
@@ -36,10 +39,12 @@ interface Tarea {
     resumen?: string;
     etiqueta_principal?: string | null;
     alternativa?: { etiqueta: string; asunto: string; cuerpo: string; adjuntar_dossier: boolean } | null;
+    faltan_datos?: FaltaDato[];
   };
   creado_en: string;
   centro: { id: string; nombre: string; estado: string; responsable: string | null; responsable_email?: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null; euskera: string | null; localidad: string | null; territorio: string | null } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null } | null;
+  ultimos?: Ultimos;
 }
 
 interface Huerfano {
@@ -426,8 +431,9 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
     setOcupado(nombre);
     setMensaje("");
     try {
-      const r = (await accion(body)) as { prueba?: boolean; enviado_a?: string; smtp?: string };
+      const r = (await accion(body)) as { prueba?: boolean; enviado_a?: string; smtp?: string; aviso?: string };
       if (r?.prueba) setMensaje(`Prueba enviada a ${r.enviado_a}. Revisa tu correo (también Spam); la tarea sigue aquí. Servidor: ${r.smtp || "sin respuesta"}`);
+      else if (r?.aviso) setMensaje(r.aviso);
       else alTerminar();
     } catch (e) {
       const err = e as Error & { duplicado?: boolean };
@@ -476,11 +482,17 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
             </>
           )}
           {t.contexto?.resumen && <p className="mt-3 text-[0.8rem] text-gray-500">Resumen: {t.contexto.resumen}</p>}
+          <UltimosMensajes ultimos={t.ultimos} omitirEntrante={!programada && !!t.entrante?.texto} />
         </div>
 
         {/* Lo que se propone */}
         <div className="p-5">
           {t.nota_para_alain && <p className="mb-3 bg-amber-50 px-3 py-2 text-[0.82rem] text-amber-900">⚑ {t.nota_para_alain}</p>}
+          {(t.contexto?.faltan_datos?.length ?? 0) > 0 && (
+            <div className="mb-3">
+              <CajaFaltanDatos faltan={t.contexto?.faltan_datos} ocupado={ocupado === "completar"} onGuardar={(clave, txt) => hacer("completar", { accion: "completar", id: t.id, clave, texto: txt })} />
+            </div>
+          )}
 
           {conRespuesta && alt && (
             <div className="mb-3 flex gap-1 rounded-lg bg-gray-100 p-1 text-[0.8rem]">
@@ -587,6 +599,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
               </button>
             </div>
           )}
+          <AplazarTarea ocupado={!!ocupado} deshabilitado={prueba} titulo={prueba ? "Desactiva el modo prueba para tocar el CRM" : undefined} onAplazar={(fecha) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha })} />
           {mensaje && <p className="mt-3 text-[0.82rem] text-gray-800">{mensaje}</p>}
         </div>
       </div>

@@ -4,6 +4,7 @@ import { supabaseCharlas } from "@/lib/charlas";
 import { enviarCorreo } from "@/lib/charlas-correo";
 import { procesarEntranteMagia, regenerarTareaMagia } from "@/lib/crm-motor";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
+import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
 
 // Bandeja del carril de MAGIA (fase 6a).
 //
@@ -12,8 +13,10 @@ import { fusionarCambios } from "@/lib/bandeja-cambios";
 //        enviar            → correo por SMTP (como en charlas), hilo y copia en Enviados; aplica cambios en la ficha
 //        whatsapp_enviado  → Alain lo ha mandado desde su móvil (enlace wa.me): aplica cambios y apunta el texto en el Registro
 //        aplicar           → solo los cambios de ficha, sin enviar nada (también con borrador). `cambios` = lo que Alain corrigió a mano (lib/bandeja-cambios)
+//        aplazar           → { id, fecha }: mueve la próxima acción de la ficha a otro día y cierra la tarjeta sin marcarla como hecha
 //        descartar         → con motivo (alimenta el aprendizaje)
 //        rehacer           → regenerar el borrador con una indicación
+//        completar         → «Me falta información»: guarda el texto en un documento del catálogo de shows y rehace el borrador (no envía nada)
 //        reintentar_mensaje→ un correo entrante que falló vuelve a la cola
 
 export const maxDuration = 60;
@@ -44,8 +47,22 @@ export async function GET(req: Request) {
   ]);
   const config = Object.fromEntries((cfg.data ?? []).map((c) => [c.clave, c.valor]));
   const h = hoy();
+
+  // Último correo recibido y último enviado de cada ficha con tarjeta: la tarjeta
+  // no siempre trae un entrante asociado (tarjetas por fecha, «buscar email»…).
+  const fichaIds = [...new Set((tareas.data ?? []).map((t) => t.ficha_id as string).filter(Boolean))];
+  const ultimos: Record<string, { entrante: unknown; saliente: unknown }> = {};
+  if (fichaIds.length) {
+    const { data: msgs } = await sb.from("crm_mensajes").select("id, ficha_id, direccion, de, para, asunto, fecha, texto, tipo_salida").in("ficha_id", fichaIds).order("fecha", { ascending: false }).limit(600);
+    for (const m of msgs ?? []) {
+      if (m.tipo_salida === "prueba") continue;
+      const u = (ultimos[m.ficha_id] ??= { entrante: null, saliente: null });
+      const k = m.direccion === "entrante" ? "entrante" : "saliente";
+      if (!u[k]) u[k] = { id: m.id, direccion: m.direccion, de: m.de, para: m.para, asunto: m.asunto, fecha: m.fecha, texto: (m.texto ?? "").slice(0, 4000) };
+    }
+  }
   return NextResponse.json({
-    tareas: tareas.data ?? [],
+    tareas: (tareas.data ?? []).map((t) => ({ ...t, ultimos: ultimos[t.ficha_id] ?? { entrante: null, saliente: null } })),
     error_tareas: tareas.error?.message ?? null,
     errores: errores.data ?? [],
     config,
@@ -76,6 +93,17 @@ export async function POST(req: Request) {
         t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
         await aplicarCambios(t, null);
         await sb.from("crm_tareas").update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        return NextResponse.json({ ok: true });
+      }
+      case "aplazar": {
+        const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const fecha = String(body.fecha ?? "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("La fecha no es válida.");
+        if (fecha < hoy()) throw new Error("Esa fecha ya pasó.");
+        await sb.from("crm_fichas").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.ficha_id);
+        await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "Sistema", texto: `Aplazado al ${fecha.split("-").reverse().join("-")}: ${etiqueta(t.tipo)}`, orden: 600, origen: "sistema" });
+        await sb.from("crm_tareas").update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "descartar": {
@@ -115,6 +143,27 @@ export async function POST(req: Request) {
           await regenerarTareaMagia(t.id, `Redacta un mensaje para esta ficha (conMensaje = true).${extra ? ` Indicación de Alain: ${extra}` : ""}`);
         }
         return NextResponse.json({ ok: true });
+      }
+      case "completar": {
+        const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const texto = String(body.texto ?? "").trim();
+        const doc = await anadirAlCatalogo(String(body.clave ?? ""), texto, `bandeja de magia · ${t.ficha_id ? (await sb.from("crm_fichas").select("nombre").eq("id", t.ficha_id).maybeSingle()).data?.nombre ?? "ficha" : "ficha"}`);
+        // Cuenta como corrección: entra en el repaso semanal de reglas (crm-aprendizaje).
+        await sb.from("crm_correcciones").insert({ carril: "magia", tarea_id: t.id, tipo_mensaje: t.tipo, idioma: t.idioma, borrador: t.borrador_texto ?? "", final: "", motivo: `AÑADIDO AL CATÁLOGO («${doc.titulo}»): ${texto}` });
+        const instruccion = instruccionTrasCompletar(doc.titulo, texto, String(body.instruccion ?? ""));
+        if (t.mensaje_entrante_id) {
+          await procesarEntranteMagia(t.mensaje_entrante_id, instruccion);
+        } else {
+          const { data: ult } = !t.borrador_texto ? await sb.from("crm_mensajes").select("id").eq("ficha_id", t.ficha_id).eq("direccion", "entrante").order("fecha", { ascending: false }).limit(1).maybeSingle() : { data: null };
+          if (ult?.id) {
+            const r = await procesarEntranteMagia(ult.id, instruccion);
+            if (r.tarea && r.tarea !== t.id) await sb.from("crm_tareas").update({ estado: "descartada", motivo: "Sustituida por el borrador redactado", resuelto_en: new Date().toISOString(), resuelto_por: "sistema" }).eq("id", t.id).in("estado", ["revisar", "pendiente"]);
+          } else {
+            await regenerarTareaMagia(t.id, instruccion);
+          }
+        }
+        return NextResponse.json({ ok: true, documento: doc });
       }
       case "reintentar_mensaje": {
         await sb.from("crm_mensajes").update({ estado: "nuevo", intentos: 0, error: null }).eq("id", String(body.mensaje_id)).eq("estado", "error");
@@ -222,6 +271,9 @@ async function enviarMail(body: Record<string, unknown>) {
     .select("id")
     .single();
   await registrarCorreccion(t, texto, body);
+  // Si la ficha no tenía email, el de este envío queda apuntado (nunca pisa uno existente).
+  const { data: fichaEmail } = await sb.from("crm_fichas").select("email").eq("id", t.ficha_id).single();
+  if (fichaEmail && !fichaEmail.email) await sb.from("crm_fichas").update({ email: destinatario.toLowerCase() }).eq("id", t.ficha_id);
   await sb.from("crm_tareas").update({ estado: "enviada", cambios_crm: t.cambios_crm, texto_final: texto, editado: texto !== (t.borrador_texto ?? "").trim(), mensaje_salida_id: saliente?.id ?? null, resuelto_en: ahora, resuelto_por: "alain" }).eq("id", t.id);
   // Ya ha salido un correo a esta ficha: cualquier otra tarjeta abierta para ella
   // queda obsoleta (si no, se queda en la bandeja e invita a enviar lo mismo otra vez).
@@ -234,10 +286,12 @@ async function enviarMail(body: Record<string, unknown>) {
 async function aplicarCambios(t: Tarea, envio: { canal: "Mail" | "WhatsApp"; texto: string } | null) {
   const sb = supabaseCharlas();
   const c = (t.cambios_crm ?? {}) as Record<string, unknown>;
-  const { data: f } = await sb.from("crm_fichas").select("mails_enviados").eq("id", t.ficha_id).single();
+  const { data: f } = await sb.from("crm_fichas").select("mails_enviados, email").eq("id", t.ficha_id).single();
   const cambios: Record<string, unknown> = { actualizado_por: "sistema", fecha_ultimo_contacto: hoy(), enviado: false };
   for (const k of ["estado", "proxima_accion", "fecha_proxima_accion"]) if (c[k]) cambios[k] = c[k];
   const persona = c.contacto_nuevo as { nombre?: string; email?: string; telefono?: string; cargo?: string; responsable?: boolean } | undefined;
+  // El email de un contacto apuntado a mano queda también como email de la ficha si no tenía (no pisa el existente).
+  if (persona?.email && !f?.email) cambios.email = persona.email.toLowerCase();
   // Persona que ha escrito por otro camino y Alain marca como responsable de la ficha.
   if (persona?.responsable) {
     if (persona.nombre) cambios.responsable = persona.nombre;

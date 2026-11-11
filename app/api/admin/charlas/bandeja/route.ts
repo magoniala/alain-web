@@ -4,6 +4,7 @@ import { supabaseCharlas } from "@/lib/charlas";
 import { enviarCorreo } from "@/lib/charlas-correo";
 import { procesarMensaje } from "@/lib/charlas-proceso";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
+import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
 
 // Bandeja de charlas en el panel.
 //
@@ -12,9 +13,11 @@ import { fusionarCambios } from "@/lib/bandeja-cambios";
 // POST { accion, … }
 //   enviar      { id, asunto, texto, destinatario, adjuntar_dossier, dossier_idioma, motivo? }
 //   aplicar     { id, cambios? }             solo aplica los cambios al CRM, sin enviar nada (también con borrador). `cambios` = lo que Alain corrigió a mano (ver lib/bandeja-cambios)
+//   aplazar     { id, fecha }                mueve la próxima acción del centro a otro día y cierra la tarjeta sin marcarla como hecha
 //   descartar   { id, motivo? }
 //   regenerar   { id, instruccion }          rehace el borrador con una indicación de Alain
 //   redactar    { id, instruccion? }         tarea sin borrador (revisar_correo, actualizar_crm): la IA escribe una respuesta al último correo del centro
+//   completar   { id, clave, texto }         «Me falta información»: guarda el texto en el catálogo de shows (compartido con magia) y rehace el borrador; no envía nada
 //   asignar     { mensaje_id, centro_id }    correo huérfano → centro, y se procesa
 //   ignorar     { mensaje_id }               correo huérfano que no es de charlas
 //   config      { modo_prueba?: boolean, lector_activo?: boolean }
@@ -50,13 +53,27 @@ export async function GET(req: Request) {
     supabase.from("charlas_mensajes").select("id, de, asunto, fecha, error").eq("estado", "error").order("fecha", { ascending: false }).limit(10),
   ]);
 
+  // Último correo recibido y último enviado de cada centro con tarjeta (la tarjeta no
+  // siempre trae un entrante asociado: tarjetas por fecha, «correo suyo sin respuesta»…).
+  const centroIds = [...new Set((tareas.data ?? []).map((t) => t.centro_id as string).filter(Boolean))];
+  const ultimos: Record<string, { entrante: unknown; saliente: unknown }> = {};
+  if (centroIds.length) {
+    const { data: msgs } = await supabase.from("charlas_mensajes").select("id, centro_id, direccion, de, para, asunto, fecha, texto, tipo_salida").in("centro_id", centroIds).order("fecha", { ascending: false }).limit(800);
+    for (const m of msgs ?? []) {
+      if (m.tipo_salida === "prueba") continue;
+      const u = (ultimos[m.centro_id] ??= { entrante: null, saliente: null });
+      const k = m.direccion === "entrante" ? "entrante" : "saliente";
+      if (!u[k]) u[k] = { id: m.id, direccion: m.direccion, de: m.de, para: m.para, asunto: m.asunto, fecha: m.fecha, texto: (m.texto ?? "").slice(0, 4000) };
+    }
+  }
+
   const cfg = Object.fromEntries((config.data ?? []).map((c) => [c.clave, c.valor]));
   const hoyISO = hoy();
   const costeHoy = (uso.data ?? []).filter((u) => u.creado_en.slice(0, 10) === hoyISO).reduce((s, u) => s + Number(u.coste_usd), 0);
   const coste30 = (uso.data ?? []).reduce((s, u) => s + Number(u.coste_usd), 0);
 
   return NextResponse.json({
-    tareas: tareas.data ?? [],
+    tareas: (tareas.data ?? []).map((t) => ({ ...t, ultimos: ultimos[t.centro_id] ?? { entrante: null, saliente: null } })),
     error_tareas: tareas.error?.message ?? null,
     huerfanos: huerfanos.data ?? [],
     errores: errores.data ?? [],
@@ -85,6 +102,17 @@ export async function POST(req: Request) {
         t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
         await aplicarCambios(t, null);
         await supabase.from("charlas_tareas").update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        return NextResponse.json({ ok: true });
+      }
+      case "aplazar": {
+        const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const fecha = String(body.fecha ?? "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("La fecha no es válida.");
+        if (fecha < hoy()) throw new Error("Esa fecha ya pasó.");
+        await supabase.from("charlas_centros").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.centro_id);
+        await supabase.from("charlas_interacciones").insert({ centro_id: t.centro_id, fecha: hoy(), canal: "Sistema", texto: `Aplazado al ${fecha.split("-").reverse().join("-")}: ${String(t.tipo).replace(/_/g, " ")}`, orden: 600, origen: "sistema" });
+        await supabase.from("charlas_tareas").update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "descartar": {
@@ -139,6 +167,27 @@ export async function POST(req: Request) {
             .in("estado", ["revisar", "pendiente"]);
         }
         return NextResponse.json({ ok: true });
+      }
+      case "completar": {
+        const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const texto = String(body.texto ?? "").trim();
+        const { data: c } = await supabase.from("charlas_centros").select("nombre").eq("id", t.centro_id).maybeSingle();
+        const doc = await anadirAlCatalogo(String(body.clave ?? ""), texto, `bandeja de charlas · ${c?.nombre ?? "centro"}`);
+        // Cuenta como corrección: entra en el repaso semanal de reglas.
+        await supabase.from("charlas_correcciones").insert({ tarea_id: t.id, tipo_mensaje: t.contexto?.clasificacion ?? t.tipo, idioma: t.idioma, borrador: t.borrador_texto ?? "", final: "", motivo: `AÑADIDO AL CATÁLOGO («${doc.titulo}»): ${texto}` });
+        let mensajeId: string | null = t.mensaje_entrante_id ?? null;
+        if (!mensajeId) {
+          const { data: ult } = await supabase.from("charlas_mensajes").select("id").eq("centro_id", t.centro_id).eq("direccion", "entrante").order("fecha", { ascending: false }).limit(1).maybeSingle();
+          mensajeId = ult?.id ?? null;
+        }
+        // Sin correo al que contestar: el dato queda guardado y la tarjeta sigue como estaba.
+        if (!mensajeId) return NextResponse.json({ ok: true, documento: doc, aviso: "Guardado en el catálogo. Esta tarjeta no tiene correo al que contestar, así que el borrador no se ha rehecho." });
+        const r = await procesarMensaje(mensajeId, instruccionTrasCompletar(doc.titulo, texto, String(body.instruccion ?? "")));
+        if (r.tarea && r.tarea !== t.id) {
+          await supabase.from("charlas_tareas").update({ estado: "descartada", motivo: "Sustituida por el borrador rehecho con el catálogo", resuelto_en: new Date().toISOString(), resuelto_por: "sistema" }).eq("id", t.id).in("estado", ["revisar", "pendiente"]);
+        }
+        return NextResponse.json({ ok: true, documento: doc });
       }
       case "asignar": {
         const mensajeId = String(body.mensaje_id);

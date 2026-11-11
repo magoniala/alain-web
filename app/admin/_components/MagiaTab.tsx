@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import VistaCorreo from "./VistaCorreo";
 import EditorCrm, { cambiosDeForm, formCrmInicial, type FormCrm } from "./EditorCrm";
+import UltimosMensajes, { type Ultimos } from "./UltimosMensajes";
+import AplazarTarea from "./AplazarTarea";
 import AprendizajesMagia from "./magia/Aprendizajes";
+import CatalogoShows from "./CatalogoShows";
+import CajaFaltanDatos, { type FaltaDato } from "./CajaFaltanDatos";
 
 // Pestaña Magia · fase 6a del sistema automático: el CRM de prospectos
 // (antiguos clientes, recuperar, intermediarios, referidos) con su bandeja.
@@ -50,10 +54,11 @@ interface Tarea {
   destinatario: string | null;
   cambios_crm: Record<string, unknown>;
   nota_para_alain: string | null;
-  contexto: { resumen?: string; clasificacion?: string; etiqueta_principal?: string | null; alternativa?: { etiqueta: string; asunto: string | null; cuerpo: string } | null; programada?: boolean } | null;
+  contexto: { resumen?: string; clasificacion?: string; etiqueta_principal?: string | null; alternativa?: { etiqueta: string; asunto: string | null; cuerpo: string } | null; programada?: boolean; faltan_datos?: FaltaDato[] } | null;
   creado_en: string;
   ficha: { id: string; nombre: string; segmento: string | null; tipo_entidad: string | null; estado: string; canal: string | null; responsable: string | null; localidad: string | null; ultimo_evento: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null; clasificacion: string | null } | null;
+  ultimos?: Ultimos;
 }
 interface Detalle {
   ficha: Ficha & { notas?: string | null; web: string | null; responsable_cargo: string | null; cuerpo_antes: string | null; origen: string | null };
@@ -74,7 +79,7 @@ const fmtFecha = (iso: string | null) => (iso ? iso.slice(0, 10).split("-").reve
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
 export default function MagiaTab() {
-  const [seccion, setSeccion] = useState<"bandeja" | "crm" | "aprendizajes">("bandeja");
+  const [seccion, setSeccion] = useState<"bandeja" | "crm" | "catalogo" | "aprendizajes">("bandeja");
   const pw = useCallback(() => sessionStorage.getItem("admin_pw") || "", []);
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": pw() }), [pw]);
 
@@ -171,9 +176,9 @@ export default function MagiaTab() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-200">
-        {(["bandeja", "crm", "aprendizajes"] as const).map((s) => (
+        {(["bandeja", "crm", "catalogo", "aprendizajes"] as const).map((s) => (
           <button key={s} onClick={() => setSeccion(s)} className={`-mb-px border-b-2 px-4 py-2 text-[0.9rem] ${seccion === s ? "border-[#0F2240] font-medium text-[#0F2240]" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
-            {s === "bandeja" ? `Bandeja${tareas.length ? ` · ${tareas.length}` : ""}` : s === "crm" ? "CRM de magia" : "Aprendizajes"}
+            {s === "bandeja" ? `Bandeja${tareas.length ? ` · ${tareas.length}` : ""}` : s === "crm" ? "CRM de magia" : s === "catalogo" ? "Catálogo de shows" : "Aprendizajes"}
           </button>
         ))}
         <span className="ml-auto text-[0.78rem] text-gray-500">
@@ -184,6 +189,7 @@ export default function MagiaTab() {
       {aviso && <p className="rounded-xl bg-amber-50 px-4 py-2 text-[0.85rem] text-amber-900">{aviso}</p>}
 
       {seccion === "aprendizajes" && <AprendizajesMagia />}
+      {seccion === "catalogo" && <CatalogoShows />}
 
       {seccion === "bandeja" && (
         <div className="space-y-5">
@@ -283,6 +289,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
   const [ocupado, setOcupado] = useState("");
   const [err, setErr] = useState("");
   const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm));
+  const [para, setPara] = useState(t.destinatario ?? "");
   useEffect(() => {
     setTexto((opcion === "b" ? alt?.cuerpo : t.borrador_texto) ?? "");
     setAsunto((opcion === "b" ? alt?.asunto : t.borrador_asunto) ?? "");
@@ -334,7 +341,9 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           <pre className="mt-1 whitespace-pre-wrap font-sans">{t.entrante.texto}</pre>
         </details>
       )}
+      <UltimosMensajes ultimos={t.ultimos} omitirEntrante={!!t.entrante?.texto} />
       {t.nota_para_alain && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[0.82rem] text-amber-900">{t.nota_para_alain}</p>}
+      <CajaFaltanDatos faltan={t.contexto?.faltan_datos} ocupado={ocupado === "completar"} onGuardar={(clave, txt) => hacer("completar", { accion: "completar", id: t.id, clave, texto: txt })} />
 
       {conMensaje && (
         <div className="mt-3 space-y-2">
@@ -345,7 +354,14 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
               ))}
             </div>
           )}
-          <p className="text-[0.78rem] text-gray-500">Para: {t.destinatario ?? "—"}</p>
+          {t.canal === "mail" ? (
+            <label className="block text-[0.75rem] text-gray-500">
+              Para
+              <input value={para} onChange={(e) => setPara(e.target.value)} placeholder="pega aquí el email" className="mt-0.5 w-full border border-gray-300 px-2 py-1 text-[0.85rem] text-gray-900" />
+            </label>
+          ) : (
+            <p className="text-[0.78rem] text-gray-500">Para: {t.destinatario ?? "—"}</p>
+          )}
           {t.canal === "mail" && <input value={asunto} onChange={(e) => setAsunto(e.target.value)} className="w-full border border-gray-300 px-2 py-1.5 text-[0.88rem]" placeholder="Asunto" />}
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={Math.min(14, Math.max(4, texto.split("\n").length + 1))} className="w-full border border-gray-300 px-2 py-1.5 text-[0.9rem] leading-relaxed" />
           {t.canal === "mail" && <VistaCorreo texto={texto} />}
@@ -360,7 +376,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
       <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.ficha?.estado} responsableActual={t.ficha?.responsable} abierto={cambios.length > 0} etiquetaFicha="prospecto" />
       <div className="mt-4 flex flex-wrap gap-2">
         {t.canal === "mail" && (
-          <button onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
+          <button onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || !para.includes("@") || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
             {ocupado === "enviar" ? "Enviando…" : "Enviar correo"}
           </button>
         )}
@@ -392,6 +408,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
         )}
         <button onClick={() => { const m = prompt("¿Por qué lo descartas? (opcional)") ?? ""; hacer("descartar", { accion: "descartar", id: t.id, motivo: m }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">Descartar</button>
       </div>
+      <AplazarTarea ocupado={!!ocupado} onAplazar={(fecha) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha })} />
       {err && <p className="mt-2 text-[0.82rem] text-[#DC2626]">{err}</p>}
     </article>
   );
