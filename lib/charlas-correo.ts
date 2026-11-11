@@ -442,6 +442,13 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
               let centro: string | null = refs.map((r) => conocidos.porId.get(r)).find(Boolean) ?? null;
               let por: string | null = centro ? "hilo" : null;
               if (!centro) ({ centro, por } = asociar(indice, contraparte));
+              // Un parecido por dominio o por nombre NO manda sobre un email exacto de una ficha de
+              // magia: cultura@berriz.eus (ayuntamiento, antiguo cliente de magia) acababa en
+              // "Berriz BHI" solo porque el dominio berriz.eus lleva el nombre del pueblo.
+              if (centro && (por === "dominio~nombre" || por === "dominio") && magia && contraparte.some((e) => magia.porEmail.get(e))) {
+                centro = null;
+                por = null;
+              }
               const asunto = env.subject ?? "";
               const pendiente = !centro && t.direccion === "entrante" && refs.length > 0 && ASUNTO_CHARLAS.test(asunto);
               // ¿Es de una ficha de magia?
