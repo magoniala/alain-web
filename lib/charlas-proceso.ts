@@ -212,6 +212,7 @@ export async function procesarMensaje(mensajeId: string, instruccion?: string): 
       confianza: resultado.confianza,
       resumen: resultado.resumen,
       datos: resultado.datos,
+      faltan_datos: resultado.faltan_datos,
       instruccion: instruccion ?? null,
       etiqueta_principal: resultado.alternativa?.etiqueta_principal ?? null,
       alternativa: resultado.alternativa

@@ -10,6 +10,7 @@
 // Anthropic, consultada el 29-10-2026.
 
 import { supabaseCharlas } from "./charlas";
+import { normalizarFaltan, textoCatalogo, type FaltaDato } from "./conocimiento-catalogo";
 
 // La caché del conocimiento se pide de 1 hora (no de 5 minutos): una tanda
 // de correos que se procesa en varias pasadas paga la escritura una sola
@@ -60,6 +61,8 @@ export interface ResultadoIA {
   };
   nota_para_alain: string | null;
   necesita_alain: boolean; // true = no es algo que el sistema deba contestar solo nunca (nivel C)
+  /** Datos que le faltaban para contestar bien (van a la caja «Me falta información» de la tarjeta). */
+  faltan_datos: FaltaDato[];
 }
 
 interface BloqueSystem {
@@ -75,7 +78,10 @@ async function cargarConocimiento(): Promise<string> {
     .eq("activo", true)
     .order("orden")
     .order("clave");
-  return (data ?? []).map((c) => `<documento clave="${c.clave}" tipo="${c.tipo}" titulo="${c.titulo}">\n${c.texto}\n</documento>`).join("\n\n");
+  const propio = (data ?? []).map((c) => `<documento clave="${c.clave}" tipo="${c.tipo}" titulo="${c.titulo}">\n${c.texto}\n</documento>`).join("\n\n");
+  // Catálogo de shows (compartido con Prospectos de magia, se edita en el panel de Magia).
+  const catalogo = await textoCatalogo().catch(() => "");
+  return catalogo ? `${propio}\n\n${catalogo}` : propio;
 }
 
 const INSTRUCCIONES = `Eres el asistente comercial de Alain Zulaika, ilusionista que vende a centros educativos de Euskadi una charla con magia en directo sobre la atención ("La atención en la era digital" / "Arreta aro digitalean").
@@ -92,6 +98,7 @@ Cómo escribe Alain (tienes ejemplos reales en los documentos tipo "ejemplos" �
 - Termina con UNA pregunta fácil de contestar cuando hay que avanzar (nº de grupos, nivel, mes en que deciden).
 - Nunca promete lo que no está en los documentos. Nunca inventa referencias, cifras, centros ni testimonios. La única referencia que puede usar es Mendebaldea BHI (tres cursos seguidos, todo 2.º ESO).
 - Precios solo los de los documentos (350 € + IVA por aula las tres primeras, 275 € desde la cuarta el mismo día; auditorio 1.200 €). Si piden presupuesto sin decir nº de grupos, pide el dato en vez de dar cifra cerrada.
+- Shows y otras actividades de magia (no la charla): si el centro pregunta por un espectáculo, un taller, magia para una fiesta, fin de curso o Navidad, usa los documentos tipo "catalogo": describe el que encaje con lo que dice el catálogo y da su precio de referencia "+ IVA", ofreciendo presupuesto cerrado. Lo que no esté en el catálogo (o marque "SIN DATO") no se inventa: va a faltan_datos. En ese caso necesita_alain = true.
 - No escribas "no supone coste para las familias": quién paga lo decide el centro. Puedes decir que Alain factura al centro, una vez, sin cuota por alumno.
 - Sigue las reglas fijas de los documentos (p. ej. la REGLA FIJA de Objeciones sobre noes por precio o fechas) y las reglas aprendidas.
 
@@ -109,9 +116,10 @@ Qué decidir:
 - alternativa: cuando haya DOS formas razonables de contestar y la elección sea de Alain (por ejemplo: solo acuse de recibo frente a acuse + abrir la puerta a los shows según la REGLA FIJA; o contestar corto frente a aportar una referencia), redacta las dos completas. "respuesta" es la que recomiendas; "alternativa" es la otra, con "etiqueta" (2-5 palabras que digan en qué se diferencia, p. ej. "Con puerta a los shows") y "etiqueta_principal" (lo mismo para la recomendada, p. ej. "Solo acuse"). NUNCA escribas en nota_para_alain "tendrías que añadirlo tú": si hay algo que añadir, lo escribes tú como alternativa. null si solo hay una forma sensata de contestar.
 - nota_para_alain: una o dos frases sobre algo que deba saber antes de enviar (dato raro, duda, riesgo). null si nada.
 - resumen: una línea en castellano para el Registro, al estilo "Responde: calendario cerrado, deciden en mayo".
+- faltan_datos: lista de lo que necesitabas para contestar bien y no está en los documentos ni en la ficha. Cada elemento: {"que": "duración y necesidades técnicas del show familiar", "documento": la clave del documento del catálogo donde debería ir (p. ej. "show_magia_zaparrada") o null}. [] si no falta nada. Redacta igualmente el mejor borrador posible sin ese dato.
 
 Devuelve SOLO el JSON, sin texto alrededor, con esta forma exacta:
-{"clasificacion":"…","confianza":0.0,"idioma":"es|eu|mixto","resumen":"…","datos":{"mes_reactivacion":null,"persona_nueva":null,"n_grupos":null,"nivel":null,"motivo":null},"responder":true,"respuesta":{"asunto":"…","cuerpo":"…","adjuntar_dossier":false},"alternativa":null,"cambios_crm":{"estado":null,"proxima_accion":null,"fecha_proxima_accion":null,"calendario_abierto":null},"nota_para_alain":null,"necesita_alain":false}
+{"clasificacion":"…","confianza":0.0,"idioma":"es|eu|mixto","resumen":"…","datos":{"mes_reactivacion":null,"persona_nueva":null,"n_grupos":null,"nivel":null,"motivo":null},"responder":true,"respuesta":{"asunto":"…","cuerpo":"…","adjuntar_dossier":false},"alternativa":null,"cambios_crm":{"estado":null,"proxima_accion":null,"fecha_proxima_accion":null,"calendario_abierto":null},"nota_para_alain":null,"necesita_alain":false,"faltan_datos":[]}
 El asunto de la respuesta es "Re: " + el asunto original (sin duplicar "Re:"). Si responder es false, respuesta es null.`;
 
 export interface EntradaIA {
@@ -262,5 +270,7 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
   if (r.cambios_crm.fecha_proxima_accion && !/^\d{4}-\d{2}-\d{2}$/.test(r.cambios_crm.fecha_proxima_accion)) r.cambios_crm.fecha_proxima_accion = null;
   if (!r.responder) r.respuesta = null;
   if (!r.respuesta || !r.alternativa?.cuerpo) r.alternativa = null;
+  r.faltan_datos = normalizarFaltan(r.faltan_datos);
+  if (r.faltan_datos.length) r.necesita_alain = true;
   return r;
 }

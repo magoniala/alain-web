@@ -529,6 +529,7 @@ async function crearTarea(c: Centro, d: Decision) {
       clasificacion: d.tipo,
       resumen: r.resumen || etiqueta(d.tipo),
       confianza: r.confianza,
+      faltan_datos: r.faltan_datos,
       etiqueta_principal: r.alternativa?.etiqueta_principal ?? null,
       alternativa: r.alternativa ? { etiqueta: r.alternativa.etiqueta, asunto: r.alternativa.asunto, cuerpo: r.alternativa.cuerpo, adjuntar_dossier: !!r.alternativa.adjuntar_dossier } : null,
     },

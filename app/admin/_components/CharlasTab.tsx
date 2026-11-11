@@ -5,6 +5,7 @@ import { ESTADOS, faseDeEstado } from "@/lib/charlas";
 import Bandeja from "./charlas/Bandeja";
 import ImportarDirectorio from "./charlas/ImportarDirectorio";
 import Aprendizajes from "./charlas/Aprendizajes";
+import CatalogoShows from "./CatalogoShows";
 
 // Pestaña Charlas · fase 0 del sistema automático.
 //
@@ -77,11 +78,11 @@ function colorEstado(estado: string) {
 }
 
 export default function CharlasTab() {
-  const [seccion, setSeccion] = useState<"bandeja" | "crm" | "aprendizajes">(() => {
+  const [seccion, setSeccion] = useState<"bandeja" | "crm" | "catalogo" | "aprendizajes">(() => {
     try {
       // Si se llega desde una notificación (?tarea=…), siempre a la bandeja.
       if (new URLSearchParams(window.location.search).get("tarea")) return "bandeja";
-      return (sessionStorage.getItem("charlas_seccion") as "bandeja" | "crm" | "aprendizajes") || "bandeja";
+      return (sessionStorage.getItem("charlas_seccion") as "bandeja" | "crm" | "catalogo" | "aprendizajes") || "bandeja";
     } catch {
       return "bandeja";
     }
@@ -194,7 +195,7 @@ export default function CharlasTab() {
 
   const sinProxima = centros.filter((c) => activos(c) && !c.fecha_proxima_accion).length;
 
-  function irA(s: "bandeja" | "crm" | "aprendizajes") {
+  function irA(s: "bandeja" | "crm" | "catalogo" | "aprendizajes") {
     setSeccion(s);
     try {
       sessionStorage.setItem("charlas_seccion", s);
@@ -203,13 +204,13 @@ export default function CharlasTab() {
 
   const selector = (
     <div className="mb-5 flex gap-1 border-b border-gray-200">
-      {(["bandeja", "crm", "aprendizajes"] as const).map((s) => (
+      {(["bandeja", "crm", "catalogo", "aprendizajes"] as const).map((s) => (
         <button
           key={s}
           onClick={() => irA(s)}
           className={`-mb-px border-b-2 px-4 py-2 text-[0.9rem] ${seccion === s ? "border-[#0F2240] font-medium text-[#0F2240]" : "border-transparent text-gray-500 hover:text-gray-800"}`}
         >
-          {s === "bandeja" ? "Bandeja" : s === "crm" ? "CRM" : "Aprendizajes y métricas"}
+          {s === "bandeja" ? "Bandeja" : s === "crm" ? "CRM" : s === "catalogo" ? "Catálogo de shows" : "Aprendizajes y métricas"}
         </button>
       ))}
     </div>
@@ -220,6 +221,15 @@ export default function CharlasTab() {
       <div>
         {selector}
         <Bandeja centros={centros.map((c) => ({ id: c.id, nombre: c.nombre }))} onCambio={cargar} />
+      </div>
+    );
+  }
+
+  if (seccion === "catalogo") {
+    return (
+      <div>
+        {selector}
+        <CatalogoShows />
       </div>
     );
   }

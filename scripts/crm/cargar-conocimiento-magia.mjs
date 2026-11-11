@@ -92,7 +92,7 @@ add(
 
 1. (02-11-2026) Lo que va dentro de un hilo ya abierto (recordatorios, seguimientos) no lleva saludo ni firma: solo el texto. El primer mensaje a alguien sí lleva presentación o contexto y firma.
 2. (02-11-2026) Párrafos cortos separados por una línea en blanco, nunca un bloque seguido. En WhatsApp, mensajes cortos: dos o tres frases, sin asunto, con el nombre al principio como hace Alain ("Ey Iván", "Hola Leire!").
-3. (02-11-2026) Precios: solo los que estén en la ficha, en el Registro o en los guiones. Si no hay dato, no se da cifra: se propone hablarlo o se pide el dato que falte. Siempre "+ IVA".`,
+3. (02-11-2026) Precios: solo los que estén en la ficha, en el Registro, en los guiones o en el catálogo de shows (documentos tipo "catalogo"). Si no hay dato, no se da cifra: se propone hablarlo o se pide el dato que falte. Siempre "+ IVA".`,
   5
 );
 

@@ -10,6 +10,7 @@
 
 import { supabaseCharlas } from "./charlas";
 import { llamarClaude } from "./charlas-ia";
+import { normalizarFaltan, type FaltaDato } from "./conocimiento-catalogo";
 
 export const CLASIFICACIONES_MAGIA = [
   "interesado",          // quiere repetir / le interesa: pide fecha, formato o precio
@@ -37,6 +38,8 @@ export interface ResultadoMagia {
   cambios_crm: { estado?: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null };
   nota_para_alain: string | null;
   necesita_alain: boolean;
+  /** Datos que le faltaban para contestar bien (van a la caja «Me falta información» de la tarjeta). */
+  faltan_datos: FaltaDato[];
 }
 
 interface BloqueSystem {
@@ -60,7 +63,10 @@ Cómo escribe Alain (los documentos tipo "ejemplos" son la referencia: imítalos
 - Correo: asunto corto y concreto. Si es el primer correo del hilo, presentación en una línea y firma "Un saludo,\\nAlain Zulaika" / "Ondo izan,\\nAlain Zulaika". Dentro de un hilo ya abierto, sin saludo ni firma (regla aprendida 1).
 - Idioma: el de la ficha (idioma eu/es) o el que use el cliente en su mensaje. Si la ficha es un ayuntamiento o institución en euskera, euskera.
 - Un solo mensaje, una sola petición. Si hay que avanzar, termina con la pregunta que lo desbloquea (fecha, formato, a quién va la propuesta).
-- Precios: solo los que aparezcan en la ficha (ultimo_evento), en el Registro o en los guiones. Siempre "+ IVA". Si no hay dato, no inventes cifra: propón hablarlo o pide lo que falte. Nunca bajes un precio: si dudan, se reduce el compromiso (un día de prueba, menos horas), no el precio.
+- Shows, formatos y precios: los documentos tipo "catalogo" (catálogo de shows y condiciones generales) MANDAN sobre cualquier otra fuente para describir un show (qué es, para quién, aforo, duración, necesidades, qué incluye) y para dar precios. Si preguntan por un show, una actividad o el coste, elige el que encaje (sección "Cuándo proponerlo"), descríbelo con lo que dice el catálogo y da su precio de referencia, siempre "+ IVA", ofreciendo presupuesto cerrado cuando concreten fecha y detalles. Si la ficha o el Registro traen un precio pactado con ESTE cliente, manda ese. Un precio del catálogo cuenta como precio "de los guiones" a efectos de las reglas aprendidas sobre precios.
+- Lo que no esté en el catálogo, la ficha ni el Registro (o el catálogo marque "SIN DATO") no se inventa ni se aproxima: no lo pongas en el borrador y apúntalo en faltan_datos. Redacta igualmente el mejor borrador posible sin ese dato (pide al cliente lo que haga falta para el presupuesto o di que se lo concretas).
+- La duración la ajusta Alain al evento: si preguntan, da la habitual del catálogo y di que se adapta.
+- Nunca bajes un precio: si dudan, se reduce el compromiso (un día de prueba, menos horas), no el precio.
 - Octubre-noviembre con empresas y ayuntamientos: el gancho es Navidad y fin de año (ver Antiguos · Reactivación). Con particulares no se pide repetir: se pide una recomendación (variante C).
 - Nunca inventes referencias, cifras ni eventos. Lo que hubo con este cliente está en ultimo_evento y en el Registro.
 - Sigue la Guía comercial, los flujos y las reglas aprendidas. Los niveles de cobro (1 particular, 2 empresa estructurada, 3 público/ayuntamiento) deciden cómo se cierra; eso lo decide Alain, tú lo recuerdas en nota_para_alain cuando toque propuesta.
@@ -74,9 +80,10 @@ Qué decidir:
 - alternativa: cuando haya DOS formas razonables de contestar y la elección sea de Alain (p. ej. "cerrar fecha ya" frente a "proponer llamada"), redacta las dos completas; "respuesta" es la recomendada. NUNCA escribas "tendrías que añadirlo tú". null si solo hay una forma sensata.
 - nota_para_alain: una o dos frases sobre lo que deba saber antes de enviar. null si nada.
 - resumen: una línea en castellano para el Registro ("Responde: les interesa, preguntan por diciembre").
+- faltan_datos: lista de lo que necesitabas para contestar bien y no está en el catálogo, la ficha ni el Registro. Cada elemento: {"que": "sinopsis y necesidades técnicas del show infantil", "documento": la clave del documento del catálogo donde debería ir (p. ej. "show_magia_zaparrada") o null si no encaja en ninguno}. Corto y concreto: lo lee Alain para completar el catálogo. [] si no falta nada. Si falta algo, necesita_alain = true.
 
 Devuelve SOLO el JSON, sin texto alrededor, con esta forma exacta:
-{"clasificacion":"…","confianza":0.0,"idioma":"es|eu|mixto","resumen":"…","datos":{"fecha_evento":null,"importe":null,"persona_nueva":null,"motivo":null},"responder":true,"respuesta":{"asunto":null,"cuerpo":"…"},"alternativa":null,"cambios_crm":{"estado":null,"proxima_accion":null,"fecha_proxima_accion":null},"nota_para_alain":null,"necesita_alain":false}`;
+{"clasificacion":"…","confianza":0.0,"idioma":"es|eu|mixto","resumen":"…","datos":{"fecha_evento":null,"importe":null,"persona_nueva":null,"motivo":null},"responder":true,"respuesta":{"asunto":null,"cuerpo":"…"},"alternativa":null,"cambios_crm":{"estado":null,"proxima_accion":null,"fecha_proxima_accion":null},"nota_para_alain":null,"necesita_alain":false,"faltan_datos":[]}`;
 
 export interface EntradaMagia {
   ficha: Record<string, unknown>;
@@ -139,5 +146,7 @@ export async function procesarMagiaConIA(entrada: EntradaMagia, mensajeId?: stri
   if (r.cambios_crm.fecha_proxima_accion && !/^\d{4}-\d{2}-\d{2}$/.test(r.cambios_crm.fecha_proxima_accion)) r.cambios_crm.fecha_proxima_accion = null;
   if (!r.responder) r.respuesta = null;
   if (!r.respuesta || !r.alternativa?.cuerpo) r.alternativa = null;
+  r.faltan_datos = normalizarFaltan(r.faltan_datos);
+  if (r.faltan_datos.length) r.necesita_alain = true;
   return r;
 }

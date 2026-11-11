@@ -453,6 +453,7 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
       canal_ia: canal === "whatsapp" ? "whatsapp" : "mail",
       resumen: r.resumen || etiquetaMagia(d.tipo),
       confianza: r.confianza,
+      faltan_datos: r.faltan_datos,
       etiqueta_principal: r.alternativa?.etiqueta_principal ?? null,
       alternativa: r.alternativa ? { etiqueta: r.alternativa.etiqueta, asunto: r.alternativa.asunto, cuerpo: r.alternativa.cuerpo } : null,
     },
@@ -489,7 +490,7 @@ export async function regenerarTareaMagia(tareaId: string, instruccion: string) 
     .update({
       borrador_asunto: t.canal === "mail" ? r.respuesta?.asunto ?? t.borrador_asunto : null,
       borrador_texto: r.respuesta?.cuerpo ?? t.borrador_texto,
-      contexto: { ...ctx, resumen: r.resumen, instruccion: instruccion, etiqueta_principal: r.alternativa?.etiqueta_principal ?? null, alternativa: r.alternativa ? { etiqueta: r.alternativa.etiqueta, asunto: r.alternativa.asunto, cuerpo: r.alternativa.cuerpo } : null },
+      contexto: { ...ctx, resumen: r.resumen, instruccion: instruccion, faltan_datos: r.faltan_datos, etiqueta_principal: r.alternativa?.etiqueta_principal ?? null, alternativa: r.alternativa ? { etiqueta: r.alternativa.etiqueta, asunto: r.alternativa.asunto, cuerpo: r.alternativa.cuerpo } : null },
       nota_para_alain: r.nota_para_alain ?? t.nota_para_alain,
     })
     .eq("id", t.id);
@@ -535,7 +536,7 @@ export async function procesarEntranteMagia(mensajeId: string, instruccion?: str
     estado: "revisar",
     idioma: r.idioma === "eu" ? "eu" : "es",
     mensaje_entrante_id: m.id,
-    contexto: { clasificacion: r.clasificacion, confianza: r.confianza, resumen: r.resumen, datos: r.datos, etiqueta_principal: r.alternativa?.etiqueta_principal ?? null, alternativa: r.alternativa ? { etiqueta: r.alternativa.etiqueta, asunto: r.alternativa.asunto, cuerpo: r.alternativa.cuerpo } : null },
+    contexto: { clasificacion: r.clasificacion, confianza: r.confianza, resumen: r.resumen, datos: r.datos, faltan_datos: r.faltan_datos, etiqueta_principal: r.alternativa?.etiqueta_principal ?? null, alternativa: r.alternativa ? { etiqueta: r.alternativa.etiqueta, asunto: r.alternativa.asunto, cuerpo: r.alternativa.cuerpo } : null },
     borrador_asunto: r.respuesta?.asunto ?? null,
     borrador_texto: r.respuesta?.cuerpo ?? null,
     destinatario: m.de,
