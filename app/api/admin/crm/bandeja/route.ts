@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { supabaseCharlas } from "@/lib/charlas";
 import { enviarCorreo } from "@/lib/charlas-correo";
-import { procesarEntranteMagia, regenerarTareaMagia } from "@/lib/crm-motor";
+import { envioManualAgencia, procesarEntranteMagia, regenerarTareaMagia } from "@/lib/crm-motor";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
 
@@ -12,6 +12,7 @@ import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-c
 //   POST /api/admin/crm/bandeja  { accion, id, … }
 //        enviar            → correo por SMTP (como en charlas), hilo y copia en Enviados; aplica cambios en la ficha
 //        whatsapp_enviado  → Alain lo ha mandado desde su móvil (enlace wa.me): aplica cambios y apunta el texto en el Registro
+//        manual_enviado    → { id, canal: "Formulario web" | "Teléfono", texto }: agencia sin email; Alain lo mandó a mano por su web o lo dijo por teléfono
 //        aplicar           → solo los cambios de ficha, sin enviar nada (también con borrador). `cambios` = lo que Alain corrigió a mano (lib/bandeja-cambios)
 //        aplazar           → { id, fecha }: mueve la próxima acción de la ficha a otro día y cierra la tarjeta sin marcarla como hecha
 //        descartar         → con motivo (alimenta el aprendizaje)
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
   const [tareas, errores, cfg, uso] = await Promise.all([
     sb
       .from("crm_tareas")
-      .select("*, ficha:crm_fichas(id, nombre, segmento, tipo_entidad, estado, canal, idioma, responsable, responsable_tel, responsable_email, email, telefono, localidad, ultimo_evento, proxima_accion, fecha_proxima_accion), entrante:crm_mensajes!crm_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion)")
+      .select("*, ficha:crm_fichas(id, nombre, segmento, tipo_entidad, estado, canal, idioma, web, responsable, responsable_tel, responsable_email, email, telefono, localidad, ultimo_evento, proxima_accion, fecha_proxima_accion), entrante:crm_mensajes!crm_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion)")
       .eq("carril", carril)
       .in("estado", ["revisar", "error"])
       .order("urgencia", { ascending: false })
@@ -61,8 +62,22 @@ export async function GET(req: Request) {
       if (!u[k]) u[k] = { id: m.id, direccion: m.direccion, de: m.de, para: m.para, asunto: m.asunto, fecha: m.fecha, texto: (m.texto ?? "").slice(0, 4000) };
     }
   }
+  // Asunto del hilo abierto con cada ficha: un seguimiento sin asunto propio sale como «Re: …» en ese hilo.
+  const hilos: Record<string, string> = {};
+  if (fichaIds.length) {
+    const { data: hs } = await sb.from("crm_hilos").select("ficha_id, asunto").eq("canal", "principal").in("ficha_id", fichaIds);
+    for (const x of hs ?? []) if (x.asunto) hilos[x.ficha_id] = x.asunto;
+  }
   return NextResponse.json({
-    tareas: (tareas.data ?? []).map((t) => ({ ...t, ultimos: ultimos[t.ficha_id] ?? { entrante: null, saliente: null } })),
+    tareas: (tareas.data ?? []).map((t) => {
+      const ult = ultimos[t.ficha_id] ?? { entrante: null, saliente: null };
+      const previo = [ult.saliente, ult.entrante].filter(Boolean) as { asunto?: string | null; fecha?: string | null }[];
+      previo.sort((a, b) => String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")));
+      const hilo_asunto = hilos[t.ficha_id] ?? sinPrefijo(previo.find((m) => m.asunto)?.asunto ?? "") ?? null;
+      // Agencia sin email: texto del guion para mandarlo a mano por su formulario web.
+      const manual = t.tipo === "localizar_contacto" && t.ficha?.segmento === "agencia" ? envioManualAgencia(t.ficha) : null;
+      return { ...t, ultimos: ult, hilo_asunto: hilo_asunto || null, manual: manual ? { etiqueta: manual.etiqueta, texto: manual.texto } : null };
+    }),
     error_tareas: tareas.error?.message ?? null,
     errores: errores.data ?? [],
     config,
@@ -85,6 +100,19 @@ export async function POST(req: Request) {
         await registrarCorreccion(t, texto, body);
         await aplicarCambios(t, { canal: "WhatsApp", texto });
         await sb.from("crm_tareas").update({ estado: "enviada", cambios_crm: t.cambios_crm, texto_final: texto, editado: texto !== (t.borrador_texto ?? "").trim(), resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        return NextResponse.json({ ok: true });
+      }
+      case "manual_enviado": {
+        const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const canal = body.canal === "Teléfono" ? "Teléfono" : "Formulario web";
+        const { data: f } = await sb.from("crm_fichas").select("responsable, estado").eq("id", t.ficha_id).single();
+        const m = envioManualAgencia({ responsable: f?.responsable ?? null, estado: f?.estado ?? null });
+        const texto = String(body.texto ?? m.texto).trim();
+        // Los cambios son los del guion (no los de «localizar email», que solo movían la fecha).
+        t.cambios_crm = m.cambios;
+        await aplicarCambios(t, { canal, texto, que: m.etiqueta });
+        await sb.from("crm_tareas").update({ estado: "enviada", cambios_crm: t.cambios_crm, texto_final: texto, editado: texto !== m.texto.trim(), resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "aplicar": {
@@ -218,10 +246,15 @@ async function enviarMail(body: Record<string, unknown>) {
   if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
   // Lo que Alain haya corregido a mano en «Qué se apunta en el CRM».
   t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
-  const asunto = String(body.asunto ?? t.borrador_asunto ?? "").trim();
   const texto = String(body.texto ?? t.borrador_texto ?? "").trim();
   const destinatario = String(body.destinatario ?? t.destinatario ?? "").trim();
-  if (!asunto || !texto || !destinatario.includes("@")) throw new Error("Faltan asunto, texto o destinatario.");
+  // Hilo en el que va: el correo al que se contesta o, si no hay, el último con esta ficha.
+  // Un seguimiento (recordatorio de agencia, etc.) no trae asunto: hereda «Re: …» del hilo.
+  const hilo = await hiloDe(t);
+  let asunto = String(body.asunto ?? "").trim() || String(t.borrador_asunto ?? "").trim();
+  if (!asunto && hilo.asunto) asunto = `Re: ${hilo.asunto}`;
+  if (!texto || !destinatario.includes("@")) throw new Error("Faltan texto o destinatario.");
+  if (!asunto) throw new Error("No hay ningún correo anterior con esta ficha del que tomar el asunto: escribe uno.");
 
   const { data: cfg } = await sb.from("charlas_config").select("valor").eq("clave", "modo_prueba").maybeSingle();
   const prueba = cfg?.valor !== false;
@@ -245,21 +278,7 @@ async function enviarMail(body: Record<string, unknown>) {
     }
   }
 
-  let inReplyTo: string | null = null;
-  let referencias: string[] = [];
-  if (t.mensaje_entrante_id) {
-    const { data: m } = await sb.from("crm_mensajes").select("message_id, referencias").eq("id", t.mensaje_entrante_id).single();
-    if (m?.message_id && !m.message_id.startsWith("sin-id-")) {
-      inReplyTo = m.message_id;
-      referencias = [...(m.referencias ?? []), m.message_id].slice(-15);
-    }
-  } else {
-    const { data: h } = await sb.from("crm_hilos").select("ultimo_message_id, message_id_raiz").eq("ficha_id", t.ficha_id).eq("canal", "principal").maybeSingle();
-    if (h?.ultimo_message_id && !h.ultimo_message_id.startsWith("sin-id-")) {
-      inReplyTo = h.ultimo_message_id;
-      referencias = [...new Set([h.message_id_raiz, h.ultimo_message_id].filter(Boolean) as string[])];
-    }
-  }
+  const { inReplyTo, referencias } = hilo;
 
   const envio = await enviarCorreo({ para: destinatario, asunto, texto, inReplyTo, referencias, dossier: null, prueba });
   if (prueba) return { ok: true, prueba: true, enviado_a: envio.para, smtp: envio.smtp };
@@ -283,7 +302,42 @@ async function enviarMail(body: Record<string, unknown>) {
   return { ok: true, prueba: false, enviado_a: envio.para, smtp: envio.smtp };
 }
 
-async function aplicarCambios(t: Tarea, envio: { canal: "Mail" | "WhatsApp"; texto: string } | null) {
+/**
+ * Hilo de correo de la tarea: el entrante al que contesta; si no hay, el hilo
+ * abierto de la ficha (crm_hilos, que también recoge lo enviado desde Mail del Mac);
+ * y si tampoco, el último correo real con la ficha.
+ */
+async function hiloDe(t: Tarea): Promise<{ inReplyTo: string | null; referencias: string[]; asunto: string | null }> {
+  const sb = supabaseCharlas();
+  const valido = (id: string | null | undefined) => !!id && !id.startsWith("sin-id-");
+  if (t.mensaje_entrante_id) {
+    const { data: m } = await sb.from("crm_mensajes").select("message_id, referencias, asunto").eq("id", t.mensaje_entrante_id).single();
+    if (m && valido(m.message_id)) return { inReplyTo: m.message_id, referencias: [...(m.referencias ?? []), m.message_id].slice(-15), asunto: sinPrefijo(m.asunto) };
+    return { inReplyTo: null, referencias: [], asunto: sinPrefijo(m?.asunto) };
+  }
+  const { data: h } = await sb.from("crm_hilos").select("ultimo_message_id, message_id_raiz, asunto").eq("ficha_id", t.ficha_id).eq("canal", "principal").maybeSingle();
+  if (h && valido(h.ultimo_message_id)) {
+    return { inReplyTo: h.ultimo_message_id, referencias: [...new Set([h.message_id_raiz, h.ultimo_message_id].filter(Boolean) as string[])], asunto: sinPrefijo(h.asunto) };
+  }
+  const { data: m } = await sb
+    .from("crm_mensajes")
+    .select("message_id, referencias, asunto")
+    .eq("ficha_id", t.ficha_id)
+    .or("tipo_salida.is.null,tipo_salida.neq.prueba")
+    .not("message_id", "is", null)
+    .order("fecha", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (m && valido(m.message_id)) return { inReplyTo: m.message_id, referencias: [...(m.referencias ?? []), m.message_id].slice(-15), asunto: sinPrefijo(m.asunto) };
+  return { inReplyTo: null, referencias: [], asunto: sinPrefijo(h?.asunto) };
+}
+
+function sinPrefijo(a: string | null | undefined): string | null {
+  const s = String(a ?? "").replace(/^((re|rv|fw|fwd|erantz)\s*:\s*)+/i, "").trim();
+  return s || null;
+}
+
+async function aplicarCambios(t: Tarea, envio: { canal: string; texto: string; que?: string } | null) {
   const sb = supabaseCharlas();
   const c = (t.cambios_crm ?? {}) as Record<string, unknown>;
   const { data: f } = await sb.from("crm_fichas").select("mails_enviados, email").eq("id", t.ficha_id).single();
@@ -303,7 +357,7 @@ async function aplicarCambios(t: Tarea, envio: { canal: "Mail" | "WhatsApp"; tex
   await sb.from("crm_fichas").update(cambios).eq("id", t.ficha_id);
 
   const partes: string[] = [];
-  const que = t.tipo === "respuesta" ? "Respuesta" : etiqueta(t.tipo);
+  const que = envio?.que ?? (t.tipo === "respuesta" ? "Respuesta" : etiqueta(t.tipo));
   if (envio) partes.push(`${que} enviad${/a$/.test(que) ? "a" : "o"} por ${envio.canal}`);
   else if (t.tipo === "llamada_alain") partes.push("Gestionado desde el panel");
   else if (t.tipo === "aparcar") partes.push("Aparcado sin respuesta");
@@ -312,9 +366,9 @@ async function aplicarCambios(t: Tarea, envio: { canal: "Mail" | "WhatsApp"; tex
   if (persona?.nombre || persona?.email) partes.push(`contacto${persona.responsable ? " (responsable)" : " nuevo"}: ${[persona.nombre, persona.cargo, persona.email, persona.telefono].filter(Boolean).join(" · ")}`);
   if (typeof c.nota === "string" && c.nota) partes.push(c.nota);
   await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: envio ? envio.canal : "Sistema", texto: partes.join(" · ") || "Ficha actualizada", orden: 600, origen: "sistema" });
-  // El texto enviado por WhatsApp no viaja por el servidor: queda en el Registro para que se vea en la ficha.
-  if (envio?.canal === "WhatsApp" && envio.texto) {
-    await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "WhatsApp", texto: envio.texto, orden: 601, origen: "sistema" });
+  // Lo enviado por WhatsApp, formulario web o teléfono no viaja por el servidor: queda en el Registro para que se vea en la ficha.
+  if (envio && envio.canal !== "Mail" && envio.texto) {
+    await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: envio.canal, texto: envio.texto, orden: 601, origen: "sistema" });
   }
 }
 

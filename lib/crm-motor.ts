@@ -158,6 +158,30 @@ function mailAgencia1A(nombre: string): { asunto: string; cuerpo: string } {
 const RECORDATORIO_AGENCIA_1B = "Escribo de nuevo por si mi mensaje se quedó entre los demás: ¿me podéis decir con quién de vuestro equipo hablar para proveedores de espectáculos? Con un nombre me vale.";
 const RECORDATORIO_AGENCIA_1A = "Te escribo de nuevo por si se te pasó: ¿qué formato de espectáculo os cuesta más encontrar bien resuelto? Con una línea me vale.";
 
+/**
+ * Agencia sin email (solo formulario web o teléfono): el texto del guion que toca
+ * según la fase y lo que se apunta en la ficha cuando Alain lo manda a mano.
+ * En un formulario no hay hilo, así que el recordatorio lleva saludo y firma.
+ */
+export function envioManualAgencia(f: { responsable: string | null; estado: string | null }): { etiqueta: string; texto: string; cambios: Record<string, unknown> } {
+  const nombre = primerNombre(f.responsable);
+  const h = hoy();
+  if (faseMagia(f.estado) === 3) {
+    const r = nombre ? RECORDATORIO_AGENCIA_1A : RECORDATORIO_AGENCIA_1B;
+    return {
+      etiqueta: "Recordatorio único (a mano)",
+      texto: `${nombre ? `Hola ${nombre}:` : "Hola:"}\n\nOs escribí hace unos días. ${r}\n\nGracias,\n\n${FIRMA_AGENCIA}`,
+      cambios: { estado: "9 Aparcado", proxima_accion: "Check-in (agencia)", fecha_proxima_accion: sumarMeses(h, 6) },
+    };
+  }
+  const m = nombre ? mailAgencia1A(nombre) : mailAgencia1B();
+  return {
+    etiqueta: nombre ? "Agencia · primer mensaje a mano (formato)" : "Agencia · primer mensaje a mano (a quién escribir)",
+    texto: m.cuerpo,
+    cambios: { estado: "3 Primer mensaje enviado", proxima_accion: "Recordatorio único por su formulario web o teléfono (4 días laborables)", fecha_proxima_accion: laborables(h, 4) },
+  };
+}
+
 export function decidirMagia(f: Ficha): Decision | null {
   const fase = faseMagia(f.estado);
   const pa = (f.proxima_accion ?? "").toLowerCase();
@@ -174,7 +198,7 @@ export function decidirMagia(f: Ficha): Decision | null {
     return { tipo: "seguimiento", nivel: "C", conMensaje: true, instrucciones: `La ficha dice: "${f.proxima_accion}". Ha llegado la fecha. Si procede un toque suave (Mensajes comunes · Seguimiento corto), redáctalo en dos frases por el canal de la ficha; si no procede, responder = false y propón mover la fecha.`, cambios: { fecha_proxima_accion: laborables(h, 3) }, nota: `Estabas esperando: ${f.proxima_accion}` };
   }
   if (seg === "agencia" && canal === "llamada" && fase !== 7) {
-    return { tipo: "localizar_contacto", nivel: "C", conMensaje: false, instrucciones: "", cambios: { fecha_proxima_accion: sumar(h, 3) }, nota: "Agencia sin email: localiza el email general en su web, Google Maps o Instagram y ponlo en la ficha. No se llama hasta tener contacto con nombre. Al aplicar, la fecha pasa a +3 días." };
+    return { tipo: "localizar_contacto", nivel: "C", conMensaje: false, instrucciones: "", cambios: { fecha_proxima_accion: sumar(h, 3) }, nota: fase === 3 ? "Agencia sin email a la que ya escribiste a mano: toca el recordatorio único por su formulario web (texto abajo) o, si ya tienes email, ponlo en la ficha." : "Agencia sin email: localiza el email general en su web, Google Maps o Instagram y ponlo en la ficha. Si solo tiene formulario web o teléfono, manda el texto de abajo por ahí y marca «Enviado por formulario web». No se llama hasta tener contacto con nombre. Al aplicar, la fecha pasa a +3 días." };
   }
   if (canal === "llamada" && fase !== 7) {
     return { tipo: "llamada_alain", nivel: "C", conMensaje: false, instrucciones: "", cambios: { fecha_proxima_accion: sumar(h, 7) }, nota: "La ficha no tiene correo ni teléfono con el que escribir: toca llamar o conseguir el contacto. Al aplicar, la fecha pasa a +7." };

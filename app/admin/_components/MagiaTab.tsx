@@ -56,9 +56,13 @@ interface Tarea {
   nota_para_alain: string | null;
   contexto: { resumen?: string; clasificacion?: string; etiqueta_principal?: string | null; alternativa?: { etiqueta: string; asunto: string | null; cuerpo: string } | null; programada?: boolean; faltan_datos?: FaltaDato[] } | null;
   creado_en: string;
-  ficha: { id: string; nombre: string; segmento: string | null; tipo_entidad: string | null; estado: string; canal: string | null; responsable: string | null; localidad: string | null; ultimo_evento: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null } | null;
+  ficha: { id: string; nombre: string; segmento: string | null; tipo_entidad: string | null; estado: string; canal: string | null; web?: string | null; responsable: string | null; localidad: string | null; ultimo_evento: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null; clasificacion: string | null } | null;
   ultimos?: Ultimos;
+  /** Asunto del hilo abierto con la ficha: un seguimiento sin asunto propio sale como «Re: …». */
+  hilo_asunto?: string | null;
+  /** Agencia sin email: texto del guion para mandarlo a mano (formulario web o teléfono). */
+  manual?: { etiqueta: string; texto: string } | null;
 }
 interface Detalle {
   ficha: Ficha & { notas?: string | null; web: string | null; responsable_cargo: string | null; cuerpo_antes: string | null; origen: string | null };
@@ -283,7 +287,9 @@ export default function MagiaTab() {
 function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<string, unknown>) => Promise<unknown>; alTerminar: () => void }) {
   const alt = t.contexto?.alternativa ?? null;
   const [opcion, setOpcion] = useState<"a" | "b">("a");
-  const [asunto, setAsunto] = useState(t.borrador_asunto ?? "");
+  // Sin asunto propio (recordatorios, seguimientos): va en el hilo anterior, como «Re: …».
+  const asuntoHilo = t.hilo_asunto ? `Re: ${t.hilo_asunto}` : "";
+  const [asunto, setAsunto] = useState(t.borrador_asunto || asuntoHilo);
   const [texto, setTexto] = useState(t.borrador_texto ?? "");
   const [motivo, setMotivo] = useState("");
   const [ocupado, setOcupado] = useState("");
@@ -293,8 +299,8 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
   const [para, setPara] = useState(t.destinatario ?? "");
   useEffect(() => {
     setTexto((opcion === "b" ? alt?.cuerpo : t.borrador_texto) ?? "");
-    setAsunto((opcion === "b" ? alt?.asunto : t.borrador_asunto) ?? "");
-  }, [opcion, alt, t.borrador_texto, t.borrador_asunto]);
+    setAsunto((opcion === "b" ? alt?.asunto : t.borrador_asunto) || asuntoHilo);
+  }, [opcion, alt, t.borrador_texto, t.borrador_asunto, asuntoHilo]);
   const base = ((opcion === "b" ? alt?.cuerpo : t.borrador_texto) ?? "").trim();
   const editado = texto.trim() !== base;
   const u = URG[(t.urgencia ?? 1) as 1 | 2 | 3];
@@ -363,7 +369,8 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           ) : (
             <p className="text-[0.78rem] text-gray-500">Para: {t.destinatario ?? "—"}</p>
           )}
-          {t.canal === "mail" && <input value={asunto} onChange={(e) => setAsunto(e.target.value)} className="w-full border border-gray-300 px-2 py-1.5 text-[0.88rem]" placeholder="Asunto" />}
+          {t.canal === "mail" && <input value={asunto} onChange={(e) => setAsunto(e.target.value)} className="w-full border border-gray-300 px-2 py-1.5 text-[0.88rem]" placeholder={t.hilo_asunto ? "Asunto" : "Asunto (no hay correo anterior con esta ficha: escribe uno)"} />}
+          {t.canal === "mail" && t.hilo_asunto && /^re\s*:/i.test(asunto.trim()) && <p className="text-[0.75rem] text-gray-500">↪ Va en el mismo hilo que «{t.hilo_asunto}».</p>}
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={Math.min(14, Math.max(4, texto.split("\n").length + 1))} className="w-full border border-gray-300 px-2 py-1.5 text-[0.9rem] leading-relaxed" />
           {t.canal === "mail" && <VistaCorreo texto={texto} />}
           {editado && (
@@ -374,10 +381,11 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           )}
         </div>
       )}
+      {t.manual && <EnvioManual t={t} ocupado={ocupado} onHecho={(canal, txt) => hacer("manual", { accion: "manual_enviado", id: t.id, canal, texto: txt })} />}
       <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.ficha?.estado} responsableActual={t.ficha?.responsable} abierto={cambios.length > 0} etiquetaFicha="prospecto" tipo={t.tipo} />
       <div className="mt-4 flex flex-wrap gap-2">
         {t.canal === "mail" && (
-          <button onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || !para.includes("@") || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
+          <button onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || !para.includes("@") || !asunto.trim() || (editado && !motivo.trim())} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
             {ocupado === "enviar" ? "Enviando…" : "Enviar correo"}
           </button>
         )}
@@ -412,6 +420,28 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
       <AplazarTarea ocupado={!!ocupado} onAplazar={(fecha) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha })} />
       {err && <p className="mt-2 text-[0.82rem] text-[#DC2626]">{err}</p>}
     </article>
+  );
+}
+
+/** Agencia sin email: el texto del guion para pegarlo en su formulario web (o decirlo por teléfono) y marcarlo como hecho. */
+function EnvioManual({ t, ocupado, onHecho }: { t: Tarea; ocupado: string; onHecho: (canal: "Formulario web" | "Teléfono", texto: string) => void }) {
+  const [texto, setTexto] = useState(t.manual?.texto ?? "");
+  const [copiado, setCopiado] = useState(false);
+  const web = t.ficha?.web ? (/^https?:\/\//.test(t.ficha.web) ? t.ficha.web : `https://${t.ficha.web}`) : null;
+  return (
+    <details className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-[0.85rem]">
+      <summary className="cursor-pointer font-medium text-sky-900">¿Solo tienen formulario web o teléfono? · {t.manual?.etiqueta}</summary>
+      <div className="mt-2 space-y-2">
+        <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={Math.min(12, Math.max(4, texto.split("\n").length + 1))} className="w-full border border-gray-300 bg-white px-2 py-1.5 text-[0.88rem] leading-relaxed" />
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => { navigator.clipboard?.writeText(texto).then(() => setCopiado(true), () => null); }} className="px-3 py-1.5 text-[0.82rem] ring-1 ring-gray-300 bg-white">{copiado ? "Copiado ✓" : "Copiar texto"}</button>
+          {web && <a href={web} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-[0.82rem] ring-1 ring-gray-300 bg-white">Abrir su web</a>}
+          <button onClick={() => onHecho("Formulario web", texto)} disabled={!!ocupado || !texto.trim()} className="bg-[#1a1a1a] px-3 py-1.5 text-[0.82rem] font-medium text-white disabled:opacity-40">{ocupado === "manual" ? "Guardando…" : "Enviado por formulario web"}</button>
+          <button onClick={() => onHecho("Teléfono", texto)} disabled={!!ocupado || !texto.trim()} className="px-3 py-1.5 text-[0.82rem] ring-1 ring-gray-300 bg-white disabled:opacity-40">Hecho por teléfono</button>
+        </div>
+        <p className="text-[0.75rem] text-gray-500">Al marcarlo, el texto queda en el Registro y la ficha avanza como si fuera el correo (primer mensaje → recordatorio en 4 días laborables; recordatorio → aparcada 6 meses).</p>
+      </div>
+    </details>
   );
 }
 
