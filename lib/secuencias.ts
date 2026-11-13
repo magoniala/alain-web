@@ -67,8 +67,8 @@ export const PRIMERA_POSICION: Partial<Record<Secuencia, number>> = {
 export function cuandoSale(secuencia: Secuencia, posicion: number): string | null {
   if (secuencia === "tumision") {
     return posicion <= 1
-      ? "Al instante, en cuanto se apunta desde la tarjeta."
-      : "A las 21:00 (hora de Madrid), un día después del anterior.";
+      ? "Al instante si se apunta con la tarjeta (/tumision). Si llega por la plataforma de los librillos, a las 19:15 de ese día (o del siguiente): la bienvenida de la plataforma ya le ha llegado al momento."
+      : "A las 19:15 (hora de Madrid, la de la newsletter), un día después del anterior. Si está inactivo, se salta y sale el siguiente activo.";
   }
   if (secuencia === "mision" || secuencia === "comodin") {
     if (posicion <= 1) return "Al instante, en cuanto se apunta desde la tarjeta.";
@@ -85,7 +85,7 @@ export function cuandoSale(secuencia: Secuencia, posicion: number): string | nul
  */
 export function avisoSecuencia(secuencia: Secuencia): string {
   if (secuencia === "tumision") {
-    return "Esta secuencia todavía no se envía a nadie: se activará el 18 de noviembre. Puedes escribir los mails y mandarte pruebas. Durante los 9 días la familia no recibe la newsletter diaria; al terminar, pasa a recibirla.";
+    return "Se envía según el interruptor de la tabla secuencias (modo): «off», a nadie (la tarjeta sigue con la «Tu misión» de siempre); «prueba», solo a entrenatzaile@ e info@, en acelerado; «activo», a todos los que se apuntan con la tarjeta o en la plataforma de los librillos. Un mail inactivo se salta (sale el siguiente activo); con todos inactivos, nadie nuevo entra. Durante la secuencia la familia no recibe la newsletter diaria; la recibe desde el día siguiente al último mail.";
   }
   if (secuencia === "nurture") {
     return "Los cambios afectan solo a los mails que aún no se han enviado. Un mail inactivo o vacío detiene la secuencia: quien esté en esa posición se queda parado ahí hasta que lo actives.";
@@ -120,7 +120,7 @@ export const VALORES_DE_MUESTRA: Partial<Record<Secuencia, Record<string, string
     contacto: "https://alainzulaika.com/ejemplo/contacto",
     entrenamiento: "mailto:contacto@alainzulaika.com?subject=Entrenamiento",
   },
-  // La nueva de tumisión, de momento con los mismos marcadores que mision.
+  // La nueva de tumisión usa los mismos marcadores que mision ({{tutorial}} es el vaso).
   tumision: {
     tutorial: "https://alainzulaika.com/ejemplo/tutorial",
     cambiar_idioma: "https://alainzulaika.com/ejemplo/idioma",

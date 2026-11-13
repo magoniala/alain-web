@@ -10,6 +10,7 @@ import {
   misionMail2,
   urlsSecuencia,
 } from "@/lib/secuencias-legacy";
+import { pasadaTumision } from "@/lib/tumision";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -119,5 +120,16 @@ export async function GET(req: Request) {
     fallos += r.fallos;
   }
 
-  return NextResponse.json({ ok: true, enviados, fallos });
+  // Tumisión (lib/tumision.ts): no depende de PROGRAMADOS, tiene su propio
+  // interruptor. Un fallo aquí no tumba lo de arriba, que ya ha salido.
+  let tumision: { modo: string; enviados: number; terminados: number; fallos: number } | { error: string };
+  try {
+    const r = await pasadaTumision();
+    tumision = { modo: r.modo, enviados: r.enviados, terminados: r.terminados, fallos: r.fallos };
+  } catch (err) {
+    console.error("sequence/cron: error en la pasada de tumisión:", err);
+    tumision = { error: String(err) };
+  }
+
+  return NextResponse.json({ ok: true, enviados, fallos, tumision });
 }

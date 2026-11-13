@@ -3,11 +3,14 @@
 // queda la sesión abierta. Si el email ya tenía cuenta: se le manda un código
 // (así nadie entra en la cuenta de otro, que más adelante tendrá compras).
 //
-// De momento NO se da de alta en la newsletter: falta la secuencia de talleres
-// (ver newsletter_alta_at en sql/magia_plataforma.sql).
+// No se da de alta en la newsletter directamente: entra en la secuencia
+// tumisión (lib/tumision.ts), si está en marcha, con el mail 1 a las 19:15, y
+// al terminarla pasa a la diaria (y se marca newsletter_alta_at). Con
+// tumisión en «off», solo se guarda el email, como hasta ahora.
 
 import { NextResponse } from "next/server";
 import { ikusgaiak, katalogoa } from "@/lib/magia-edukiak";
+import { apuntarTumisionLibrillo } from "@/lib/tumision";
 import { db, emailGarbia, kodeaBidali, liburutxoAukeratua, ongiEtorriaBidali, saioaIreki } from "@/lib/magia-plataforma";
 
 export async function POST(req: Request) {
@@ -45,6 +48,12 @@ export async function POST(req: Request) {
     await ongiEtorriaBidali(email, base);
   } catch (err) {
     console.error("magia: no se ha podido enviar la bienvenida:", err);
+  }
+  try {
+    const r = await apuntarTumisionLibrillo(email);
+    if (r === "error") console.error("magia: no se ha podido apuntar en tumisión:", email);
+  } catch (err) {
+    console.error("magia: error apuntando en tumisión:", err);
   }
   return NextResponse.json({ ok: true });
 }

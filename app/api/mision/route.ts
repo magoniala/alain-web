@@ -3,6 +3,7 @@ import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { cargarMailSecuencia } from "@/lib/secuencia-mails";
 import { misionMail1, type UrlsMail1, urlsSecuencia } from "@/lib/secuencias-legacy";
 import { altaEmbudo } from "@/lib/embudos";
+import { avanzarTumision, tumisionDisponible } from "@/lib/tumision";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -38,6 +39,26 @@ export async function POST(req: Request) {
   if (canalLimpio && !dbError) {
     const { error: canalError } = await supabase.from("mision_contactos").update({ canal: canalLimpio }).eq("email", email);
     if (canalError) console.error("mision: no se ha podido guardar el canal:", canalError.message);
+  }
+
+  // Secuencia nueva de 9 días (lib/tumision.ts), si su interruptor la deja
+  // (secuencias.modo) y hay mails activos en su idioma. Mail 1 al instante; el
+  // resto a las 19:15. NO entra en la newsletter: la da de alta el motor al
+  // terminar, para que la diaria empiece al día siguiente del último mail.
+  const tumision = await tumisionDisponible(email, isEu ? "eu" : "es");
+  if (tumision.usar) {
+    if (dbError?.code === "23505") return NextResponse.json({ ok: true });
+    const { error: marcaError } = await supabase
+      .from("mision_contactos")
+      .update({ tumision_pos: 1, tumision_proximo: new Date().toISOString(), mail2_id: null, mail3_id: null })
+      .eq("email", email);
+    if (!marcaError) {
+      const paso = await avanzarTumision(email);
+      if (paso.estado !== "enviado") console.error("mision: el mail 1 de tumisión no ha salido al momento:", email, paso);
+      return NextResponse.json({ ok: true });
+    }
+    // Sin las columnas de sql/tumision_motor.sql: sigue por la de siempre.
+    console.error("mision: no se ha podido apuntar en tumisión; va a la secuencia de siempre:", marcaError.message);
   }
 
   // Alta en la newsletter según el embudo «tumision» (ver lib/embudos.ts):

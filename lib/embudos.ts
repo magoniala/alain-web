@@ -70,6 +70,9 @@ export interface AltaEmbudoInput {
   idioma?: string | null;
   // Asignación a mano desde /admin. Pisa la del embudo solo en un alta nueva.
   secuenciaManual?: string | null;
+  // Columnas extra para un alta nueva (p. ej. la marca de transición con la
+  // que tumisión hace que la diaria empiece al día siguiente).
+  camposExtra?: Record<string, unknown>;
 }
 
 export interface AltaEmbudoResultado {
@@ -99,6 +102,7 @@ export async function altaEmbudo(input: AltaEmbudoInput): Promise<AltaEmbudoResu
     origen: input.origen,
     // El cron de nurture todavía lee recibe_secuencia (hasta la fase 4).
     recibe_secuencia: secuencia === "nurture",
+    ...(input.camposExtra ?? {}),
   };
   const extra = {
     secuencia_activa: secuencia,
