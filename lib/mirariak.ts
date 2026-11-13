@@ -6,6 +6,7 @@
 //   anulada  → ya no ocupa plaza (queda en la fila para el historial; se puede reactivar)
 //   espera   → está en lista de espera de ese grupo/horario: no ocupa plaza
 //   cambios  → historial de lo que se le ha hecho desde el panel
+//   llegada  → ha entrado el día del evento (control de entrada en la puerta)
 // Así no hace falta tocar el esquema de la tabla.
 
 export const GRUPOS = [
@@ -23,6 +24,7 @@ export interface Marcas {
   anulada?: { en: string; motivo: string } | null;
   espera?: { desde: string; telefono?: string; nota?: string } | null;
   cambios?: Cambio[];
+  llegada?: { en: string } | null;
 }
 export interface ParticipanteTaller extends Marcas { nombre: string; edad: number; anio_pasado?: boolean; sesion_asignada?: string }
 export interface ParticipanteMm extends Marcas { nombre: string }

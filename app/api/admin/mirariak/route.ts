@@ -127,13 +127,13 @@ export async function GET(req: Request) {
       if (p.espera && p.sesion_asignada && espera.taller[p.sesion_asignada] && !p.anulada)
         espera.taller[p.sesion_asignada].push({ id: r.id, lista: "taller", idx, nombre: p.nombre.trim(), edad: Number(p.edad), contacto: r.nombre_contacto, email: r.email, idioma: r.idioma ?? "eu", telefono: p.espera.telefono ?? "", nota: p.espera.nota ?? "", desde: p.espera.desde });
       for (const c of p.cambios ?? []) cambios.push({ ...c, nombre: p.nombre.trim(), contacto: r.nombre_contacto, id: r.id });
-      return { idx, nombre: p.nombre.trim(), edad: Number(p.edad), sesion: p.sesion_asignada ?? "", repite: !!p.anio_pasado, anulada: p.anulada ?? null, espera: p.espera ?? null };
+      return { idx, nombre: p.nombre.trim(), edad: Number(p.edad), sesion: p.sesion_asignada ?? "", repite: !!p.anio_pasado, anulada: p.anulada ?? null, espera: p.espera ?? null, llegada: p.llegada ?? null };
     });
     const micromagia = (r.participantes_micromagia ?? []).map((p, idx) => {
       if (p.espera && r.horario_micromagia && espera.micromagia[r.horario_micromagia] && !p.anulada)
         espera.micromagia[r.horario_micromagia].push({ id: r.id, lista: "micromagia", idx, nombre: p.nombre.trim(), edad: null, contacto: r.nombre_contacto, email: r.email, idioma: r.idioma ?? "eu", telefono: p.espera.telefono ?? "", nota: p.espera.nota ?? "", desde: p.espera.desde });
       for (const c of p.cambios ?? []) cambios.push({ ...c, nombre: p.nombre.trim(), contacto: r.nombre_contacto, id: r.id });
-      return { idx, nombre: p.nombre.trim(), anulada: p.anulada ?? null, espera: p.espera ?? null };
+      return { idx, nombre: p.nombre.trim(), anulada: p.anulada ?? null, espera: p.espera ?? null, llegada: p.llegada ?? null };
     });
     return { id: r.id, contacto: r.nombre_contacto, email: r.email, idioma: r.idioma ?? "eu", fecha: r.created_at, actividad: r.actividad, horario: r.horario_micromagia ?? "", taller, micromagia };
   });
@@ -179,7 +179,11 @@ export async function GET(req: Request) {
 
 type Lista = "taller" | "micromagia";
 interface Cuerpo {
-  accion: "anular" | "reactivar" | "mover" | "editar" | "espera_alta" | "dar_plaza" | "quitar_espera";
+  accion: "anular" | "reactivar" | "mover" | "editar" | "espera_alta" | "dar_plaza" | "quitar_espera" | "llegada" | "puerta_alta";
+  // llegada: marcar (valor true) o desmarcar la entrada de varios participantes de la misma reserva
+  idxs?: number[];
+  nombres?: string[];
+  valor?: boolean;
   id?: string;
   lista?: Lista;
   idx?: number;
@@ -249,6 +253,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── Llega sin reserva el mismo día: se apunta ocupando plaza y ya entrado.
+    if (b.accion === "puerta_alta") {
+      const lista = b.lista;
+      const destino = b.destino ?? "";
+      const nombres = (b.nombres?.length ? b.nombres : [b.nombre ?? ""]).map((n) => n.trim()).filter(Boolean);
+      if (!lista || !nombres.length || !destino) return err("Faltan datos: grupo u horario y nombre.");
+      if (lista === "taller" && !TALLER_SESIONES.includes(destino)) return err("Grupo desconocido.");
+      if (lista === "micromagia" && !HORARIOS_MM.includes(destino)) return err("Horario desconocido.");
+      if (lista === "taller" && (nombres.length !== 1 || !(Number(b.edad) > 0))) return err("En el taller, de uno en uno y con la edad.");
+      const quedan = libres(await todasLasFilas(), lista, destino);
+      if (quedan < nombres.length && !b.forzar) return completo(lista, destino, quedan);
+      const marcas = () => ({ llegada: { en: ahora() }, cambios: [{ en: ahora(), que: `Apuntado en la puerta en ${etiquetaDestino(lista, destino)}${quedan < nombres.length ? " (por encima del aforo)" : ""}` }] });
+      const fila = {
+        nombre_contacto: b.contacto?.trim() || nombres[0],
+        email: (b.email ?? "").trim().toLowerCase(),
+        actividad: lista,
+        participantes_taller: lista === "taller" ? [{ nombre: nombres[0], edad: Number(b.edad), anio_pasado: false, sesion_asignada: destino, ...marcas() }] : null,
+        participantes_micromagia: lista === "micromagia" ? nombres.map((nombre) => ({ nombre, ...marcas() })) : null,
+        horario_micromagia: lista === "micromagia" ? destino : null,
+        newsletter: false,
+        idioma: b.idioma === "es" ? "es" : "eu",
+      };
+      const { error } = await db.from("mirariak2026_reservas").insert(fila);
+      if (error) return err(error.message, 500);
+      return NextResponse.json({ ok: true });
+    }
+
     if (!b.id || !b.lista) return err("Falta la reserva.");
     const lista = b.lista;
     const filas = await todasLasFilas();
@@ -256,6 +287,23 @@ export async function POST(req: Request) {
     if (!fila) return err("Esa reserva ya no existe. Actualiza el panel.", 404);
     const campo = lista === "taller" ? "participantes_taller" : "participantes_micromagia";
     const ps = [...((fila[campo] ?? []) as (ParticipanteTaller | ParticipanteMm)[])].map((p) => ({ ...p }));
+    // ── Entrada del día: marcar o desmarcar que han llegado (sin tocar plazas ni historial).
+    if (b.accion === "llegada") {
+      const idxs = (b.idxs ?? []).map(Number);
+      if (!idxs.length) return err("No has elegido a nadie.");
+      for (const [k, i] of idxs.entries()) {
+        const p = ps[i];
+        if (!p) return err("Ese participante ya no está en la reserva. Actualiza.", 409);
+        if (b.nombres?.[k] && norm(p.nombre) !== norm(b.nombres[k])) return err("La reserva ha cambiado. Actualiza.", 409);
+        if (b.valor && p.anulada) return err(`${p.nombre.trim()} tiene la reserva anulada: reactívala primero.`, 409);
+        if (b.valor && p.espera) return err(`${p.nombre.trim()} está en lista de espera: dale plaza primero.`, 409);
+        p.llegada = b.valor ? p.llegada ?? { en: ahora() } : null;
+      }
+      const { error } = await db.from("mirariak2026_reservas").update({ [campo]: ps }).eq("id", fila.id);
+      if (error) return err(error.message, 500);
+      return NextResponse.json({ ok: true });
+    }
+
     const indices = b.todos ? ps.map((_, i) => i) : [Number(b.idx)];
     for (const i of indices) {
       if (!ps[i]) return err("Ese participante ya no está en la reserva. Actualiza el panel.", 409);

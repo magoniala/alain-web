@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import MirariakEntrada from "./MirariakEntrada";
 
 // MIRARIAK 2026 de un vistazo: reservas del taller por grupo (ruedas por
 // edades con el total dentro), quién repite del año pasado, micromagia por
@@ -205,8 +206,8 @@ function Ritmo({ semanas }: { semanas: Datos["semanas"] }) {
 // que se liberan vuelven a salir en el formulario público.
 
 interface Marca { en?: string; motivo?: string; desde?: string; telefono?: string; nota?: string }
-interface PTg { idx: number; nombre: string; edad: number; sesion: string; repite: boolean; anulada: Marca | null; espera: Marca | null }
-interface PMg { idx: number; nombre: string; anulada: Marca | null; espera: Marca | null }
+interface PTg { idx: number; nombre: string; edad: number; sesion: string; repite: boolean; anulada: Marca | null; espera: Marca | null; llegada?: { en: string } | null }
+interface PMg { idx: number; nombre: string; anulada: Marca | null; espera: Marca | null; llegada?: { en: string } | null }
 interface Reserva { id: string; contacto: string; email: string; idioma: string; fecha: string; actividad: string; horario: string; taller: PTg[]; micromagia: PMg[] }
 interface EnEspera { id: string; lista: "taller" | "micromagia"; idx: number; nombre: string; edad: number | null; contacto: string; email: string; idioma: string; telefono: string; nota: string; desde: string }
 interface DatosGestion {
@@ -319,6 +320,7 @@ function LineaParticipante({ r, lista, p, libres, lanzar, ocupado }: {
         {lista === "taller" && (p as PTg).repite && <Etiqueta tono="azul">repite</Etiqueta>}
         {p.anulada && <Etiqueta tono="rojo">anulada · {p.anulada.motivo}</Etiqueta>}
         {p.espera && !p.anulada && <Etiqueta tono="ambar">en lista de espera</Etiqueta>}
+        {p.llegada && !p.anulada && <Etiqueta tono="gris">entró {new Date(p.llegada.en).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</Etiqueta>}
         <span className="ml-auto flex flex-wrap gap-1">
           {p.anulada ? (
             <button className={btn} disabled={ocupado} onClick={() => lanzar({ accion: "reactivar", ...base }, `${p.nombre}: reserva reactivada.`)}>Reactivar</button>
@@ -602,7 +604,27 @@ function Gestion({ g, libres, recargar, inicial = "" }: { g: DatosGestion; libre
   );
 }
 
+// Dos modos: «Reservas» (lo de siempre) y «Entrada» (la puerta, el día del evento).
+// Los días 14 y 15 de noviembre abre directamente en Entrada.
 export default function MirariakTab() {
+  const [modo, setModo] = useState<"reservas" | "entrada" | null>(null);
+  useEffect(() => {
+    const guardado = sessionStorage.getItem("mirariak_modo");
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+    const deUrl = new URLSearchParams(window.location.search).get("entrada");
+    setModo(deUrl ? "entrada" : guardado === "entrada" || guardado === "reservas" ? guardado : hoy === "2026-11-14" || hoy === "2026-11-15" ? "entrada" : "reservas");
+  }, []);
+  const cambiar = (m: "reservas" | "entrada") => {
+    sessionStorage.setItem("mirariak_modo", m);
+    setModo(m);
+    window.scrollTo({ top: 0 });
+  };
+  if (!modo) return null;
+  if (modo === "entrada") return <MirariakEntrada onVolver={() => cambiar("reservas")} />;
+  return <Reservas onEntrada={() => cambiar("entrada")} />;
+}
+
+function Reservas({ onEntrada }: { onEntrada: () => void }) {
   const [d, setD] = useState<Datos | null>(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -650,9 +672,12 @@ export default function MirariakTab() {
             {R.ultima ? ` · última reserva ${fecha(R.ultima)}` : ""}
           </p>
         </div>
-        <button onClick={cargar} disabled={cargando} className="px-3 py-1.5 text-[0.82rem] text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">
-          {cargando ? "Actualizando…" : "Actualizar"}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={onEntrada} className="bg-[#1C3A5E] px-3 py-1.5 text-[0.82rem] font-medium text-white">Control de entrada →</button>
+          <button onClick={cargar} disabled={cargando} className="px-3 py-1.5 text-[0.82rem] text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">
+            {cargando ? "Actualizando…" : "Actualizar"}
+          </button>
+        </div>
       </header>
       {error && <p className="text-sm text-[#DC2626]">{error}</p>}
 
