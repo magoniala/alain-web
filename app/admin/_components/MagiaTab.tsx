@@ -8,6 +8,7 @@ import AplazarTarea from "./AplazarTarea";
 import AprendizajesMagia from "./magia/Aprendizajes";
 import CatalogoShows from "./CatalogoShows";
 import CajaFaltanDatos, { type FaltaDato } from "./CajaFaltanDatos";
+import UltimosCambios, { type Reciente } from "./UltimosCambios";
 
 // Pestaña Magia · fase 6a del sistema automático: el CRM de prospectos
 // (antiguos clientes, recuperar, intermediarios, referidos) con su bandeja.
@@ -94,6 +95,7 @@ export default function MagiaTab() {
   const [coste, setCoste] = useState<{ hoy_usd: number; ult_30_dias_usd: number } | null>(null);
   const [aviso, setAviso] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [recientes, setRecientes] = useState<Reciente[]>([]);
 
   const cargarBandeja = useCallback(async () => {
     setCargando(true);
@@ -104,6 +106,7 @@ export default function MagiaTab() {
       if (d.error_tareas) setAviso(`La bandeja de magia aún no está lista: ${d.error_tareas}. ¿Se ha ejecutado crm-magia.sql en Supabase?`);
       setTareas(d.tareas ?? []);
       setErrores(d.errores ?? []);
+      setRecientes(d.recientes ?? []);
       setConfig(d.config ?? {});
       setCoste(d.coste ?? null);
     } catch (e) {
@@ -205,6 +208,7 @@ export default function MagiaTab() {
             </label>
             <span className="text-gray-400">Nada sale solo: cada tarea pasa por aquí.</span>
           </div>
+          <UltimosCambios key={recientes[0]?.id ?? "vacio"} recientes={recientes} accion={accion} alTerminar={() => { cargarBandeja(); cargarFichas(); }} />
           {cargando && <p className="text-[0.85rem] text-gray-500">Cargando…</p>}
           {!cargando && tareas.length === 0 && <p className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-[0.9rem] text-gray-500">Bandeja de magia vacía. El motor mira cada ficha cuando llega su fecha de próxima acción.</p>}
           {calientes.length > 0 && (

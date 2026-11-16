@@ -5,6 +5,7 @@ import { enviarCorreo } from "@/lib/charlas-correo";
 import { envioManualAgencia, procesarEntranteMagia, regenerarTareaMagia } from "@/lib/crm-motor";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
+import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, sinActualizadoPor, tareaPrevia } from "@/lib/bandeja-deshacer";
 
 // Bandeja del carril de MAGIA (fase 6a).
 //
@@ -16,6 +17,7 @@ import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-c
 //        aplicar           → solo los cambios de ficha, sin enviar nada (también con borrador). `cambios` = lo que Alain corrigió a mano (lib/bandeja-cambios)
 //        aplazar           → { id, fecha }: mueve la próxima acción de la ficha a otro día y cierra la tarjeta sin marcarla como hecha
 //        descartar         → con motivo (alimenta el aprendizaje)
+//        deshacer          → { id }: vuelve atrás un aplicar/aplazar/descartar (lib/bandeja-deshacer); los envíos no
 //        rehacer           → regenerar el borrador con una indicación
 //        completar         → «Me falta información»: guarda el texto en un documento del catálogo de shows y rehace el borrador (no envía nada)
 //        reintentar_mensaje→ un correo entrante que falló vuelve a la cola
@@ -47,6 +49,7 @@ export async function GET(req: Request) {
     sb.from("charlas_ia_uso").select("creado_en, coste_usd, proposito").gte("creado_en", new Date(Date.now() - 30 * 86400000).toISOString()).like("proposito", "magia_%"),
   ]);
   const config = Object.fromEntries((cfg.data ?? []).map((c) => [c.clave, c.valor]));
+  const recientes = await recientesDeshacibles(sb, "crm", { carril }).catch(() => []);
   const h = hoy();
 
   // Último correo recibido y último enviado de cada ficha con tarjeta: la tarjeta
@@ -80,6 +83,7 @@ export async function GET(req: Request) {
     }),
     error_tareas: tareas.error?.message ?? null,
     errores: errores.data ?? [],
+    recientes,
     config,
     coste: { hoy_usd: Number(((uso.data ?? []).filter((u) => u.creado_en.slice(0, 10) === h).reduce((s, u) => s + Number(u.coste_usd), 0)).toFixed(3)), ult_30_dias_usd: Number(((uso.data ?? []).reduce((s, u) => s + Number(u.coste_usd), 0)).toFixed(2)) },
   });
@@ -118,9 +122,13 @@ export async function POST(req: Request) {
       case "aplicar": {
         const t = await cargarTarea(String(body.id));
         if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const previa = tareaPrevia(t);
         t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
-        await aplicarCambios(t, null);
-        await sb.from("crm_tareas").update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        const huella = await aplicarCambios(t, null);
+        await sb
+          .from("crm_tareas")
+          .update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplicar", tarea_previa: previa, ...huella }) })
+          .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "aplazar": {
@@ -129,20 +137,34 @@ export async function POST(req: Request) {
         const fecha = String(body.fecha ?? "");
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("La fecha no es válida.");
         if (fecha < hoy()) throw new Error("Esa fecha ya pasó.");
+        const previa = tareaPrevia(t);
+        const antes = await fotoFicha(sb, "crm", t.ficha_id, ["fecha_proxima_accion"]);
+        const texto = `Aplazado al ${fecha.split("-").reverse().join("-")}: ${etiqueta(t.tipo)}`;
         await sb.from("crm_fichas").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.ficha_id);
-        await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "Sistema", texto: `Aplazado al ${fecha.split("-").reverse().join("-")}: ${etiqueta(t.tipo)}`, orden: 600, origen: "sistema" });
-        await sb.from("crm_tareas").update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        const { data: li } = await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "Sistema", texto, orden: 600, origen: "sistema" }).select("id").single();
+        await sb
+          .from("crm_tareas")
+          .update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplazar", resumen: texto, tarea_previa: previa, antes, despues: { fecha_proxima_accion: fecha }, interacciones: li?.id ? [li.id] : [] }) })
+          .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "descartar": {
         const t = await cargarTarea(String(body.id));
         const motivo = typeof body.motivo === "string" ? body.motivo.trim() : "";
-        await sb.from("crm_tareas").update({ estado: "descartada", motivo: motivo || null, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        const previa = tareaPrevia(t);
+        let correccion: string | null = null;
         if (motivo && t.borrador_texto) {
-          await sb.from("crm_correcciones").insert({ carril: "magia", tarea_id: t.id, tipo_mensaje: t.tipo, idioma: t.idioma, borrador: t.borrador_texto, final: "", motivo: `DESCARTADO: ${motivo}` });
+          const { data: co } = await sb.from("crm_correcciones").insert({ carril: "magia", tarea_id: t.id, tipo_mensaje: t.tipo, idioma: t.idioma, borrador: t.borrador_texto, final: "", motivo: `DESCARTADO: ${motivo}` }).select("id").single();
+          correccion = co?.id ?? null;
         }
+        await sb
+          .from("crm_tareas")
+          .update({ estado: "descartada", motivo: motivo || null, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "descartar", resumen: `Descartada: ${etiqueta(t.tipo)}`, tarea_previa: previa, antes: {}, despues: {}, interacciones: [], correcciones: correccion ? [correccion] : [] }) })
+          .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
+      case "deshacer":
+        return NextResponse.json(await deshacer(sb, "crm", String(body.id)));
       case "rehacer": {
         const t = await cargarTarea(String(body.id));
         const instruccion = String(body.instruccion ?? "").trim();
@@ -354,6 +376,8 @@ async function aplicarCambios(t: Tarea, envio: { canal: string; texto: string; q
     if (persona.telefono) cambios.responsable_tel = persona.telefono;
   }
   if (envio?.canal === "Mail") cambios.mails_enviados = (f?.mails_enviados ?? 0) + 1;
+  // Foto de cómo estaba la ficha, para poder deshacerlo desde el panel.
+  const antes = await fotoFicha(sb, "crm", t.ficha_id, Object.keys(cambios));
   await sb.from("crm_fichas").update(cambios).eq("id", t.ficha_id);
 
   const partes: string[] = [];
@@ -365,11 +389,15 @@ async function aplicarCambios(t: Tarea, envio: { canal: string; texto: string; q
   if (c.fecha_proxima_accion) partes.push(`siguiente: ${c.proxima_accion ?? "acción"} el ${c.fecha_proxima_accion}`);
   if (persona?.nombre || persona?.email) partes.push(`contacto${persona.responsable ? " (responsable)" : " nuevo"}: ${[persona.nombre, persona.cargo, persona.email, persona.telefono].filter(Boolean).join(" · ")}`);
   if (typeof c.nota === "string" && c.nota) partes.push(c.nota);
-  await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: envio ? envio.canal : "Sistema", texto: partes.join(" · ") || "Ficha actualizada", orden: 600, origen: "sistema" });
+  const resumen = partes.join(" · ") || "Ficha actualizada";
+  const interacciones: string[] = [];
+  const { data: li } = await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: envio ? envio.canal : "Sistema", texto: resumen, orden: 600, origen: "sistema" }).select("id").single();
+  if (li?.id) interacciones.push(li.id);
   // Lo enviado por WhatsApp, formulario web o teléfono no viaja por el servidor: queda en el Registro para que se vea en la ficha.
   if (envio && envio.canal !== "Mail" && envio.texto) {
     await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: envio.canal, texto: envio.texto, orden: 601, origen: "sistema" });
   }
+  return { resumen, antes, despues: sinActualizadoPor(cambios), interacciones };
 }
 
 function etiqueta(tipo: string) {

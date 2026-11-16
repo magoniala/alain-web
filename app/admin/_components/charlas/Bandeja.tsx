@@ -7,6 +7,7 @@ import UltimosMensajes, { type Ultimos } from "../UltimosMensajes";
 import AplazarTarea from "../AplazarTarea";
 import { ESTADOS } from "@/lib/charlas";
 import CajaFaltanDatos, { type FaltaDato } from "../CajaFaltanDatos";
+import UltimosCambios, { type Reciente } from "../UltimosCambios";
 
 // Bandeja de charlas · fase 1.
 //
@@ -63,6 +64,7 @@ interface Datos {
   coste: { hoy_usd: number; ult_30_dias_usd: number; llamadas_30_dias: number };
   ultima_lectura: string | null;
   error_tareas: string | null;
+  recientes?: Reciente[];
 }
 
 const ETIQUETA: Record<string, string> = {
@@ -298,6 +300,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
         </div>
       )}
       {aviso && <p className="text-[0.85rem] text-gray-800">{aviso}</p>}
+      <UltimosCambios key={datos.recientes?.[0]?.id ?? "vacio"} recientes={datos.recientes ?? []} accion={accion} alTerminar={() => { cargar(); onCambio(); }} />
       {datos.error_tareas && <p className="text-[0.85rem] text-[#DC2626]">Error cargando tareas: {datos.error_tareas}</p>}
 
       {datos.tareas.length === 0 && datos.huerfanos.length === 0 && (

@@ -5,6 +5,7 @@ import { enviarCorreo } from "@/lib/charlas-correo";
 import { procesarMensaje } from "@/lib/charlas-proceso";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
+import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, sinActualizadoPor, tareaPrevia } from "@/lib/bandeja-deshacer";
 
 // Bandeja de charlas en el panel.
 //
@@ -15,6 +16,7 @@ import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-c
 //   aplicar     { id, cambios? }             solo aplica los cambios al CRM, sin enviar nada (también con borrador). `cambios` = lo que Alain corrigió a mano (ver lib/bandeja-cambios)
 //   aplazar     { id, fecha }                mueve la próxima acción del centro a otro día y cierra la tarjeta sin marcarla como hecha
 //   descartar   { id, motivo? }
+//   deshacer    { id }                       vuelve atrás un aplicar/aplazar/descartar (lib/bandeja-deshacer); los envíos no
 //   regenerar   { id, instruccion }          rehace el borrador con una indicación de Alain
 //   redactar    { id, instruccion? }         tarea sin borrador (revisar_correo, actualizar_crm): la IA escribe una respuesta al último correo del centro
 //   completar   { id, clave, texto }         «Me falta información»: guarda el texto en el catálogo de shows (compartido con magia) y rehace el borrador; no envía nada
@@ -68,6 +70,7 @@ export async function GET(req: Request) {
   }
 
   const cfg = Object.fromEntries((config.data ?? []).map((c) => [c.clave, c.valor]));
+  const recientes = await recientesDeshacibles(supabase, "charlas").catch(() => []);
   const hoyISO = hoy();
   const costeHoy = (uso.data ?? []).filter((u) => u.creado_en.slice(0, 10) === hoyISO).reduce((s, u) => s + Number(u.coste_usd), 0);
   const coste30 = (uso.data ?? []).reduce((s, u) => s + Number(u.coste_usd), 0);
@@ -77,6 +80,7 @@ export async function GET(req: Request) {
     error_tareas: tareas.error?.message ?? null,
     huerfanos: huerfanos.data ?? [],
     errores: errores.data ?? [],
+    recientes,
     config: cfg,
     coste: { hoy_usd: Number(costeHoy.toFixed(3)), ult_30_dias_usd: Number(coste30.toFixed(2)), llamadas_30_dias: uso.data?.length ?? 0 },
     ultima_lectura: ultimaLectura.data?.[0]?.ultima_lectura ?? null,
@@ -99,9 +103,13 @@ export async function POST(req: Request) {
       case "aplicar": {
         const t = await cargarTarea(String(body.id));
         if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const previa = tareaPrevia(t);
         t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
-        await aplicarCambios(t, null);
-        await supabase.from("charlas_tareas").update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        const huella = await aplicarCambios(t, null);
+        await supabase
+          .from("charlas_tareas")
+          .update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplicar", tarea_previa: previa, ...huella }) })
+          .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "aplazar": {
@@ -110,28 +118,42 @@ export async function POST(req: Request) {
         const fecha = String(body.fecha ?? "");
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("La fecha no es válida.");
         if (fecha < hoy()) throw new Error("Esa fecha ya pasó.");
+        const previa = tareaPrevia(t);
+        const antes = await fotoFicha(supabase, "charlas", t.centro_id, ["fecha_proxima_accion"]);
+        const texto = `Aplazado al ${fecha.split("-").reverse().join("-")}: ${String(t.tipo).replace(/_/g, " ")}`;
         await supabase.from("charlas_centros").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.centro_id);
-        await supabase.from("charlas_interacciones").insert({ centro_id: t.centro_id, fecha: hoy(), canal: "Sistema", texto: `Aplazado al ${fecha.split("-").reverse().join("-")}: ${String(t.tipo).replace(/_/g, " ")}`, orden: 600, origen: "sistema" });
-        await supabase.from("charlas_tareas").update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        const { data: li } = await supabase.from("charlas_interacciones").insert({ centro_id: t.centro_id, fecha: hoy(), canal: "Sistema", texto, orden: 600, origen: "sistema" }).select("id").single();
+        await supabase
+          .from("charlas_tareas")
+          .update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplazar", resumen: texto, tarea_previa: previa, antes, despues: { fecha_proxima_accion: fecha }, interacciones: li?.id ? [li.id] : [] }) })
+          .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
       case "descartar": {
         const t = await cargarTarea(String(body.id));
         const motivo = typeof body.motivo === "string" && body.motivo.trim() ? body.motivo.trim() : null;
-        await supabase.from("charlas_tareas").update({ estado: "descartada", motivo, resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        const previa = tareaPrevia(t);
         // Un descarte con motivo también enseña: queda como corrección.
+        let correccion: string | null = null;
         if (motivo && t.borrador_texto) {
-          await supabase.from("charlas_correcciones").insert({
+          const { data: co } = await supabase.from("charlas_correcciones").insert({
             tarea_id: t.id,
             tipo_mensaje: t.contexto?.clasificacion ?? t.tipo,
             idioma: t.idioma,
             borrador: t.borrador_texto,
             final: "",
             motivo: `DESCARTADO: ${motivo}`,
-          });
+          }).select("id").single();
+          correccion = co?.id ?? null;
         }
+        await supabase
+          .from("charlas_tareas")
+          .update({ estado: "descartada", motivo, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "descartar", resumen: `Descartada: ${String(t.tipo).replace(/_/g, " ")}`, tarea_previa: previa, antes: {}, despues: {}, interacciones: [], correcciones: correccion ? [correccion] : [] }) })
+          .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
+      case "deshacer":
+        return NextResponse.json(await deshacer(supabase, "charlas", String(body.id)));
       case "regenerar": {
         const t = await cargarTarea(String(body.id));
         if (!t.mensaje_entrante_id) throw new Error("Esta tarea no viene de un correo.");
@@ -400,14 +422,19 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
     const linea = `${hoy().slice(8, 10)}-${hoy().slice(5, 7)}: ${c.otros_formatos.trim()}`;
     cambios.otros_formatos = centro?.otros_formatos ? `${centro.otros_formatos} · ${linea}` : linea;
   }
+  // Foto de cómo estaba la ficha, para poder deshacerlo desde el panel.
+  const antes = await fotoFicha(supabase, "charlas", t.centro_id, Object.keys(cambios));
   await supabase.from("charlas_centros").update(cambios).eq("id", t.centro_id);
 
+  const contactos: string[] = [];
   if (persona?.email) {
     // Si el email ya estaba en los contactos del centro, el índice único lo rechaza y no pasa nada.
-    await supabase
+    const { data: ct } = await supabase
       .from("charlas_contactos")
       .insert({ centro_id: t.centro_id, nombre: persona.nombre ?? null, email: persona.email.toLowerCase(), cargo: persona.cargo ?? null, telefono: persona.telefono ?? null, rol: "otro", origen: "panel" })
-      .then(() => null, () => null);
+      .select("id")
+      .maybeSingle();
+    if (ct?.id) contactos.push(ct.id);
   }
 
   const partes = [];
@@ -419,12 +446,18 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
   else if (c.proxima_accion) partes.push(`siguiente: ${c.proxima_accion}`);
   if (persona?.nombre || persona?.email) partes.push(`contacto${persona.responsable ? " (responsable)" : ""}: ${[persona.nombre, persona.cargo, persona.email, persona.telefono].filter(Boolean).join(" · ")}`);
   if (typeof c.nota === "string" && c.nota) partes.push(c.nota);
-  await supabase.from("charlas_interacciones").insert({
-    centro_id: t.centro_id,
-    fecha: hoy(),
-    canal: envio ? "Mail" : "Sistema",
-    texto: partes.join(" · ") || "CRM actualizado",
-    orden: 600,
-    origen: "sistema",
-  });
+  const resumen = partes.join(" · ") || "CRM actualizado";
+  const { data: li } = await supabase
+    .from("charlas_interacciones")
+    .insert({
+      centro_id: t.centro_id,
+      fecha: hoy(),
+      canal: envio ? "Mail" : "Sistema",
+      texto: resumen,
+      orden: 600,
+      origen: "sistema",
+    })
+    .select("id")
+    .single();
+  return { resumen, antes, despues: sinActualizadoPor(cambios), interacciones: li?.id ? [li.id as string] : [], contactos };
 }
