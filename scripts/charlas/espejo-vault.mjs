@@ -583,7 +583,9 @@ async function espejoMagia() {
     const { espejoProspectos } = await import("../crm/espejo-prospectos.mjs");
     const r = await espejoProspectos({ url: URL, key: KEY, comprobar: COMPROBAR });
     if (r.saltado) return console.log(`Prospectos: saltado (${r.saltado})`);
-    console.log(`Prospectos (magia): ${r.fichas} fichas · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${COMPROBAR ? "detectados" : "subidos"}`);
+    console.log(`Prospectos (magia): ${r.fichas} fichas · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${COMPROBAR ? "detectados" : "subidos"} · ${r.subidas} fichas cambiadas en Obsidian ${COMPROBAR ? "por subir" : "subidas"}`);
+    // Lo que sube de Obsidian a Supabase queda en el log (antes no se veía: Dilo Advertising, 12-11-2026).
+    for (const d of r.detalle_subidas ?? []) console.log(`  ↑ Prospectos/${d.nombre} (cambiada en Obsidian)\n      ${d.difs.join("\n      ")}`);
   } catch (e) {
     // Si las tablas crm_* aún no existen o la carpeta no está, no pasa nada: el espejo de charlas ya ha terminado.
     console.log(`Prospectos: no espejado (${String(e.message).slice(0, 160)})`);
