@@ -120,11 +120,19 @@ export async function candidatosHuerfanos(sb: SupabaseClient, huerfanos: Huerfan
     const enCabecera = ` ${sinAcentos(h.asunto ?? "").replace(/[^a-z0-9]+/g, " ")} `;
     const pegado = DOMINIOS_PERSONALES.has(dom) ? "" : sinAcentos(dom.split(".")[0] ?? "");
     const enTexto = ` ${sinAcentos(h.texto ?? "").replace(/[^a-z0-9]+/g, " ")} `;
+    // Primero lo del asunto o el dominio; luego lo del texto, el que más palabras comparte
+    // primero («Navarro Villoslada» gana a «Pamplona» sola, que sale en la dirección de la firma).
+    const enElTexto: { id: string; n: number }[] = [];
     for (const c of centros) {
       const propias = palabrasNombre(c.nombre).filter((w) => (frecuencia.get(w) ?? 0) <= 2);
       if (propias.some((w) => enCabecera.includes(` ${w} `) || (pegado && pegado.includes(w)))) meter(c.id, "su nombre sale en el asunto o en el dominio");
-      else if (propias.some((w) => enTexto.includes(` ${w} `))) meter(c.id, "su nombre sale en el texto");
+      else {
+        const n = new Set(propias.filter((w) => enTexto.includes(` ${w} `))).size;
+        if (n) enElTexto.push({ id: c.id, n });
+      }
     }
+    const maxN = Math.max(0, ...enElTexto.map((x) => x.n));
+    for (const x of enElTexto.sort((a, b) => b.n - a.n)) if (x.n === maxN || maxN === 1) meter(x.id, "su nombre sale en el texto");
     // 4. Le escribiste a uno, dos o tres centros de ese dominio en las 3 horas anteriores
     //    (si fue una tanda automática a muchos, no dice nada).
     if (dom && !DOMINIOS_PERSONALES.has(dom) && h.fecha) {
