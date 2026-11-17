@@ -9,6 +9,7 @@ import AprendizajesMagia from "./magia/Aprendizajes";
 import CatalogoShows from "./CatalogoShows";
 import CajaFaltanDatos, { type FaltaDato } from "./CajaFaltanDatos";
 import UltimosCambios, { type Reciente } from "./UltimosCambios";
+import PreguntaEnLinea from "./PreguntaEnLinea";
 
 // Pestaña Magia · fase 6a del sistema automático: el CRM de prospectos
 // (antiguos clientes, recuperar, intermediarios, referidos) con su bandeja.
@@ -298,6 +299,8 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
   const [motivo, setMotivo] = useState("");
   const [ocupado, setOcupado] = useState("");
   const [err, setErr] = useState("");
+  // Qué pregunta está abierta en la tarjeta (sustituye a prompt(), que el panel en la app de escritorio no admite).
+  const [pregunta, setPregunta] = useState<null | "descartar" | "rehacer" | "redactar">(null);
   const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm, t.tipo));
   const sinPedido = faltaPedido(pedidoDe(t.tipo), crm);
   const [para, setPara] = useState(t.destinatario ?? "");
@@ -404,7 +407,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
         {!conMensaje && (
           <>
             <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || sinPedido} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">{ocupado === "aplicar" ? "Aplicando…" : "Aplicar cambios"}</button>
-            <button onClick={() => { const i = prompt("¿Qué quieres decirle? (opcional)") ?? ""; hacer("rehacer", { accion: "redactar", id: t.id, instruccion: i }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
+            <button onClick={() => setPregunta(pregunta === "redactar" ? null : "redactar")} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
               {ocupado === "rehacer" ? "Redactando…" : "✍️ Redactar mensaje"}
             </button>
           </>
@@ -415,12 +418,15 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
           </button>
         )}
         {conMensaje && (
-          <button onClick={() => { const i = prompt("¿Qué cambio quieres en el borrador?") ?? ""; if (i.trim()) hacer("rehacer", { accion: "rehacer", id: t.id, instruccion: i }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">
+          <button onClick={() => setPregunta(pregunta === "rehacer" ? null : "rehacer")} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">
             {ocupado === "rehacer" ? "Redactando…" : "Rehacer"}
           </button>
         )}
-        <button onClick={() => { const m = prompt("¿Por qué lo descartas? (opcional)") ?? ""; hacer("descartar", { accion: "descartar", id: t.id, motivo: m }); }} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">Descartar</button>
+        <button onClick={() => setPregunta(pregunta === "descartar" ? null : "descartar")} disabled={!!ocupado} className="px-4 py-2 text-[0.85rem] text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">{ocupado === "descartar" ? "Descartando…" : "Descartar"}</button>
       </div>
+      {pregunta === "descartar" && <PreguntaEnLinea pregunta="¿Por qué lo descartas? (opcional)" boton="Descartar la tarjeta" ocupado={!!ocupado} onCancelar={() => setPregunta(null)} onAceptar={(m) => { setPregunta(null); hacer("descartar", { accion: "descartar", id: t.id, motivo: m }); }} />}
+      {pregunta === "rehacer" && <PreguntaEnLinea pregunta="¿Qué cambio quieres en el borrador?" boton="Rehacer" obligatorio ocupado={!!ocupado} onCancelar={() => setPregunta(null)} onAceptar={(i) => { setPregunta(null); hacer("rehacer", { accion: "rehacer", id: t.id, instruccion: i }); }} />}
+      {pregunta === "redactar" && <PreguntaEnLinea pregunta="¿Qué quieres decirle? (opcional)" boton="Redactar" ocupado={!!ocupado} onCancelar={() => setPregunta(null)} onAceptar={(i) => { setPregunta(null); hacer("rehacer", { accion: "redactar", id: t.id, instruccion: i }); }} />}
       <AplazarTarea ocupado={!!ocupado} onAplazar={(fecha) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha })} />
       {err && <p className="mt-2 text-[0.82rem] text-[#DC2626]">{err}</p>}
     </article>

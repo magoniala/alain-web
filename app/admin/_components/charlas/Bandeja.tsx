@@ -8,6 +8,7 @@ import AplazarTarea from "../AplazarTarea";
 import { ESTADOS } from "@/lib/charlas";
 import CajaFaltanDatos, { type FaltaDato } from "../CajaFaltanDatos";
 import UltimosCambios, { type Reciente } from "../UltimosCambios";
+import PreguntaEnLinea from "../PreguntaEnLinea";
 
 // Bandeja de charlas · fase 1.
 //
@@ -424,6 +425,8 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
   }
   const [ocupado, setOcupado] = useState("");
   const [mensaje, setMensaje] = useState("");
+  // Motivo de «Descartar» en la propia tarjeta (prompt() no funciona en el panel de la app de escritorio).
+  const [pidiendoMotivo, setPidiendoMotivo] = useState(false);
 
   const base = opcion === "b" && alt ? { asunto: alt.asunto || t.borrador_asunto || "", texto: alt.cuerpo } : { asunto: t.borrador_asunto ?? "", texto: t.borrador_texto ?? "" };
   const editado = texto.trim() !== base.texto.trim() || asunto.trim() !== base.asunto.trim();
@@ -577,16 +580,22 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
               </button>
             )}
             <button
-              onClick={() => {
-                const m = prompt("¿Por qué lo descartas? (opcional; ayuda a que aprenda)") ?? "";
-                hacer("descartar", { accion: "descartar", id: t.id, motivo: m });
-              }}
+              onClick={() => setPidiendoMotivo(!pidiendoMotivo)}
               disabled={!!ocupado}
               className="px-4 py-2 text-[0.85rem] text-gray-600 ring-1 ring-gray-300 disabled:opacity-40"
             >
               Descartar
             </button>
           </div>
+          {pidiendoMotivo && (
+            <PreguntaEnLinea
+              pregunta="¿Por qué lo descartas? (opcional; ayuda a que aprenda)"
+              boton="Descartar la tarjeta"
+              ocupado={!!ocupado}
+              onCancelar={() => setPidiendoMotivo(false)}
+              onAceptar={(m) => { setPidiendoMotivo(false); hacer("descartar", { accion: "descartar", id: t.id, motivo: m }); }}
+            />
+          )}
 
           {!conRespuesta && (t.tipo === "revisar_correo" || t.tipo === "actualizar_crm") && (
             <div className="mt-3 flex gap-2">

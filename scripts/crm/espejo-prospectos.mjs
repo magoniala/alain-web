@@ -26,6 +26,18 @@ function escribir(ruta, texto) {
 function guardarEstadoEspejo() {
   try { writeFileSync(ESTADO_ESPEJO, JSON.stringify(escritas), "utf8"); } catch { /* no es crítico */ }
 }
+// Foto del frontmatter tal y como quedó sincronizado en la última pasada
+// (ruta → { clave: valor }). Sirve para saber QUÉ campos ha tocado Alain en
+// Obsidian: solo esos se suben. Antes se subía todo lo que difería en cuanto la
+// nota tenía un cambio posterior al de Supabase, y un frontmatter viejo pisaba
+// el panel (Dilo Advertising, 12-11-2026: el 8 Perdido del panel volvió a
+// 0 Por contactar porque se añadió una línea al Registro desde Obsidian).
+const FOTOS_ESPEJO = join(dirname(fileURLToPath(import.meta.url)), ".espejo-fotos.json");
+const fotos = (() => { try { return JSON.parse(readFileSync(FOTOS_ESPEJO, "utf8")); } catch { return {}; } })();
+const fotoDe = (f) => Object.fromEntries(CLAVES.map((k) => [k, f[k] ?? f.datos?.[k] ?? null]));
+function guardarFotos() {
+  try { writeFileSync(FOTOS_ESPEJO, JSON.stringify(fotos), "utf8"); } catch { /* no es crítico */ }
+}
 const tocadaEnObsidian = (ruta, actualizadoEn) => {
   const m = statSync(ruta).mtimeMs;
   return escritas[ruta] !== m && m > Date.parse(actualizadoEn) + 5000;
@@ -90,7 +102,10 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     const registro = porFicha.get(f.id) ?? [];
     if (!existsSync(ruta)) {
       nuevas++;
-      if (!comprobar) escribir(ruta, renderFicha(f, registro));
+      if (!comprobar) {
+        escribir(ruta, renderFicha(f, registro));
+        fotos[ruta] = fotoDe(f);
+      }
       continue;
     }
     const actual = readFileSync(ruta, "utf8");
@@ -109,18 +124,22 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
       manuales.push(fila);
       registro.push({ ...fila, creado_en: new Date().toISOString() });
     }
-    const difs = [];
-    for (const k of CLAVES) if (!igual(p.frontmatter[k], f[k] ?? f.datos?.[k] ?? null, k)) difs.push(`${k}: vault="${p.frontmatter[k] ?? ""}" · db="${f[k] ?? ""}"`);
+    const db = (k) => f[k] ?? f.datos?.[k] ?? null;
+    const calcularDifs = () => CLAVES.filter((k) => !igual(p.frontmatter[k], db(k), k)).map((k) => `${k}: vault="${p.frontmatter[k] ?? ""}" · db="${db(k) ?? ""}"`);
+    let difs = calcularDifs();
     // Si la nota se ha tocado en Obsidian después del último cambio en
-    // Supabase (Alain cambia el estado o la próxima acción a mano), gana el
-    // vault: se sube lo que difiere y no se reescribe la nota. Si lo último
-    // fue del panel o del sistema, gana Supabase.
+    // Supabase, se suben SOLO los campos que Alain ha cambiado en Obsidian
+    // (los que difieren de la foto de la última pasada). El resto del
+    // frontmatter puede estar viejo (la nota se editó antes de que el espejo
+    // bajara un cambio del panel): ahí gana Supabase y la nota se reescribe.
+    const base = fotos[ruta];
     if (difs.length && tocadaEnObsidian(ruta, f.actualizado_en)) {
+      const tocados = base ? CLAVES.filter((k) => !igual(p.frontmatter[k], base[k] ?? null, k)) : CLAVES;
+      const aSubir = tocados.filter((k) => !igual(p.frontmatter[k], db(k), k));
       const cambios = {};
       const datos = { ...(f.datos ?? {}) };
       let conDatos = false;
-      for (const k of CLAVES) {
-        if (igual(p.frontmatter[k], f[k] ?? f.datos?.[k] ?? null, k)) continue;
+      for (const k of aSubir) {
         let v = p.frontmatter[k];
         if (v === "" || v === undefined) v = null;
         if (k === "enviado" && v !== null && typeof v !== "boolean") v = String(v) === "true";
@@ -131,12 +150,22 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
         }
       }
       if (conDatos) cambios.datos = datos;
-      cambios.actualizado_por = "vault";
-      subidas.push({ nombre: f.nombre, difs });
-      if (!comprobar) await rest(`crm_fichas?id=eq.${f.id}`, { method: "PATCH", body: JSON.stringify(cambios) });
-      continue;
+      if (aSubir.length) {
+        cambios.actualizado_por = "vault";
+        subidas.push({ nombre: f.nombre, difs: difs.filter((d) => aSubir.includes(d.split(":")[0])) });
+        if (!comprobar) await rest(`crm_fichas?id=eq.${f.id}`, { method: "PATCH", body: JSON.stringify(cambios) });
+      }
+      if (!base) {
+        // Sin foto (primera pasada con esta versión): como antes, la nota no se reescribe.
+        if (!comprobar) fotos[ruta] = fotoDe({ ...f, ...cambios, datos: conDatos ? datos : f.datos });
+        continue;
+      }
+      // Lo subido ya está en Supabase; lo demás que difiera lo pone Supabase.
+      for (const k of Object.keys(cambios)) if (k !== "actualizado_por") f[k] = cambios[k];
+      difs = calcularDifs();
     }
     const nuevo = renderFicha(f, registro);
+    if (!comprobar) fotos[ruta] = fotoDe(f);
     if (difs.length === 0 && nuevo === actual) {
       iguales++;
       continue;
@@ -147,7 +176,10 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
   }
 
   if (!comprobar && manuales.length) await rest("crm_interacciones", { method: "POST", body: JSON.stringify(manuales) });
-  if (!comprobar) guardarEstadoEspejo();
+  if (!comprobar) {
+    guardarEstadoEspejo();
+    guardarFotos();
+  }
 
   return { fichas: fichas.length, iguales, distintas, nuevas, manuales: manuales.length, subidas: subidas.length, sin_supabase: [...enVault], diferencias, detalle_subidas: subidas };
 }

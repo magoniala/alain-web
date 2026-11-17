@@ -32,7 +32,8 @@ export interface Huella {
 }
 
 export interface Deshacer extends Huella {
-  accion: "aplicar" | "aplazar" | "descartar";
+  /** cerrar = la cerró el sistema sola (lib/crm-tareas-obsoletas). */
+  accion: "aplicar" | "aplazar" | "descartar" | "cerrar";
   /** Texto corto para la lista de «Últimos cambios». */
   resumen: string;
   en: string;
@@ -110,14 +111,15 @@ export async function deshacer(sb: SupabaseClient, carril: Carril, tareaId: stri
   return { ok: true, avisos };
 }
 
-/** Últimas tarjetas resueltas por Alain que se pueden deshacer (para el panel). */
+/** Últimas tarjetas resueltas (por Alain o cerradas solas) que se pueden deshacer (para el panel). */
 export async function recientesDeshacibles(sb: SupabaseClient, carril: Carril, extra?: { carril?: string }) {
   const T = TABLAS[carril];
   const relacion = carril === "charlas" ? "ficha:charlas_centros(nombre)" : "ficha:crm_fichas(nombre)";
   let q = sb
     .from(T.tareas)
     .select(`id, tipo, estado, resuelto_en, contexto, ${relacion}`)
-    .eq("resuelto_por", "alain")
+    // También las que cerró el sistema solo (tarjetas que ya no tocaban): llevan foto y se pueden deshacer.
+    .in("resuelto_por", ["alain", "sistema"])
     .in("estado", ["hecha", "descartada"])
     .gte("resuelto_en", new Date(Date.now() - 48 * 3600000).toISOString())
     .not("contexto->deshacer", "is", null)

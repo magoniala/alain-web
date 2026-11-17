@@ -35,6 +35,16 @@ function escribir(ruta, texto) {
 function guardarEstadoEspejo() {
   try { writeFileSync(ESTADO_ESPEJO, JSON.stringify(escritas), "utf8"); } catch { /* no es crítico */ }
 }
+// Foto del frontmatter sincronizado en la última pasada (ruta → { clave: valor
+// normalizado }): dice QUÉ campos ha tocado Alain en Obsidian, y solo esos se
+// suben. Antes, cualquier edición de la nota (aunque fuera una línea del
+// Registro) subía todo el frontmatter, viejo incluido, y pisaba el panel
+// (17-11-2026: mails_enviados de Julio Caro Baroja bajó de 7 a 6).
+const FOTOS_ESPEJO = join(dirname(fileURLToPath(import.meta.url)), ".espejo-fotos.json");
+const fotos = (() => { try { return JSON.parse(readFileSync(FOTOS_ESPEJO, "utf8")); } catch { return {}; } })();
+function guardarFotos() {
+  try { writeFileSync(FOTOS_ESPEJO, JSON.stringify(fotos), "utf8"); } catch { /* no es crítico */ }
+}
 const tocadaEnObsidian = (ruta, actualizadoEn) => {
   const m = statSync(ruta).mtimeMs;
   return escritas[ruta] !== m && m > Date.parse(actualizadoEn) + 5000;
@@ -309,7 +319,10 @@ async function main() {
 
     if (!existsSync(ruta)) {
       nuevas++;
-      if (!COMPROBAR) escribir(ruta, ficha(c, registro));
+      if (!COMPROBAR) {
+        escribir(ruta, ficha(c, registro));
+        fotos[ruta] = Object.fromEntries(ORDEN.map((k) => [k, normal(c[k], k)]));
+      }
       continue;
     }
 
@@ -342,30 +355,36 @@ async function main() {
     }
 
     // Comparación semántica: mismo frontmatter (normalizado) y mismas líneas.
-    const difs = [];
-    for (const k of ORDEN) {
-      const esperado = normal(c[k], k);
-      const real = normal(fm[k], k);
-      if (esperado !== real) difs.push(`${k}: vault="${real}" · db="${esperado}"`);
-    }
+    const calcularDifs = () => ORDEN.filter((k) => normal(c[k], k) !== normal(fm[k], k)).map((k) => `${k}: vault="${normal(fm[k], k)}" · db="${normal(c[k], k)}"`);
+    let difs = calcularDifs();
     // Si la nota se ha tocado en Obsidian después del último cambio en
-    // Supabase (Alain cambia el estado o la próxima acción a mano), gana el
-    // vault: se sube lo que difiere y esta vez no se reescribe la nota. Si lo
-    // último fue del panel o del sistema, gana Supabase (como hasta ahora).
+    // Supabase, se suben SOLO los campos que Alain ha cambiado en Obsidian
+    // (distintos de la foto de la última pasada). El resto del frontmatter
+    // puede estar viejo: ahí gana Supabase y la nota se reescribe.
+    const base = fotos[ruta];
     if (difs.length && tocadaEnObsidian(ruta, c.actualizado_en)) {
+      const tocados = base ? ORDEN.filter((k) => normal(fm[k], k) !== (base[k] ?? normal(null, k))) : ORDEN;
+      const aSubir = tocados.filter((k) => normal(c[k], k) !== normal(fm[k], k));
       const cambios = {};
-      for (const k of ORDEN) {
-        if (normal(c[k], k) === normal(fm[k], k)) continue;
+      for (const k of aSubir) {
         let v = fm[k];
         if (k === "etapas") v = Array.isArray(v) ? v : String(v ?? "").split(/\s*,\s*/).filter(Boolean);
         else if (v === undefined || String(v).trim() === "") v = NUMERICOS.has(k) ? 0 : null;
         else if (NUMERICOS.has(k)) v = Number(v) || 0;
         cambios[k] = v;
       }
-      cambios.actualizado_por = "vault";
-      subidasVault.push({ nombre: c.nombre, difs });
-      if (!COMPROBAR) await rest(`charlas_centros?id=eq.${c.id}`, { method: "PATCH", body: JSON.stringify(cambios) });
-      continue;
+      if (aSubir.length) {
+        subidasVault.push({ nombre: c.nombre, difs: difs.filter((d) => aSubir.includes(d.split(":")[0])) });
+        if (!COMPROBAR) await rest(`charlas_centros?id=eq.${c.id}`, { method: "PATCH", body: JSON.stringify({ ...cambios, actualizado_por: "vault" }) });
+      }
+      if (!base) {
+        // Sin foto (primera pasada con esta versión): como antes, la nota no se reescribe.
+        if (!COMPROBAR) fotos[ruta] = Object.fromEntries(ORDEN.map((k) => [k, normal(fm[k], k)]));
+        continue;
+      }
+      // Lo subido ya está en Supabase; lo demás que difiera lo pone Supabase.
+      Object.assign(c, cambios);
+      difs = calcularDifs();
     }
     const mRegCmp = /## Registro\n([\s\S]*?)(?=\n## |$)/.exec(cuerpo);
     const nuevo = ficha(c, registro, mRegCmp ? mRegCmp[1] : null);
@@ -390,12 +409,16 @@ async function main() {
       const registroVault = soloNuevas && mReg ? mReg[1] : null;
       escribir(ruta, ficha(c, registro, registroVault));
     }
+    if (!COMPROBAR) fotos[ruta] = Object.fromEntries(ORDEN.map((k) => [k, normal(c[k], k)]));
   }
 
   if (!COMPROBAR && apuntesManuales.length) {
     await rest("charlas_interacciones", { method: "POST", body: JSON.stringify(apuntesManuales) });
   }
-  if (!COMPROBAR) guardarEstadoEspejo();
+  if (!COMPROBAR) {
+    guardarEstadoEspejo();
+    guardarFotos();
+  }
 
   console.log(
     `${centros.length} centros en Supabase · ${iguales} fichas iguales · ${distintas} con diferencias · ${nuevas} nuevas` +

@@ -20,6 +20,7 @@
 
 import { supabaseCharlas } from "./charlas";
 import { procesarMagiaConIA, type ResultadoMagia } from "./crm-ia";
+import { cerrarTareasObsoletasMagia } from "./crm-tareas-obsoletas";
 
 export const ESTADOS_MAGIA = [
   "0 Por contactar",
@@ -378,6 +379,8 @@ export async function tareasPorFechaMagia(opciones: { presupuestoMs: number }): 
   if (!cupo) return res;
 
   const { data: fichas } = await sb.from("crm_fichas").select("*").eq("carril", "magia").lte("fecha_proxima_accion", hoy()).not("estado", "like", "8%").order("prioridad", { ascending: true, nullsFirst: false }).order("fecha_proxima_accion");
+  // Primero se cierran las tarjetas que ya no tocan (la ficha cambió de fase): si no, bloquean la que sí toca.
+  await cerrarTareasObsoletasMagia(sb).catch(() => null);
   const { data: abiertas } = await sb.from("crm_tareas").select("ficha_id").eq("carril", "magia").in("estado", ["revisar", "pendiente", "aprobada"]);
   const conTarea = new Set((abiertas ?? []).map((t) => t.ficha_id as string));
   const { data: recientes } = await sb.from("crm_mensajes").select("ficha_id, direccion, fecha").gte("fecha", new Date(Date.now() - 21 * 86400000).toISOString()).not("ficha_id", "is", null).order("fecha");
@@ -442,14 +445,14 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
     editado: false,
   };
   if (!d.conMensaje || canal === "llamada") {
-    await sb.from("crm_tareas").insert({ ...base, contexto: { programada: true, resumen: etiquetaMagia(d.tipo), clasificacion: d.tipo } });
+    await sb.from("crm_tareas").insert({ ...base, contexto: { programada: true, estado_ficha: f.estado, resumen: etiquetaMagia(d.tipo), clasificacion: d.tipo } });
     return;
   }
   if (d.borrador && canal === "mail") {
     // Texto fijo del guion: sin llamada a la IA, el borrador sale exacto.
     await sb.from("crm_tareas").insert({
       ...base,
-      contexto: { programada: true, clasificacion: d.tipo, instrucciones: d.instrucciones, canal_ia: "mail", resumen: etiquetaMagia(d.tipo), confianza: 1, etiqueta_principal: null, alternativa: null, redaccion: "texto_fijo" },
+      contexto: { programada: true, estado_ficha: f.estado, clasificacion: d.tipo, instrucciones: d.instrucciones, canal_ia: "mail", resumen: etiquetaMagia(d.tipo), confianza: 1, etiqueta_principal: null, alternativa: null, redaccion: "texto_fijo" },
       borrador_asunto: d.borrador.asunto,
       borrador_texto: d.borrador.cuerpo,
     });
@@ -472,6 +475,8 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
     ...base,
     contexto: {
       programada: true,
+      // Fase de la ficha al crear la tarjeta: si cambia, la tarjeta se cierra sola (lib/crm-tareas-obsoletas).
+      estado_ficha: f.estado,
       clasificacion: d.tipo,
       instrucciones: d.instrucciones,
       canal_ia: canal === "whatsapp" ? "whatsapp" : "mail",

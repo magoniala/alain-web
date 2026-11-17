@@ -5,6 +5,7 @@ import { enviarCorreo, marcarLeidoEnBuzon } from "@/lib/charlas-correo";
 import { envioManualAgencia, procesarEntranteMagia, regenerarTareaMagia } from "@/lib/crm-motor";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
+import { cerrarTareasObsoletasMagia } from "@/lib/crm-tareas-obsoletas";
 import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, sinActualizadoPor, tareaPrevia } from "@/lib/bandeja-deshacer";
 
 // Bandeja del carril de MAGIA (fase 6a).
@@ -18,6 +19,7 @@ import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, sinActu
 //        aplazar           → { id, fecha }: mueve la próxima acción de la ficha a otro día y cierra la tarjeta sin marcarla como hecha
 //        descartar         → con motivo (alimenta el aprendizaje)
 //        deshacer          → { id }: vuelve atrás un aplicar/aplazar/descartar (lib/bandeja-deshacer); los envíos no
+//        (GET y motor cierran solas las tarjetas programadas que ya no tocan: lib/crm-tareas-obsoletas)
 //        rehacer           → regenerar el borrador con una indicación
 //        completar         → «Me falta información»: guarda el texto en un documento del catálogo de shows y rehace el borrador (no envía nada)
 //        reintentar_mensaje→ un correo entrante que falló vuelve a la cola
@@ -36,6 +38,9 @@ export async function GET(req: Request) {
   if (!requireAdminAuth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const sb = supabaseCharlas();
   const carril = new URL(req.url).searchParams.get("carril") ?? "magia";
+  // Tarjetas programadas cuya ficha ya no está en la fase en que se crearon (p. ej. pasada a 8 Perdido): se cierran solas
+  // y quedan en «Últimos cambios» con «Deshacer». Si falla, la bandeja se carga igual.
+  const cerradas_solas = carril === "magia" ? await cerrarTareasObsoletasMagia(sb).catch(() => []) : [];
   const [tareas, errores, cfg, uso] = await Promise.all([
     sb
       .from("crm_tareas")
@@ -82,6 +87,7 @@ export async function GET(req: Request) {
       return { ...t, ultimos: ult, hilo_asunto: hilo_asunto || null, manual: manual ? { etiqueta: manual.etiqueta, texto: manual.texto } : null };
     }),
     error_tareas: tareas.error?.message ?? null,
+    cerradas_solas,
     errores: errores.data ?? [],
     recientes,
     config,
