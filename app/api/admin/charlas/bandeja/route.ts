@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { supabaseCharlas } from "@/lib/charlas";
-import { enviarCorreo } from "@/lib/charlas-correo";
+import { enviarCorreo, marcarLeidoEnBuzon, quitarCita } from "@/lib/charlas-correo";
+import { candidatosHuerfanos } from "@/lib/charlas-emparejar";
 import { procesarMensaje } from "@/lib/charlas-proceso";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
       .in("estado", ["revisar", "error"])
       .order("nivel", { ascending: false })
       .order("creado_en", { ascending: true }),
-    supabase.from("charlas_mensajes").select("id, de, asunto, fecha, texto").eq("estado", "pendiente_asignar").order("fecha", { ascending: false }).limit(30),
+    supabase.from("charlas_mensajes").select("id, de, asunto, fecha, texto, referencias, in_reply_to, match_por").eq("estado", "pendiente_asignar").order("fecha", { ascending: false }).limit(30),
     supabase.from("charlas_config").select("clave, valor").in("clave", ["modo_prueba", "lector_activo", "modelo"]),
     supabase.from("charlas_ia_uso").select("creado_en, coste_usd").gte("creado_en", new Date(Date.now() - 30 * 86400000).toISOString()),
     supabase.from("charlas_imap_estado").select("carpeta, ultima_lectura").order("ultima_lectura", { ascending: false }).limit(2),
@@ -69,6 +70,9 @@ export async function GET(req: Request) {
     }
   }
 
+  // «Sin emparejar»: centros candidatos para asociar con un toque.
+  const candidatos = await candidatosHuerfanos(supabase, (huerfanos.data ?? []).map((h) => ({ ...h, texto: h.texto ? quitarCita(h.texto) : null }))).catch(() => ({} as Record<string, unknown[]>));
+
   const cfg = Object.fromEntries((config.data ?? []).map((c) => [c.clave, c.valor]));
   const recientes = await recientesDeshacibles(supabase, "charlas").catch(() => []);
   const hoyISO = hoy();
@@ -78,7 +82,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     tareas: (tareas.data ?? []).map((t) => ({ ...t, ultimos: ultimos[t.centro_id] ?? { entrante: null, saliente: null } })),
     error_tareas: tareas.error?.message ?? null,
-    huerfanos: huerfanos.data ?? [],
+    huerfanos: (huerfanos.data ?? []).map((h) => ({ id: h.id, de: h.de, asunto: h.asunto, fecha: h.fecha, texto: h.texto, rescatado: h.match_por === "rescate", candidatos: candidatos[h.id] ?? [] })),
     errores: errores.data ?? [],
     recientes,
     config: cfg,
@@ -106,9 +110,11 @@ export async function POST(req: Request) {
         const previa = tareaPrevia(t);
         t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
         const huella = await aplicarCambios(t, null);
+        // La tarjeta queda atendida: el correo que la originó deja de salir como nuevo en Mail.
+        const leido = await correoLeido(supabase, "charlas_mensajes", t.mensaje_entrante_id);
         await supabase
           .from("charlas_tareas")
-          .update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplicar", tarea_previa: previa, ...huella }) })
+          .update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: { ...contextoConDeshacer(t.contexto, { accion: "aplicar", tarea_previa: previa, ...huella }), ...(leido ? { leido_buzon: leido } : {}) } })
           .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
@@ -214,11 +220,22 @@ export async function POST(req: Request) {
       case "asignar": {
         const mensajeId = String(body.mensaje_id);
         const centroId = String(body.centro_id);
-        const { data: m } = await supabase.from("charlas_mensajes").select("de").eq("id", mensajeId).single();
-        await supabase.from("charlas_mensajes").update({ centro_id: centroId, estado: "nuevo", match_por: "manual" }).eq("id", mensajeId);
+        // procesar = false → solo se asocia (correo ya atendido, p. ej. de los rescatados): sin tarjeta nueva.
+        const procesar = body.procesar !== false;
+        const { data: m } = await supabase.from("charlas_mensajes").select("de, asunto, fecha").eq("id", mensajeId).single();
+        await supabase.from("charlas_mensajes").update({ centro_id: centroId, estado: procesar ? "nuevo" : "procesado", match_por: "manual" }).eq("id", mensajeId);
         // La dirección queda aprendida para la próxima vez.
         if (m?.de) await supabase.from("charlas_contactos").insert({ centro_id: centroId, email: m.de.toLowerCase(), rol: "otro", origen: "panel" }).then(() => null, () => null);
-        await procesarMensaje(mensajeId);
+        if (procesar) await procesarMensaje(mensajeId);
+        else
+          await supabase.from("charlas_interacciones").insert({
+            centro_id: centroId,
+            fecha: (m?.fecha ?? new Date().toISOString()).slice(0, 10),
+            canal: "Recibido",
+            texto: `Correo de ${m?.de ?? "¿?"} asociado a mano desde «Sin emparejar»: ${m?.asunto ?? "(sin asunto)"}`,
+            orden: 600,
+            origen: "panel",
+          });
         return NextResponse.json({ ok: true });
       }
       case "ignorar": {
@@ -460,4 +477,12 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
     .select("id")
     .single();
   return { resumen, antes, despues: sinActualizadoPor(cambios), interacciones: li?.id ? [li.id as string] : [], contactos };
+}
+
+/** Marca como leído en el buzón el correo que originó la tarjeta (si lo hay). Nunca impide cerrar la tarjeta. */
+async function correoLeido(sb: ReturnType<typeof supabaseCharlas>, tabla: "charlas_mensajes" | "crm_mensajes", mensajeId: string | null | undefined) {
+  if (!mensajeId) return null;
+  const { data } = await sb.from(tabla).select("message_id").eq("id", mensajeId).maybeSingle();
+  if (!data?.message_id) return { marcado: false, error: "correo no encontrado" };
+  return marcarLeidoEnBuzon(data.message_id);
 }

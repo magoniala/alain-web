@@ -262,11 +262,24 @@ async function guiones() {
   }
 }
 
+// --- protocolo post-evento ---------------------------------------------------------
+// Tarjetas del día siguiente (/quetal + factura) y de los 30 días (repetir) de los
+// eventos del vault ya celebrados. Si falla, el espejo continúa.
+async function postEventos() {
+  try {
+    const { postEvento, resumenPostEvento } = await import("../crm/post-evento.mjs");
+    console.log(resumenPostEvento(await postEvento({ url: URL, key: KEY, vaultCharlas: VAULT, comprobar: COMPROBAR }), COMPROBAR));
+  } catch (e) {
+    console.log(`Post-evento: no se ha podido hacer (${String(e.message).slice(0, 200)})`);
+  }
+}
+
 // --- principal -------------------------------------------------------------------
 async function main() {
   comprobarEntorno();
   await altas();
   await guiones();
+  await postEventos();
   const [centros, interacciones] = await Promise.all([
     todas("charlas_centros", "*", "nombre"),
     todas("charlas_interacciones", "*", "centro_id,fecha,orden"),

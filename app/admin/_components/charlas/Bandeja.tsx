@@ -54,6 +54,8 @@ interface Huerfano {
   asunto: string | null;
   fecha: string | null;
   texto: string | null;
+  rescatado?: boolean;
+  candidatos?: { centro_id: string; nombre: string; motivo: string }[];
 }
 
 interface Datos {
@@ -361,8 +363,8 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
 
       {datos.huerfanos.length > 0 && (
         <section>
-          <h2 className="mb-2 text-[0.95rem] font-semibold">Correos sin centro · {datos.huerfanos.length}</h2>
-          <p className="mb-3 text-[0.8rem] text-gray-500">Parecen de la campaña pero no sé de qué centro son. Asígnalo y lo proceso; la dirección queda aprendida.</p>
+          <h2 className="mb-2 text-[0.95rem] font-semibold">Sin emparejar · {datos.huerfanos.length}</h2>
+          <p className="mb-3 text-[0.8rem] text-gray-500">Parecen de un centro pero no entran solos (dominio compartido, correo nuevo sin hilo…). Siguen sin leer en el buzón. Asócialos a una ficha: la dirección queda aprendida y el siguiente entra solo.</p>
           <div className="space-y-3">
             {datos.huerfanos.map((h) => (
               <Huerfano key={h.id} h={h} centros={centros} accion={accion} alTerminar={() => { cargar(); onCambio(); }} />
@@ -632,7 +634,23 @@ function Huerfano({ h, centros, accion, alTerminar }: { h: Huerfano; centros: { 
     <div className="rounded-2xl border border-gray-200 bg-white p-4 text-[0.85rem]">
       <p className="text-gray-600">{h.de} · {fechaHora(h.fecha)}</p>
       <p className="font-medium">{h.asunto}</p>
-      <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-gray-700">{(h.texto ?? "").slice(0, 400)}</p>
+      <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-gray-700">{h.texto ? h.texto.slice(0, 400) : <span className="text-gray-400">(el texto llega en la próxima lectura del buzón)</span>}</p>
+      {h.rescatado && <p className="mt-1 text-[0.78rem] text-amber-700">Rescatado de días atrás: puede que ya lo atendieras. «Solo asociar» lo cuelga de la ficha sin crear tarjeta.</p>}
+      {(h.candidatos ?? []).length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {(h.candidatos ?? []).map((c) => (
+            <div key={c.centro_id} className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 flex-1"><span className="font-medium">{c.nombre}</span> <span className="text-[0.78rem] text-gray-500">· {c.motivo}</span></span>
+              <button onClick={() => hacer({ accion: "asignar", mensaje_id: h.id, centro_id: c.centro_id })} disabled={ocupado} className="bg-[#1a1a1a] px-2.5 py-1 text-[0.8rem] text-white disabled:opacity-40">
+                Asociar y procesar
+              </button>
+              <button onClick={() => hacer({ accion: "asignar", mensaje_id: h.id, centro_id: c.centro_id, procesar: false })} disabled={ocupado} className="px-2.5 py-1 text-[0.8rem] text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">
+                Solo asociar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar centro…" className="border border-gray-300 px-2 py-1" />
         <select value={centro} onChange={(e) => setCentro(e.target.value)} className="max-w-[260px] border border-gray-300 px-2 py-1">
@@ -643,6 +661,9 @@ function Huerfano({ h, centros, accion, alTerminar }: { h: Huerfano; centros: { 
         </select>
         <button onClick={() => hacer({ accion: "asignar", mensaje_id: h.id, centro_id: centro })} disabled={!centro || ocupado} className="bg-[#1a1a1a] px-3 py-1 text-white disabled:opacity-40">
           {ocupado ? "Procesando…" : "Asignar y procesar"}
+        </button>
+        <button onClick={() => hacer({ accion: "asignar", mensaje_id: h.id, centro_id: centro, procesar: false })} disabled={!centro || ocupado} className="px-3 py-1 text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">
+          Solo asociar
         </button>
         <button onClick={() => hacer({ accion: "ignorar", mensaje_id: h.id })} disabled={ocupado} className="px-3 py-1 text-gray-600 ring-1 ring-gray-300">
           No es de charlas

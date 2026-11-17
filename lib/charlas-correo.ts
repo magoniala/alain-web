@@ -18,6 +18,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { supabaseCharlas } from "./charlas";
 import { CABECERAS_LECTOR, extraerCabecera, filaEntrada, guardarEntradas, reglasParaAlain } from "./correo-general";
+import { DOMINIOS_PERSONALES, buzonParecido, parteLocal } from "./charlas-emparejar";
 
 const IMAP_HOST = "imap.serviciodecorreo.es";
 const SMTP_HOST = "smtp.serviciodecorreo.es";
@@ -82,6 +83,8 @@ interface Indice {
   porDominio: Map<string, string>;
   /** (slug del nombre del centro, id) para casar dominios como durangobhi.net con "Durango BHI". */
   slugs: { slug: string; id: string }[];
+  /** Buzones de centros por dominio (para dominios compartidos como educacion.navarra.es). */
+  buzones: Map<string, { local: string; centro: string }[]>;
 }
 
 const slug = (s: string) =>
@@ -98,6 +101,7 @@ async function construirIndice(): Promise<Indice> {
   const porEmail = new Map<string, string>();
   const dominios = new Map<string, Set<string>>();
   const slugs: { slug: string; id: string }[] = [];
+  const buzones = new Map<string, { local: string; centro: string }[]>();
   // Un campo puede traer varios correos ("a@x.eus / b@x.eus"): se cogen todos.
   const anotar = (valor: string | null, centro: string) => {
     for (const e of (valor ?? "").toLowerCase().match(EMAIL_RE) ?? []) {
@@ -105,6 +109,8 @@ async function construirIndice(): Promise<Indice> {
       const d = dominio(e);
       if (!dominios.has(d)) dominios.set(d, new Set());
       dominios.get(d)!.add(centro);
+      if (!buzones.has(d)) buzones.set(d, []);
+      buzones.get(d)!.push({ local: parteLocal(e), centro });
     }
   };
 
@@ -128,7 +134,15 @@ async function construirIndice(): Promise<Indice> {
   for (const [d, centros] of dominios) {
     if (centros.size === 1 && !DOMINIOS_GENERICOS.has(d)) porDominio.set(d, [...centros][0]);
   }
-  return { porEmail, porDominio, slugs };
+  return { porEmail, porDominio, slugs, buzones };
+}
+
+/** ¿Algún remitente es de un dominio donde hay centros del CRM (aunque sea compartido)? → va a «Sin emparejar» si no entra solo. */
+function deDominioDeCentro(indice: Indice, direcciones: string[]) {
+  return direcciones.some((a) => {
+    const d = dominio(norm(a));
+    return !!d && !DOMINIOS_PERSONALES.has(d) && indice.buzones.has(d);
+  });
 }
 
 function asociar(indice: Indice, direcciones: string[]): { centro: string | null; por: string | null } {
@@ -139,6 +153,14 @@ function asociar(indice: Indice, direcciones: string[]): { centro: string | null
   for (const a of direcciones) {
     const c = indice.porDominio.get(dominio(norm(a)));
     if (c) return { centro: c, por: "dominio" };
+  }
+  // Dominio compartido (educacion.navarra.es, hezkuntza.net…): vale si el buzón es
+  // claramente de la misma casa que el de un solo centro (ieslekar-zuzendaria@ ↔ ieslekar@).
+  for (const a of direcciones) {
+    const d = dominio(norm(a));
+    if (!d || DOMINIOS_PERSONALES.has(d)) continue;
+    const ids = new Set((indice.buzones.get(d) ?? []).filter((b) => buzonParecido(parteLocal(norm(a)), b.local)).map((b) => b.centro));
+    if (ids.size === 1) return { centro: [...ids][0], por: "dominio~buzon" };
   }
   // El dominio suele llevar el nombre del centro: durangobhi.net, kirikino.com,
   // armentiaikastola.eus. Vale si casa con un solo centro.
@@ -299,6 +321,36 @@ async function diag(clave: string, valor: unknown) {
     .then(() => null, () => null);
 }
 
+/**
+ * Marca como leído (\Seen) en INBOX el correo con ese Message-ID. Lo usan las
+ * bandejas de charlas y de magia al pulsar «Aplicar cambios» o «Solo actualizar
+ * la ficha»: la tarjeta ya está atendida, así que en Mail deja de salir como
+ * nuevo. La lectura del buzón nunca marca nada (lee con BODY.PEEK). No lanza:
+ * devuelve si lo encontró y, si falló, por qué.
+ */
+export async function marcarLeidoEnBuzon(messageId: string | null | undefined): Promise<{ marcado: boolean; error?: string }> {
+  const id = limpiarId(messageId);
+  if (!id || id.startsWith("sin-id-")) return { marcado: false, error: "sin Message-ID" };
+  let cliente: ImapFlow | null = null;
+  try {
+    cliente = new ImapFlow({ host: IMAP_HOST, port: 993, secure: true, auth: credenciales(), logger: false });
+    await cliente.connect();
+    const lock = await cliente.getMailboxLock("INBOX");
+    try {
+      const uids = await buscarPorMessageId(cliente, id);
+      if (uids.length) await cliente.messageFlagsAdd(uids, ["\\Seen"], { uid: true });
+      return uids.length ? { marcado: true } : { marcado: false, error: "no está en la bandeja de entrada" };
+    } finally {
+      lock.release();
+    }
+  } catch (e) {
+    const x = e as Error & { responseText?: string };
+    return { marcado: false, error: (x.responseText ?? x.message).slice(0, 200) };
+  } finally {
+    await cliente?.logout().catch(() => {});
+  }
+}
+
 export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<ResumenLectura> {
   const inicio = Date.now();
   const sinTiempo = () => Date.now() - inicio > opciones.presupuestoMs;
@@ -450,12 +502,15 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
                 por = null;
               }
               const asunto = env.subject ?? "";
-              const pendiente = !centro && t.direccion === "entrante" && refs.length > 0 && ASUNTO_CHARLAS.test(asunto);
-              // ¿Es de una ficha de magia?
+              // ¿Es de una ficha de magia? (por hilo o email exacto; va antes que «Sin emparejar»)
               let fichaMagia: string | null = null;
-              if (!centro && !pendiente && magia && !magia.guardados.has(messageId)) {
+              if (!centro && magia && !magia.guardados.has(messageId)) {
                 fichaMagia = refs.map((r) => magia.porId.get(r)).find(Boolean) ?? contraparte.map((e) => magia.porEmail.get(e)).find(Boolean) ?? null;
               }
+              // «Sin emparejar»: entrante sin centro que pinta a campaña (asunto de charlas)
+              // o viene de un dominio donde hay centros (compartido, como educacion.navarra.es).
+              // Antes solo entraba si respondía a algo, y los correos nuevos se perdían (17-11).
+              const pendiente = !centro && !fichaMagia && t.direccion === "entrante" && (ASUNTO_CHARLAS.test(asunto) || deDominioDeCentro(indice, contraparte));
               // Bandeja general (F0): todo lo que entra en INBOX queda apuntado, solo con cabeceras.
               if (reglasCorreo && t.direccion === "entrante") {
                 pendientesCorreo.push(
@@ -556,13 +611,34 @@ export async function leerBuzon(opciones: { presupuestoMs: number }): Promise<Re
         lock.release();
       }
     }
+    // «Sin emparejar» rescatados sin cuerpo (rescate del 17-11): se trae el texto, pocos por pasada.
+    if (!sinTiempo()) {
+      const { data: sinTexto } = await supabase.from("charlas_mensajes").select("id, uid").eq("estado", "pendiente_asignar").eq("carpeta", "INBOX").is("texto", null).not("uid", "is", null).limit(10);
+      if (sinTexto?.length) {
+        const lock = await cliente.getMailboxLock("INBOX");
+        try {
+          for (const m of sinTexto) {
+            if (sinTiempo()) break;
+            const completo = await cliente.fetchOne(String(m.uid), { source: true }, { uid: true }).catch(() => null);
+            if (!completo || !completo.source) continue;
+            const p = await simpleParser(completo.source);
+            const texto = p.text ?? (p.html ? String(p.html).replace(/<[^>]+>/g, " ") : "");
+            await supabase.from("charlas_mensajes").update({ texto: texto || "(sin texto)", html: p.html ? String(p.html).slice(0, 200000) : null }).eq("id", m.id);
+          }
+        } finally {
+          lock.release();
+        }
+      }
+    }
   } finally {
     await cliente.logout().catch(() => {});
   }
 
   // Huérfanos: con los hilos de Enviados ya leídos, muchos se pueden asociar solos.
-  const { data: huerfanos } = await supabase.from("charlas_mensajes").select("id, referencias, in_reply_to, de").eq("estado", "pendiente_asignar");
+  const { data: huerfanos } = await supabase.from("charlas_mensajes").select("id, referencias, in_reply_to, de, match_por").eq("estado", "pendiente_asignar");
   for (const h of huerfanos ?? []) {
+    // Los rescatados (correos de días atrás) los asocia Alain a mano: pueden estar ya atendidos.
+    if (h.match_por === "rescate") continue;
     const refs = [h.in_reply_to, ...(h.referencias ?? [])].filter(Boolean) as string[];
     let centro = refs.map((r) => conocidos.porId.get(r)).find(Boolean) ?? null;
     let por = "hilo";

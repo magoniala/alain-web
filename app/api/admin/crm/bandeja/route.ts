@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { supabaseCharlas } from "@/lib/charlas";
-import { enviarCorreo } from "@/lib/charlas-correo";
+import { enviarCorreo, marcarLeidoEnBuzon } from "@/lib/charlas-correo";
 import { envioManualAgencia, procesarEntranteMagia, regenerarTareaMagia } from "@/lib/crm-motor";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
@@ -125,9 +125,11 @@ export async function POST(req: Request) {
         const previa = tareaPrevia(t);
         t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
         const huella = await aplicarCambios(t, null);
+        // La tarjeta queda atendida: el correo que la originó deja de salir como nuevo en Mail.
+        const leido = await correoLeido(sb, "crm_mensajes", t.mensaje_entrante_id);
         await sb
           .from("crm_tareas")
-          .update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplicar", tarea_previa: previa, ...huella }) })
+          .update({ estado: "hecha", cambios_crm: t.cambios_crm, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: { ...contextoConDeshacer(t.contexto, { accion: "aplicar", tarea_previa: previa, ...huella }), ...(leido ? { leido_buzon: leido } : {}) } })
           .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
@@ -404,3 +406,10 @@ function etiqueta(tipo: string) {
   return ({ reactivacion: "Reactivación", recordatorio_1: "Recordatorio 1", recordatorio_2: "Recordatorio 2", recuperacion: "Mensaje de recuperación", check_in: "Check-in", primer_contacto: "Primer contacto", agencia_1a: "Agencia · primer mail (formato)", agencia_1b: "Agencia · primer mail (a quién escribir)", localizar_contacto: "Localizar email de la agencia", propuesta: "Propuesta", seguimiento: "Seguimiento", cierre: "Cierre suave" } as Record<string, string>)[tipo] ?? tipo.replace(/_/g, " ");
 }
 
+/** Marca como leído en el buzón el correo que originó la tarjeta (si lo hay). Nunca impide cerrar la tarjeta. */
+async function correoLeido(sb: ReturnType<typeof supabaseCharlas>, tabla: "charlas_mensajes" | "crm_mensajes", mensajeId: string | null | undefined) {
+  if (!mensajeId) return null;
+  const { data } = await sb.from(tabla).select("message_id").eq("id", mensajeId).maybeSingle();
+  if (!data?.message_id) return { marcado: false, error: "correo no encontrado" };
+  return marcarLeidoEnBuzon(data.message_id);
+}
