@@ -18,6 +18,7 @@ import {
 } from "@/lib/quetal";
 import { QUETAL_TEXTOS } from "@/lib/quetal-textos";
 import { descargarCsv } from "./parq/exportar";
+import { copiarTexto } from "./copiarTexto";
 import {
   colorNps,
   csvRespuestas,
@@ -39,12 +40,7 @@ const etiqueta = "mb-2 text-[0.72rem] font-medium uppercase text-gray-400";
 const boton = "border border-gray-300 bg-white px-3.5 py-2 text-[0.82rem] text-gray-700 hover:border-gray-500 disabled:opacity-40";
 
 async function copiar(texto: string, aviso: (m: string) => void, ok = "Copiado") {
-  try {
-    await navigator.clipboard.writeText(texto);
-    aviso(ok);
-  } catch {
-    window.prompt("Cópialo desde aquí:", texto);
-  }
+  aviso((await copiarTexto(texto)) ? ok : "No se ha podido copiar: este navegador no deja usar el portapapeles");
 }
 
 function Nps({ n }: { n: number }) {

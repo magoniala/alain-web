@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import PreguntaEnLinea from "../PreguntaEnLinea";
 
 // Bandeja de reservas de la Hoja de Ruta: lo que pide WhatsApp de
 // confirmación ahora, lo que espera pago y lo ya hecho. Sustituye al correo
@@ -38,6 +39,8 @@ export default function Reservas() {
   const [error, setError] = useState("");
   const [faltaSql, setFaltaSql] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
+  // Reserva que se está quitando sin WhatsApp: el motivo se pide en la tarjeta (sin prompt()).
+  const [quitando, setQuitando] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -105,10 +108,19 @@ export default function Reservas() {
                   <button onClick={() => accion({ accion: "wa_enviado", id: r.id })} disabled={ocupado === r.id} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
                     {ocupado === r.id ? "Guardando…" : "Ya lo he enviado"}
                   </button>
-                  <button onClick={() => { const n = prompt("¿Por qué lo quitas sin WhatsApp? (p. ej. ya hablé con él)") ?? ""; accion({ accion: "descartar", id: r.id, nota: n }); }} disabled={ocupado === r.id} className="px-3 py-2 text-[0.82rem] text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">
+                  <button onClick={() => setQuitando(quitando === r.id ? null : r.id)} disabled={ocupado === r.id} className="px-3 py-2 text-[0.82rem] text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">
                     Quitar
                   </button>
                 </div>
+                {quitando === r.id && (
+                  <PreguntaEnLinea
+                    pregunta="¿Por qué lo quitas sin WhatsApp? (p. ej. ya hablé con él)"
+                    boton="Quitar"
+                    ocupado={ocupado === r.id}
+                    onCancelar={() => setQuitando(null)}
+                    onAceptar={(n) => { setQuitando(null); accion({ accion: "descartar", id: r.id, nota: n }); }}
+                  />
+                )}
               </article>
             ))}
           </div>

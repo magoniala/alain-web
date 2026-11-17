@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { copiarTexto } from "./copiarTexto";
 import {
   diaMadrid,
   resumenPostits,
@@ -409,12 +410,7 @@ export default function ArretaTab() {
         .join("\n")
     );
     const texto = [titulo, "", ...bloques.flatMap((b) => [b, ""])].join("\n").trim() + "\n";
-    try {
-      await navigator.clipboard.writeText(texto);
-      avisar(`Copiadas ${lista.length}`);
-    } catch {
-      window.prompt("Cópialo desde aquí:", texto);
-    }
+    avisar((await copiarTexto(texto)) ? `Copiadas ${lista.length}` : "No se ha podido copiar: este navegador no deja usar el portapapeles");
   }
 
   if (error) return <p className="text-sm text-red-600">{error}</p>;

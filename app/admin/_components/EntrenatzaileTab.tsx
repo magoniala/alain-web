@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import PreguntaEnLinea from "./PreguntaEnLinea";
+import { copiarTexto } from "./copiarTexto";
 
 // Pestaña Entrenatzaile · fase 7a del sistema automático (Arquitectura v3):
 // clientes con su plan, semanas programadas (sesiones, ejercicios) y la cola
@@ -211,6 +213,8 @@ export default function EntrenatzaileTab() {
   const [sel, setSel] = useState<string | null>(null);
   const [ficha, setFicha] = useState<{ cliente: Cliente; plan: Plan | null; tipos: Tipo[]; semanas: SemanaLista[] } | null>(null);
   const [semSel, setSemSel] = useState<string | null>(null);
+  // Nombres y motivos se piden en la propia pantalla: el panel en la app de escritorio no admite prompt().
+  const [pidiendoCliente, setPidiendoCliente] = useState(false);
   const [det, setDet] = useState<DetalleSemana | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
@@ -342,17 +346,27 @@ export default function EntrenatzaileTab() {
           </button>
         ))}
         <button
-          onClick={async () => {
-            const n = prompt("Nombre del cliente");
-            if (n?.trim()) {
-              const d = await post({ accion: "cliente_crear", nombre: n.trim() }, ["clientes"]);
-              if (d?.cliente) setSel(d.cliente.id);
-            }
-          }}
+          onClick={() => setPidiendoCliente(!pidiendoCliente)}
           className="rounded-2xl px-4 py-2.5 text-[0.85rem] text-gray-600 ring-1 ring-dashed ring-gray-300 hover:text-gray-900"
         >
           + Cliente
         </button>
+        {pidiendoCliente && (
+          <div className="w-full">
+            <PreguntaEnLinea
+              pregunta="Nombre del cliente"
+              boton="Crear cliente"
+              obligatorio
+              ocupado={ocupado}
+              onCancelar={() => setPidiendoCliente(false)}
+              onAceptar={async (n) => {
+                setPidiendoCliente(false);
+                const d = await post({ accion: "cliente_crear", nombre: n }, ["clientes"]);
+                if (d?.cliente) setSel(d.cliente.id);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {propuestas.length > 0 && (
@@ -415,6 +429,9 @@ type Post = (body: Record<string, unknown>, recargar?: ("semana" | "ficha" | "cl
 function FichaCliente({ ficha, post }: { ficha: { cliente: Cliente; plan: Plan | null; tipos: Tipo[] }; post: Post }) {
   const { cliente: c, plan } = ficha;
   const [abierta, setAbierta] = useState(false);
+  const [pidiendoPlan, setPidiendoPlan] = useState(false);
+  // Resultado de «Copiar enlace de la app», en la ficha (sin alert()/prompt()).
+  const [enlaceMsg, setEnlaceMsg] = useState("");
   const guardar = (campos: Record<string, unknown>) => post({ accion: "cliente_guardar", id: c.id, campos }, ["ficha"]);
   const h = hoyISO();
   const semanaN = plan ? Math.floor((new Date(`${h}T12:00:00Z`).getTime() - new Date(`${plan.inicio}T12:00:00Z`).getTime()) / (7 * 86400000)) + 1 : null;
@@ -437,7 +454,7 @@ function FichaCliente({ ficha, post }: { ficha: { cliente: Cliente; plan: Plan |
             <button
               onClick={async () => {
                 const url = `${location.origin}/app/${c.token}`;
-                try { await navigator.clipboard.writeText(url); alert(`Enlace copiado:\n${url}\n\nMándaselo por WhatsApp. En iPhone: Compartir → Añadir a pantalla de inicio.`); } catch { prompt("Enlace personal de la app", url); }
+                setEnlaceMsg((await copiarTexto(url)) ? `Enlace copiado: ${url} · Mándaselo por WhatsApp. En iPhone: Compartir → Añadir a pantalla de inicio.` : `No se ha podido copiar. Enlace: ${url}`);
               }}
               className="px-3 py-1.5 text-[#0F2240] ring-1 ring-[#0F2240]/30"
             >
@@ -446,10 +463,22 @@ function FichaCliente({ ficha, post }: { ficha: { cliente: Cliente; plan: Plan |
           ) : (
             <button onClick={() => post({ accion: "cliente_enlace", id: c.id }, ["ficha", "clientes"])} className="px-3 py-1.5 ring-1 ring-gray-300">Crear enlace de la app</button>
           )}
+          {enlaceMsg && <p className="w-full select-all break-all text-[0.78rem] text-gray-600">{enlaceMsg}</p>}
           {!plan && (
-            <button onClick={() => { const n = prompt("Nombre del plan (T1, B1…)"); if (n) post({ accion: "plan_crear", cliente_id: c.id, nombre: n }, ["ficha", "clientes"]); }} className="px-3 py-1.5 ring-1 ring-gray-300">
+            <button onClick={() => setPidiendoPlan(!pidiendoPlan)} className="px-3 py-1.5 ring-1 ring-gray-300">
               Crear plan
             </button>
+          )}
+          {!plan && pidiendoPlan && (
+            <div className="w-full">
+              <PreguntaEnLinea
+                pregunta="Nombre del plan (T1, B1…)"
+                boton="Crear plan"
+                obligatorio
+                onCancelar={() => setPidiendoPlan(false)}
+                onAceptar={(n) => { setPidiendoPlan(false); post({ accion: "plan_crear", cliente_id: c.id, nombre: n }, ["ficha", "clientes"]); }}
+              />
+            </div>
           )}
           <button onClick={() => setAbierta(!abierta)} className="px-3 py-1.5 text-gray-700 ring-1 ring-gray-300">
             {abierta ? "Cerrar ficha" : "Ficha y reglas"}
@@ -666,6 +695,7 @@ function Semana({ det, tipos, post, ocupado, copiarMarkdown, onBorrada }: { det:
 }
 
 function SesionCard({ ses, det, post }: { ses: Sesion; det: DetalleSemana; post: Post }) {
+  const [pidiendoEjercicio, setPidiendoEjercicio] = useState(false);
   const guardar = (campos: Record<string, unknown>) => post({ accion: "sesion_guardar", id: ses.id, campos });
   const guardarEj = (id: string, campos: Record<string, unknown>) => post({ accion: "ejercicio_guardar", id, campos });
   const registradas = (id: string) => det.series.filter((x) => x.ejercicio_id === id);
@@ -716,14 +746,20 @@ function SesionCard({ ses, det, post }: { ses: Sesion; det: DetalleSemana; post:
           </tbody>
         </table>
         <button
-          onClick={() => {
-            const n = prompt("Nombre del ejercicio");
-            if (n?.trim()) post({ accion: "ejercicio_crear", sesion_id: ses.id, nombre: n.trim() });
-          }}
+          onClick={() => setPidiendoEjercicio(!pidiendoEjercicio)}
           className="mt-2 px-2 py-1 text-[0.82rem] text-[#0F2240] hover:underline"
         >
           + Ejercicio
         </button>
+        {pidiendoEjercicio && (
+          <PreguntaEnLinea
+            pregunta="Nombre del ejercicio"
+            boton="Añadir ejercicio"
+            obligatorio
+            onCancelar={() => setPidiendoEjercicio(false)}
+            onAceptar={(n) => { setPidiendoEjercicio(false); post({ accion: "ejercicio_crear", sesion_id: ses.id, nombre: n }); }}
+          />
+        )}
       </div>
       {(ses.rpe !== null || forms.length > 0) && (
         <div className="border-t border-gray-100 px-5 py-2 text-[0.8rem] text-gray-600">
@@ -818,6 +854,7 @@ function TarjetaPropuesta({ pr, post, hecho }: { pr: PropuestaIA; post: Post; he
   const [foco, setFoco] = useState(p.foco ?? "");
   const [notas, setNotas] = useState(p.notas ?? "");
   const [motivos, setMotivos] = useState<Record<number, string>>({});
+  const [pidiendoMotivo, setPidiendoMotivo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   if (pr.estado === "error") {
     return (
@@ -914,9 +951,20 @@ function TarjetaPropuesta({ pr, post, hecho }: { pr: PropuestaIA; post: Post; he
         <button onClick={aprobar} disabled={ocupado || faltaMotivo} title={faltaMotivo ? "Escribe el motivo de cada cambio" : ""} className="bg-[#0F2240] px-4 py-2 font-medium text-white disabled:opacity-40">
           {ocupado ? "Creando…" : cambios.length ? `Aprobar con ${cambios.length} cambio${cambios.length > 1 ? "s" : ""}` : "Aprobar tal cual"}
         </button>
-        <button onClick={() => { const m = prompt("¿Por qué la descartas? (opcional)") ?? ""; post({ accion: "propuesta_descartar", id: pr.id, motivo: m }, []).then(hecho); }} disabled={ocupado} className="px-4 py-2 text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">Descartar</button>
+        <button onClick={() => setPidiendoMotivo(!pidiendoMotivo)} disabled={ocupado} className="px-4 py-2 text-gray-600 ring-1 ring-gray-300 disabled:opacity-40">Descartar</button>
         <span className="self-center text-[0.78rem] text-gray-500">Al aprobar se crea la sesión en la semana {`${corta(fecha)}`} (en borrador; los avisos los generas al programar la semana).</span>
       </div>
+      {pidiendoMotivo && (
+        <div className="px-5 pb-3">
+          <PreguntaEnLinea
+            pregunta="¿Por qué la descartas? (opcional)"
+            boton="Descartar la propuesta"
+            ocupado={ocupado}
+            onCancelar={() => setPidiendoMotivo(false)}
+            onAceptar={(m) => { setPidiendoMotivo(false); post({ accion: "propuesta_descartar", id: pr.id, motivo: m }, []).then(hecho); }}
+          />
+        </div>
+      )}
     </article>
   );
 }

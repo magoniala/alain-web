@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import MirariakEntrada from "./MirariakEntrada";
+import PreguntaEnLinea from "./PreguntaEnLinea";
 
 // MIRARIAK 2026 de un vistazo: reservas del taller por grupo (ruedas por
 // edades con el total dentro), quién repite del año pasado, micromagia por
@@ -384,12 +385,12 @@ function LineaParticipante({ r, lista, p, libres, lanzar, ocupado }: {
 
 function TarjetaReserva({ r, libres, accion }: { r: Reserva; libres: { taller: Record<string, number>; micromagia: Record<string, number> }; accion: ReturnType<typeof useAccion> }) {
   const [moverTodo, setMoverTodo] = useState(false);
+  const [anulandoTodo, setAnulandoTodo] = useState(false);
   const mmActivos = r.micromagia.filter((p) => !p.anulada);
   const [destinoMm, setDestinoMm] = useState(Object.keys(libres.micromagia).find((h) => h !== r.horario) ?? "");
   const activos = [...r.taller, ...r.micromagia].filter((p) => !p.anulada && !p.espera);
-  const anularTodo = async () => {
-    const motivo = window.prompt(`Anular todo el formulario de ${r.contacto} (${activos.map((p) => p.nombre).join(", ")}). Motivo:`, MOTIVOS[0]);
-    if (motivo === null) return;
+  const anularTodo = async (motivo: string) => {
+    setAnulandoTodo(false);
     const t = textoAnulada([...new Set(activos.map((p) => p.nombre))], r.contacto, r.idioma);
     let ok = true;
     if (r.taller.some((p) => !p.anulada)) ok = await accion.lanzar({ accion: "anular", id: r.id, lista: "taller", todos: true, motivo }, "Formulario anulado entero.", enlaceAviso({ email: r.email, idioma: r.idioma }, t.asunto, t.cuerpo));
@@ -403,9 +404,20 @@ function TarjetaReserva({ r, libres, accion }: { r: Reserva; libres: { taller: R
         <span className="text-gray-400">· {r.idioma === "es" ? "castellano" : "euskera"} · {fecha(r.fecha)}</span>
         <span className="ml-auto flex gap-1">
           {mmActivos.length > 1 && <button className={btn} disabled={accion.ocupado} onClick={() => setMoverTodo(!moverTodo)}>Mover todo</button>}
-          {activos.length > 1 && <button className={btn} disabled={accion.ocupado} onClick={anularTodo}>Anular todo</button>}
+          {activos.length > 1 && <button className={btn} disabled={accion.ocupado} onClick={() => setAnulandoTodo(!anulandoTodo)}>Anular todo</button>}
         </span>
       </header>
+      {anulandoTodo && (
+        <PreguntaEnLinea
+          pregunta={`Anular todo el formulario de ${r.contacto} (${activos.map((p) => p.nombre).join(", ")}). Motivo:`}
+          boton="Anular todo"
+          inicial={MOTIVOS[0]}
+          obligatorio
+          ocupado={accion.ocupado}
+          onCancelar={() => setAnulandoTodo(false)}
+          onAceptar={anularTodo}
+        />
+      )}
       {moverTodo && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2">
           <span className="text-[0.78rem] text-gray-600">Micromagia de {mmActivos.map((p) => p.nombre).join(", ")} a:</span>
@@ -489,6 +501,8 @@ function Gestion({ g, libres, recargar, inicial = "" }: { g: DatosGestion; libre
   const [filtro, setFiltro] = useState<string>("");
   const [nuevo, setNuevo] = useState(false);
   const [verCambios, setVerCambios] = useState(false);
+  // Persona de la lista de espera que se está quitando (motivo en la fila, sin prompt()).
+  const [quitandoEspera, setQuitandoEspera] = useState<string | null>(null);
 
   const listasEspera = [
     ...Object.entries(g.espera.taller).map(([d, l]) => ({ lista: "taller" as Lista, destino: d, titulo: `Taller · ${NOMBRE_GRUPO[d]}`, l, quedan: libres.taller[d] })),
@@ -561,8 +575,20 @@ function Gestion({ g, libres, recargar, inicial = "" }: { g: DatosGestion; libre
                         <span className="flex w-full gap-1 pl-7">
                           <button className={btnFuerte} disabled={accion.ocupado} onClick={() => accion.lanzar({ accion: "dar_plaza", id: e.id, lista: x.lista, idx: e.idx, nombre: p?.nombre ?? e.nombre }, `${e.nombre} ya tiene plaza. Avisa a la familia:`, enlaceAviso(e, t.asunto, t.cuerpo))}>Dar plaza</button>
                           {x.lista === "taller" && <DarPlazaEnOtro e={e} actual={x.destino} libres={libres.taller} nombre={p?.nombre ?? e.nombre} accion={accion} />}
-                          <button className={btn} disabled={accion.ocupado} onClick={() => { const m = window.prompt(`Quitar a ${e.nombre} de la lista de espera. Motivo:`, "Ya no lo necesita"); if (m !== null) accion.lanzar({ accion: "quitar_espera", id: e.id, lista: x.lista, idx: e.idx, nombre: e.nombre, motivo: m }, `${e.nombre} quitado de la lista de espera.`); }}>Quitar</button>
+                          <button className={btn} disabled={accion.ocupado} onClick={() => setQuitandoEspera(quitandoEspera === `${e.id}-${e.idx}` ? null : `${e.id}-${e.idx}`)}>Quitar</button>
                         </span>
+                        {quitandoEspera === `${e.id}-${e.idx}` && (
+                          <div className="w-full pl-7">
+                            <PreguntaEnLinea
+                              pregunta={`Quitar a ${e.nombre} de la lista de espera. Motivo:`}
+                              boton="Quitar de la lista"
+                              inicial="Ya no lo necesita"
+                              ocupado={accion.ocupado}
+                              onCancelar={() => setQuitandoEspera(null)}
+                              onAceptar={(m) => { setQuitandoEspera(null); accion.lanzar({ accion: "quitar_espera", id: e.id, lista: x.lista, idx: e.idx, nombre: e.nombre, motivo: m }, `${e.nombre} quitado de la lista de espera.`); }}
+                            />
+                          </div>
+                        )}
                       </li>
                     );
                   })}

@@ -11,6 +11,7 @@ export default function PreguntaEnLinea({
   pregunta,
   boton,
   obligatorio = false,
+  inicial = "",
   ocupado = false,
   onAceptar,
   onCancelar,
@@ -18,11 +19,13 @@ export default function PreguntaEnLinea({
   pregunta: string;
   boton: string;
   obligatorio?: boolean;
+  /** Texto con el que empieza la caja (lo que antes era el valor por defecto de prompt()). */
+  inicial?: string;
   ocupado?: boolean;
   onAceptar: (texto: string) => void;
   onCancelar: () => void;
 }) {
-  const [texto, setTexto] = useState("");
+  const [texto, setTexto] = useState(inicial);
   const vale = !obligatorio || texto.trim() !== "";
   return (
     <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-[0.82rem] ring-1 ring-gray-200">

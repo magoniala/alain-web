@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Reservas from "./hoja-de-ruta/Reservas";
+import PreguntaEnLinea from "./PreguntaEnLinea";
 
 interface ReservaCalendario {
   id: string;
@@ -74,6 +75,8 @@ export default function HojaDeRutaTab() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  // Llamada que se está anulando: pide el motivo en la propia fila (sin confirm()/prompt()).
+  const [anulando, setAnulando] = useState<string | null>(null);
 
   const [nuevo, setNuevo] = useState({ dia: "", horaDesde: "", horaHasta: "", motivo: "" });
   const [franjaParcial, setFranjaParcial] = useState(false);
@@ -161,9 +164,8 @@ export default function HojaDeRutaTab() {
 
   // Al lead no se le avisa solo: la landing le promete que le escribes tú por
   // WhatsApp, así que el aviso lo das en persona.
-  async function anular(id: string, nombre: string | null) {
-    if (!confirm(`¿Anular la llamada de ${nombre ?? "esta persona"}? El hueco queda libre.`)) return;
-    const motivo = prompt("Motivo (opcional):") ?? "";
+  async function anular(id: string, motivo: string) {
+    setAnulando(null);
     setGuardando(true);
     setError("");
     try {
@@ -313,13 +315,22 @@ export default function HojaDeRutaTab() {
                       Mover
                     </button>
                     <button
-                      onClick={() => anular(r.id, r.nombre)}
+                      onClick={() => setAnulando(anulando === r.id ? null : r.id)}
                       disabled={guardando}
                       className="text-[0.78rem] text-gray-400 hover:text-[#DC2626] disabled:opacity-40"
                     >
                       Anular
                     </button>
                   </div>
+                )}
+                {anulando === r.id && (
+                  <PreguntaEnLinea
+                    pregunta={`¿Anular la llamada de ${r.nombre ?? "esta persona"}? El hueco queda libre. Motivo (opcional):`}
+                    boton="Anular la llamada"
+                    ocupado={guardando}
+                    onCancelar={() => setAnulando(null)}
+                    onAceptar={(m) => anular(r.id, m)}
+                  />
                 )}
               </div>
             ))}
