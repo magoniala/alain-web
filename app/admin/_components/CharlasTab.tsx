@@ -6,6 +6,8 @@ import Bandeja from "./charlas/Bandeja";
 import ImportarDirectorio from "./charlas/ImportarDirectorio";
 import Aprendizajes from "./charlas/Aprendizajes";
 import CatalogoShows from "./CatalogoShows";
+import GuionLlamada from "./charlas/GuionLlamada";
+import { guionPara, TITULOS_GUION, type ClaveGuion, type Guion } from "@/lib/charlas-guiones";
 
 // Pestaña Charlas · fase 0 del sistema automático.
 //
@@ -25,6 +27,7 @@ interface CentroLista {
   estado: string;
   via: string | null;
   responsable: string | null;
+  responsable_cargo?: string | null;
   responsable_email: string | null;
   email_centro: string | null;
   telefono: string | null;
@@ -92,7 +95,11 @@ export default function CharlasTab() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
 
-  const [vista, setVista] = useState<"hoy" | "semana" | "todos">("hoy");
+  const [vista, setVista] = useState<"hoy" | "llamadas" | "semana" | "todos">("hoy");
+  // Guiones de llamada (vault → Supabase) y tarjeta con el guion abierto.
+  const [guiones, setGuiones] = useState<Partial<Record<ClaveGuion, Guion>>>({});
+  const [avisoGuiones, setAvisoGuiones] = useState("");
+  const [guionAbierto, setGuionAbierto] = useState<string | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<string>("");
   const [filtroTerritorio, setFiltroTerritorio] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
@@ -126,6 +133,28 @@ export default function CharlasTab() {
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  useEffect(() => {
+    fetch("/api/admin/charlas/guiones", { headers: headers() })
+      .then((r) => r.json())
+      .then((d) => {
+        setGuiones(d.guiones ?? {});
+        setAvisoGuiones(d.error ?? "");
+      })
+      .catch(() => setAvisoGuiones("No se han podido cargar los guiones."));
+  }, [headers]);
+
+  // Resultado de llamada desde la tarjeta: misma puerta que la ficha (PATCH), con la línea al Registro.
+  async function guardarLlamada(id: string, cambios: Record<string, unknown>, registro: string) {
+    const r = await fetch("/api/admin/charlas/centros", {
+      method: "PATCH",
+      headers: headers(),
+      body: JSON.stringify({ id, ...cambios, registro, registro_canal: "Llamada" }),
+    });
+    if (!r.ok) return false;
+    await Promise.all([cargar(), seleccion === id ? abrir(id) : Promise.resolve()]);
+    return true;
+  }
 
   const abrir = useCallback(
     async (id: string) => {
@@ -180,6 +209,7 @@ export default function CharlasTab() {
   const visibles = useMemo(() => {
     let lista = centros;
     if (vista === "hoy") lista = lista.filter((c) => activos(c) && c.fecha_proxima_accion && c.fecha_proxima_accion <= hoy);
+    if (vista === "llamadas") lista = lista.filter((c) => activos(c) && c.tipo !== "ayuntamiento" && guionPara(c)?.destacado && (!c.fecha_proxima_accion || c.fecha_proxima_accion <= hoy) && !c.bloqueado_por);
     if (vista === "semana") lista = lista.filter((c) => activos(c) && c.fecha_proxima_accion && c.fecha_proxima_accion <= sumarDias(hoy, 7));
     if (filtroEstado) lista = lista.filter((c) => c.estado === filtroEstado);
     if (filtroTerritorio === "__instituciones") lista = lista.filter((c) => c.tipo === "ayuntamiento");
@@ -193,6 +223,7 @@ export default function CharlasTab() {
     return [...lista].sort((a, b) => (a.fecha_proxima_accion ?? "9999").localeCompare(b.fecha_proxima_accion ?? "9999") || a.nombre.localeCompare(b.nombre));
   }, [centros, vista, filtroEstado, filtroTerritorio, busqueda, hoy]);
 
+  const llamadasHoy = centros.filter((c) => activos(c) && c.tipo !== "ayuntamiento" && guionPara(c)?.destacado && (!c.fecha_proxima_accion || c.fecha_proxima_accion <= hoy) && !c.bloqueado_por).length;
   const sinProxima = centros.filter((c) => activos(c) && !c.fecha_proxima_accion).length;
 
   function irA(s: "bandeja" | "crm" | "catalogo" | "aprendizajes") {
@@ -284,13 +315,13 @@ export default function CharlasTab() {
         {/* Lista */}
         <section className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            {(["hoy", "semana", "todos"] as const).map((v) => (
+            {(["hoy", "llamadas", "semana", "todos"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setVista(v)}
                 className={`px-3 py-1.5 text-[0.85rem] ${vista === v ? "bg-[#0F2240] text-white" : "bg-white text-gray-700 ring-1 ring-gray-200"}`}
               >
-                {v === "hoy" ? "Hoy" : v === "semana" ? "Esta semana" : "Todos"}
+                {v === "hoy" ? "Hoy" : v === "llamadas" ? `📞 Llamadas · ${llamadasHoy}` : v === "semana" ? "Esta semana" : "Todos"}
               </button>
             ))}
             <button
@@ -333,6 +364,42 @@ export default function CharlasTab() {
                   </div>
                   {c.proxima_accion && <p className="truncate text-[0.8rem] text-gray-600">{c.proxima_accion}</p>}
                 </button>
+                {(() => {
+                  // Los ayuntamientos van por su propio carril (Mail 1 Ayuntamiento), sin guion de llamada.
+                  const g = c.tipo === "ayuntamiento" ? null : guionPara(c);
+                  if (!g) return null;
+                  const abierto = guionAbierto === c.id;
+                  return (
+                    <>
+                      <div className="flex items-center gap-2 px-4 pb-2">
+                        <button
+                          onClick={() => {
+                            setGuionAbierto(abierto ? null : c.id);
+                            if (!abierto && seleccion !== c.id) abrir(c.id);
+                          }}
+                          className={`rounded-full px-2.5 py-0.5 text-[0.75rem] ring-1 ${g.destacado ? "bg-[#0F2240] text-white ring-[#0F2240]" : "bg-white text-gray-600 ring-gray-300"}`}
+                        >
+                          📞 {abierto ? "Cerrar guion" : TITULOS_GUION[g.clave]}
+                        </button>
+                        {c.telefono && g.destacado && (
+                          <a href={`tel:${c.telefono.replace(/[^\d+]/g, "")}`} className="text-[0.78rem] text-[#0F2240] underline">
+                            {c.telefono}
+                          </a>
+                        )}
+                      </div>
+                      {abierto && (
+                        <GuionLlamada
+                          centro={c}
+                          clave={g.clave}
+                          guiones={guiones}
+                          avisoGuiones={avisoGuiones}
+                          registro={detalle?.centro.id === c.id ? detalle.registro : null}
+                          onGuardar={(cambios, registro) => guardarLlamada(c.id, cambios, registro)}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
               </li>
             ))}
           </ul>

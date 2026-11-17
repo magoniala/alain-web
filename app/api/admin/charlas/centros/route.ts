@@ -13,7 +13,7 @@ import { supabaseCharlas } from "@/lib/charlas";
 //   fichas del vault ya no se tocan a mano.
 
 const CAMPOS_LISTA =
-  "id, nombre, territorio, localidad, tipo, euskera, estado, via, responsable, responsable_email, email_centro, telefono, intentos_llamada, mails_enviados, fecha_ultimo_contacto, proxima_accion, bloqueado_por, fecha_proxima_accion, nivel_autonomia, actualizado_en";
+  "id, nombre, territorio, localidad, tipo, euskera, estado, via, responsable, responsable_cargo, responsable_email, email_centro, telefono, intentos_llamada, mails_enviados, fecha_ultimo_contacto, proxima_accion, bloqueado_por, fecha_proxima_accion, nivel_autonomia, actualizado_en";
 
 const CAMPOS_EDITABLES = new Set([
   "estado",

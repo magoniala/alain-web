@@ -250,10 +250,23 @@ async function altas() {
   }
 }
 
+// --- guiones vault → Supabase ----------------------------------------------------
+// Los guiones de llamada que enseña el panel (tarjetas de Charlas). Si falla,
+// el espejo continúa: el panel sigue con la última versión subida.
+async function guiones() {
+  try {
+    const { subirGuiones, resumenGuiones } = await import("./guiones-vault.mjs");
+    console.log(resumenGuiones(await subirGuiones({ url: URL, key: KEY, vaultCharlas: VAULT, comprobar: COMPROBAR }), COMPROBAR));
+  } catch (e) {
+    console.log(`Guiones vault → Supabase: no se han podido subir (${String(e.message).slice(0, 200)})`);
+  }
+}
+
 // --- principal -------------------------------------------------------------------
 async function main() {
   comprobarEntorno();
   await altas();
+  await guiones();
   const [centros, interacciones] = await Promise.all([
     todas("charlas_centros", "*", "nombre"),
     todas("charlas_interacciones", "*", "centro_id,fecha,orden"),
