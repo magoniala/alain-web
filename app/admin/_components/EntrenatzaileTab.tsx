@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PreguntaEnLinea from "./PreguntaEnLinea";
 import { copiarTexto } from "./copiarTexto";
+import { confirmar } from "./confirmar";
 
 // Pestaña Entrenatzaile · fase 7a del sistema automático (Arquitectura v3):
 // clientes con su plan, semanas programadas (sesiones, ejercicios) y la cola
@@ -610,7 +611,7 @@ function Semana({ det, tipos, post, ocupado, copiarMarkdown, onBorrada }: { det:
             <button
               disabled={ocupado}
               onClick={async () => {
-                if (confirm(`¿Borrar la semana ${s.numero} con sus sesiones y avisos?`)) {
+                if (await confirmar(`¿Borrar la semana ${s.numero} con sus sesiones y avisos?`, { aceptar: "Borrar" })) {
                   const d = await post({ accion: "semana_borrar", id: s.id }, []);
                   if (d) onBorrada();
                 }
@@ -716,7 +717,7 @@ function SesionCard({ ses, det, post }: { ses: Sesion; det: DetalleSemana; post:
               <option key={x}>{x}</option>
             ))}
           </select>
-          <button onClick={() => confirm(`¿Quitar la sesión ${ses.nombre}?`) && post({ accion: "sesion_borrar", id: ses.id }, ["semana", "ficha"])} className="text-red-600">✕</button>
+          <button onClick={async () => (await confirmar(`¿Quitar la sesión ${ses.nombre}?`, { aceptar: "Quitar" })) && post({ accion: "sesion_borrar", id: ses.id }, ["semana", "ficha"])} className="text-red-600">✕</button>
         </div>
       </div>
       <div className="px-5 py-2 text-[0.82rem] text-gray-600">
@@ -808,7 +809,7 @@ function FilaEjercicio({ e, i, total, guardar, post, registradas }: { e: Ejercic
           <button disabled={i === 0} onClick={() => post({ accion: "ejercicio_mover", id: e.id, dir: "arriba" })} className="px-0.5 disabled:opacity-20">↑</button>
           <button disabled={i === total - 1} onClick={() => post({ accion: "ejercicio_mover", id: e.id, dir: "abajo" })} className="px-0.5 disabled:opacity-20">↓</button>
           <button onClick={() => setAbierto(!abierto)} className="px-0.5" title="Qué registra el cliente">⋯</button>
-          <button onClick={() => confirm(`¿Quitar ${e.nombre}?`) && post({ accion: "ejercicio_borrar", id: e.id })} className="px-0.5 text-red-500">✕</button>
+          <button onClick={async () => (await confirmar(`¿Quitar ${e.nombre}?`, { aceptar: "Quitar" })) && post({ accion: "ejercicio_borrar", id: e.id })} className="px-0.5 text-red-500">✕</button>
         </td>
       </tr>
       {(abierto || registradas.length > 0) && (

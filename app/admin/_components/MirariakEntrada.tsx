@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { confirmar } from "./confirmar";
 
 // MIRARIAK 2026 · Control de entrada (modo puerta).
 // Pensado para el móvil en la puerta del Aita Agirre: eliges día y grupo/horario,
@@ -114,7 +115,7 @@ export default function MirariakEntrada({ onVolver }: { onVolver: () => void }) 
     let r = await llamar();
     let j = await r.json().catch(() => ({}));
     if (r.status === 409 && j.completo) {
-      if (!window.confirm(`${j.error}\n\n¿Que entre igualmente, por encima del aforo?`)) return { ok: false, error: "No se ha hecho nada: está completo." };
+      if (!(await confirmar(`${j.error}\n\n¿Que entre igualmente, por encima del aforo?`, { aceptar: "Que entre" }))) return { ok: false, error: "No se ha hecho nada: está completo." };
       r = await llamar({ forzar: true });
       j = await r.json().catch(() => ({}));
     }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EGOERAK, EGOERA_IZENA, MOTAK, MOTA_IZENA, type Edukia, type Egoera, type Katalogoa, type Liburutxoa, type Mota } from "@/lib/magia-edukiak-motak";
+import { confirmar } from "./confirmar";
 
 // Plataforma de magia /magia-tailerrak (QR de los librillos de los talleres).
 // Desde aquí se edita todo lo que se ve: librillos, juegos (texto, material,
@@ -270,7 +271,7 @@ export default function MagiaTailerrakTab() {
                   <button className={botonOscuro} disabled={ocupado} onClick={() => accion(async () => { await api({ method: "PUT", body: JSON.stringify({ mota: "liburutxoa", liburutxoa: { ...l, etiketa: editLib[l.slug] } }) }); setEditLib((x) => { const y = { ...x }; delete y[l.slug]; return y; }); })}>Guardar</button>
                 )}
                 <button className={boton} disabled={!enBd || ocupado} onClick={() => accion(() => api({ method: "PUT", body: JSON.stringify({ mota: "liburutxoa", liburutxoa: { ...l, ikusgai: !l.ikusgai } }) }))}>{l.ikusgai ? "Ocultar" : "Mostrar"}</button>
-                <button className={botonRojo} disabled={!enBd || ocupado} onClick={() => { if (confirm(`¿Borrar el librillo «${l.etiketa}»? Sus juegos no se borran, pero dejan de salir en él.`)) accion(() => api({ method: "DELETE" }, `?mota=liburutxoa&slug=${encodeURIComponent(l.slug)}`)); }}>Borrar</button>
+                <button className={botonRojo} disabled={!enBd || ocupado} onClick={async () => { if (await confirmar(`¿Borrar el librillo «${l.etiketa}»? Sus juegos no se borran, pero dejan de salir en él.`, { aceptar: "Borrar" })) accion(() => api({ method: "DELETE" }, `?mota=liburutxoa&slug=${encodeURIComponent(l.slug)}`)); }}>Borrar</button>
               </span>
             </li>
           ))}
@@ -307,7 +308,7 @@ export default function MagiaTailerrakTab() {
                 <Etiqueta egoera={e.egoera} />
                 {e.mota !== "sekretua" && (e.youtube ? <a className={`${boton} text-emerald-700`} href={`https://youtu.be/${e.youtube}`} target="_blank" rel="noreferrer">▶ Vídeo</a> : <span className="text-[0.72rem] text-gray-400">sin vídeo</span>)}
                 {!e.ikusgai && <span className="rounded border border-gray-300 bg-gray-100 px-1.5 text-[0.68rem] text-gray-600">Oculto</span>}
-                <button className={botonRojo} disabled={!enBd || ocupado} onClick={() => { if (confirm(`¿Borrar «${e.izenburua}»? No se puede deshacer. Si solo quieres quitarlo de la web, edítalo y desmarca «Visible».`)) accion(() => api({ method: "DELETE" }, `?mota=edukia&slug=${encodeURIComponent(e.slug)}`)); }}>Borrar</button>
+                <button className={botonRojo} disabled={!enBd || ocupado} onClick={async () => { if (await confirmar(`¿Borrar «${e.izenburua}»? No se puede deshacer. Si solo quieres quitarlo de la web, edítalo y desmarca «Visible».`, { aceptar: "Borrar" })) accion(() => api({ method: "DELETE" }, `?mota=edukia&slug=${encodeURIComponent(e.slug)}`)); }}>Borrar</button>
               </div>
               {abierto === e.slug && <FormEdukia inicial={e} liburutxoak={k.liburutxoak} nuevo={false} onCerrar={() => setAbierto(null)} onGuardado={cargar} />}
             </li>

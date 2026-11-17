@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./admin.css";
+import ConfirmarHost from "./_components/confirmar";
 
 export const metadata: Metadata = {
   title: "Panel — Alain Zulaika",
@@ -29,5 +30,10 @@ export const viewport = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <ConfirmarHost />
+    </>
+  );
 }

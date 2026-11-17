@@ -7,6 +7,7 @@ import Hoja, { SECCIONES } from "./valoracion/Hoja";
 import Informe from "./valoracion/Informe";
 import Cronometro, { useCrono } from "./valoracion/Cronometro";
 import { abrirPdf, htmlInforme, htmlNotas, nombreCaptura } from "./valoracion/pdf";
+import { confirmar } from "./confirmar";
 
 // Valoración inicial online: la plantilla en PDF hecha formulario.
 //
@@ -50,7 +51,7 @@ function borrarLocal(id: string) {
 // confirmación antes. Devuelve si se ha borrado.
 async function eliminarValoracion(id: string, nombre: string, soloLocal = false): Promise<boolean> {
   const quien = nombre.trim() || "sin nombre";
-  if (!window.confirm(`¿Eliminar la valoración de ${quien}?\n\nSe borran también sus copias de seguridad. No se puede deshacer.`)) return false;
+  if (!(await confirmar(`¿Eliminar la valoración de ${quien}?\n\nSe borran también sus copias de seguridad. No se puede deshacer.`, { aceptar: "Eliminar" }))) return false;
   if (!soloLocal) {
     try {
       const res = await fetch(`/api/admin/valoraciones?id=${id}`, { method: "DELETE", headers: cabeceras() });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { confirmar } from "../confirmar";
 
 // Importar un directorio oficial de centros (Navarra, Cantabria…) desde el
 // panel. Se le da un enlace al CSV/XLSX, el id de un dataset de datos.gob.es
@@ -29,7 +30,7 @@ export default function ImportarDirectorio({ pw, onImportado }: { pw: () => stri
   const [res, setRes] = useState<Resultado | null>(null);
 
   async function lanzar(accion: "inspeccionar" | "previsualizar" | "importar") {
-    if (accion === "importar" && !confirm(`¿Importar los centros de ${territorio} al CRM? Solo se crean los que no existan.`)) return;
+    if (accion === "importar" && !(await confirmar(`¿Importar los centros de ${territorio} al CRM? Solo se crean los que no existan.`, { aceptar: "Importar", peligro: false }))) return;
     setTrabajando(accion);
     setRes(null);
     try {

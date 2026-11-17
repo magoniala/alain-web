@@ -6,6 +6,7 @@ import { TESTS, criterioTests } from "@/lib/parq-criterio";
 import { abrirPdf } from "./valoracion/pdf";
 import { RESULTADO_COLOR, RESULTADO_CORTO, idsSi, snapshotParq, type ParqCompleto } from "./parq/comun";
 import { csvParq, descargarCsv, htmlFichaParq, htmlVariosParq } from "./parq/exportar";
+import { confirmar } from "./confirmar";
 
 // Todos los PAR-Q+ recibidos en /parq: lista con buscador y filtro, ficha
 // completa de cada persona, PDF (uno o todos los filtrados) y CSV. Desde la
@@ -79,7 +80,7 @@ function Ficha({ p, onEliminado }: { p: ParqCompleto; onEliminado: () => void })
     const vinc = p.valoraciones.length
       ? `\n\nEstá vinculado a ${p.valoraciones.length === 1 ? "una valoración" : `${p.valoraciones.length} valoraciones`}: se quitará de ahí la copia de sus respuestas. Tus notas de la sesión se quedan.`
       : "";
-    if (!window.confirm(`¿Eliminar el PAR-Q+ de ${p.nombre}?${vinc}\n\nNo se puede deshacer.`)) return;
+    if (!(await confirmar(`¿Eliminar el PAR-Q+ de ${p.nombre}?${vinc}\n\nNo se puede deshacer.`, { aceptar: "Eliminar" }))) return;
     setBorrando(true);
     try {
       const res = await fetch(`/api/admin/parq?id=${p.id}`, {

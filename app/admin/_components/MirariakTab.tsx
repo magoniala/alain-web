@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import MirariakEntrada from "./MirariakEntrada";
 import PreguntaEnLinea from "./PreguntaEnLinea";
+import { confirmar } from "./confirmar";
 
 // MIRARIAK 2026 de un vistazo: reservas del taller por grupo (ruedas por
 // edades con el total dentro), quién repite del año pasado, micromagia por
@@ -264,7 +265,7 @@ function useAccion(recargar: () => Promise<void> | void) {
       let r = await llamar();
       let j = await r.json().catch(() => ({}));
       if (r.status === 409 && j.completo) {
-        if (!window.confirm(`${j.error}\n\n¿Meterlo igualmente, por encima del aforo?`)) {
+        if (!(await confirmar(`${j.error}\n\n¿Meterlo igualmente, por encima del aforo?`, { aceptar: "Meterlo" }))) {
           setAviso({ texto: "No se ha hecho nada: el destino está completo.", error: true });
           return false;
         }

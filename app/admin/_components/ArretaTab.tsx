@@ -10,6 +10,7 @@ import {
   type Probatu,
   type Respuesta,
 } from "@/lib/arreta";
+import { confirmar } from "./confirmar";
 
 // Encuesta anónima /arreta (alumnos de las charlas): estadísticas, testimonios
 // destacados y post-its de papel apuntados a mano. Todo se filtra en el
@@ -392,7 +393,7 @@ export default function ArretaTab() {
   }
 
   async function borrarPostit(id: string) {
-    if (!confirm("¿Borrar esta sesión de post-its?")) return;
+    if (!(await confirmar("¿Borrar esta sesión de post-its?", { aceptar: "Borrar" }))) return;
     try {
       await api(`/api/admin/arreta/postits?id=${id}`, { method: "DELETE" });
       await cargar();

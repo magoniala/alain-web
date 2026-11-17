@@ -29,6 +29,7 @@ import {
   sugerenciaDorsiflexion,
 } from "@/lib/valoracion";
 import { AdaptacionDe, AdaptarAlCliente, PruebasExtraDe, Area, Aviso, Badge, Capturas, Chips, ExtraDe, Fila, Guion, Num, Pista, Seccion, Segun, Sub, Sugerido, Texto, useDatos, usePresencial } from "./campos";
+import { confirmar } from "../confirmar";
 
 // Índice de la hoja, en el orden de la sesión. La FC en reposo va sola y
 // antes del bloque 3: en la plantilla estaba en el bloque de cardio, pero
@@ -298,8 +299,8 @@ function ParqVinculo({ soloVer = false }: { soloVer?: boolean }) {
     setBusca("");
   }
 
-  function desvincular() {
-    if (!window.confirm("¿Quitar el PAR-Q+ vinculado a esta valoración? El PAR-Q+ no se borra; solo deja de estar enlazado.")) return;
+  async function desvincular() {
+    if (!(await confirmar("¿Quitar el PAR-Q+ vinculado a esta valoración? El PAR-Q+ no se borra; solo deja de estar enlazado.", { aceptar: "Quitar" }))) return;
     setMany({ parqId: undefined, parq: undefined });
   }
 

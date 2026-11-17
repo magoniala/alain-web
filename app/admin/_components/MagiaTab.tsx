@@ -10,6 +10,7 @@ import CatalogoShows from "./CatalogoShows";
 import CajaFaltanDatos, { type FaltaDato } from "./CajaFaltanDatos";
 import UltimosCambios, { type Reciente } from "./UltimosCambios";
 import PreguntaEnLinea from "./PreguntaEnLinea";
+import { confirmar } from "./confirmar";
 
 // Pestaña Magia · fase 6a del sistema automático: el CRM de prospectos
 // (antiguos clientes, recuperar, intermediarios, referidos) con su bandeja.
@@ -324,7 +325,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
     } catch (e) {
       const er = e as Error & { duplicado?: boolean };
       // Ya salió un correo a esta ficha hace poco: solo se manda otro si Alain lo confirma.
-      if (er.duplicado && body.accion === "enviar" && confirm(`${er.message}\n\n¿Quieres enviar este otro igualmente?`)) {
+      if (er.duplicado && body.accion === "enviar" && (await confirmar(`${er.message}\n\n¿Quieres enviar este otro igualmente?`, { aceptar: "Enviar otro", peligro: false }))) {
         await hacer(nombre, { ...body, confirmar_duplicado: true });
         return;
       }

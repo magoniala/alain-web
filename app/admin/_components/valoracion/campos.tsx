@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NIVEL_ETIQUETA, type Datos, type Nivel } from "@/lib/valoracion";
+import { confirmar } from "../confirmar";
 
 // Todos los campos de la hoja leen y escriben en el mismo objeto `datos` a
 // través de este contexto. Cada cambio llega a setMany, que es quien guarda
@@ -329,7 +330,7 @@ export function Capturas({ test, label = "Fotos y vídeos", pista }: { test: str
     }
   }
   async function quitar(c: Captura) {
-    if (!window.confirm("¿Quitar esta captura?")) return;
+    if (!(await confirmar("¿Quitar esta captura?", { aceptar: "Quitar" }))) return;
     await fetch(`/api/admin/valoraciones/capturas?ruta=${encodeURIComponent(c.ruta)}`, { method: "DELETE", headers: cabeceras() }).catch(() => null);
     // Se marca como borrada (no se quita de la lista): así la fusión entre dispositivos no la resucita.
     set("capturas", { ...todas, [test]: (todas[test] ?? []).map((x) => (x.ruta === c.ruta ? { ...x, borrada: true } : x)) });

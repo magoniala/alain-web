@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { confirmar } from "./confirmar";
 
 interface Stats {
   personas_testadas: number;
@@ -214,7 +215,7 @@ export default function ArroganteTab() {
   }
 
   async function deleteFrase(id: string) {
-    if (!confirm("¿Eliminar esta frase?")) return;
+    if (!(await confirmar("¿Eliminar esta frase?", { aceptar: "Eliminar" }))) return;
     await fetch("/api/arrogante/frases", {
       method: "DELETE",
       headers: authHeaders(),

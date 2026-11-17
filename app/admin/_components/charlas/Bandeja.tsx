@@ -9,6 +9,7 @@ import { ESTADOS } from "@/lib/charlas";
 import CajaFaltanDatos, { type FaltaDato } from "../CajaFaltanDatos";
 import UltimosCambios, { type Reciente } from "../UltimosCambios";
 import PreguntaEnLinea from "../PreguntaEnLinea";
+import { confirmar } from "../confirmar";
 
 // Bandeja de charlas · fase 1.
 //
@@ -247,7 +248,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
   }
 
   async function cambiarConfig(clave: "modo_prueba" | "lector_activo", valor: boolean) {
-    if (clave === "modo_prueba" && !valor && !confirm("A partir de ahora «Enviar» manda el correo al centro de verdad y actualiza el CRM. ¿Seguro?")) return;
+    if (clave === "modo_prueba" && !valor && !(await confirmar("A partir de ahora «Enviar» manda el correo al centro de verdad y actualiza el CRM. ¿Seguro?", { aceptar: "Sí, enviar de verdad" }))) return;
     await accion({ accion: "config", [clave]: valor });
     await cargar();
   }
@@ -446,7 +447,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
     } catch (e) {
       const err = e as Error & { duplicado?: boolean };
       // Ya salió un correo a este centro hace poco: solo se manda otro si Alain lo confirma.
-      if (err.duplicado && body.accion === "enviar" && confirm(`${err.message}\n\n¿Quieres enviar este otro igualmente?`)) {
+      if (err.duplicado && body.accion === "enviar" && (await confirmar(`${err.message}\n\n¿Quieres enviar este otro igualmente?`, { aceptar: "Enviar otro", peligro: false }))) {
         await hacer(nombre, { ...body, confirmar_duplicado: true });
         return;
       }
