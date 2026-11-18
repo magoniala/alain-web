@@ -29,8 +29,8 @@ export interface Contadores {
 }
 
 export interface MetricasMail {
-  es?: Contadores & { campana_mj: number; via: "etiqueta" | "asunto" };
-  eu?: Contadores & { campana_mj: number; via: "etiqueta" | "asunto" };
+  es?: Contadores & { campana_mj?: number; via: "etiqueta" | "asunto" | "mensajes" };
+  eu?: Contadores & { campana_mj?: number; via: "etiqueta" | "asunto" | "mensajes" };
   total: Contadores;
 }
 
@@ -78,6 +78,45 @@ async function contadores(idCampana: number): Promise<Contadores> {
 
 const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
 
+type MensajeMj = { Status?: string; Subject?: string };
+
+/**
+ * Plan B para los mails sin etiqueta (anteriores al 18-11-2026): Mailjet no los
+ * agrupa en campañas, así que se cuentan mensaje a mensaje por asunto en la
+ * ventana del envío. `Status` es el último estado de cada mensaje
+ * (clicked implica opened). Mailjet solo guarda este detalle unos meses.
+ */
+async function contadoresPorMensajes(desde: Date, hasta: Date, asunto: string): Promise<Contadores & { vistos: number }> {
+  const todos: MensajeMj[] = [];
+  for (let offset = 0; offset < 5000; offset += 1000) {
+    const r = await mj()
+      .get("message", { version: "v3" })
+      .request({}, {
+        FromTS: Math.floor(desde.getTime() / 1000),
+        ToTS: Math.floor(hasta.getTime() / 1000),
+        ShowSubject: true,
+        Limit: 1000,
+        Offset: offset,
+      } as Record<string, unknown>);
+    const lote = ((r.body as { Data?: MensajeMj[] }).Data ?? []) as MensajeMj[];
+    todos.push(...lote);
+    if (lote.length < 1000) break;
+  }
+  const mios = todos.filter((m) => norm(m.Subject) === norm(asunto));
+  const n = (...st: string[]) => mios.filter((m) => st.includes((m.Status ?? "").toLowerCase())).length;
+  const rebotes = n("bounce", "hardbounced", "softbounced", "blocked");
+  return {
+    vistos: todos.length,
+    enviados: mios.length,
+    entregados: mios.length - rebotes,
+    aperturas: n("opened", "clicked", "unsub", "spam"),
+    clics: n("clicked"),
+    bajas: n("unsub"),
+    spam: n("spam"),
+    rebotes,
+  };
+}
+
 function sumar(a: Contadores, b: Contadores): Contadores {
   return {
     enviados: a.enviados + b.enviados,
@@ -115,7 +154,8 @@ export async function actualizarMetricas(dias = 21, saltar = 0) {
     .order("enviado_en", { ascending: true });
   if (error) throw new Error(`Supabase: ${error.message}`);
 
-  const resultado = { revisados: 0, con_metricas: 0, sin_campana_en_mailjet: [] as string[], errores: [] as string[] };
+  const diagnostico: string[] = [];
+  const resultado = { revisados: 0, con_metricas: 0, sin_campana_en_mailjet: [] as string[], errores: [] as string[], diagnostico };
 
   for (const c of (data ?? []) as FilaCampana[]) {
     resultado.revisados++;
@@ -129,15 +169,27 @@ export async function actualizarMetricas(dias = 21, saltar = 0) {
       for (const idioma of ["es", "eu"] as const) {
         const asunto = idioma === "es" ? c.subject_es : c.subject_eu;
         const etiqueta = etiquetaMailjet(c.id, idioma);
-        let via: "etiqueta" | "asunto" = "etiqueta";
         let mjc = candidatas.find((k) => k.CustomValue === etiqueta);
+        let via: "etiqueta" | "asunto" = "etiqueta";
         if (!mjc && asunto) {
           via = "asunto";
           mjc = candidatas.find((k) => norm(k.Subject) === norm(asunto));
         }
-        if (!mjc) continue;
-        const cont = await contadores(mjc.ID);
-        metricas[idioma] = { ...cont, campana_mj: mjc.ID, via };
+        if (mjc) {
+          const cont = await contadores(mjc.ID);
+          metricas[idioma] = { ...cont, campana_mj: mjc.ID, via };
+          metricas.total = sumar(metricas.total, cont);
+          continue;
+        }
+        if (!asunto) continue;
+        const { vistos, ...cont } = await contadoresPorMensajes(
+          new Date(envio.getTime() - 10 * 60_000),
+          new Date(envio.getTime() + 2 * 3600_000),
+          asunto
+        );
+        diagnostico.push(`${asunto} [${idioma}]: ${candidatas.length} campañas en la ventana, ${vistos} mensajes, ${cont.enviados} con su asunto`);
+        if (!cont.enviados) continue;
+        metricas[idioma] = { ...cont, via: "mensajes" };
         metricas.total = sumar(metricas.total, cont);
       }
       if (!metricas.es && !metricas.eu) {
