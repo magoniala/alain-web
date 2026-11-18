@@ -661,6 +661,8 @@ export interface Envio {
   inReplyTo?: string | null;
   referencias?: string[];
   dossier?: "es" | "eu" | null;
+  /** Ficheros que van tal cual (p. ej. el PDF de un presupuesto subido en el panel). */
+  adjuntos?: { filename: string; content: Buffer; contentType: string }[];
   prueba?: boolean;
 }
 
@@ -669,7 +671,7 @@ export async function enviarCorreo(e: Envio): Promise<{ messageId: string; para:
   const remitente = String(await config("remitente", `Alain Zulaika <${user}>`));
   const messageId = `${randomUUID()}@alainzulaika.com`;
 
-  const adjuntos = [];
+  const adjuntos: { filename: string; content: Buffer; contentType: string }[] = [...(e.adjuntos ?? [])];
   if (e.dossier) {
     const d = DOSSIER[e.dossier];
     adjuntos.push({ filename: d.nombre, content: await readFile(join(process.cwd(), "assets/charlas", d.archivo)), contentType: "application/pdf" });

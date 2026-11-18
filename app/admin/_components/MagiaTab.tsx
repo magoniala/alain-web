@@ -7,6 +7,7 @@ import UltimosMensajes, { type Ultimos } from "./UltimosMensajes";
 import AplazarTarea from "./AplazarTarea";
 import AprendizajesMagia from "./magia/Aprendizajes";
 import PromptPresupuesto from "./magia/PromptPresupuesto";
+import EnvioPresupuesto from "./magia/EnvioPresupuesto";
 import CatalogoShows from "./CatalogoShows";
 import CajaFaltanDatos, { type FaltaDato } from "./CajaFaltanDatos";
 import UltimosCambios, { type Reciente } from "./UltimosCambios";
@@ -360,7 +361,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
       <UltimosMensajes ultimos={t.ultimos} omitirEntrante={!!t.entrante?.texto} />
       {t.nota_para_alain && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[0.82rem] text-amber-900">{t.nota_para_alain}</p>}
       <CajaFaltanDatos faltan={t.contexto?.faltan_datos} ocupado={ocupado === "completar"} onGuardar={(clave, txt) => hacer("completar", { accion: "completar", id: t.id, clave, texto: txt })} />
-      {t.ficha && (t.contexto?.clasificacion === "pide_propuesta" || t.tipo === "propuesta" || t.tipo === "pide_propuesta") && <div className="mt-3"><PromptPresupuesto fichaId={t.ficha.id} /></div>}
+      {t.ficha && (t.contexto?.clasificacion === "pide_propuesta" || t.tipo === "propuesta" || t.tipo === "pide_propuesta") && <div className="mt-3 flex flex-wrap gap-2"><PromptPresupuesto fichaId={t.ficha.id} /><EnvioPresupuesto fichaId={t.ficha.id} onEnviado={alTerminar} /></div>}
 
       {conMensaje && (
         <div className="mt-3 space-y-2">
@@ -493,7 +494,7 @@ function FichaMagia({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (c: R
           <div><dt className="text-gray-500">Contacto · mails</dt><dd>último {fmtFecha(f.fecha_ultimo_contacto)} · {f.mails_enviados} mails</dd></div>
           {f.bloqueado_por && <div><dt className="text-gray-500">Bloqueado por</dt><dd className="text-amber-800">{f.bloqueado_por}</dd></div>}
         </dl>
-        <div className="mt-3"><PromptPresupuesto key={f.id} fichaId={f.id} /></div>
+        <div className="mt-3 flex flex-wrap gap-2"><PromptPresupuesto key={`p-${f.id}`} fichaId={f.id} /><EnvioPresupuesto key={`e-${f.id}`} fichaId={f.id} /></div>
         {bloque && (
           <details className="mt-3 text-[0.82rem]">
             <summary className="cursor-pointer text-gray-500">Mensaje / guion que dejaste listo en la ficha</summary>
