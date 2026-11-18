@@ -251,7 +251,7 @@ export default function CharlasTab() {
     return (
       <div>
         {selector}
-        <Bandeja centros={centros.map((c) => ({ id: c.id, nombre: c.nombre }))} onCambio={cargar} />
+        <Bandeja centros={centros.map((c) => ({ id: c.id, nombre: c.nombre }))} onCambio={cargar} guiones={guiones} avisoGuiones={avisoGuiones} />
       </div>
     );
   }

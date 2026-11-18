@@ -10,6 +10,8 @@ import CajaFaltanDatos, { type FaltaDato } from "../CajaFaltanDatos";
 import UltimosCambios, { type Reciente } from "../UltimosCambios";
 import PreguntaEnLinea from "../PreguntaEnLinea";
 import { confirmar } from "../confirmar";
+import GuionLlamada from "./GuionLlamada";
+import { guionPara, guionParaTarjetaLlamada, TITULOS_GUION, type ClaveGuion, type Guion } from "@/lib/charlas-guiones";
 
 // Bandeja de charlas · fase 1.
 //
@@ -45,7 +47,11 @@ interface Tarea {
     faltan_datos?: FaltaDato[];
   };
   creado_en: string;
-  centro: { id: string; nombre: string; estado: string; responsable: string | null; responsable_email?: string | null; proxima_accion?: string | null; fecha_proxima_accion?: string | null; euskera: string | null; localidad: string | null; territorio: string | null } | null;
+  centro: {
+    id: string; nombre: string; estado: string; tipo?: string | null; responsable: string | null; responsable_cargo?: string | null; responsable_email?: string | null;
+    proxima_accion?: string | null; fecha_proxima_accion?: string | null; euskera: string | null; localidad: string | null; territorio: string | null;
+    telefono?: string | null; intentos_llamada?: number | null; fecha_ultimo_contacto?: string | null;
+  } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null } | null;
   ultimos?: Ultimos;
 }
@@ -125,7 +131,9 @@ function fechaHora(iso: string | null) {
   return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-export default function Bandeja({ centros, onCambio }: { centros: { id: string; nombre: string }[]; onCambio: () => void }) {
+type GuionesProps = { guiones: Partial<Record<ClaveGuion, Guion>>; avisoGuiones: string };
+
+export default function Bandeja({ centros, onCambio, guiones, avisoGuiones }: { centros: { id: string; nombre: string }[]; onCambio: () => void } & GuionesProps) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [leyendo, setLeyendo] = useState(false);
@@ -326,7 +334,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
               <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${urg(tareaAbierta).punto}`} />
             </div>
             <div className="p-3 lg:p-0">
-              <TarjetaTarea key={`${tareaAbierta.id}:${tareaAbierta.borrador_texto ?? ""}`} t={tareaAbierta} prueba={prueba} accion={accion} alTerminar={alTerminar} movil />
+              <TarjetaTarea key={`${tareaAbierta.id}:${tareaAbierta.borrador_texto ?? ""}`} t={tareaAbierta} prueba={prueba} accion={accion} alTerminar={alTerminar} guiones={guiones} avisoGuiones={avisoGuiones} movil />
             </div>
           </div>
         </div>
@@ -342,7 +350,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
               <p className="mb-3 text-[0.8rem] text-gray-500">Lo que el sistema nunca hará solo: leads calientes, llamadas, conversaciones abiertas y casos delicados. El borrador es solo una propuesta.</p>
               <div className="space-y-4">
                 {calientes.map((t) => (
-                  <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={alTerminar} />
+                  <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={alTerminar} guiones={guiones} avisoGuiones={avisoGuiones} />
                 ))}
               </div>
             </section>
@@ -353,7 +361,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
               <h2 className="mb-3 text-[0.95rem] font-semibold">Respuestas por revisar · {resto.length}</h2>
               <div className="space-y-4">
                 {resto.map((t) => (
-                  <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={alTerminar} />
+                  <TarjetaTarea key={`${t.id}:${t.borrador_texto ?? ""}`} t={t} prueba={prueba} accion={accion} alTerminar={alTerminar} guiones={guiones} avisoGuiones={avisoGuiones} />
                 ))}
               </div>
             </section>
@@ -399,7 +407,7 @@ export default function Bandeja({ centros, onCambio }: { centros: { id: string; 
   );
 }
 
-function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tarea; prueba: boolean; accion: (b: Record<string, unknown>) => Promise<unknown>; alTerminar: () => void; movil?: boolean }) {
+function TarjetaTarea({ t, prueba, accion, alTerminar, guiones, avisoGuiones, movil = false }: { t: Tarea; prueba: boolean; accion: (b: Record<string, unknown>) => Promise<unknown>; alTerminar: () => void; movil?: boolean } & GuionesProps) {
   const [asunto, setAsunto] = useState(t.borrador_asunto ?? "");
   const [texto, setTexto] = useState(t.borrador_texto ?? "");
   const [para, setPara] = useState(t.destinatario ?? "");
@@ -411,6 +419,59 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
   const [opcion, setOpcion] = useState<"a" | "b">("a");
   const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm));
   const alt = t.contexto?.alternativa ?? null;
+
+  // Guion de llamada dentro de la tarjeta (el mismo componente y los mismos textos que CRM › Llamadas).
+  // Solo en tarjetas cuya acción es llamar: la de llamada y los seguimientos cuya ficha pide llamada.
+  // «Al colgar» NO guarda en la ficha: rellena «Qué se apunta en el CRM» y Alain pulsa Aplicar.
+  const [guionVisible, setGuionVisible] = useState(false);
+  const [extras, setExtras] = useState<Record<string, unknown>>({});
+  const [rellenado, setRellenado] = useState(false);
+  const [avisoRelleno, setAvisoRelleno] = useState("");
+  const c0 = t.centro;
+  // Tarjeta de llamada: el guion lo marca el estado de la ficha. Seguimientos por correo: solo si la ficha pide llamar.
+  const estadoProxima = c0 ? { estado: c0.estado, proxima_accion: c0.proxima_accion ?? null } : null;
+  const claveGuion =
+    c0 && estadoProxima && c0.tipo !== "ayuntamiento"
+      ? t.tipo === "llamada_alain"
+        ? guionParaTarjetaLlamada(estadoProxima)
+        : ["seguimiento_dossier", "seguimiento_conversacion"].includes(t.tipo)
+          ? guionPara(estadoProxima)
+          : null
+      : null;
+  const guion = claveGuion?.destacado ? claveGuion : null;
+
+  function rellenarDesdeGuion(cambiosLlamada: Record<string, unknown>, registro: string) {
+    const txt = (v: unknown) => (typeof v === "string" ? v : "");
+    setCrm((f) => ({
+      ...f,
+      estado: txt(cambiosLlamada.estado),
+      proxima_accion: txt(cambiosLlamada.proxima_accion),
+      fecha_proxima_accion: txt(cambiosLlamada.fecha_proxima_accion),
+      nota: registro,
+      nombre: txt(cambiosLlamada.responsable),
+      cargo: txt(cambiosLlamada.responsable_cargo),
+      email: txt(cambiosLlamada.responsable_email),
+      telefono: "",
+      responsable: true,
+    }));
+    // Lo que el CRM también escribe y «Qué se apunta» no tiene como campo: viaja aparte y se enseña debajo.
+    setExtras(Object.fromEntries((["intentos_llamada", "calendario_abierto", "via", "ampa_email"] as const).filter((k) => cambiosLlamada[k] !== undefined && cambiosLlamada[k] !== null).map((k) => [k, cambiosLlamada[k]])));
+    setRellenado(true);
+    // En «Qué se apunta» un campo vacío significa «no tocar»: no se puede borrar la próxima acción desde aquí.
+    setAvisoRelleno(
+      cambiosLlamada.proxima_accion === null && c0?.proxima_accion
+        ? `Este resultado en el CRM quita la próxima acción; desde la tarjeta no se puede: la ficha conservará «${c0.proxima_accion}». Quítala en la ficha si hace falta.`
+        : ""
+    );
+  }
+  // Lo que se manda al servidor: el formulario + los extras de la llamada.
+  const cambiosEnvio = () => ({ ...cambiosDeForm(crm), ...extras });
+  const textoExtras = [
+    extras.intentos_llamada ? `intentos de llamada → ${extras.intentos_llamada}` : "",
+    extras.calendario_abierto ? `calendario abierto → ${extras.calendario_abierto}` : "",
+    extras.via ? `vía → ${extras.via}` : "",
+    extras.ampa_email ? `correo del AMPA → ${extras.ampa_email}` : "",
+  ].filter(Boolean).join(" · ");
 
   function elegir(o: "a" | "b") {
     setOpcion(o);
@@ -552,13 +613,46 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
             </p>
           )}
 
-          <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.centro?.estado} responsableActual={t.centro?.responsable} abierto={cambios.length > 0 || !!persona?.email} />
+          {guion && c0 && (
+            <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                <button
+                  onClick={() => setGuionVisible(!guionVisible)}
+                  className={`rounded-full px-3 py-1 text-[0.8rem] ring-1 ${guionVisible ? "bg-white text-gray-700 ring-gray-300" : "bg-[#0F2240] text-white ring-[#0F2240]"}`}
+                >
+                  📞 {guionVisible ? "Cerrar guion" : "Ver guion"}
+                </button>
+                <span className="text-[0.78rem] text-gray-500">{TITULOS_GUION[guion.clave]}</span>
+                {c0.telefono ? (
+                  <a href={`tel:${c0.telefono.replace(/[^\d+]/g, "")}`} className="ml-auto rounded-full bg-[#0F2240] px-3 py-1 text-[0.85rem] font-medium text-white">
+                    {c0.telefono}
+                  </a>
+                ) : (
+                  <span className="ml-auto text-[0.78rem] text-amber-700">Sin teléfono en la ficha</span>
+                )}
+              </div>
+              {guionVisible && (
+                <GuionLlamada
+                  centro={{ id: c0.id, nombre: c0.nombre, estado: c0.estado, euskera: c0.euskera, telefono: c0.telefono ?? null, responsable: c0.responsable, responsable_cargo: c0.responsable_cargo ?? null, intentos_llamada: c0.intentos_llamada ?? null, fecha_ultimo_contacto: c0.fecha_ultimo_contacto ?? null }}
+                  clave={guion.clave}
+                  guiones={guiones}
+                  avisoGuiones={avisoGuiones}
+                  registro={null}
+                  onRellenar={rellenarDesdeGuion}
+                />
+              )}
+            </div>
+          )}
+
+          <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.centro?.estado} responsableActual={t.centro?.responsable} abierto={cambios.length > 0 || !!persona?.email || rellenado} />
+          {textoExtras && <p className="mt-1 text-[0.75rem] text-gray-600">También se apuntará: {textoExtras}</p>}
+          {avisoRelleno && <p className="mt-1 text-[0.75rem] text-amber-800">{avisoRelleno}</p>}
           {prueba && <p className="mt-1 text-[0.75rem] text-amber-800">Modo prueba: los cambios de CRM no se aplican.</p>}
 
           <div className={`mt-4 flex flex-wrap gap-2 ${movil ? "sticky bottom-0 -mx-5 -mb-5 border-t border-gray-100 bg-white px-5 py-3 [&>button]:min-h-[44px] [&>button]:flex-1" : ""}`}>
             {conRespuesta ? (
               <button
-                onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, adjuntar_dossier: dossier, dossier_idioma: idiomaDossier, motivo, opcion: alt ? opcion : null, cambios: cambiosDeForm(crm) })}
+                onClick={() => hacer("enviar", { accion: "enviar", id: t.id, asunto, texto, destinatario: para, adjuntar_dossier: dossier, dossier_idioma: idiomaDossier, motivo, opcion: alt ? opcion : null, cambios: cambiosEnvio() })}
                 disabled={!!ocupado || (editado && !motivo.trim())}
                 title={editado && !motivo.trim() ? "Escribe por qué lo cambias" : ""}
                 className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40"
@@ -566,13 +660,13 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, movil = false }: { t: Tar
                 {ocupado === "enviar" ? "Enviando…" : prueba ? "Enviar (prueba, a ti)" : "Enviar"}
               </button>
             ) : (
-              <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })} disabled={!!ocupado || prueba} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
+              <button onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosEnvio() })} disabled={!!ocupado || prueba} className="bg-[#1a1a1a] px-4 py-2 text-[0.85rem] font-medium text-white disabled:opacity-40">
                 {prueba ? "Aplicar (desactiva el modo prueba)" : "Aplicar cambios"}
               </button>
             )}
             {conRespuesta && (
               <button
-                onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosDeForm(crm) })}
+                onClick={() => hacer("aplicar", { accion: "aplicar", id: t.id, cambios: cambiosEnvio() })}
                 disabled={!!ocupado || prueba}
                 title={prueba ? "Desactiva el modo prueba para tocar el CRM" : "Apunta lo de «Qué se apunta en el CRM» y cierra la tarjeta sin enviar ningún correo"}
                 className="px-4 py-2 text-[0.85rem] font-medium text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40"

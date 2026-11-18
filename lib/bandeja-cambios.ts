@@ -45,3 +45,38 @@ export function fusionarCambios(actual: unknown, entrada: unknown): Record<strin
   }
   return c;
 }
+
+// ---------------------------------------------------------------------------
+// Campos extra que solo traen los botones «Al colgar» de las tarjetas de
+// llamada de la bandeja de Charlas (el CRM los escribe directo en la ficha;
+// aquí viajan en `cambios` y se aplican al pulsar «Aplicar cambios»).
+// Aparte de fusionarCambios para no tocar lo que comparte Magia. Solo estas
+// claves y valores; cualquier otra cosa se ignora.
+// ---------------------------------------------------------------------------
+export function fusionarExtrasLlamada(actual: Record<string, unknown>, entrada: unknown): Record<string, unknown> {
+  if (!entrada || typeof entrada !== "object") return actual;
+  const e = entrada as Record<string, unknown>;
+  const c: Record<string, unknown> = { ...actual };
+
+  if ("calendario_abierto" in e) {
+    const v = e.calendario_abierto;
+    if (v === "true" || v === "no") c.calendario_abierto = v;
+    else delete c.calendario_abierto;
+  }
+  if ("via" in e) {
+    const v = e.via;
+    if (v === "generico" || v === "contacto") c.via = v;
+    else delete c.via;
+  }
+  if ("intentos_llamada" in e) {
+    const n = Number(e.intentos_llamada);
+    if (Number.isInteger(n) && n >= 1 && n <= 20) c.intentos_llamada = n;
+    else delete c.intentos_llamada;
+  }
+  if ("ampa_email" in e) {
+    const v = typeof e.ampa_email === "string" ? e.ampa_email.trim().toLowerCase() : "";
+    if (v.includes("@")) c.ampa_email = v;
+    else delete c.ampa_email;
+  }
+  return c;
+}

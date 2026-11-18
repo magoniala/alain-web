@@ -5,6 +5,11 @@
 // centro, los datos justos para no abrir la ficha, y al colgar un botón por
 // resultado que deja escritos estado, próxima acción y Registro.
 // Textos: vault › Vías/Charlas/Guiones (lib/charlas-guiones.ts).
+//
+// Se usa en dos sitios con la misma pantalla y distinto final:
+// · CRM › Llamadas: `onGuardar` → el resultado se escribe ya en la ficha.
+// · Bandeja (tarjetas de llamada): `onRellenar` → el resultado solo rellena
+//   «Qué se apunta en el CRM» de la tarjeta; Alain revisa y pulsa Aplicar.
 
 import { useMemo, useState } from "react";
 import {
@@ -36,7 +41,10 @@ interface Props {
   guiones: Partial<Record<ClaveGuion, Guion>>;
   avisoGuiones: string;
   registro: { fecha: string | null; canal: string | null; texto: string }[] | null;
-  onGuardar: (cambios: Record<string, unknown>, registro: string) => Promise<boolean>;
+  /** CRM: escribe el resultado en la ficha. */
+  onGuardar?: (cambios: Record<string, unknown>, registro: string) => Promise<boolean>;
+  /** Bandeja: solo rellena «Qué se apunta en el CRM»; no guarda nada. */
+  onRellenar?: (cambios: Record<string, unknown>, registro: string) => void;
 }
 
 const fmt = (iso: string | null | undefined) => {
@@ -49,7 +57,7 @@ const hace = (iso: string) => {
   return dias <= 0 ? "hoy" : dias === 1 ? "ayer" : dias < 14 ? `hace ${dias} días` : `hace ${Math.round(dias / 7)} semanas`;
 };
 
-export default function GuionLlamada({ centro, clave, guiones, avisoGuiones, registro, onGuardar }: Props) {
+export default function GuionLlamada({ centro, clave, guiones, avisoGuiones, registro, onGuardar, onRellenar }: Props) {
   const inicial = idiomaLlamada(centro.euskera);
   const [idioma, setIdioma] = useState<"es" | "eu">(inicial.idioma);
   const guion = guiones[clave];
@@ -147,7 +155,7 @@ export default function GuionLlamada({ centro, clave, guiones, avisoGuiones, reg
         </details>
       )}
 
-      <AlColgar centro={centro} clave={clave} onGuardar={onGuardar} />
+      <AlColgar centro={centro} clave={clave} onGuardar={onGuardar} onRellenar={onRellenar} />
     </div>
   );
 }
@@ -181,7 +189,7 @@ function Lineas({ lineas, grande }: { lineas: string[]; grande?: boolean }) {
   );
 }
 
-function AlColgar({ centro, clave, onGuardar }: { centro: CentroGuion; clave: ClaveGuion; onGuardar: Props["onGuardar"] }) {
+function AlColgar({ centro, clave, onGuardar, onRellenar }: { centro: CentroGuion; clave: ClaveGuion; onGuardar?: Props["onGuardar"]; onRellenar?: Props["onRellenar"] }) {
   const [elegido, setElegido] = useState<string | null>(null);
   const [d, setD] = useState<DatosResultado>({});
   const [guardando, setGuardando] = useState(false);
@@ -193,6 +201,14 @@ function AlColgar({ centro, clave, onGuardar }: { centro: CentroGuion; clave: Cl
 
   async function guardar() {
     if (!aplicacion || "error" in aplicacion) return;
+    if (onRellenar) {
+      onRellenar(aplicacion.cambios, aplicacion.registro);
+      setHecho(aplicacion.resumen || "Rellenado");
+      setElegido(null);
+      setD({});
+      return;
+    }
+    if (!onGuardar) return;
     setGuardando(true);
     const ok = await onGuardar(aplicacion.cambios, aplicacion.registro);
     setGuardando(false);
@@ -218,7 +234,11 @@ function AlColgar({ centro, clave, onGuardar }: { centro: CentroGuion; clave: Cl
           </button>
         ))}
       </div>
-      {hecho && <p className="mt-2 text-[0.8rem] text-green-700">✓ Guardado · {hecho}</p>}
+      {hecho && (
+        <p className="mt-2 text-[0.8rem] text-green-700">
+          {onRellenar ? <>✓ Rellenado en «Qué se apunta en el CRM» (más abajo) · {hecho}. Revísalo y pulsa «Aplicar cambios»: todavía no se ha guardado nada.</> : <>✓ Guardado · {hecho}</>}
+        </p>
+      )}
 
       {resultado && (
         <div className="mt-2 space-y-1.5 rounded-xl bg-white p-2.5 ring-1 ring-gray-200">
@@ -260,7 +280,7 @@ function AlColgar({ centro, clave, onGuardar }: { centro: CentroGuion; clave: Cl
             disabled={guardando || !aplicacion || "error" in aplicacion}
             className="bg-[#0F2240] px-3 py-1.5 text-[0.82rem] text-white disabled:opacity-40"
           >
-            {guardando ? "Guardando…" : "Guardar en la ficha"}
+            {guardando ? "Guardando…" : onRellenar ? "Rellenar «Qué se apunta en el CRM»" : "Guardar en la ficha"}
           </button>
         </div>
       )}

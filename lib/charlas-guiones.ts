@@ -84,6 +84,22 @@ export function guionPara(c: { estado: string; proxima_accion: string | null }):
   return null;
 }
 
+/**
+ * Guion de una tarjeta de la Bandeja cuya acción ya ES una llamada (tipo llamada_alain).
+ * Aquí manda el estado de la ficha, no el texto de su próxima acción: una ficha en
+ * «3.9 reenviado - pendiente» cuya próxima acción dice «si no hay noticias, aparcar»
+ * sigue teniendo la llamada pendiente. (La vista Llamadas del CRM no cambia: usa guionPara.)
+ */
+export function guionParaTarjetaLlamada(c: { estado: string; proxima_accion: string | null }): { clave: ClaveGuion; destacado: boolean } | null {
+  const g = guionPara(c);
+  if (g?.destacado) return g;
+  const e = c.estado ?? "";
+  if (/^[01]\s/.test(e)) return { clave: "conserjeria", destacado: true };
+  if (e.startsWith("3.9")) return { clave: "reenvio", destacado: true };
+  if (/^5\s/.test(e)) return { clave: "seguimiento-dossier", destacado: true };
+  return null;
+}
+
 /** Idioma de la llamada: euskera si la ficha dice sí o parcial (en parcial, el panel deja cambiar). */
 export function idiomaLlamada(euskera: string | null | undefined): { idioma: "es" | "eu"; puedeCambiar: boolean } {
   if (euskera === "sí" || euskera === "si") return { idioma: "eu", puedeCambiar: true };

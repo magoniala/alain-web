@@ -4,7 +4,7 @@ import { supabaseCharlas } from "@/lib/charlas";
 import { enviarCorreo, marcarLeidoEnBuzon, quitarCita } from "@/lib/charlas-correo";
 import { candidatosHuerfanos } from "@/lib/charlas-emparejar";
 import { procesarMensaje } from "@/lib/charlas-proceso";
-import { fusionarCambios } from "@/lib/bandeja-cambios";
+import { fusionarCambios, fusionarExtrasLlamada } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
 import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, sinActualizadoPor, tareaPrevia } from "@/lib/bandeja-deshacer";
 
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     supabase
       .from("charlas_tareas")
       .select(
-        "*, centro:charlas_centros(id, nombre, estado, responsable, responsable_email, proxima_accion, fecha_proxima_accion, euskera, localidad, territorio), entrante:charlas_mensajes!charlas_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion, clasificacion_confianza)"
+        "*, centro:charlas_centros(id, nombre, estado, tipo, responsable, responsable_cargo, responsable_email, proxima_accion, fecha_proxima_accion, euskera, localidad, territorio, telefono, intentos_llamada, fecha_ultimo_contacto), entrante:charlas_mensajes!charlas_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion, clasificacion_confianza)"
       )
       .in("estado", ["revisar", "error"])
       .order("nivel", { ascending: false })
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
         const t = await cargarTarea(String(body.id));
         if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
         const previa = tareaPrevia(t);
-        t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
+        t.cambios_crm = fusionarExtrasLlamada(fusionarCambios(t.cambios_crm, body.cambios), body.cambios);
         const huella = await aplicarCambios(t, null);
         // La tarjeta queda atendida: el correo que la originó deja de salir como nuevo en Mail.
         const leido = await correoLeido(supabase, "charlas_mensajes", t.mensaje_entrante_id);
@@ -275,7 +275,7 @@ async function enviar(body: Record<string, unknown>) {
   const t = await cargarTarea(String(body.id));
   if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
   // Lo que Alain haya corregido a mano en «Qué se apunta en el CRM».
-  t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
+  t.cambios_crm = fusionarExtrasLlamada(fusionarCambios(t.cambios_crm, body.cambios), body.cambios);
 
   const asunto = String(body.asunto ?? t.borrador_asunto ?? "").trim();
   const texto = String(body.texto ?? t.borrador_texto ?? "").trim();
@@ -425,6 +425,8 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
 
   const cambios: Record<string, unknown> = { actualizado_por: "sistema", fecha_ultimo_contacto: hoy() };
   for (const k of ["estado", "proxima_accion", "fecha_proxima_accion", "calendario_abierto", "via"]) if (c[k]) cambios[k] = c[k];
+  // Extras de las tarjetas de llamada (lib/bandeja-cambios › fusionarExtrasLlamada): intentos de llamada y correo del AMPA.
+  for (const k of ["intentos_llamada", "ampa_email"]) if (c[k]) cambios[k] = c[k];
   const persona = c.contacto_nuevo as { nombre?: string; email?: string; cargo?: string; telefono?: string; responsable?: boolean } | undefined;
   // Persona que ha escrito por otro camino y Alain marca como responsable de la ficha.
   if (persona?.responsable) {
