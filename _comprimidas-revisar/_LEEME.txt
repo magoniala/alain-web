@@ -1,0 +1,29 @@
+Imágenes comprimidas para revisar (public/ NO se ha tocado).
+Mismas rutas y nombres que en public/. Compara cada una con su original.
+Borra esta carpeta cuando termines.
+
+ficheros	tamaño original (px)	antes -> después
+alivio/portada.png	1254x1254	1.87 MB -> 0.50 MB
+entrenatzaile-logo.png	1419x1109	0.77 MB -> 0.18 MB
+otra-vez-lumbago/alain.png	1254x1254	2.05 MB -> 0.61 MB
+otra-vez-lumbago/banda.png	1536x864	1.39 MB -> 0.50 MB
+otra-vez-lumbago/kit.png	1536x1024	2.16 MB -> 0.58 MB
+premios-mira/cartel-experimento.png	7869x12519	0.73 MB -> 0.09 MB
+premios-mira/certificado-experimento.png	4419x6250	0.74 MB -> 0.11 MB
+twobascos/1.jpg	3840x5760	2.27 MB -> 0.18 MB
+twobascos/10.jpg	5760x3840	1.71 MB -> 0.12 MB
+twobascos/11.jpg	5760x3838	1.65 MB -> 0.12 MB
+twobascos/12.jpg	3840x5760	1.84 MB -> 0.10 MB
+twobascos/13.JPG	5667x3783	12.17 MB -> 0.27 MB
+twobascos/14.jpg	3840x5371	2.30 MB -> 0.18 MB
+twobascos/15.jpg	3840x5760	2.52 MB -> 0.19 MB
+twobascos/16.jpg	5585x3723	14.25 MB -> 0.16 MB
+twobascos/17.jpg	5760x3838	2.63 MB -> 0.11 MB
+twobascos/2.JPG	4834x3227	7.62 MB -> 0.22 MB
+twobascos/3.JPG	4062x2712	5.48 MB -> 0.20 MB
+twobascos/4.jpg	3840x5760	2.10 MB -> 0.13 MB
+twobascos/5.jpg	3840x5760	2.53 MB -> 0.12 MB
+twobascos/6.jpg	5760x3838	1.88 MB -> 0.15 MB
+twobascos/7.JPG	5363x3580	7.82 MB -> 0.17 MB
+twobascos/8.jpg	3840x5760	1.55 MB -> 0.07 MB
+twobascos/9.JPG	4940x3298	6.51 MB -> 0.12 MB

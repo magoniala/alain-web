@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, sendEmailBatch, resolveNewsletterFrom } from "@/lib/email-ses";
+import { etiquetaMailjet } from "@/lib/newsletter-metricas";
 import {
   wrapNurture,
   enviarMailSecuencia,
@@ -319,15 +320,23 @@ async function enviarCampana(campana: CampanaEnviable, contactos: ContactoEnvio[
 
   const from = resolveNewsletterFrom(campana.remitente);
   const BATCH = 50;
-  for (let i = 0; i < emails.length; i += BATCH) {
-    await sendEmailBatch(
-      emails.slice(i, i + BATCH).map(({ email, nombre, subject, html }) => ({
-        to: nombre ? `${nombre} <${email}>` : email,
-        subject,
-        html,
-      })),
-      from
-    );
+  // Una etiqueta de Mailjet por mail e idioma (ver lib/newsletter-metricas.ts).
+  const grupos = [
+    { idioma: "eu" as const, lista: emails.slice(0, euContactos.length) },
+    { idioma: "es" as const, lista: emails.slice(euContactos.length) },
+  ];
+  for (const { idioma, lista } of grupos) {
+    for (let i = 0; i < lista.length; i += BATCH) {
+      await sendEmailBatch(
+        lista.slice(i, i + BATCH).map(({ email, nombre, subject, html }) => ({
+          to: nombre ? `${nombre} <${email}>` : email,
+          subject,
+          html,
+        })),
+        from,
+        etiquetaMailjet(campana.id, idioma)
+      );
+    }
   }
 
   // El envío ya ha salido: esto es solo la contabilidad. Pero si se pierde, la

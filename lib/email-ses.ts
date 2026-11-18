@@ -188,9 +188,14 @@ export async function sendEmail(
 }
 
 // Sends up to 50 messages in a single Mailjet API call
+//
+// `campana` (opcional) es la etiqueta CustomCampaign de Mailjet. La newsletter
+// diaria pasa `diario-<id>-<idioma>`: así Mailjet agrupa las estadísticas de
+// cada mail y /api/newsletter/metricas puede leer aperturas, clics y bajas.
 export async function sendEmailBatch(
   messages: Array<{ to: string; subject: string; html: string }>,
-  from = "Alain Zulaika <newsletter@alainzulaika.com>"
+  from = "Alain Zulaika <newsletter@alainzulaika.com>",
+  campana?: string
 ) {
   if (!messages.length) return;
   const fromParsed = parseAddress(from);
@@ -201,6 +206,9 @@ export async function sendEmailBatch(
       Subject: subject,
       HTMLPart: html,
       ReplyTo: fromParsed,
+      TrackOpens: "enabled",
+      TrackClicks: "enabled",
+      ...(campana ? { CustomCampaign: campana, DeduplicateCampaign: false } : {}),
     })),
   });
 
