@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import MirariakEntrada from "./MirariakEntrada";
+import PedirOpinionReservas from "./PedirOpinionReservas";
 import PreguntaEnLinea from "./PreguntaEnLinea";
 import { confirmar } from "./confirmar";
 
@@ -729,6 +730,9 @@ function Reservas({ onEntrada }: { onEntrada: () => void }) {
           </ul>
         </section>
       )}
+
+      {/* Después del evento: pedir la opinión a quienes reservaron. */}
+      <PedirOpinionReservas evento="mirariak2026" />
 
       <div id="mirariak-gestion">
         <Gestion key={filtroClave} inicial={filtro} g={d} libres={libres} recargar={cargar} />
