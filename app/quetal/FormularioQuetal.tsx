@@ -440,7 +440,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
                 {area(d.momento, (v) => set("momento", v), { id: "q-momento" })}
               </>
             )}
-            {pregunta(T.dudas, false, "q-dudas")}
+            {pregunta((d.tipo && T.porTipo[d.tipo]?.dudas) || T.dudas, false, "q-dudas")}
             {area(d.dudas, (v) => set("dudas", v), { id: "q-dudas" })}
           </>
         );
@@ -515,10 +515,10 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
           <>
             {bloque(
               <>
-                {pregunta(T.repetir)}
+                {pregunta((d.tipo && T.porTipo[d.tipo]?.repetir) || T.repetir)}
                 {REPETIR.map((r) => (
                   <Opcion key={r} elegida={d.repetir === r} onClick={() => set("repetir", d.repetir === r ? "" : r)}>
-                    {T.repetirOpciones[r]}
+                    {((d.tipo && T.porTipo[d.tipo]?.repetirOpciones) || T.repetirOpciones)[r]}
                   </Opcion>
                 ))}
               </>

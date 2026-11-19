@@ -53,6 +53,9 @@ type Textos = {
 
   repetir: string;
   repetirOpciones: Record<Repetir, string>;
+  // Enunciados que cambian en algún tipo de evento. Lo que no esté aquí sale
+  // con el texto general. Los valores que se guardan son los mismos.
+  porTipo: Partial<Record<TipoEvento, { dudas?: string; repetir?: string; repetirOpciones?: Record<Repetir, string> }>>;
   referido: string;
   referidoNombre: string;
   referidoContacto: string;
@@ -114,11 +117,13 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     tipos: {
       familiar: "Show familiar",
       taller: "Taller",
+      jornadas: "Fin de semana o jornadas de magia (talleres, micromagia, shows)",
       fiestas: "Magia itinerante o cóctel en fiestas",
       empresa: "Evento interno de empresa",
       feria: "Feria / stand",
       externo: "Puertas abiertas o evento externo de empresa",
       hosteleria: "Bar o restaurante",
+      recurrente: "Show periódico en bar, sociedad o local",
       centro: "Charla o show en centro educativo",
       privado: "Celebración privada",
     },
@@ -128,6 +133,7 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     npsMax: "Muy probable",
     testimonio: {
       comision: "Si alguien de otra comisión u organización te preguntase por mí, ¿qué le dirías?",
+      institucion: "Si alguien de otro ayuntamiento o de otra área de cultura te preguntase por mí, ¿qué le dirías?",
       empresa: "Si alguien de otra empresa te preguntase por mí, ¿qué le dirías?",
       centro: "Si alguien de otro centro educativo te preguntase por mí, ¿qué le dirías?",
       hosteleria: "Si alguien de otro bar o restaurante te preguntase por mí, ¿qué le dirías?",
@@ -146,6 +152,15 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
       magia_diferencia: "¿Notasteis alguna diferencia?",
       tal_vivencia: "¿Cómo vivieron el taller los participantes?",
       tal_casa: "¿Se fueron con algo que puedan repetir en casa?",
+      tal_edades: "¿El nivel y la duración encajaron con las edades del grupo?",
+      jor_mejor: "De todo el programa (talleres, micromagia, shows), ¿qué fue lo que mejor funcionó?",
+      jor_publico: "¿Qué os ha llegado de las familias y del público que vino?",
+      jor_organizacion: "¿Cómo fue la organización desde vuestro lado: reservas, aforos, lista de espera, entrada?",
+      jor_objetivo: "¿Cumplió lo que buscabais al programarlo (participación, oferta para familias, público nuevo)?",
+      jor_ediciones: "Si ha habido ediciones anteriores, ¿qué habéis notado distinto en esta?",
+      rec_local: "Desde que hay magia de forma periódica, ¿qué has notado en el local los días de show (más gente, gente que se queda más rato, consumo)?",
+      rec_clientes: "¿Qué te comentan los clientes? ¿Hay quien viene expresamente o pregunta cuándo es la próxima?",
+      rec_formato: "¿Cambiarías algo del formato: día, hora, duración o frecuencia?",
       fie_grupos: "¿Cómo reaccionaba la gente cuando me acercaba a los grupos?",
       emp_ambiente: "¿Notaste algún efecto en el ambiente del equipo, durante el evento o después?",
       fer_stand: "¿Se paró más gente en el stand de lo habitual?",
@@ -188,6 +203,21 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
       otro_tipo: "Sí, en otro tipo de evento",
       puede: "Puede ser",
       no: "No por ahora",
+    },
+    porTipo: {
+      jornadas: {
+        dudas: "Antes del fin de semana, ¿teníais alguna duda o algo que os preocupase (reservas, aforo, edades)? ¿Cómo salió al final?",
+      },
+      recurrente: {
+        dudas: "Antes de empezar con las sesiones, ¿tenías alguna duda o algo que te preocupase? ¿Cómo ha salido?",
+        repetir: "¿Seguimos con las sesiones?",
+        repetirOpciones: {
+          proxima: "Sí, seguimos como hasta ahora",
+          otro_tipo: "Sí, y además me interesa otro tipo de evento",
+          puede: "Puede ser, habría que hablarlo",
+          no: "No por ahora",
+        },
+      },
     },
     referido: "¿Conoces a alguien que organice eventos y al que le pueda venir bien?",
     referidoNombre: "Nombre / entidad",
@@ -254,11 +284,13 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     tipos: {
       familiar: "Familia-ikuskizuna",
       taller: "Tailerra",
+      jornadas: "Magia asteburua edo jardunaldiak (tailerrak, mikromagia, ikuskizunak)",
       fiestas: "Magia ibiltaria edo koktela jaietan",
       empresa: "Enpresaren barne-ekitaldia",
       feria: "Azoka / standa",
       externo: "Ate irekiak edo enpresaren kanpo-ekitaldia",
       hosteleria: "Taberna edo jatetxea",
+      recurrente: "Aldizkako ikuskizuna taberna, elkarte edo lokalean",
       centro: "Hitzaldia edo ikuskizuna ikastetxean",
       privado: "Ospakizun pribatua",
     },
@@ -268,6 +300,7 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     npsMax: "Oso litekeena",
     testimonio: {
       comision: "Beste batzorde edo erakunde bateko norbaitek nitaz galdetuko balizu, zer esango zenioke?",
+      institucion: "Beste udal bateko edo beste kultura-sail bateko norbaitek nitaz galdetuko balizu, zer esango zenioke?",
       empresa: "Beste enpresa bateko norbaitek nitaz galdetuko balizu, zer esango zenioke?",
       centro: "Beste ikastetxe bateko norbaitek nitaz galdetuko balizu, zer esango zenioke?",
       hosteleria: "Beste taberna edo jatetxe bateko norbaitek nitaz galdetuko balizu, zer esango zenioke?",
@@ -286,6 +319,15 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
       magia_diferencia: "Alderik nabaritu zenuten?",
       tal_vivencia: "Nola bizi izan zuten tailerra parte-hartzaileek?",
       tal_casa: "Etxean errepika dezaketen zerbait eraman zuten?",
+      tal_edades: "Maila eta iraupena egokiak izan ziren taldearen adinerako?",
+      jor_mejor: "Egitarau osotik (tailerrak, mikromagia, ikuskizunak), zerk funtzionatu zuen ondoen?",
+      jor_publico: "Zer iritsi zaizue familien eta etorri zen jendearen aldetik?",
+      jor_organizacion: "Nola joan zen antolaketa zuen aldetik: erreserbak, edukierak, itxaron-zerrenda, sarrera?",
+      jor_objetivo: "Bete zuen programatzean bilatzen zenutena (parte-hartzea, familientzako eskaintza, publiko berria)?",
+      jor_ediciones: "Aurreko edizioak egon badira, zer nabaritu duzue desberdin aurtengoan?",
+      rec_local: "Magia aldizka dagoenetik, zer nabaritu duzu lokalean ikuskizun-egunetan (jende gehiago, denbora gehiago geratzen den jendea, kontsumoa)?",
+      rec_clientes: "Zer esaten dizute bezeroek? Badago propio etortzen denik edo hurrengoa noiz den galdetzen duenik?",
+      rec_formato: "Formatuan zerbait aldatuko zenuke: eguna, ordua, iraupena edo maiztasuna?",
       fie_grupos: "Nola erreakzionatzen zuen jendeak taldeetara hurbiltzen nintzenean?",
       emp_ambiente: "Taldearen giroan eraginik nabaritu zenuen, ekitaldian bertan edo ondoren?",
       fer_stand: "Ohi baino jende gehiago gelditu zen standean?",
@@ -328,6 +370,21 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
       otro_tipo: "Bai, beste ekitaldi mota batean",
       puede: "Agian",
       no: "Oraingoz ez",
+    },
+    porTipo: {
+      jornadas: {
+        dudas: "Asteburuaren aurretik, zalantzaren bat edo kezkatzen zintuzten zerbait bazenuten (erreserbak, edukiera, adinak)? Azkenean nola atera zen?",
+      },
+      recurrente: {
+        dudas: "Saioekin hasi aurretik, zalantzaren bat edo kezkatzen zintuen zerbait bazenuen? Nola atera da?",
+        repetir: "Saioekin jarraituko dugu?",
+        repetirOpciones: {
+          proxima: "Bai, orain arte bezala jarraituko dugu",
+          otro_tipo: "Bai, eta gainera beste ekitaldi mota bat ere interesatzen zait",
+          puede: "Agian, hitz egin beharko genuke",
+          no: "Oraingoz ez",
+        },
+      },
     },
     referido: "Ezagutzen duzu ekitaldiak antolatzen dituen norbait, ondo etor dakiokeena?",
     referidoNombre: "Izena / erakundea",

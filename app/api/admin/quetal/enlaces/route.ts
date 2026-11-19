@@ -47,6 +47,34 @@ export async function POST(req: Request) {
     })
     .select(CAMPOS)
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: errorTipo(error) }, { status: 500 });
+  return NextResponse.json({ enlace: data });
+}
+
+// 23514 = el CHECK de tipo_evento no conoce el tipo: falta la migración.
+function errorTipo(error: { code?: string; message: string }) {
+  return error.code === "23514"
+    ? "La base de datos aún no admite este tipo de evento: falta ejecutar sql/opiniones_eventos.sql en Supabase."
+    : error.message;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// PATCH ?id=<uuid> { tipo_evento } → cambia el tipo de un enlace que todavía
+// no se ha respondido. La URL es la misma: quien ya la tenga verá las
+// preguntas del tipo nuevo. Con respuesta guardada no se toca.
+export async function PATCH(req: Request) {
+  if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id || !UUID.test(id)) return NextResponse.json({ error: "id inválido." }, { status: 400 });
+  const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!esTipo(b.tipo_evento)) return NextResponse.json({ error: "Tipo de evento no válido." }, { status: 400 });
+
+  const { count } = await supabase.from("feedback_organizadores").select("id", { count: "exact", head: true }).eq("link_id", id);
+  if ((count ?? 0) > 0) return NextResponse.json({ error: "Ese enlace ya tiene respuesta: no se cambia." }, { status: 409 });
+
+  const { data, error } = await supabase.from("feedback_links").update({ tipo_evento: b.tipo_evento }).eq("id", id).eq("usado", false).select(CAMPOS).maybeSingle();
+  if (error) return NextResponse.json({ error: errorTipo(error) }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Enlace no encontrado o ya respondido." }, { status: 404 });
   return NextResponse.json({ enlace: data });
 }

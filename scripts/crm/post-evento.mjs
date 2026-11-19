@@ -56,10 +56,14 @@ function nombreEvento(fichero) {
 }
 
 /** Tipo de /quetal (feedback_links.tipo_evento) a partir de la nota. */
-function tipoQuetal(carril, nombre, fm) {
+function tipoQuetal(carril, nombre, fm, serie = false) {
   if (carril === "charlas") return "centro";
+  // Sesiones recurrentes (« · Sesión NN»): se pregunta por el ciclo, no por una noche.
+  if (serie) return "recurrente";
   const t = `${nombre} ${fm.cliente ?? ""} ${fm.show_base ?? ""}`.toLowerCase();
-  if (/mirariak|tailer|taller/.test(t)) return "taller";
+  // Fin de semana o jornadas con varias actividades (talleres + micromagia + shows).
+  if (/mirariak|asteburu|fin de semana|jardunaldi|jornada|festival/.test(t)) return "jornadas";
+  if (/tailer|taller/.test(t)) return "taller";
   if (/haurtxoko|famil|guraso|liburutegi/.test(t)) return "familiar";
   if (/eguzkilore|\bbar\b|ostalari|hosteler|taberna|jatetxe/.test(t)) return "hosteleria";
   if (/ikastola|\bbhi\b|\bies\b|colegio|ikastetxe|instituto/.test(t)) return "centro";
@@ -162,10 +166,19 @@ export async function postEvento({ url, key, vaultCharlas, comprobar = false, ho
             fila.d1_omitido = "testimonio ya recibido (nota del evento)";
             informe.omitidas.push(`${evento}: /quetal no, testimonio ya recibido`);
           } else {
-            const tipoEv = tipoQuetal(ev.carril, evento, ev.fm);
+            const tipoEv = tipoQuetal(ev.carril, evento, ev.fm, Boolean(ev.serie));
             if (!fila.quetal_token && !comprobar) {
               const token = randomBytes(18).toString("base64url");
-              await rest("feedback_links", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ token, tipo_evento: tipoEv, nombre_evento: evento, fecha_evento: ev.fecha, entidad: dest.nombre, contacto_nombre: dest.contacto || dest.nombre, idioma: dest.idioma }) });
+              const enlace = (tipo) => rest("feedback_links", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ token, tipo_evento: tipo, nombre_evento: evento, fecha_evento: ev.fecha, entidad: dest.nombre, contacto_nombre: dest.contacto || dest.nombre, idioma: dest.idioma }) });
+              try {
+                await enlace(tipoEv);
+              } catch (e) {
+                // Si la base aún no admite los tipos nuevos (falta sql/opiniones_eventos.sql),
+                // el enlace sale con el tipo antiguo más parecido en vez de quedarse sin crear.
+                const antiguo = { jornadas: "taller", recurrente: "hosteleria" }[tipoEv];
+                if (!antiguo || !/check|23514/i.test(String(e?.message ?? e))) throw e;
+                await enlace(antiguo);
+              }
               fila.quetal_token = token;
             }
             const texto = ev.carril === "charlas"

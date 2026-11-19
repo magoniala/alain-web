@@ -10,7 +10,11 @@ import { QUETAL_TEXTOS } from "./quetal-textos";
 export type Idioma = "es" | "eu";
 export const IDIOMAS: Idioma[] = ["eu", "es"];
 
-export const TIPOS_EVENTO = ["familiar", "taller", "fiestas", "empresa", "feria", "externo", "hosteleria", "centro", "privado"] as const;
+// «jornadas» (fin de semana o jornadas con varias actividades, lo normal es
+// que contrate un ayuntamiento) y «recurrente» (show periódico en un bar o
+// sociedad) se añadieron el 19-11-2026: sql/opiniones_eventos.sql amplía el
+// CHECK de las dos tablas.
+export const TIPOS_EVENTO = ["familiar", "taller", "jornadas", "fiestas", "empresa", "feria", "externo", "hosteleria", "recurrente", "centro", "privado"] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
 export const REPETIR = ["proxima", "otro_tipo", "puede", "no"] as const;
@@ -48,6 +52,17 @@ export const PREGUNTAS_TIPO: Record<TipoEvento, PreguntaTipo[]> = {
   taller: [
     { id: "tal_vivencia", tipo: "texto" },
     { id: "tal_casa", tipo: "opcion", opciones: ["si", "masomenos", "no", "nose"] },
+    { id: "tal_edades", tipo: "opcion", opciones: ["si", "masomenos", "no", "nose"] },
+  ],
+  // Fin de semana o jornadas (talleres + micromagia + shows): quien contrata
+  // mira el programa entero, la organización (reservas, aforos) y si cumplió
+  // lo que buscaba al programarlo.
+  jornadas: [
+    { id: "jor_mejor", tipo: "texto" },
+    { id: "jor_publico", tipo: "texto" },
+    { id: "jor_organizacion", tipo: "texto" },
+    { id: "jor_objetivo", tipo: "opcion", opciones: ["claramente", "algo", "no", "nosabria"] },
+    { id: "jor_ediciones", tipo: "texto" },
   ],
   fiestas: [{ id: "fie_grupos", tipo: "texto" }, ...MAGIA_ANTES],
   empresa: [{ id: "emp_ambiente", tipo: "texto" }],
@@ -60,6 +75,13 @@ export const PREGUNTAS_TIPO: Record<TipoEvento, PreguntaTipo[]> = {
     { id: "ext_comentarios", tipo: "texto" },
   ],
   hosteleria: [{ id: "hos_local", tipo: "texto" }],
+  // Show periódico: no se pregunta por una noche, sino por lo que ha
+  // cambiado en el local desde que hay sesiones y por el formato.
+  recurrente: [
+    { id: "rec_local", tipo: "texto" },
+    { id: "rec_clientes", tipo: "texto" },
+    { id: "rec_formato", tipo: "texto" },
+  ],
   centro: [
     { id: "cen_alumnado", tipo: "texto" },
     { id: "cen_profesorado", tipo: "texto" },
@@ -70,15 +92,17 @@ export const PREGUNTAS_TIPO: Record<TipoEvento, PreguntaTipo[]> = {
 
 // A quién se imagina el organizador contándoselo, en la pregunta del
 // testimonio.
-export type Audiencia = "comision" | "empresa" | "centro" | "hosteleria" | "privado";
+export type Audiencia = "comision" | "institucion" | "empresa" | "centro" | "hosteleria" | "privado";
 export const AUDIENCIA: Record<TipoEvento, Audiencia> = {
   familiar: "comision",
   taller: "comision",
+  jornadas: "institucion",
   fiestas: "comision",
   empresa: "empresa",
   feria: "empresa",
   externo: "empresa",
   hosteleria: "hosteleria",
+  recurrente: "hosteleria",
   centro: "centro",
   privado: "privado",
 };
@@ -150,11 +174,13 @@ export const VALORACION_CORTO: Record<CampoValoracion, string> = {
 export const TIPO_FIRMA: Record<TipoEvento, string> = {
   familiar: "un show familiar",
   taller: "un taller",
+  jornadas: "unas jornadas de magia",
   fiestas: "fiestas",
   empresa: "un evento de empresa",
   feria: "una feria",
   externo: "un evento de empresa",
   hosteleria: "un bar o restaurante",
+  recurrente: "un ciclo de magia en un local",
   centro: "un centro educativo",
   privado: "una celebración privada",
 };

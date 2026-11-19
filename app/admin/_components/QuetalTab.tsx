@@ -319,6 +319,24 @@ function Enlaces({ aviso }: { aviso: (m: string) => void }) {
     }
   }
 
+  // Cambiar el tipo de un enlace sin respuesta: misma URL, otras preguntas.
+  async function cambiarTipo(l: Enlace, tipo: TipoEvento) {
+    if (tipo === l.tipo_evento) return;
+    try {
+      const res = await fetch(`/api/admin/quetal/enlaces?id=${l.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-password": pw() },
+        body: JSON.stringify({ tipo_evento: tipo }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || `Error ${res.status}`);
+      setLista((ls) => (ls ?? []).map((x) => (x.id === l.id ? j.enlace : x)));
+      aviso(`Tipo cambiado a «${TIPO_CORTO[tipo]}»`);
+    } catch (e) {
+      aviso(`No se ha podido cambiar: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+
   const input = "w-full border border-gray-300 px-3 py-2 text-[0.9rem] outline-none";
 
   return (
@@ -395,7 +413,23 @@ function Enlaces({ aviso }: { aviso: (m: string) => void }) {
                   {l.entidad} <span className="font-normal text-gray-500">· {l.nombre_evento}</span>
                 </p>
                 <p className="text-[0.78rem] text-gray-400">
-                  {TIPO_CORTO[l.tipo_evento]} · {fechaCorta(l.fecha_evento)} · {l.contacto_nombre} · {l.idioma.toUpperCase()}
+                  {l.usado ? (
+                    TIPO_CORTO[l.tipo_evento]
+                  ) : (
+                    <select
+                      value={l.tipo_evento}
+                      onChange={(e) => cambiarTipo(l, e.target.value as TipoEvento)}
+                      title="Cambiar el tipo de formulario de este enlace (mientras no se haya respondido)"
+                      className="max-w-[16rem] border border-gray-200 bg-white py-0.5 text-[0.78rem] text-gray-600"
+                    >
+                      {TIPOS_EVENTO.map((t) => (
+                        <option key={t} value={t}>
+                          {TIPO_CORTO[t]}
+                        </option>
+                      ))}
+                    </select>
+                  )}{" "}
+                  · {fechaCorta(l.fecha_evento)} · {l.contacto_nombre} · {l.idioma.toUpperCase()}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
