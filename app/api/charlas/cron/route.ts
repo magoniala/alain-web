@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { supabaseCharlas } from "@/lib/charlas";
 import { leerBuzon, reponerEnviados } from "@/lib/charlas-correo";
 import { procesarPendientes } from "@/lib/charlas-proceso";
-import { tareasPorFecha, mail1Automatico } from "@/lib/charlas-motor";
+import { tareasPorFecha, mail1Automatico, localizarCorreosCharlas } from "@/lib/charlas-motor";
 import { rastrearContactos } from "@/lib/charlas-rastreo";
 import { tareasPorFechaMagia, procesarPendientesMagia } from "@/lib/crm-motor";
 import { notificarTareasNuevas, notificarTareasMagia } from "@/lib/charlas-push";
@@ -135,6 +135,9 @@ async function ejecutarSinCierre(req: Request) {
     mail1 = await correrMail1();
     magia = await correrMagia();
   }
+
+  // Tarjetas diarias para que Alain localice a mano el correo de unos pocos centros (sin IA).
+  if (lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 47000) await localizarCorreosCharlas().catch(() => null);
 
   // Rastreo web de correos de contacto (sin IA, solo red): se hace en las
   // ejecuciones fuera de ventana, que si no estarían ociosas. Unos pocos

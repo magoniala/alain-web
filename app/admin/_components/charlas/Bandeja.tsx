@@ -78,6 +78,7 @@ interface Datos {
 }
 
 const ETIQUETA: Record<string, string> = {
+  localizar_correo: "Localizar el correo del centro",
   calendario_abierto: "Calendario abierto",
   calendario_cerrado: "Calendario cerrado",
   pide_info: "Pide información",
@@ -417,7 +418,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, guiones, avisoGuiones, mo
   const [instruccion, setInstruccion] = useState("");
   const [verOriginal, setVerOriginal] = useState(!movil);
   const [opcion, setOpcion] = useState<"a" | "b">("a");
-  const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm));
+  const [crm, setCrm] = useState<FormCrm>(() => formCrmInicial(t.cambios_crm, t.tipo === "localizar_correo" ? t.tipo : undefined));
   const alt = t.contexto?.alternativa ?? null;
 
   // Guion de llamada dentro de la tarjeta (el mismo componente y los mismos textos que CRM › Llamadas).
@@ -644,7 +645,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, guiones, avisoGuiones, mo
             </div>
           )}
 
-          <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.centro?.estado} responsableActual={t.centro?.responsable} abierto={cambios.length > 0 || !!persona?.email || rellenado} />
+          <EditorCrm f={crm} setF={setCrm} estados={ESTADOS} estadoActual={t.centro?.estado} responsableActual={t.centro?.responsable} abierto={cambios.length > 0 || !!persona?.email || rellenado || t.tipo === "localizar_correo"} />
           {textoExtras && <p className="mt-1 text-[0.75rem] text-gray-600">También se apuntará: {textoExtras}</p>}
           {avisoRelleno && <p className="mt-1 text-[0.75rem] text-amber-800">{avisoRelleno}</p>}
           {prueba && <p className="mt-1 text-[0.75rem] text-amber-800">Modo prueba: los cambios de CRM no se aplican.</p>}

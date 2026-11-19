@@ -26,6 +26,7 @@
 //   directo, B al buzón si no), `mail1_por_dia` al día, sin llamada previa. Ver mail1Automatico().
 
 import { tarjetaYaCreada } from "@/lib/cron-cierre";
+import { leerSesiones, proximaSesion, sesionVigente, bonita } from "@/lib/charlas-sesiones";
 import { supabaseCharlas, faseDeEstado, puntuarUrgencia } from "./charlas";
 import { procesarConIA } from "./charlas-ia";
 
@@ -401,6 +402,70 @@ export async function mail1Automatico(opciones: { presupuestoMs: number }): Prom
   return res;
 }
 
+// Tarjetas diarias «localizar el correo»: unos pocos centros al día de los territorios activos que siguen
+// sin correo (ni del responsable ni del centro), para que Alain los busque a mano. Tope en
+// `localizar_por_dia` (5 por defecto). Con el correo pegado, la ficha lo guarda y el Mail 1 automático
+// sale solo; si no lo encuentra, «Descartar» manda el centro a la próxima sesión de llamadas.
+export interface ResumenLocalizar {
+  cupo_dia: number;
+  hoy_ya: number;
+  creadas: number;
+  errores: string[];
+}
+
+export async function localizarCorreosCharlas(): Promise<ResumenLocalizar> {
+  const supabase = supabaseCharlas();
+  const { data: cfgs } = await supabase.from("charlas_config").select("clave, valor").in("clave", ["mail1_automatico_territorios", "localizar_por_dia"]);
+  const cfg = Object.fromEntries((cfgs ?? []).map((c) => [c.clave, c.valor]));
+  const territorios = (Array.isArray(cfg.mail1_automatico_territorios) ? cfg.mail1_automatico_territorios : []) as string[];
+  const cupo = Number(cfg.localizar_por_dia ?? 5);
+  const res: ResumenLocalizar = { cupo_dia: cupo, hoy_ya: 0, creadas: 0, errores: [] };
+  if (!territorios.length || !cupo) return res;
+
+  const { count } = await supabase.from("charlas_tareas").select("id", { count: "exact", head: true }).eq("tipo", "localizar_correo").gte("creado_en", inicioDiaMadrid());
+  res.hoy_ya = count ?? 0;
+  const restantes = Math.max(0, cupo - res.hoy_ya);
+  if (!restantes) return res;
+
+  const { data: centros } = await supabase
+    .from("charlas_centros")
+    .select("id, nombre, localidad, web, telefono, prioridad")
+    .in("territorio", territorios)
+    .like("estado", "0%")
+    .is("bloqueado_por", null)
+    .is("email_centro", null)
+    .is("responsable_email", null)
+    .order("prioridad", { ascending: true, nullsFirst: false })
+    .order("localidad")
+    .limit(200);
+  const hace45 = new Date(Date.now() - 45 * 86400000).toISOString();
+  const { data: previas } = await supabase.from("charlas_tareas").select("centro_id, estado, creado_en").eq("tipo", "localizar_correo");
+  const excluidos = new Set((previas ?? []).filter((t) => ["revisar", "pendiente", "aprobada"].includes(t.estado as string) || (t.creado_en as string) >= hace45).map((t) => t.centro_id as string));
+  const cola = (centros ?? []).filter((c) => !excluidos.has(c.id as string));
+
+  const sesion = bonita(proximaSesion(hoy(), await leerSesiones()));
+  for (const c of cola.slice(0, restantes)) {
+    const { error } = await supabase.from("charlas_tareas").insert({
+      centro_id: c.id,
+      tipo: "localizar_correo",
+      nivel: "C",
+      urgencia: 1,
+      urgencia_motivo: "Rellenar el correo del centro",
+      estado: "revisar",
+      idioma: "es",
+      mensaje_entrante_id: null,
+      cambios_crm: {},
+      destinatario: null,
+      nota_para_alain: `Busca el correo del centro (web: ${c.web ?? "sin web"} · tel: ${c.telefono ?? "sin teléfono"}) y pégalo en «Contacto». Con el correo, el Mail 1 sale solo. Si no lo encuentras, pulsa «Descartar»: el centro pasa a la próxima sesión de llamadas (${sesion}). También puedes poner solo el teléfono.`,
+      editado: false,
+      contexto: { programada: true, resumen: "Localizar el correo del centro", clasificacion: "localizar_correo" },
+    });
+    if (error) res.errores.push(`${c.nombre}: ${error.message}`);
+    else res.creadas++;
+  }
+  return res;
+}
+
 export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?: number }): Promise<ResumenMotor> {
   const inicio = Date.now();
   const supabase = supabaseCharlas();
@@ -440,12 +505,21 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
   });
 
   let i = 0;
+  let sesionesCfg: Awaited<ReturnType<typeof leerSesiones>> | undefined;
   for (; i < cola.length && res.creadas + res.errores.length < limite; i++) {
     if (Date.now() - inicio > opciones.presupuestoMs) break;
     const c = cola[i] as Centro;
     res.revisados++;
     let d = decidir(c);
     if (!d) continue;
+    // Llamadas en frío (fase 0-2): no salen sueltas, se acumulan para la sesión de llamadas (lib/charlas-sesiones).
+    if (d.tipo === "llamada_alain" && faseDeEstado(c.estado) <= 2) {
+      sesionesCfg ??= await leerSesiones();
+      if (!sesionVigente(hoy(), sesionesCfg)) {
+        await supabase.from("charlas_centros").update({ fecha_proxima_accion: proximaSesion(hoy(), sesionesCfg), actualizado_por: "sistema" }).eq("id", c.id);
+        continue;
+      }
+    }
     // Lo último que hay con este centro es un correo suyo sin contestar: el
     // paso programado no toca; se le pide a Alain que decida sobre ese correo.
     const ult = ultimoPorCentro.get(c.id);
@@ -562,6 +636,7 @@ export function etiqueta(tipo: string): string {
       reactivacion: "Reactivación",
       seguimiento_conversacion: "Seguimiento de conversación",
       llamada_alain: "Llamada",
+      localizar_correo: "Localizar el correo del centro",
       revisar_bloqueo: "Revisar bloqueo",
       revisar_correo: "Correo suyo sin respuesta",
     } as Record<string, string>

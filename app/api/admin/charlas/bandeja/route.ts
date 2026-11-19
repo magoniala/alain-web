@@ -6,6 +6,7 @@ import { candidatosHuerfanos } from "@/lib/charlas-emparejar";
 import { procesarMensaje } from "@/lib/charlas-proceso";
 import { fusionarCambios, fusionarExtrasLlamada } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
+import { leerSesiones, proximaSesion, bonita } from "@/lib/charlas-sesiones";
 import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, sinActualizadoPor, tareaPrevia } from "@/lib/bandeja-deshacer";
 
 // Bandeja de charlas en el panel.
@@ -151,6 +152,12 @@ export async function POST(req: Request) {
             motivo: `DESCARTADO: ${motivo}`,
           }).select("id").single();
           correccion = co?.id ?? null;
+        }
+        // «Localizar el correo» descartada = no se ha encontrado: el centro pasa a la próxima sesión de llamadas.
+        if (t.tipo === "localizar_correo") {
+          const f = proximaSesion(hoy(), await leerSesiones());
+          await supabase.from("charlas_centros").update({ proxima_accion: "Llamada de conserjería (sin correo)", fecha_proxima_accion: f, actualizado_por: "panel" }).eq("id", t.centro_id);
+          await supabase.from("charlas_interacciones").insert({ centro_id: t.centro_id, fecha: hoy(), canal: "Sistema", texto: `Correo no localizado: pasa a la sesión de llamadas del ${bonita(f)}`, orden: 600, origen: "sistema" });
         }
         await supabase
           .from("charlas_tareas")
@@ -441,6 +448,23 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
     const linea = `${hoy().slice(8, 10)}-${hoy().slice(5, 7)}: ${c.otros_formatos.trim()}`;
     cambios.otros_formatos = centro?.otros_formatos ? `${centro.otros_formatos} · ${linea}` : linea;
   }
+  // Tarjeta «localizar el correo»: con correo, queda como correo del centro (el Mail 1 automático sale solo);
+  // sin correo, el centro pasa a la próxima sesión de llamadas (con el teléfono, si Alain lo ha puesto).
+  let resumenLocalizar = "";
+  if (t.tipo === "localizar_correo") {
+    const { data: cc } = await supabase.from("charlas_centros").select("email_centro, responsable_email, telefono").eq("id", t.centro_id).single();
+    const mail = (persona?.email ?? "").trim().toLowerCase();
+    if (persona?.telefono && !cc?.telefono) cambios.telefono = persona.telefono.trim();
+    if (/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(mail)) {
+      if (!cc?.responsable_email && !cc?.email_centro) cambios.email_centro = mail;
+      resumenLocalizar = `Correo localizado: ${mail}. El Mail 1 sale solo`;
+    } else {
+      const f = proximaSesion(hoy(), await leerSesiones());
+      cambios.proxima_accion = "Llamada de conserjería (sin correo)";
+      cambios.fecha_proxima_accion = f;
+      resumenLocalizar = `Sin correo: pasa a la sesión de llamadas del ${bonita(f)}`;
+    }
+  }
   // Foto de cómo estaba la ficha, para poder deshacerlo desde el panel.
   const antes = await fotoFicha(supabase, "charlas", t.centro_id, Object.keys(cambios));
   await supabase.from("charlas_centros").update(cambios).eq("id", t.centro_id);
@@ -459,6 +483,7 @@ async function aplicarCambios(t: Tarea, envio: { dossier: boolean } | null) {
   const partes = [];
   if (envio) partes.push(envio.dossier ? `${t.tipo === "respuesta" ? "Respuesta" : t.tipo.replace(/_/g, " ")} enviada con dossier` : `${t.tipo === "respuesta" ? "Respuesta" : t.tipo.replace(/_/g, " ")} enviado`);
   else if (t.tipo === "llamada_alain") partes.push("Llamada hecha (desde el panel)");
+  else if (t.tipo === "localizar_correo") partes.push(resumenLocalizar);
   else if (t.tipo === "aparcar") partes.push("Aparcado sin respuesta");
   if (c.estado) partes.push(`→ ${c.estado}`);
   if (c.fecha_proxima_accion) partes.push(`siguiente: ${c.proxima_accion ?? "acción"} el ${c.fecha_proxima_accion}`);

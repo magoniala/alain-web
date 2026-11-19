@@ -64,7 +64,7 @@ function siguienteLaborable(): string {
 export function formCrmInicial(cambios: Record<string, unknown> | null | undefined, tipo?: string | null): FormCrm {
   const c = { ...(cambios ?? {}) } as Record<string, unknown>;
   // Tareas «de buscar»: lo que el sistema dejó en `nota` es una instrucción para Alain, no algo que apuntar.
-  if (tipo === "localizar_contacto" || tipo === "llamada_alain") c.nota = "";
+  if (tipo === "localizar_contacto" || tipo === "llamada_alain" || tipo === "localizar_correo") c.nota = "";
   // Al encontrar el email de una agencia, lo siguiente es mandarle el primer mail (por defecto, el siguiente día laborable).
   if (tipo === "localizar_contacto") {
     c.proxima_accion = "Enviar el primer mail a la agencia";
@@ -82,7 +82,7 @@ export function formCrmInicial(cambios: Record<string, unknown> | null | undefin
     telefono: p.telefono ?? "",
     // Si hay un contacto nuevo con email, por defecto pasa a ser el responsable de la ficha
     // (salvo el email general de una agencia: solo se guarda como email de la ficha).
-    responsable: tipo === "localizar_contacto" ? false : (p.responsable ?? true),
+    responsable: tipo === "localizar_contacto" || tipo === "localizar_correo" ? false : (p.responsable ?? true),
   };
 }
 
