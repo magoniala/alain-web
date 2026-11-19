@@ -108,8 +108,8 @@ function Ficha({ o, evento, onCambio, aviso }: { o: Opinion; evento: string; onC
             </p>
           </div>
         </div>
-        {dato("¿Qué es lo que más les gustó?", o.texto_peques)}
-        {dato("¿Y a ti?", o.texto_adulto)}
+        {dato("Lo que más gustó a los peques", o.texto_peques)}
+        {dato("Lo que más gustó al adulto", o.texto_adulto)}
         {dato("En una palabra", o.palabra)}
         {o.mejora_privada && (
           <div className="mb-3 rounded-lg border-l-[3px] border-[#D4860A] bg-[#FFF7E6] px-3 py-2">

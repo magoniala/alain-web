@@ -32,6 +32,8 @@ export const NOTA_CORTO: Record<Nota, string> = { 4: "Les encantó", 3: "Muy bie
 
 export const PERMISOS = ["sin_nombre", "con_nombre", "no"] as const;
 export type Permiso = (typeof PERMISOS)[number];
+export const ROLES = ["familia", "adulto", "ambos"] as const;
+export type Rol = (typeof ROLES)[number];
 export const PERMISO_CORTO: Record<Permiso, string> = { sin_nombre: "Publicable sin nombre", con_nombre: "Publicable con nombre", no: "No publicable" };
 
 export const ESTADOS = ["nuevo", "revisado", "aprobado", "publicado", "archivado"] as const;
@@ -105,9 +107,13 @@ type Textos = {
   intro: string;
   nota: string;
   notas: Record<Nota, string>;
+  rol: string;
+  roles: Record<Rol, string>;
   peques: string;
   adulto: string;
   adultoAyuda: string;
+  adultoSolo: string;
+  adultoSoloAyuda: string;
   palabra: string;
   mejora: string;
   mejoraPrivada: string;
@@ -137,11 +143,19 @@ export const OPINION_TEXTOS: Record<Idioma, Textos> = {
   es: {
     kicker: "Tu opinión",
     intro: "Un minuto. Puedes dejarlo cuando quieras: lo que hayas contestado se guarda.",
-    nota: "¿Qué tal lo pasaron los peques?",
-    notas: { 4: "¡Les encantó!", 3: "Muy bien", 2: "Normal", 1: "No mucho" },
-    peques: "¿Qué es lo que más les gustó?",
+    nota: "¿Qué tal fue?",
+    notas: { 4: "¡Nos encantó!", 3: "Muy bien", 2: "Normal", 1: "No mucho" },
+    rol: "¿Cómo participaste?",
+    roles: {
+      familia: "Vine con mis hijos o hijas, que participaron",
+      adulto: "Vine por mi cuenta, para mí",
+      ambos: "Participamos mis hijos o hijas y yo",
+    },
+    peques: "¿Qué es lo que más les gustó a los peques?",
     adulto: "¿Y a ti?",
     adultoAyuda: "Lo que más te gustó a ti, o lo que te llamó la atención.",
+    adultoSolo: "¿Qué es lo que más te gustó?",
+    adultoSoloAyuda: "O lo que más te llamó la atención.",
     palabra: "Define el evento en una palabra",
     mejora: "¿Qué mejorarías?",
     mejoraPrivada: "Esto solo lo leo yo, no se publica.",
@@ -169,11 +183,19 @@ export const OPINION_TEXTOS: Record<Idioma, Textos> = {
   eu: {
     kicker: "Zure iritzia",
     intro: "Minutu bat. Nahi duzunean utz dezakezu: erantzundakoa gordeta geratzen da.",
-    nota: "Zer moduz pasatu zuten txikiek?",
-    notas: { 4: "Izugarri gustatu zitzaien!", 3: "Oso ondo", 2: "Normal", 1: "Ez askorik" },
-    peques: "Zer gustatu zitzaien gehien?",
+    nota: "Zer moduz joan zen?",
+    notas: { 4: "Izugarri gustatu zitzaigun!", 3: "Oso ondo", 2: "Normal", 1: "Ez askorik" },
+    rol: "Nola hartu zenuen parte?",
+    roles: {
+      familia: "Nire seme-alabekin etorri nintzen, haiek hartu zuten parte",
+      adulto: "Neure kabuz etorri nintzen, niretzat",
+      ambos: "Ni eta nire seme-alabek hartu genuen parte",
+    },
+    peques: "Zer gustatu zitzaien gehien txikiei?",
     adulto: "Eta zuri?",
     adultoAyuda: "Zuri gehien gustatu zitzaizuna, edo deigarria egin zitzaizuna.",
+    adultoSolo: "Zer gustatu zitzaizun gehien?",
+    adultoSoloAyuda: "Edo zer egin zitzaizun deigarriena.",
     palabra: "Definitu ekitaldia hitz bakarrean",
     mejora: "Zer hobetuko zenuke?",
     mejoraPrivada: "Hau nik bakarrik irakurtzen dut, ez da argitaratzen.",

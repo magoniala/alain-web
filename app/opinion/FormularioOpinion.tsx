@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { EMAIL_RE, LIMITES, NOTAS, NOTA_EMOJI, OPINION_TEXTOS, PERMISOS, type Idioma, type Nota, type Origen, type Permiso } from "@/lib/opinion";
+import { EMAIL_RE, LIMITES, NOTAS, NOTA_EMOJI, OPINION_TEXTOS, PERMISOS, ROLES, type Idioma, type Nota, type Origen, type Permiso, type Rol } from "@/lib/opinion";
 
 // Formulario de opinión de familias: una pregunta por pantalla, todas
 // opcionales menos la primera (un toque), y cada respuesta se guarda en el
 // momento. Misma estética que /quetal.
 
 const CIAN = "#2ED3E6";
-const TOTAL_PASOS = 6;
+// Los pasos cambian según quién participó: quien vino solo (adulto) no ve la
+// pregunta sobre los peques. Cada pantalla se identifica por su clave.
+type Paso = "nota" | "rol" | "peques" | "adulto" | "palabra" | "mejora" | "permiso";
+function pasosDe(rol: Rol | ""): Paso[] {
+  return ["nota", "rol", ...(rol === "adulto" ? [] : (["peques"] as Paso[])), "adulto", "palabra", "mejora", "permiso"];
+}
 
 const inputStyle: React.CSSProperties = {
   background: "none",
@@ -43,6 +48,7 @@ const lineaStyle: React.CSSProperties = { borderBottom: "1px solid rgba(242,242,
 
 type Datos = {
   nota: Nota | null;
+  rol: Rol | "";
   textoPeques: string;
   textoAdulto: string;
   palabra: string;
@@ -97,13 +103,15 @@ export default function FormularioOpinion({
   const [fin, setFin] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const [d, setD] = useState<Datos>({ nota: null, textoPeques: "", textoAdulto: "", palabra: "", mejora: "", permiso: "", nombre: "", email: "", web: "" });
+  const [d, setD] = useState<Datos>({ nota: null, rol: "", textoPeques: "", textoAdulto: "", palabra: "", mejora: "", permiso: "", nombre: "", email: "", web: "" });
   const abiertoEn = useRef(0);
   const fila = useRef<{ id: string; clave: string } | null>(null);
   const cola = useRef<Promise<boolean>>(Promise.resolve(true));
   const tarjeta = useRef<HTMLDivElement>(null);
 
   const T = OPINION_TEXTOS[idioma];
+  const pasos = pasosDe(d.rol);
+  const TOTAL_PASOS = pasos.length;
   const set = <K extends keyof Datos>(k: K, v: Datos[K]) => {
     setD((p) => ({ ...p, [k]: v }));
     setError("");
@@ -168,10 +176,18 @@ export default function FormularioOpinion({
     setPaso(2);
   }
 
+  function elegirRol(r: Rol) {
+    // El rol solo decide qué preguntas salen; no se guarda.
+    const nuevo = { ...d, rol: r };
+    setD(nuevo);
+    setError("");
+    setPaso((p) => p + 1);
+  }
+
   function avanzar() {
     setError("");
     guardar(d);
-    setPaso((p) => Math.min(TOTAL_PASOS, p + 1));
+    setPaso((p) => Math.min(pasos.length, p + 1));
   }
 
   async function terminar() {
@@ -198,8 +214,8 @@ export default function FormularioOpinion({
   );
 
   function renderPaso() {
-    switch (paso) {
-      case 1:
+    switch (pasos[paso - 1]) {
+      case "nota":
         return (
           <>
             <p style={preguntaStyle}>{T.nota}</p>
@@ -230,7 +246,18 @@ export default function FormularioOpinion({
             <p style={{ ...ayudaStyle, marginTop: "1.4rem" }}>{T.intro}</p>
           </>
         );
-      case 2:
+      case "rol":
+        return (
+          <>
+            <p style={preguntaStyle}>{T.rol}</p>
+            {ROLES.map((r) => (
+              <Opcion key={r} elegida={d.rol === r} onClick={() => elegirRol(r)}>
+                {T.roles[r]}
+              </Opcion>
+            ))}
+          </>
+        );
+      case "peques":
         return (
           <>
             <label htmlFor="o-peques" style={preguntaStyle}>
@@ -239,17 +266,17 @@ export default function FormularioOpinion({
             {area("textoPeques", "o-peques")}
           </>
         );
-      case 3:
+      case "adulto":
         return (
           <>
             <label htmlFor="o-adulto" style={preguntaStyle}>
-              {T.adulto}
+              {d.rol === "adulto" ? T.adultoSolo : T.adulto}
             </label>
             {area("textoAdulto", "o-adulto")}
-            <p style={ayudaStyle}>{T.adultoAyuda}</p>
+            <p style={ayudaStyle}>{d.rol === "adulto" ? T.adultoSoloAyuda : T.adultoAyuda}</p>
           </>
         );
-      case 4:
+      case "palabra":
         return (
           <>
             <label htmlFor="o-palabra" style={preguntaStyle}>
@@ -270,7 +297,7 @@ export default function FormularioOpinion({
             </div>
           </>
         );
-      case 5:
+      case "mejora":
         return (
           <>
             <label htmlFor="o-mejora" style={{ ...preguntaStyle, marginBottom: "0.6rem" }}>
@@ -280,7 +307,7 @@ export default function FormularioOpinion({
             {area("mejora", "o-mejora")}
           </>
         );
-      case 6:
+      case "permiso":
         return (
           <>
             <p style={preguntaStyle}>{T.permiso}</p>
