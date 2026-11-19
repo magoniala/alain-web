@@ -12,6 +12,7 @@ import { notificarReservasHojaRuta } from "@/lib/hoja-ruta-bandeja";
 import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 import { aprenderMagia, tocaAprenderMagia } from "@/lib/crm-aprendizaje";
 import { indexarHistorico, leerBuzonesExtra } from "@/lib/correo-general";
+import { tomarCierre, soltarCierre } from "@/lib/cron-cierre";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -69,7 +70,7 @@ async function enVentanaIA(): Promise<boolean> {
   });
 }
 
-async function ejecutar(req: Request) {
+async function ejecutarSinCierre(req: Request) {
   const panel = desdePanel(req);
   if (!panel && !desdeCron(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
 
@@ -185,6 +186,19 @@ async function ejecutar(req: Request) {
   const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
 
   return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+}
+
+// Solo una pasada a la vez: si otra está trabajando (cron solapado, o "Leer buzón ahora" mientras
+// corre el cron), esta se salta. Ver lib/cron-cierre.ts.
+async function ejecutar(req: Request) {
+  if (!desdePanel(req) && !desdeCron(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  const cierre = await tomarCierre(100);
+  if (!cierre) return NextResponse.json({ ok: true, ocupado: true, aviso: "Otra pasada está trabajando; esta se salta." });
+  try {
+    return await ejecutarSinCierre(req);
+  } finally {
+    await soltarCierre(cierre).catch(() => null);
+  }
 }
 
 // cron-job.org espera la respuesta como mucho 30 s y, si falla muchas veces

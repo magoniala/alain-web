@@ -25,6 +25,7 @@
 //   Fase 3 · territorios en `mail1_automatico_territorios` (config): estado 0 → mail_1 (A si hay correo
 //   directo, B al buzón si no), `mail1_por_dia` al día, sin llamada previa. Ver mail1Automatico().
 
+import { tarjetaYaCreada } from "@/lib/cron-cierre";
 import { supabaseCharlas, faseDeEstado, puntuarUrgencia } from "./charlas";
 import { procesarConIA } from "./charlas-ia";
 
@@ -475,6 +476,9 @@ async function crearTarea(c: Centro, d: Decision) {
   const alBuzon = d.tipo === "mail_b" || (d.tipo === "reactivacion" && !c.responsable_email);
   const destinatario = ((alBuzon ? c.email_centro : c.responsable_email ?? c.email_centro) ?? "").split(/[\/;,\s]+/).find((e) => e.includes("@")) ?? null;
 
+  const tiposDup = [d.tipo, "llamada_alain"];
+  if (await tarjetaYaCreada("charlas_tareas", "centro_id", c.id, tiposDup)) return; // ya creada (pasada paralela)
+
   const nivelFinal = c.nivel_autonomia === "C" ? "C" : d.nivel;
   const { urgencia, motivo: urgenciaMotivo } = puntuarUrgencia({ tipo: d.tipo, nivel: nivelFinal, estadoCentro: c.estado });
   const base = {
@@ -522,6 +526,7 @@ async function crearTarea(c: Centro, d: Decision) {
     programada: { tipo: d.tipo, instrucciones: d.instrucciones, destinatario },
   });
 
+  if (await tarjetaYaCreada("charlas_tareas", "centro_id", c.id, tiposDup)) return; // la IA tarda: otra pasada pudo crearla mientras tanto
   await supabase.from("charlas_tareas").insert({
     ...base,
     contexto: {

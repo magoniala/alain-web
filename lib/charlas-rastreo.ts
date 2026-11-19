@@ -269,6 +269,20 @@ export async function rastrearContactos(opciones: { presupuestoMs: number; limit
         origen: "sistema",
       });
       res.propuestos++;
+    } else if (faseDeEstado(c.estado) <= 2 && !c.email_centro && !c.responsable_email) {
+      // 19-nov-2026: si lo mejor hallado es un buzón general o de secretaría (peso < 4) y la ficha no tiene
+      // ningún correo, se pone como correo del centro. Sin esto, 36 de los 90 centros de Cantabria quedaron
+      // con el correo solo en el rastreo y el Mail 1 automático se quedó sin a quién escribir.
+      await supabase.from("charlas_centros").update({ email_centro: mejor.email, actualizado_por: "sistema" }).eq("id", c.id);
+      await supabase.from("charlas_interacciones").insert({
+        centro_id: c.id,
+        fecha: new Date().toISOString().slice(0, 10),
+        canal: "Sistema",
+        texto: `Rastreo web (${base}): buzón general encontrado, ${mejor.email}. Puesto como correo del centro (el Mail 1 va al buzón).`,
+        orden: 700,
+        origen: "sistema",
+      });
+      res.propuestos++;
     }
   }
   return res;

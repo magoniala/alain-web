@@ -18,6 +18,7 @@
 //   4 Ha respondido → propuesta (Alain, con borrador) · 5/6 → seguimiento de propuesta (+3 laborables) / cierre suave · "Esperar…" → aviso
 //   7 Ganado con fecha → recordatorio para Alain (cobro, confirmación, post-evento)
 
+import { tarjetaYaCreada } from "@/lib/cron-cierre";
 import { supabaseCharlas } from "./charlas";
 import { procesarMagiaConIA, type ResultadoMagia } from "./crm-ia";
 import { cerrarTareasObsoletasMagia } from "./crm-tareas-obsoletas";
@@ -431,6 +432,7 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
   const { canal, destinatario } = canalDe(f);
   const nivel: "A" | "B" | "C" = f.nivel_autonomia === "C" ? "C" : d.nivel;
   const idioma: "es" | "eu" = (f.idioma ?? "").toLowerCase() === "eu" ? "eu" : "es";
+  if (await tarjetaYaCreada("crm_tareas", "ficha_id", f.id, [d.tipo])) return; // ya creada (pasada paralela)
   const { urgencia, motivo } = urgenciaMagia(d.tipo);
   const base = {
     ficha_id: f.id,
@@ -474,6 +476,7 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
     hilo: (hilo ?? []).reverse(),
     programada: { tipo: d.tipo, canal: canal === "whatsapp" ? "whatsapp" : "mail", instrucciones: d.instrucciones, destinatario },
   });
+  if (await tarjetaYaCreada("crm_tareas", "ficha_id", f.id, [d.tipo])) return; // la IA tarda: otra pasada pudo crearla mientras tanto
   await sb.from("crm_tareas").insert({
     ...base,
     contexto: {
