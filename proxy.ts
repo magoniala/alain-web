@@ -20,6 +20,11 @@ const NO_REDIRECT_PATHS = [
   "/arreta",
   // Una sola página con selector ES/EU dentro, sin mirror en /es.
   "/quetal",
+  // Opinión de familias tras un evento: igual, una página con selector ES/EU
+  // (el idioma llega en ?l= desde el mail). /opinion/<evento> y la URL fija
+  // de Mirariak.
+  "/opinion",
+  "/opinion-mirariak2026",
   // Tiene mirror en /es, pero el QR de la tarjeta del show familiar abre
   // siempre en euskera, con el botón ES a la vista: las familias son
   // euskaldunes con el móvil en castellano, y la redirección por idioma del
