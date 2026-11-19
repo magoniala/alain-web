@@ -374,7 +374,10 @@ export async function tareasPorFechaMagia(opciones: { presupuestoMs: number }): 
   if (cfg.magia_activo === false) return { ...res, activo: false };
   const tope = Number(cfg.magia_por_dia ?? 10);
 
-  const { count: hoyYa } = await sb.from("crm_tareas").select("id", { count: "exact", head: true }).eq("carril", "magia").gte("creado_en", `${hoy()}T00:00:00+01:00`);
+  // El tope cuenta solo las tarjetas que crea este motor (contexto.programada) y que siguen vivas:
+  // las de respuesta/actualización de correo entrante y las descartadas no deben comerse el cupo
+  // (19-nov: Evenire se quedó sin tarjeta dos días porque el cupo de 10 se agotó con ellas).
+  const { count: hoyYa } = await sb.from("crm_tareas").select("id", { count: "exact", head: true }).eq("carril", "magia").eq("contexto->>programada", "true").neq("estado", "descartada").gte("creado_en", `${hoy()}T00:00:00+01:00`);
   const cupo = Math.max(0, tope - (hoyYa ?? 0));
   if (!cupo) return res;
 
