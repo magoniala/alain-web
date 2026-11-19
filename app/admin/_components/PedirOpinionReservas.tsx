@@ -13,6 +13,7 @@ type Dest = { email: string; nombre: string; idioma: "es" | "eu"; formularios: n
 type Datos = {
   evento: { clave: string; nombre: string; ruta: string };
   envioRealAbierto: boolean;
+  enProduccion: boolean;
   faltaSql: boolean;
   destinatarios: Dest[];
   excluidos: { email: string; nombre: string; motivo: string }[];
@@ -271,8 +272,10 @@ export default function PedirOpinionReservas({ evento }: { evento: string }) {
               </p>
             )}
             {!d.envioRealAbierto ? (
+              <p className="mt-1 text-[0.82rem] text-gray-600">Cerrado para este evento (se abre en lib/opinion.ts).</p>
+            ) : !d.enProduccion ? (
               <p className="mt-1 text-[0.82rem] text-gray-600">
-                Cerrado. Antes hay que decidir lo de privacidad (el formulario de reserva no avisaba de un correo posterior): está explicado en la nota del encargo del 19-nov. Cuando des el OK, se abre con un cambio de una línea.
+                Esto es una versión de prueba: desde aquí solo funcionan la vista previa y la prueba. El envío real a las {cuenta.faltan} personas se lanza desde el panel de producción (alainzulaika.com/admin).
               </p>
             ) : cuenta.faltan === 0 ? (
               <p className="mt-1 text-[0.82rem] text-gray-600">No queda nadie por recibirlo.</p>

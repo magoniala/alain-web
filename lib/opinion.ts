@@ -52,9 +52,9 @@ export type EventoOpinion = {
   // De dónde salen las reservas para «Pedir opinión a las reservas de este
   // evento». Sin esto, el evento solo tiene formulario.
   reservas?: "mirariak2026";
-  // El envío real a las reservas está cerrado hasta que Alain lo abra (primero
-  // hay que decidir lo de privacidad; ver la nota del encargo del 19-11-2026).
-  // La vista previa y el envío de prueba a Alain funcionan siempre.
+  // Interruptor del envío real a las reservas. La vista previa y el envío de
+  // prueba a Alain funcionan siempre. Aunque esté abierto, el envío real solo
+  // sale desde producción y con la confirmación escrita del panel.
   envioRealAbierto: boolean;
   mail: Record<Idioma, { asunto: string; gracias: string; motivo: string }>;
 };
@@ -65,7 +65,9 @@ export const EVENTOS: Record<string, EventoOpinion> = {
     nombre: "Mirariak 2026",
     ruta: "/opinion-mirariak2026",
     reservas: "mirariak2026",
-    envioRealAbierto: false,
+    // Abierto el 19-11-2026: Alain eligió enviar a todas las reservas (interés
+    // legítimo), con los párrafos nuevos de /privacidad publicados a la vez.
+    envioRealAbierto: true,
     mail: {
       es: {
         asunto: "Mirariak 2026: ¿qué tal lo pasasteis?",

@@ -11,8 +11,8 @@ import { destinatariosDeReservas, type Destinatario } from "@/lib/opinion-reserv
 // GET  ?evento=…  → a quién le llegaría (sin duplicados), a quién no y por
 //                   qué, la vista previa del mail en ES y EU y lo ya enviado.
 // POST prueba     → manda las dos versiones SOLO a Alain. No apunta nada.
-// POST enviar     → envío real, un correo por persona. Solo si el evento
-//                   tiene el envío abierto (lib/opinion.ts) y llega la
+// POST enviar     → envío real, un correo por persona. Solo desde producción,
+//                   si el evento tiene el envío abierto (lib/opinion.ts) y llega la
 //                   confirmación escrita «ENVIAR <n>» con el número exacto de
 //                   destinatarios. Va por tandas; lo ya enviado no se repite.
 //
@@ -23,6 +23,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const sb = () => createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+// El envío real solo sale desde producción: en un preview o en local los
+// enlaces del correo llevarían a una web que aún no tiene el formulario, y
+// /privacidad todavía no estaría publicada.
+const EN_PRODUCCION = process.env.VERCEL_ENV === "production";
 
 // El envío de prueba va siempre aquí, lo pida quien lo pida.
 const ALAIN = "contacto@alainzulaika.com";
@@ -75,6 +80,7 @@ export async function GET(req: Request) {
     {
       evento: { clave: ev.clave, nombre: ev.nombre, ruta: ev.ruta },
       envioRealAbierto: ev.envioRealAbierto,
+      enProduccion: EN_PRODUCCION,
       faltaSql: c.faltaSql,
       destinatarios: c.destinatarios.map((d) => {
         const e = c.envios.get(d.email);
@@ -118,6 +124,10 @@ export async function POST(req: Request) {
   if (b.accion !== "enviar") return NextResponse.json({ error: "Acción no válida." }, { status: 400 });
   if (!ev.envioRealAbierto) {
     return NextResponse.json({ error: "El envío real de este evento está cerrado (lib/opinion.ts → envioRealAbierto). Antes hay que decidir lo de privacidad." }, { status: 403 });
+  }
+
+  if (!EN_PRODUCCION) {
+    return NextResponse.json({ error: "El envío real solo sale desde producción (alainzulaika.com/admin). Aquí funcionan la vista previa y la prueba." }, { status: 403 });
   }
 
   const c = await cargar(ev);
