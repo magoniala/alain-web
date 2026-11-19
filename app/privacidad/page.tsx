@@ -28,7 +28,7 @@ export default function PrivacidadPage() {
           </p>
 
           <p className="mb-14 text-[0.85rem] text-[#F2F2F0]/38">
-            Última actualización: 26 de octubre de 2026
+            Última actualización: 19 de noviembre de 2026
           </p>
 
           <p className="-mt-10 mb-14 text-[0.9rem] text-[#F2F2F0]/55">
@@ -76,7 +76,13 @@ export default function PrivacidadPage() {
                   Si respondes a nuestros correos, recogemos los datos que decidas incluir en tu respuesta.
                 </p>
                 <p>
-                  No se recogen datos de menores de 14 años.
+                  Al reservar plaza en un evento con inscripción (por ejemplo, Mirariak) recogemos el nombre y el correo electrónico de la persona adulta que hace la reserva, y el nombre y, en los talleres, la edad de quienes van a participar, que nos facilita esa persona. Usamos estos datos para gestionar la reserva y el aforo, enviarte la confirmación y los avisos del evento y, después, un único correo para pedirte tu opinión.
+                </p>
+                <p>
+                  A través del formulario de opinión para asistentes a un evento recogemos tu valoración del evento y, solo si decides darlos, tu nombre y tu correo electrónico.
+                </p>
+                <p>
+                  No recogemos datos directamente de menores de 14 años: en las reservas de eventos, el nombre y la edad de los menores los facilita su madre, padre o tutor.
                 </p>
               </div>
             </div>
@@ -129,6 +135,9 @@ export default function PrivacidadPage() {
                 <p>
                   La publicación de testimonios se basa en tu consentimiento, y el primer contacto con las personas que nos recomiendes, en nuestro interés legítimo (art. 6.1.f). Ver el apartado 10.
                 </p>
+                <p>
+                  El correo en el que pedimos tu opinión después de un evento se basa en nuestro interés legítimo en conocer la satisfacción de quienes asistieron (art. 6.1.f RGPD): es un único envío, no comercial, y puedes oponerte respondiendo a ese correo.
+                </p>
               </div>
             </div>
 
@@ -142,6 +151,9 @@ export default function PrivacidadPage() {
                 </p>
                 <p>
                   Las valoraciones se conservan un máximo de 3 años desde el evento. Los testimonios publicados permanecen hasta que retires tu consentimiento. Los datos de las personas recomendadas se eliminan si en 3 meses no hay respuesta o no hay interés.
+                </p>
+                <p>
+                  Los datos de las reservas de un evento se eliminan a los 12 meses de su celebración. Las opiniones de asistentes se conservan un máximo de 3 años desde el evento.
                 </p>
               </div>
             </div>
@@ -211,6 +223,9 @@ export default function PrivacidadPage() {
                   La base legal es tu consentimiento (art. 6.1.a RGPD). Puedes retirarlo cuando quieras escribiendo a <span className="text-[#F2F2F0]/85">info@alainzulaika.com</span>, y retiraremos el testimonio de la web y de nuestros perfiles en un plazo máximo de 30 días. Lo que ya hayan compartido terceros puede quedar fuera de nuestro alcance.
                 </p>
                 <p>
+                  <span className="text-[#F2F2F0]/85">Opiniones de asistentes.</span> Solo publicamos tu opinión si lo has autorizado en el formulario, y sin tu nombre salvo que pidas que aparezca. La respuesta a «¿Qué mejorarías?» es solo para uso interno y nunca se publica. Podemos compartir las opiniones, de forma anónima, con la entidad que organizó el evento.
+                </p>
+                <p>
                   <span className="text-[#F2F2F0]/85">Personas recomendadas.</span> Si nos facilitas los datos de otra persona, declaras que lo haces con su conocimiento o que tienes motivos razonables para pensar que no se opondría. Usamos esos datos una sola vez, para presentarnos profesionalmente y ofrecerle nuestros servicios, sobre la base de nuestro interés legítimo (art. 6.1.f RGPD). Solo te mencionaremos si nos lo has autorizado. En ese primer contacto le diremos de dónde hemos obtenido sus datos y cómo ejercer sus derechos. Si no responde o no le interesa, eliminamos sus datos y no volvemos a contactarle.
                 </p>
               </div>
@@ -243,6 +258,7 @@ export default function PrivacidadPage() {
                 <p><span className="text-[#F2F2F0]/85">Zer datu biltzen ditugu.</span> Webguneko formularioetan ematen dizkiguzunak (izena, emaila, telefonoa eta ekitaldiari edo zure egoerari buruz kontatzen duzuna), Meta-ren formularioetakoak eta gure agendako erreserbetakoak. Entrenatzaile zerbitzuan osasun-datuak ere tratatu daitezke, beti zure baimen esplizituarekin.</p>
                 <p><span className="text-[#F2F2F0]/85">Zertarako.</span> Zure kontsultari erantzuteko eta proposamenak bidaltzeko; eskatu dituzun gidak eta, baimena eman baduzu, newsletterra bidaltzeko; hitzorduak kudeatzeko; eta kontratatutako zerbitzuak kobratzeko.</p>
                 <p><span className="text-[#F2F2F0]/85">Balorazioak eta testigantzak.</span> /quetal formularioko erantzunak zerbitzua hobetzeko erabiltzen ditugu. Zure balorazioa argitaratzeko baimena eman baduzu bakarrik argitaratzen dugu, eta zuk aukeratutako moduan: izen, kargu eta erakundearekin, erakundearekin bakarrik edo anonimoki. Hobetzeko proposamena ez da inoiz argitaratzen. Baimena edozein unetan ken dezakezu, eta gehienez 30 egunean kenduko dugu testigantza.</p>
+                <p><span className="text-[#F2F2F0]/85">Ekitaldietako erreserbak eta iritziak.</span> Ekitaldi baterako erreserba egitean, erreserba egiten duenaren izena eta emaila eta parte-hartzaileen izena (eta tailerretan adina) biltzen ditugu, erreserba kudeatzeko eta, ekitaldiaren ondoren, zure iritzia eskatzeko mezu bakar bat bidaltzeko. Bertaratuen iritziak zure baimenarekin bakarrik argitaratzen dira, eta izenik gabe, zuk kontrakoa eskatu ezean.</p>
                 <p><span className="text-[#F2F2F0]/85">Gomendatutako pertsonak.</span> Beste pertsona baten datuak ematen badizkiguzu, behin bakarrik erabiliko ditugu harengana aurkezteko. Datuak nondik atera ditugun esango diogu, eta interesik ez badu, ezabatu egingo ditugu.</p>
                 <p><span className="text-[#F2F2F0]/85">Oinarri juridikoa.</span> Zure baimena; hitzordu edo zerbitzu bat kontratatzen duzunean, kontratua betetzea; fakturazioari dagokionez, legezko betebeharrak; eta gomendatutako pertsonekin, gure interes legitimoa.</p>
                 <p><span className="text-[#F2F2F0]/85">Hartzaileak.</span> Ez diegu inori lagatzen, legeak behartzen gaituenean izan ezik. Zerbitzu-hornitzaile hauek ditugu: Vercel, Mailjet, Supabase, Meta, Stripe eta Google. Horietako batzuk Europako Esparru Ekonomikotik kanpo daude, eta datuen transferentzia Europako Batzordearen kontratu-klausula tipoen babesean egiten da.</p>
