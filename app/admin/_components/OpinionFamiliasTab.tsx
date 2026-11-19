@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ESTADOS, ESTADO_CORTO, NOTAS, NOTA_CORTO, NOTA_EMOJI, ORIGENES, ORIGEN_CORTO, PERMISO_CORTO, SITIO, type Estado, type Nota, type Origen, type Permiso } from "@/lib/opinion";
 import { copiarTexto } from "./copiarTexto";
+import { confirmar } from "./confirmar";
+import { abrirInformeOpiniones, htmlInformeOpiniones } from "./opiniones/informe";
 
 // /admin → Opiniones familias: lo que dicen las familias y los espectadores
 // después de un evento (/opinion-mirariak2026 y /opinion/<evento>). No es
@@ -62,7 +64,7 @@ function resumenOrganizador(lista: Opinion[], evento: string): string {
   return lineas.join("\n");
 }
 
-function Ficha({ o, evento, onCambio, aviso }: { o: Opinion; evento: string; onCambio: (o: Opinion) => void; aviso: (m: string) => void }) {
+function Ficha({ o, evento, onCambio, onBorrada, aviso }: { o: Opinion; evento: string; onCambio: (o: Opinion) => void; onBorrada: (id: string) => void; aviso: (m: string) => void }) {
   const [editado, setEditado] = useState(o.texto_editado ?? "");
   const [notas, setNotas] = useState(o.notas_internas ?? "");
   const [guardando, setGuardando] = useState(false);
@@ -81,6 +83,22 @@ function Ficha({ o, evento, onCambio, aviso }: { o: Opinion; evento: string; onC
       aviso("Guardado");
     } catch (e) {
       aviso(`No se ha guardado: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function eliminar() {
+    if (!(await confirmar("¿Eliminar esta respuesta para siempre? Es para las de prueba: no se puede deshacer. Para apartar una real, usa «Archivado».", { aceptar: "Eliminar", peligro: true }))) return;
+    setGuardando(true);
+    try {
+      const res = await fetch(`/api/admin/opinion?id=${o.id}`, { method: "DELETE", headers: { "x-admin-password": pw() } });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `Error ${res.status}`);
+      onBorrada(o.id);
+      aviso("Eliminada");
+    } catch (e) {
+      aviso(`No se ha eliminado: ${e instanceof Error ? e.message : e}`);
     } finally {
       setGuardando(false);
     }
@@ -156,6 +174,9 @@ function Ficha({ o, evento, onCambio, aviso }: { o: Opinion; evento: string; onC
           <button onClick={() => guardar({ destacado: !o.destacado })} className={boton}>
             {o.destacado ? "⭐ Destacada" : "☆ Destacar"}
           </button>
+          <button onClick={eliminar} disabled={guardando} className={`${boton} ml-auto border-red-200 text-red-700 hover:border-red-500`} title="Para respuestas de prueba. Una real, mejor «Archivado»">
+            Eliminar
+          </button>
         </div>
         <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} placeholder="Notas internas" className="mt-3 w-full border border-gray-300 px-3 py-2 text-[0.9rem] outline-none" />
         <button onClick={() => guardar({ notas_internas: notas })} disabled={guardando} className={`${boton} mt-2`}>
@@ -214,6 +235,27 @@ export default function OpinionFamiliasTab() {
   const actual = filtrados.find((o) => o.id === elegido) ?? null;
   const eventoResumen = fEvento || (eventos.length === 1 ? eventos[0].clave : "");
 
+  // Informe visual para quien organizó el evento (Guardar como PDF). Si el evento tiene reservas, se dice a cuántas llegó el mail.
+  async function informePdf() {
+    const nombre = eventoResumen ? nombreEvento(eventoResumen) : "Eventos";
+    let reservas: number | null = null;
+    if (eventoResumen) {
+      try {
+        const r = await fetch(`/api/admin/opinion/reservas?evento=${eventoResumen}`, { headers: { "x-admin-password": pw() } });
+        if (r.ok) {
+          const j = (await r.json()) as { destinatarios?: { envio: { estado: string } | null }[] };
+          const n = (j.destinatarios ?? []).filter((d) => d.envio?.estado === "aceptado").length;
+          reservas = n || null;
+        }
+      } catch {
+        reservas = null;
+      }
+    }
+    const { html, titulo } = htmlInformeOpiniones(filtrados, nombre, { reservas });
+    const como = abrirInformeOpiniones(html, titulo);
+    aviso(como === "abierto" ? "Informe abierto: elige «Guardar como PDF»" : "El navegador bloqueó la ventana: informe descargado (ábrelo e imprímelo como PDF)");
+  }
+
   return (
     <div>
       <p className="mb-4 max-w-3xl text-[0.85rem] text-gray-500">
@@ -266,6 +308,14 @@ export default function OpinionFamiliasTab() {
           title="Notas, palabras y frases de lo que ves en la lista, sin nombres ni correos y sin la «mejora» privada"
         >
           Copiar resumen anónimo para el organizador
+        </button>
+        <button
+          onClick={informePdf}
+          disabled={!filtrados.length}
+          className={`${select} border-[#1a1a1a] bg-[#1a1a1a] text-white disabled:opacity-40`}
+          title="Informe visual en PDF de lo que ves en la lista: nota media, reparto, palabras y frases. Sin nombres, sin correos y sin la «mejora» privada"
+        >
+          Informe PDF para el organizador
         </button>
       </div>
 
@@ -326,7 +376,7 @@ export default function OpinionFamiliasTab() {
                 <button onClick={() => setElegido(null)} className="mb-3 text-[0.82rem] text-gray-500 lg:hidden">
                   ← Volver a la lista
                 </button>
-                <Ficha key={actual.id} o={actual} evento={nombreEvento(actual.evento)} aviso={aviso} onCambio={(n) => setLista((l) => (l ?? []).map((x) => (x.id === n.id ? n : x)))} />
+                <Ficha key={actual.id} o={actual} evento={nombreEvento(actual.evento)} aviso={aviso} onCambio={(n) => setLista((l) => (l ?? []).map((x) => (x.id === n.id ? n : x)))} onBorrada={(id) => { setLista((l) => (l ?? []).filter((x) => x.id !== id)); setElegido(null); }} />
               </>
             ) : (
               <p className="hidden text-sm text-gray-400 lg:block">Elige una opinión de la lista.</p>

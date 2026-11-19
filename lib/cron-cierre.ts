@@ -34,15 +34,19 @@ export async function soltarCierre(token: string): Promise<void> {
 }
 
 /** ¿Ya existe una tarjeta de este tipo para esta ficha/centro en las últimas 12 h (no descartada)? */
-export async function tarjetaYaCreada(tabla: "charlas_tareas" | "crm_tareas", campoId: "centro_id" | "ficha_id", id: string, tipos: string[]): Promise<boolean> {
+// `destinatario`: si se pasa, solo cuenta como duplicada una tarjeta al MISMO destinatario. Así, al corregir
+// el email de una ficha (19-nov, Evenire: el primer mail salió a un correo que no era), el panel puede sacar
+// el mismo mail a la dirección buena sin esperar 12 horas.
+export async function tarjetaYaCreada(tabla: "charlas_tareas" | "crm_tareas", campoId: "centro_id" | "ficha_id", id: string, tipos: string[], destinatario?: string | null): Promise<boolean> {
   const desde = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
-  const { data } = await supabaseCharlas()
+  let q = supabaseCharlas()
     .from(tabla)
     .select("id")
     .eq(campoId, id)
     .in("tipo", tipos)
     .in("estado", ["revisar", "pendiente", "aprobada", "enviada", "hecha"])
-    .gte("creado_en", desde)
-    .limit(1);
+    .gte("creado_en", desde);
+  if (destinatario) q = q.eq("destinatario", destinatario);
+  const { data } = await q.limit(1);
   return !!(data && data.length);
 }

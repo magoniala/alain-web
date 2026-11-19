@@ -44,3 +44,14 @@ export async function PATCH(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ opinion: data });
 }
+
+// DELETE ?id=<uuid> → borra la respuesta para siempre (respuestas de prueba).
+// Para apartar una real sin perderla está el estado «Archivado».
+export async function DELETE(req: Request) {
+  if (!auth(req)) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id || !UUID_RE.test(id)) return NextResponse.json({ error: "id inválido." }, { status: 400 });
+  const { error } = await supabase.from("opiniones_familias").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

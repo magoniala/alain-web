@@ -432,7 +432,7 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
   const { canal, destinatario } = canalDe(f);
   const nivel: "A" | "B" | "C" = f.nivel_autonomia === "C" ? "C" : d.nivel;
   const idioma: "es" | "eu" = (f.idioma ?? "").toLowerCase() === "eu" ? "eu" : "es";
-  if (await tarjetaYaCreada("crm_tareas", "ficha_id", f.id, [d.tipo])) return; // ya creada (pasada paralela)
+  if (await tarjetaYaCreada("crm_tareas", "ficha_id", f.id, [d.tipo], d.conMensaje && canal === "mail" ? destinatario : null)) return; // ya creada (pasada paralela; con email corregido sí sale)
   const { urgencia, motivo } = urgenciaMagia(d.tipo);
   const base = {
     ficha_id: f.id,
@@ -476,7 +476,7 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
     hilo: (hilo ?? []).reverse(),
     programada: { tipo: d.tipo, canal: canal === "whatsapp" ? "whatsapp" : "mail", instrucciones: d.instrucciones, destinatario },
   });
-  if (await tarjetaYaCreada("crm_tareas", "ficha_id", f.id, [d.tipo])) return; // la IA tarda: otra pasada pudo crearla mientras tanto
+  if (await tarjetaYaCreada("crm_tareas", "ficha_id", f.id, [d.tipo], d.conMensaje && canal === "mail" ? destinatario : null)) return; // la IA tarda: otra pasada pudo crearla mientras tanto
   await sb.from("crm_tareas").insert({
     ...base,
     contexto: {

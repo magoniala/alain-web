@@ -468,14 +468,28 @@ function FichaMagia({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (c: R
   const [linea, setLinea] = useState("");
   const [canal, setCanal] = useState("Manual");
   const [guardando, setGuardando] = useState(false);
+  // Datos de contacto editables (19-nov: el email de Evenire venía mal del censo y no había forma de corregirlo).
+  const [email, setEmail] = useState(f.email ?? "");
+  const [telefono, setTelefono] = useState(f.telefono ?? "");
+  const [responsable, setResponsable] = useState(f.responsable ?? "");
+  const [respEmail, setRespEmail] = useState(f.responsable_email ?? "");
   useEffect(() => {
+    setEmail(f.email ?? "");
+    setTelefono(f.telefono ?? "");
+    setResponsable(f.responsable ?? "");
+    setRespEmail(f.responsable_email ?? "");
     setEstado(f.estado);
     setProxima(f.proxima_accion ?? "");
     setFecha(f.fecha_proxima_accion ?? "");
     setNivel(f.nivel_autonomia);
     setLinea("");
   }, [f]);
-  const cambiado = estado !== f.estado || proxima !== (f.proxima_accion ?? "") || fecha !== (f.fecha_proxima_accion ?? "") || nivel !== f.nivel_autonomia || linea.trim() !== "";
+  const contacto: Record<string, string> = {};
+  if (email.trim() !== (f.email ?? "")) contacto.email = email.trim();
+  if (telefono.trim() !== (f.telefono ?? "")) contacto.telefono = telefono.trim();
+  if (responsable.trim() !== (f.responsable ?? "")) contacto.responsable = responsable.trim();
+  if (respEmail.trim() !== (f.responsable_email ?? "")) contacto.responsable_email = respEmail.trim();
+  const cambiado = estado !== f.estado || proxima !== (f.proxima_accion ?? "") || fecha !== (f.fecha_proxima_accion ?? "") || nivel !== f.nivel_autonomia || linea.trim() !== "" || Object.keys(contacto).length > 0;
   const bloque = /<!-- mensaje-listo -->\n([\s\S]*?)<!-- \/mensaje-listo -->/.exec(f.cuerpo_antes ?? "")?.[1];
   return (
     <div className="rounded-2xl border border-gray-200 bg-white">
@@ -516,6 +530,19 @@ function FichaMagia({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (c: R
             <option value="C">C · solo yo</option>
           </select>
         </label>
+        <label className="text-[0.8rem] text-gray-600">Email de la entidad
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@…" className="mt-1 w-full border border-gray-300 px-2 py-1.5 text-[0.88rem] text-gray-900" />
+        </label>
+        <label className="text-[0.8rem] text-gray-600">Teléfono de la entidad
+          <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className="mt-1 w-full border border-gray-300 px-2 py-1.5 text-[0.88rem] text-gray-900" />
+        </label>
+        <label className="text-[0.8rem] text-gray-600">Responsable (nombre)
+          <input value={responsable} onChange={(e) => setResponsable(e.target.value)} className="mt-1 w-full border border-gray-300 px-2 py-1.5 text-[0.88rem] text-gray-900" />
+        </label>
+        <label className="text-[0.8rem] text-gray-600">Email del responsable
+          <input type="email" value={respEmail} onChange={(e) => setRespEmail(e.target.value)} className="mt-1 w-full border border-gray-300 px-2 py-1.5 text-[0.88rem] text-gray-900" />
+        </label>
+        <p className="text-[0.75rem] text-gray-500 sm:col-span-2">Si corriges un email al que ya salió un primer mail equivocado, pon el estado en «0 Por contactar» y la fecha de hoy: el panel saca otra vez el primer mail, ya a la dirección buena.</p>
         <label className="text-[0.8rem] text-gray-600 sm:col-span-2">Próxima acción
           <input value={proxima} onChange={(e) => setProxima(e.target.value)} className="mt-1 w-full border border-gray-300 px-2 py-1.5 text-[0.88rem] text-gray-900" />
         </label>
@@ -531,7 +558,7 @@ function FichaMagia({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (c: R
           <textarea value={linea} onChange={(e) => setLinea(e.target.value)} rows={2} className="mt-1 w-full border border-gray-300 px-2 py-1.5 text-[0.88rem] text-gray-900" />
         </label>
         <div className="sm:col-span-2">
-          <button onClick={async () => { setGuardando(true); try { await onGuardar({ estado, proxima_accion: proxima, fecha_proxima_accion: fecha || null, nivel_autonomia: nivel, ...(linea.trim() ? { registro: linea, registro_canal: canal, fecha_ultimo_contacto: hoyISO() } : {}) }); } finally { setGuardando(false); } }} disabled={!cambiado || guardando} className="bg-[#1a1a1a] px-4 py-2 text-[0.88rem] font-medium text-white disabled:opacity-40">
+          <button onClick={async () => { setGuardando(true); try { await onGuardar({ ...contacto, estado, proxima_accion: proxima, fecha_proxima_accion: fecha || null, nivel_autonomia: nivel, ...(linea.trim() ? { registro: linea, registro_canal: canal, fecha_ultimo_contacto: hoyISO() } : {}) }); } finally { setGuardando(false); } }} disabled={!cambiado || guardando} className="bg-[#1a1a1a] px-4 py-2 text-[0.88rem] font-medium text-white disabled:opacity-40">
             {guardando ? "Guardando…" : "Guardar"}
           </button>
         </div>
