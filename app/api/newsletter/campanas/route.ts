@@ -71,14 +71,24 @@ export async function PATCH(req: Request) {
     remitente: resolveRemitente(remitente),
   };
 
+  // Un mail 'pendiente' (lo dejó preparado una tarea de Claude y espera el OK
+  // de Alain) sigue pendiente aunque se edite o se le cambie la fecha: solo
+  // pasa a programado/cola con /api/newsletter/campanas/confirmar.
+  const { data: actual } = await supabase
+    .from("newsletter_campanas")
+    .select("estado")
+    .eq("id", id)
+    .maybeSingle();
+  const esPendiente = actual?.estado === "pendiente";
+
   // Mover entre cola y calendario. Sin ninguna de las dos, solo se edita el
   // contenido y la campaña se queda donde está.
   if (en_cola) {
-    update.estado = "cola";
+    update.estado = esPendiente ? "pendiente" : "cola";
     update.programado_para = null;
-    update.orden_cola = await siguienteOrdenCola();
+    update.orden_cola = esPendiente ? null : await siguienteOrdenCola();
   } else if (programado_para) {
-    update.estado = "programado";
+    update.estado = esPendiente ? "pendiente" : "programado";
     update.programado_para = programado_para;
     update.orden_cola = null;
   }
@@ -87,7 +97,7 @@ export async function PATCH(req: Request) {
     .from("newsletter_campanas")
     .update(update)
     .eq("id", id)
-    .in("estado", ["programado", "cola"]);
+    .in("estado", ["programado", "cola", "pendiente"]);
   if (error) return fallo("Error al actualizar", error);
   return NextResponse.json({ ok: true });
 }
@@ -100,7 +110,7 @@ export async function DELETE(req: Request) {
     .from("newsletter_campanas")
     .update({ estado: "cancelado", orden_cola: null })
     .eq("id", id)
-    .in("estado", ["programado", "cola"]);
+    .in("estado", ["programado", "cola", "pendiente"]);
   if (error) return fallo("Error al cancelar", error);
   return NextResponse.json({ ok: true });
 }

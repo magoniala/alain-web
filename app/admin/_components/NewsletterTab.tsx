@@ -40,7 +40,7 @@ interface SendResult {
   error?: string;
 }
 
-const TABS = ["Nuevo email", "Programadas", "Cola B", "Suscriptores"] as const;
+const TABS = ["Por confirmar", "Nuevo email", "Programadas", "Cola B", "Suscriptores"] as const;
 type Tab = (typeof TABS)[number];
 
 const REMITENTES = ["newsletter@alainzulaika.com"] as const;
@@ -120,6 +120,8 @@ export default function NewsletterTab() {
   // editar, cancelar). Sin esto un fallo del servidor no se ve: el botón
   // simplemente no hace nada.
   const [accionError, setAccionError] = useState<string | null>(null);
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+  const primeraCargaHecha = useRef(false);
 
   const pw = useCallback(() => sessionStorage.getItem("admin_pw") || "", []);
 
@@ -162,7 +164,47 @@ export default function NewsletterTab() {
       fetch("/api/newsletter/campanas", { headers: { "x-admin-password": sessionStorage.getItem("admin_pw") || "" } }).then(r => r.json()),
     ]);
     if (Array.isArray(c)) setContactos(c);
-    if (Array.isArray(camp)) setCampanas(camp);
+    if (Array.isArray(camp)) {
+      setCampanas(camp);
+      // Al abrir el panel, si hay mails esperando tu OK, se empieza por ahí.
+      if (!primeraCargaHecha.current) {
+        primeraCargaHecha.current = true;
+        if (camp.some((x: Campana) => x.estado === "pendiente")) setTab("Por confirmar");
+      }
+    }
+  }
+
+  // Un mail 'pendiente' sin fecha va a la cola B al confirmarlo; con fecha, al calendario.
+  const sinFecha = (c: Campana) => c.estado === "cola" || (c.estado === "pendiente" && !c.programado_para);
+
+  // Tu OK: pasa un mail 'pendiente' a programado (o a la cola B si no tiene fecha).
+  async function handleConfirmar(id: string) {
+    setAccionError(null);
+    setConfirmando(id);
+    const res = await fetch("/api/newsletter/campanas/confirmar", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ id }),
+    });
+    setConfirmando(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setAccionError(data.error || `Error ${res.status} al confirmar.`);
+      return false;
+    }
+    await loadAll();
+    return true;
+  }
+
+  // Guarda lo que hayas tocado en el editor y confirma en el mismo clic.
+  async function handleGuardarYConfirmar() {
+    if (!editing) return;
+    setSaving(true);
+    const esColaEd = sinFecha(editing);
+    const programado_para = esColaEd ? null : new Date(`${editDate}T${editTime}`).toISOString();
+    const ok = await patchCampana({ id: editing.id, ...edicionActual(), ...(esColaEd ? {} : { programado_para }) });
+    if (ok && await handleConfirmar(editing.id)) setEditing(null);
+    setSaving(false);
   }
 
   async function handleSend() {
@@ -339,7 +381,7 @@ export default function NewsletterTab() {
   async function handleSaveEdit() {
     if (!editing) return;
     setSaving(true);
-    const esCola = editing.estado === "cola";
+    const esCola = sinFecha(editing);
     // En la cola no se toca la fecha: el PATCH sin programado_para ni en_cola
     // deja la campaña donde está y solo actualiza el contenido.
     const programado_para = esCola ? null : new Date(`${editDate}T${editTime}`).toISOString();
@@ -359,12 +401,14 @@ export default function NewsletterTab() {
     const programado_para = new Date(`${editDate}T${editTime}`).toISOString();
     const ok = await patchCampana({ id: editing.id, ...edicionActual(), programado_para });
     if (ok) {
+      // Un pendiente sigue pendiente (solo le has puesto fecha): no cambia de pestaña.
+      const sigue = editing.estado === "pendiente";
       setCampanas(prev => prev.map(c => c.id === editing.id
-        ? { ...c, ...edicionActual(), programado_para, estado: "programado", orden_cola: null }
+        ? { ...c, ...edicionActual(), programado_para, estado: sigue ? "pendiente" : "programado", orden_cola: null }
         : c
       ));
       setEditing(null);
-      setTab("Programadas");
+      if (!sigue) setTab("Programadas");
     }
     setSaving(false);
   }
@@ -380,7 +424,7 @@ export default function NewsletterTab() {
     if (!ok) return;
     if (editing?.id === c.id) setEditing(null);
     await loadAll();
-    setTab("Cola B");
+    if (c.estado !== "pendiente") setTab("Cola B");
   }
 
   // Sube o baja un mail dentro de la cola (dir: -1 arriba, +1 abajo).
@@ -425,6 +469,14 @@ export default function NewsletterTab() {
   const cola = campanas
     .filter(c => c.estado === "cola")
     .sort((a, b) => (a.orden_cola ?? 0) - (b.orden_cola ?? 0));
+  // Preparados por las tareas de Claude: no salen hasta que les das el OK.
+  // Primero los que tienen fecha (por fecha); al final los que irán a la cola B.
+  const porConfirmar = campanas
+    .filter(c => c.estado === "pendiente")
+    .sort((a, b) => {
+      if (!a.programado_para !== !b.programado_para) return a.programado_para ? -1 : 1;
+      return (a.programado_para ?? a.id).localeCompare(b.programado_para ?? b.id);
+    });
   // Los dos estados que antes no se pintaban en ninguna lista: una campaña en
   // 'enviando' o 'cancelado' existía en la tabla pero era invisible aquí. El
   // 12/09/2026 una se quedó atascada en 'enviando' y no había forma de verlo.
@@ -604,7 +656,8 @@ export default function NewsletterTab() {
   // cola no hay fecha que editar: la fecha aparece abajo, como forma de sacar
   // ese mail de la cola y ponerlo en el calendario.
   function renderEditor(c: Campana) {
-    const esCola = c.estado === "cola";
+    const esCola = sinFecha(c);
+    const esPendiente = c.estado === "pendiente";
     return (
       <div className="border border-gray-300 p-4 space-y-4">
         <div className="grid md:grid-cols-2 gap-4">
@@ -642,8 +695,13 @@ export default function NewsletterTab() {
               </div>
             </>
           )}
-          <button onClick={handleSaveEdit} disabled={saving} className="px-4 py-2 bg-[#1a1a1a] text-white text-sm disabled:opacity-50">
-            {saving ? "Guardando..." : "Guardar"}
+          {esPendiente && (
+            <button onClick={handleGuardarYConfirmar} disabled={saving} className="px-4 py-2 bg-emerald-700 text-white text-sm disabled:opacity-50">
+              {saving ? "Guardando..." : "Guardar y confirmar"}
+            </button>
+          )}
+          <button onClick={handleSaveEdit} disabled={saving} className={esPendiente ? "px-4 py-2 border border-[#1a1a1a] text-sm disabled:opacity-50" : "px-4 py-2 bg-[#1a1a1a] text-white text-sm disabled:opacity-50"}>
+            {saving ? "Guardando..." : esPendiente ? "Guardar sin confirmar" : "Guardar"}
           </button>
           <button onClick={() => setEditing(null)} className="px-4 py-2 border border-gray-300 text-sm">
             Cancelar
@@ -670,7 +728,7 @@ export default function NewsletterTab() {
                 Programar para esta fecha
               </button>
             </div>
-            <p className="text-[0.7rem] text-gray-400 mt-1.5">Guarda los cambios y lo mueve a &quot;Programadas&quot;.</p>
+            <p className="text-[0.7rem] text-gray-400 mt-1.5">{esPendiente ? "Guarda los cambios y le pone fecha. Sigue esperando tu OK." : <>Guarda los cambios y lo mueve a &quot;Programadas&quot;.</>}</p>
           </div>
         ) : (
           <div className="border-t border-gray-100 pt-4">
@@ -731,6 +789,7 @@ export default function NewsletterTab() {
       <div className="flex items-center justify-between mb-4">
         <span className="text-[0.75rem] text-gray-500">
           {activos.length} activos ({activosEu.length} eu · {activosEs.length} es) · {bajas.length} bajas
+          {porConfirmar.length > 0 && <> · <span className="text-red-600 font-medium">{porConfirmar.length} por confirmar</span></>}
           {pendientes.length > 0 && <> · <span className="text-amber-600">{pendientes.length} programada{pendientes.length > 1 ? "s" : ""}</span></>}
           {cola.length > 0 && <> · <span className="text-teal-600">{cola.length} en cola B</span></>}
         </span>
@@ -746,6 +805,9 @@ export default function NewsletterTab() {
               className={`px-4 py-2 text-[0.78rem] border-b-2 transition-colors ${tab === t ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"}`}
             >
               {t}
+              {t === "Por confirmar" && porConfirmar.length > 0 && (
+                <span className="ml-1.5 bg-red-600 text-white text-[0.65rem] px-1.5 py-0.5 rounded-full">{porConfirmar.length}</span>
+              )}
               {t === "Programadas" && pendientes.length > 0 && (
                 <span className="ml-1.5 bg-amber-100 text-amber-700 text-[0.65rem] px-1.5 py-0.5 rounded-full">{pendientes.length}</span>
               )}
@@ -758,6 +820,94 @@ export default function NewsletterTab() {
       </div>
 
       <div className="space-y-8">
+
+        {/* ── TAB: POR CONFIRMAR ── */}
+        {tab === "Por confirmar" && (
+          <section className="bg-white border border-gray-200 p-5 md:p-6 space-y-6">
+            {accionError && (
+              <div className="p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{accionError}</div>
+            )}
+            <p className="text-[0.78rem] text-gray-500 leading-relaxed">
+              Mails redactados y revisados por las tareas de Claude. <strong>No salen hasta que los confirmas.</strong>{" "}
+              Léelos, toca lo que quieras y dale a Confirmar. Si a las 19:15 el del día sigue sin confirmar, sale el primero de la cola B.
+            </p>
+            {porConfirmar.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Nada por confirmar.</p>
+            ) : (
+              <div className="space-y-6">
+                {porConfirmar.map(c => (
+                  <div key={c.id}>
+                    {editing?.id === c.id ? (
+                      renderEditor(c)
+                    ) : (
+                      <div className="border border-red-200 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="min-w-0">
+                            <p className="text-[0.72rem] uppercase tracking-wider text-red-600">
+                              {c.programado_para ? fmtDate(c.programado_para) : "Para la cola B (sin fecha)"}
+                            </p>
+                            <p className="text-base font-medium mt-1">{c.subject_es || c.subject_eu || "Sin asunto"}</p>
+                            {c.preheader_es && <p className="text-[0.8rem] text-gray-500 mt-0.5">{c.preheader_es}</p>}
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              onClick={() => handleConfirmar(c.id)}
+                              disabled={confirmando === c.id}
+                              className="text-[0.8rem] bg-emerald-700 text-white px-4 py-1.5 disabled:opacity-50"
+                            >
+                              {confirmando === c.id ? "Confirmando..." : "✓ Confirmar"}
+                            </button>
+                            <button onClick={() => startEdit(c)} className="text-[0.75rem] text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5">
+                              Editar
+                            </button>
+                            <button onClick={() => handleCancel(c.id)} className="text-[0.75rem] text-[#DC2626] hover:text-red-700 border border-red-200 px-3 py-1.5">
+                              Descartar
+                            </button>
+                          </div>
+                        </div>
+                        {c.body_es && (
+                          <div className="text-[0.88rem] leading-relaxed whitespace-pre-wrap border-l-2 border-gray-200 pl-3 text-gray-800">{c.body_es}</div>
+                        )}
+                        {(c.subject_eu || c.body_eu) && (
+                          <details className="text-[0.85rem]">
+                            <summary className="cursor-pointer text-gray-400 text-[0.75rem]">Euskera: {c.subject_eu || "sin asunto"}</summary>
+                            {c.preheader_eu && <p className="text-[0.8rem] text-gray-500 mt-2">{c.preheader_eu}</p>}
+                            <div className="mt-2 whitespace-pre-wrap border-l-2 border-gray-200 pl-3 text-gray-700">{c.body_eu}</div>
+                          </details>
+                        )}
+                        {cancelTarget === c.id && (
+                          <div className="pt-3 border-t border-red-100">
+                            <p className="text-[0.72rem] text-[#DC2626] mb-2">Escribe CANCELAR para descartarlo:</p>
+                            <div className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                value={cancelInput}
+                                onChange={e => setCancelInput(e.target.value)}
+                                placeholder="CANCELAR"
+                                className="border border-gray-300 px-2 py-1 text-sm outline-none focus:border-red-400 w-28"
+                                autoFocus
+                              />
+                              <button
+                                onClick={handleCancelConfirm}
+                                disabled={cancelInput !== "CANCELAR"}
+                                className="px-3 py-1 bg-[#DC2626] text-white text-[0.75rem] disabled:opacity-30"
+                              >
+                                Confirmar
+                              </button>
+                              <button onClick={() => { setCancelTarget(null); setCancelInput(""); }} className="text-[0.75rem] text-gray-400">
+                                No
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── TAB: NUEVO EMAIL ── */}
         {tab === "Nuevo email" && (

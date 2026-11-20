@@ -36,6 +36,7 @@ import {
   sustituirMarcadores,
 } from "@/lib/email-markdown";
 import { processText } from "@/lib/newsletter-texto";
+import { avisarConfirmacionNewsletter } from "@/lib/newsletter-aprobacion";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -819,6 +820,12 @@ export async function GET(req: Request) {
   const huecosLiberados = await liberarHuecosVencidos();
   const avisosLiberados = await avisarHuecosLiberados();
   const abandonosEnviados = await procesarReservasAbandonadas();
+  // Mails pendientes de tu OK: avisos al móvil a las 09:00, 13:00 y 18:15 si
+  // hoy no hay nada confirmado. Un fallo aquí no tumba el resto del cron.
+  const avisosConfirmacion = await avisarConfirmacionNewsletter().catch((e) => {
+    console.error("cron: avisos de confirmación:", e);
+    return 0;
+  });
 
   return NextResponse.json({
     ok: true,
@@ -830,5 +837,6 @@ export async function GET(req: Request) {
     huecosLiberados,
     avisosLiberados,
     abandonosEnviados,
+    avisosConfirmacion,
   });
 }
