@@ -75,11 +75,11 @@ const T: Record<Idioma, {
   eu: {
     sub: (f) => `Publikoaren iritzia · ${f}`,
     familias: "familiak erantzun dute",
-    llego: (n) => `iritzi-mezua ${n} familiari iritsi zitzaien`,
+    llego: (n) => `iritzia ${n} familiari eskatu zaie mezu bitartez`,
     media: "batez besteko nota",
     escala: (m) => `4 aurpegiko eskalan: ${m} / 4`,
     queTal: "Zer moduz joan zen?",
-    notas: { 4: "Izugarri gustatu zitzaien", 3: "Oso ondo", 2: "Normal", 1: "Ez askorik" },
+    notas: { 4: "Izugarri gustatu zitzaien", 3: "Oso ondo", 2: "Normal", 1: "Ez asko" },
     palabra: "Ekitaldia hitz bakarrean",
     gusto: "Gehien gustatu zitzaiena",
     peques: "Txikiei",
