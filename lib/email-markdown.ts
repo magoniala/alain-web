@@ -37,14 +37,33 @@ const DESTINO = String.raw`(?:https?:\/\/|mailto:)[^)]+|\{\{\w+\}\}`;
 
 // Formato dentro de una línea. Se escapa primero y se aplican los marcadores
 // después, para que nadie pueda colar etiquetas escribiendo en el panel.
-export function formatoEnLinea(texto: string): string {
-  return escaparHtml(texto)
+//
+// Los enlaces se analizan antes que las cursivas: el "_" de una URL (utm_source…)
+// no debe leerse como cursiva. Cada enlace se aparta tras un marcador (caracteres
+// de uso privado), se formatea el resto y al final se devuelven los enlaces con
+// su destino intacto. Mismo arreglo que processText en lib/newsletter-texto.ts.
+const RE_ENLACE_EN_LINEA = new RegExp(String.raw`\[([^\]]+)\]\((${DESTINO})\)`, "g");
+const RE_MARCADOR_ENLACE = /\uE000(\d+)\uE001/g;
+
+function negritaYCursiva(texto: string): string {
+  return texto
     .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;">$1</strong>')
-    .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
-    .replace(
-      new RegExp(String.raw`\[([^\]]+)\]\((${DESTINO})\)`, "g"),
-      `<a href="$2" style="color:${COLOR_ENLACE};">$1</a>`
-    );
+    .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>');
+}
+
+export function formatoEnLinea(texto: string): string {
+  const enlaces: { etiqueta: string; destino: string }[] = [];
+  const apartado = escaparHtml(texto)
+    .replace(/[\uE000\uE001]/g, "")
+    .replace(RE_ENLACE_EN_LINEA, (_, etiqueta: string, destino: string) => {
+      enlaces.push({ etiqueta, destino });
+      return `\uE000${enlaces.length - 1}\uE001`;
+    });
+
+  return negritaYCursiva(apartado).replace(RE_MARCADOR_ENLACE, (_, i: string) => {
+    const { etiqueta, destino } = enlaces[Number(i)];
+    return `<a href="${destino}" style="color:${COLOR_ENLACE};">${negritaYCursiva(etiqueta)}</a>`;
+  });
 }
 
 const RE_BOTON = new RegExp(String.raw`^\[\[([^\]]+)\]\((${DESTINO})\)\]$`);

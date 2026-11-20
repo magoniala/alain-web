@@ -86,12 +86,14 @@ export async function PATCH(req: Request) {
   if (en_cola) {
     update.estado = esPendiente ? "pendiente" : "cola";
     update.programado_para = null;
-    update.orden_cola = esPendiente ? null : await siguienteOrdenCola();
+    if (!esPendiente) update.orden_cola = await siguienteOrdenCola();
   } else if (programado_para) {
     update.estado = esPendiente ? "pendiente" : "programado";
     update.programado_para = programado_para;
-    update.orden_cola = null;
+    if (!esPendiente) update.orden_cola = null;
   }
+  // En un 'pendiente' no se toca orden_cola: ahí vive la marca de «devuelto a
+  // Por confirmar» (lib/newsletter-fechas.ts) y editar el mail no debe borrarla.
 
   const { error } = await supabase
     .from("newsletter_campanas")

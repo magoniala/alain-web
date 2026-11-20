@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { processText } from "@/lib/newsletter-texto";
+import { MARCA_DEVUELTO_A_CONFIRMAR } from "@/lib/newsletter-fechas";
 
 interface Contacto {
   id: string;
@@ -120,6 +121,7 @@ export default function NewsletterTab() {
   // editar, cancelar). Sin esto un fallo del servidor no se ve: el botón
   // simplemente no hace nada.
   const [accionError, setAccionError] = useState<string | null>(null);
+  const [accionInfo, setAccionInfo] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const primeraCargaHecha = useRef(false);
 
@@ -180,6 +182,7 @@ export default function NewsletterTab() {
   // Tu OK: pasa un mail 'pendiente' a programado (o a la cola B si no tiene fecha).
   async function handleConfirmar(id: string) {
     setAccionError(null);
+    setAccionInfo(null);
     setConfirmando(id);
     const res = await fetch("/api/newsletter/campanas/confirmar", {
       method: "POST",
@@ -192,6 +195,10 @@ export default function NewsletterTab() {
       setAccionError(data.error || `Error ${res.status} al confirmar.`);
       return false;
     }
+    // Un mail devuelto a «Por confirmar» cuya fecha ya había pasado se reprograma
+    // solo al siguiente día libre: se dice cuál para que no sea una sorpresa.
+    const data = await res.json().catch(() => ({}));
+    if (data.reprogramado_a) setAccionInfo(`Su fecha ya había pasado: queda programado para ${fmtDate(data.reprogramado_a)} (el siguiente día libre).`);
     await loadAll();
     return true;
   }
@@ -425,6 +432,35 @@ export default function NewsletterTab() {
     if (editing?.id === c.id) setEditing(null);
     await loadAll();
     if (c.estado !== "pendiente") setTab("Cola B");
+  }
+
+  // Programadas / Cola B → Por confirmar: guarda lo que hayas tocado en el editor
+  // y lo devuelve a «Por confirmar» sin cambiarle la fecha. No sale hasta que lo
+  // confirmes otra vez (al confirmarlo vuelve a su fecha, o al siguiente día libre
+  // si ya pasó; si no tenía fecha, al final de la cola B).
+  async function handleMandarAConfirmar(c: Campana) {
+    setSaving(true);
+    setAccionInfo(null);
+    const esColaMail = sinFecha(c);
+    const programado_para = !esColaMail && editDate && editTime ? new Date(`${editDate}T${editTime}`).toISOString() : null;
+    // En la cola no se manda fecha: el PATCH solo actualiza el contenido.
+    const guardado = await patchCampana({ id: c.id, ...edicionActual(), ...(programado_para ? { programado_para } : {}) });
+    if (!guardado) { setSaving(false); return; }
+    const res = await fetch("/api/newsletter/campanas/a-confirmar", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ id: c.id }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setAccionError(data.error || `Error ${res.status} al mandarlo a Por confirmar.`);
+      await loadAll();
+      return;
+    }
+    setEditing(null);
+    await loadAll();
+    setTab("Por confirmar");
   }
 
   // Sube o baja un mail dentro de la cola (dir: -1 arriba, +1 abajo).
@@ -739,6 +775,24 @@ export default function NewsletterTab() {
           </div>
         )}
 
+        {!esPendiente && (
+          <div className="border-t border-gray-100 pt-4">
+            <button
+              onClick={() => handleMandarAConfirmar(c)}
+              disabled={saving}
+              className="text-[0.75rem] text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 disabled:opacity-50"
+            >
+              {saving ? "Guardando..." : "→ Por confirmar"}
+            </button>
+            <p className="text-[0.7rem] text-gray-400 mt-1.5">
+              Guarda los cambios y lo pasa a la pestaña &quot;Por confirmar&quot;: no sale hasta que lo confirmes.{" "}
+              {esCola
+                ? "Al confirmarlo vuelve al final de la cola B."
+                : "Conserva su fecha; al confirmarlo vuelve a programarse para ella (o para el siguiente día libre si ya ha pasado)."}
+            </p>
+          </div>
+        )}
+
         <div className="border-t border-gray-100 pt-4 space-y-2">
           <p className="text-[0.72rem] uppercase tracking-wider text-gray-400">Excluir de este envío</p>
           <div className="flex gap-2">
@@ -827,6 +881,9 @@ export default function NewsletterTab() {
             {accionError && (
               <div className="p-4 bg-red-50 border border-red-200 text-sm text-[#DC2626]">{accionError}</div>
             )}
+            {accionInfo && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">{accionInfo}</div>
+            )}
             <p className="text-[0.78rem] text-gray-500 leading-relaxed">
               Mails redactados y revisados por las tareas de Claude. <strong>No salen hasta que los confirmas.</strong>{" "}
               Léelos, toca lo que quieras y dale a Confirmar. Si a las 19:15 el del día sigue sin confirmar, sale el primero de la cola B.
@@ -845,6 +902,7 @@ export default function NewsletterTab() {
                           <div className="min-w-0">
                             <p className="text-[0.72rem] uppercase tracking-wider text-red-600">
                               {c.programado_para ? fmtDate(c.programado_para) : "Para la cola B (sin fecha)"}
+                              {c.orden_cola === MARCA_DEVUELTO_A_CONFIRMAR && <span className="normal-case tracking-normal text-gray-400"> · devuelto para revisarlo</span>}
                             </p>
                             <p className="text-base font-medium mt-1">{c.subject_es || c.subject_eu || "Sin asunto"}</p>
                             {c.preheader_es && <p className="text-[0.8rem] text-gray-500 mt-0.5">{c.preheader_es}</p>}
