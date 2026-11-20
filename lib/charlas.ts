@@ -224,6 +224,9 @@ export function puntuarUrgencia(t: {
   const fase = faseDeEstado(t.estadoCentro);
 
   if (c === "interesado_fechas") return { urgencia: 3, motivo: "Quiere hablar de fechas: lead caliente" };
+  if (c === "ayto_otros_formatos") return { urgencia: 3, motivo: "Ayuntamiento interesado en otro formato: propuesta" };
+  if (c === "ayto_calendario_abierto" || c === "ayto_lo_llevamos") return { urgencia: 2, motivo: "Ayuntamiento que programa: avanzar" };
+  if (c === "ayto_no_es_nuestro") return { urgencia: 2, motivo: "Ayuntamiento: persona nueva o contacto por pedir" };
   if (fase === 6 && t.tipo === "respuesta") return { urgencia: 3, motivo: "Responde un centro en conversación" };
   if (c === "pregunta_precio") return { urgencia: 3, motivo: "Pregunta precio: está decidiendo" };
   if (c === "pide_contacto_ayuntamiento") return { urgencia: 2, motivo: "Vía ayuntamiento: abre un canal nuevo" };

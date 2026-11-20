@@ -29,6 +29,7 @@ import { tarjetaYaCreada } from "@/lib/cron-cierre";
 import { leerSesiones, proximaSesion, sesionVigente, bonita } from "@/lib/charlas-sesiones";
 import { supabaseCharlas, faseDeEstado, puntuarUrgencia } from "./charlas";
 import { procesarConIA } from "./charlas-ia";
+import { decidirAyuntamiento, ETIQUETAS_AYTO } from "./ayto-flujo";
 
 const hoy = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
 /** Medianoche de hoy en Madrid, en ISO con su desfase (+01:00 en invierno, +02:00 en verano). */
@@ -52,7 +53,7 @@ function proximaReactivacion(): string {
   return h < may && h >= `${y}-01-11` ? may : ene;
 }
 
-interface Centro {
+export interface Centro {
   id: string;
   nombre: string;
   estado: string;
@@ -72,13 +73,15 @@ interface Centro {
   responsable_cargo?: string | null;
 }
 
-interface Decision {
+export interface Decision {
   tipo: string;
   nivel: "A" | "B" | "C";
   conCorreo: boolean;
   instrucciones: string;
   cambios: Record<string, unknown>;
   nota?: string;
+  /** Primer correo a una persona (vía ayuntamientos): no se encadena al hilo anterior. */
+  hiloNuevo?: boolean;
 }
 
 export function decidir(c: Centro): Decision | null {
@@ -88,7 +91,8 @@ export function decidir(c: Centro): Decision | null {
 
   if (f === 7 || f === 8) return null;
 
-  if (c.tipo === "ayuntamiento") return decidirInstitucion(c, f, pa, h);
+  // Ayuntamientos (y demás instituciones): su propio flujo, lib/ayto-flujo.ts.
+  if (c.tipo === "ayuntamiento") return decidirAyuntamiento(c, f, h);
 
   if (c.bloqueado_por) {
     return {
@@ -235,84 +239,6 @@ export function decidir(c: Centro): Decision | null {
   return null;
 }
 
-// ------------------------------------------------------------------
-// Vía institucional (fichas tipo "ayuntamiento": ayuntamientos, mancomunidades,
-// Diputación). Guion: Mail 1 Ayuntamiento. Reglas de Alain (2-11-2026): una
-// sola petición por correo, el primero busca que respondan, todo pasa por él
-// (las fichas van en nivel C, así que cada tarea sale en "Te toca a ti" con
-// su borrador).
-// ------------------------------------------------------------------
-const BUZON_GENERAL = /^(info|pegora|udala|udaletxea|ayuntamiento|registro|general|harrera|sac|oac|idazkaritza|secretaria|alcaldia|contacto|kontaktua)@/i;
-
-function decidirInstitucion(c: Centro, f: number, pa: string, h: string): Decision | null {
-  const correo = (c.responsable_email ?? c.email_centro ?? "").split(/[\/;,\s]+/).find((e) => e.includes("@")) ?? null;
-  if (f === 0 || f === 1 || f === 2) {
-    if (!correo) {
-      return {
-        tipo: "llamada_alain",
-        nivel: "C",
-        conCorreo: false,
-        instrucciones: "",
-        cambios: { fecha_proxima_accion: sumar(h, 7) },
-        nota: "Institución sin buzón del servicio de prevención o educación. El rastreo web lo está buscando en su página; si en unos días no aparece, una llamada al ayuntamiento pidiendo el correo del técnico de prevención de adicciones lo resuelve. Al aplicar, la fecha pasa a +7.",
-      };
-    }
-    const general = BUZON_GENERAL.test(correo) && !c.responsable_email;
-    return {
-      tipo: "mail_1_ayuntamiento",
-      nivel: "C",
-      conCorreo: true,
-      instrucciones: general
-        ? `Primer contacto con una institución por su buzón general. Redacta el Mail 1 Ayuntamiento en su variante B (que lo reenvíen al técnico de prevención de adicciones o de educación, con el acuse "enviado"), en el idioma de la ficha. Una sola pregunta: cómo entra una actividad en su oferta a los institutos y quién lo lleva. Sin dossier. Usa el nombre del municipio que está en la ficha (localidad). Presentación y firma completas.`
-        : `Primer contacto con el servicio que programa actividades en los institutos del municipio. Redacta el Mail 1 Ayuntamiento, variante A, en el idioma de la ficha${c.responsable ? `, dirigido a ${c.responsable}` : ""}. Una sola pregunta: cómo entra una actividad en su oferta a los institutos y quién lo lleva. Sin dossier. Usa el nombre del municipio que está en la ficha (localidad). Presentación y firma completas.`,
-      cambios: { estado: "3 Mail inicial enviado", via: "institucional", proxima_accion: "Recordatorio único si no contestan", fecha_proxima_accion: sumar(h, 10) },
-      nota: "Vía institucional: revisa el texto con calma, es el primer correo de esta clase que sale.",
-    };
-  }
-  if (c.estado.startsWith("3.5")) {
-    return {
-      tipo: "aparcar",
-      nivel: "C",
-      conCorreo: false,
-      instrucciones: "",
-      cambios: { estado: "9 Aparcado (con fecha de reactivación)", fecha_proxima_accion: sumar(h, 90), proxima_accion: "Reactivar la vía institucional (o llamar al servicio de prevención)" },
-      nota: "Dos correos sin respuesta de la institución. Se aparca tres meses; si quieres insistir, mejor una llamada al servicio de prevención que un tercer correo.",
-    };
-  }
-  if (f === 3) {
-    return {
-      tipo: "recordatorio_1",
-      nivel: "C",
-      conCorreo: true,
-      instrucciones: "Recordatorio único del Mail 1 Ayuntamiento, como respuesta en el mismo hilo: dos o tres frases, sin saludo ni firma, repitiendo en una línea la única pregunta (cómo entra una actividad en su oferta a los institutos y quién lo lleva). Sin dossier.",
-      cambios: { estado: "3.5 recordatorio 1 enviado", proxima_accion: "Aparcar 3 meses si no contestan", fecha_proxima_accion: sumar(h, 10) },
-    };
-  }
-  if (f === 4 || f === 5 || f === 6) {
-    if (pa.startsWith("esperar") || pa.startsWith("espera ")) {
-      return { tipo: "seguimiento_conversacion", nivel: "C", conCorreo: true, instrucciones: `La ficha dice: "${c.proxima_accion}". Ha llegado la fecha. Si procede un recordatorio suave, redáctalo en dos frases dentro del hilo; si no, responder = false y propón mover la fecha.`, cambios: { fecha_proxima_accion: sumar(h, 14) }, nota: `Estabas esperando: ${c.proxima_accion}` };
-    }
-    return {
-      tipo: "seguimiento_conversacion",
-      nivel: "C",
-      conCorreo: true,
-      instrucciones: "Conversación abierta con una institución y se ha enfriado. Redacta un seguimiento corto dentro del hilo con UNA sola petición, la que toque según lo último hablado (plazos de su programación, a quién enviar la propuesta, o si quieren el dossier). Sin saludo ni firma.",
-      cambios: { fecha_proxima_accion: sumar(h, 14) },
-    };
-  }
-  if (f === 9) {
-    if (!correo) return null;
-    return {
-      tipo: "reactivacion",
-      nivel: "C",
-      conCorreo: true,
-      instrucciones: "Reactivación de la vía institucional tras tres meses: redacta un correo corto en el hilo anterior recordando quién eres en una línea y la única pregunta del Mail 1 Ayuntamiento (cómo entra una actividad en su oferta y quién lo lleva), o la que la ficha indique en proxima_accion. Sin dossier.",
-      cambios: { estado: "3 Mail inicial enviado", proxima_accion: "Recordatorio único si no contestan", fecha_proxima_accion: sumar(h, 10) },
-    };
-  }
-  return null;
-}
-
 export interface ResumenMotor {
   revisados: number;
   creadas: number;
@@ -366,6 +292,7 @@ export async function mail1Automatico(opciones: { presupuestoMs: number }): Prom
     .in("territorio", territorios)
     .like("estado", "0%")
     .is("bloqueado_por", null)
+    .or("tipo.is.null,tipo.neq.ayuntamiento") // los ayuntamientos tienen su propia cola (lib/ayuntamientos.ts)
     .order("prioridad", { ascending: true, nullsFirst: false })
     .order("localidad")
     .limit(200);
@@ -435,6 +362,7 @@ export async function localizarCorreosCharlas(): Promise<ResumenLocalizar> {
     .is("bloqueado_por", null)
     .is("email_centro", null)
     .is("responsable_email", null)
+    .or("tipo.is.null,tipo.neq.ayuntamiento")
     .order("prioridad", { ascending: true, nullsFirst: false })
     .order("localidad")
     .limit(200);
@@ -544,7 +472,7 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
   return res;
 }
 
-async function crearTarea(c: Centro, d: Decision) {
+export async function crearTarea(c: Centro, d: Decision) {
   const supabase = supabaseCharlas();
   const idioma: "es" | "eu" = c.euskera === "sí" || c.euskera === "parcial" ? "eu" : "es";
   const alBuzon = d.tipo === "mail_b" || (d.tipo === "reactivacion" && !c.responsable_email);
@@ -598,6 +526,7 @@ async function crearTarea(c: Centro, d: Decision) {
     registro: (registro ?? []).slice(-40),
     hilo: (hilo ?? []).reverse(),
     programada: { tipo: d.tipo, instrucciones: d.instrucciones, destinatario },
+    ...(d.tipo.startsWith("ayto_") ? { proposito: "ayto_programada" } : {}),
   });
 
   if (await tarjetaYaCreada("charlas_tareas", "centro_id", c.id, tiposDup)) return; // la IA tarda: otra pasada pudo crearla mientras tanto
@@ -606,6 +535,7 @@ async function crearTarea(c: Centro, d: Decision) {
     contexto: {
       programada: true,
       clasificacion: d.tipo,
+      ...(d.hiloNuevo ? { hilo_nuevo: true } : {}),
       resumen: r.resumen || etiqueta(d.tipo),
       confianza: r.confianza,
       faltan_datos: r.faltan_datos,
@@ -639,6 +569,7 @@ export function etiqueta(tipo: string): string {
       localizar_correo: "Localizar el correo del centro",
       revisar_bloqueo: "Revisar bloqueo",
       revisar_correo: "Correo suyo sin respuesta",
+      ...ETIQUETAS_AYTO,
     } as Record<string, string>
   )[tipo] ?? tipo;
 }

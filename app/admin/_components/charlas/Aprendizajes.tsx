@@ -48,12 +48,19 @@ export default function Aprendizajes() {
   const [msg, setMsg] = useState("");
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("admin_pw") || "" }), []);
 
+  const [manuales, setManuales] = useState<string[]>([]);
   const cargar = useCallback(async () => {
-    const r = await fetch("/api/admin/charlas/aprendizaje", { headers: headers() });
+    const [r, a] = await Promise.all([fetch("/api/admin/charlas/aprendizaje", { headers: headers() }), fetch("/api/admin/charlas/autoenvio", { headers: headers() })]);
     const j = (await r.json()) as Datos;
     setD(j);
     setReglas(j.reglas ?? "");
+    if (a.ok) setManuales(((await a.json()) as { manuales: string[] }).manuales ?? []);
   }, [headers]);
+
+  async function alternarManual(tipo: string, manual: boolean) {
+    await fetch("/api/admin/charlas/autoenvio", { method: "POST", headers: headers(), body: JSON.stringify({ carril: "charlas", tipo, manual }) });
+    await cargar();
+  }
 
   useEffect(() => {
     cargar();
@@ -143,7 +150,7 @@ export default function Aprendizajes() {
       <section className="rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="mb-1 text-[1rem] font-semibold">¿Qué puede pasar a automático?</h2>
         <p className="mb-3 text-[0.8rem] text-gray-500">
-          Un tipo de mensaje está listo cuando lleva <strong>{d.racha_para_automatico}</strong> envíos seguidos sin que corrijas nada. Hasta entonces, se revisa.
+          Cuando un tipo de mensaje lleva <strong>{d.racha_para_automatico}</strong> envíos seguidos sin que corrijas nada, <strong>sale solo</strong> (L-V de 9 a 18, nunca en modo prueba, ni lo que la IA marca para ti, ni tarjetas con dos versiones, ni conversaciones abiertas, ni si te han escrito después de preparar la tarjeta). Hasta entonces, se revisa. Los de ayuntamientos se gestionan en su pestaña.
         </p>
         {d.stats.length === 0 && <p className="text-[0.88rem] text-gray-500">Todavía no hay envíos.</p>}
         <div className="divide-y divide-gray-100">
@@ -158,7 +165,16 @@ export default function Aprendizajes() {
                   <span className="h-2 w-[120px] overflow-hidden rounded bg-gray-100">
                     <span className={`block h-full ${listo ? "bg-emerald-500" : "bg-[#0F2240]"}`} style={{ width: `${pct}%` }} />
                   </span>
-                  <span className={`w-[90px] text-right ${listo ? "font-medium text-emerald-700" : "text-gray-600"}`}>{listo ? "Listo" : `${s.racha_sin_editar}/${d.racha_para_automatico}`}</span>
+                  <span className={`w-[90px] text-right ${listo && !manuales.includes(`charlas:${s.tipo}`) ? "font-medium text-emerald-700" : "text-gray-600"}`}>
+                    {manuales.includes(`charlas:${s.tipo}`) ? "Manual" : listo ? "Automático" : `${s.racha_sin_editar}/${d.racha_para_automatico}`}
+                  </span>
+                  {s.tipo.startsWith("ayto_") || s.tipo.startsWith("respuesta:ayto_") ? (
+                    <span className="w-[130px] text-right text-[0.78rem] text-gray-400">→ Ayuntamientos</span>
+                  ) : (
+                    <button onClick={() => alternarManual(s.tipo, !manuales.includes(`charlas:${s.tipo}`))} className="w-[130px] text-right text-[0.78rem] text-[#C47800]">
+                      {manuales.includes(`charlas:${s.tipo}`) ? "Permitir automático" : "Dejar en manual"}
+                    </button>
+                  )}
                 </span>
               </div>
             );

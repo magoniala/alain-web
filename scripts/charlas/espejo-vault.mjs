@@ -272,6 +272,18 @@ async function guiones() {
   }
 }
 
+// --- protocolo de ayuntamientos vault → Supabase ------------------------------------
+// El flujo y los mails de Vías/Ayuntamientos, para la IA (charlas_conocimiento). Si
+// falla, el espejo continúa: la IA sigue con la última versión subida.
+async function conocimientoAyto() {
+  try {
+    const { subirConocimientoAyto, resumenConocimientoAyto } = await import("./conocimiento-ayto.mjs");
+    console.log(resumenConocimientoAyto(await subirConocimientoAyto({ url: URL, key: KEY, vaultCharlas: VAULT, comprobar: COMPROBAR }), COMPROBAR));
+  } catch (e) {
+    console.log(`Protocolo ayuntamientos vault → Supabase: no se ha podido subir (${String(e.message).slice(0, 200)})`);
+  }
+}
+
 // --- protocolo post-evento ---------------------------------------------------------
 // Tarjetas del día siguiente (/quetal + factura) y de los 30 días (repetir) de los
 // eventos del vault ya celebrados. Si falla, el espejo continúa.
@@ -289,6 +301,7 @@ async function main() {
   comprobarEntorno();
   await altas();
   await guiones();
+  await conocimientoAyto();
   await postEventos();
   const [centros, interacciones] = await Promise.all([
     todas("charlas_centros", "*", "nombre"),

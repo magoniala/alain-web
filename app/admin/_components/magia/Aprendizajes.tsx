@@ -39,6 +39,18 @@ export default function AprendizajesMagia() {
   const [ocupado, setOcupado] = useState("");
   const [msg, setMsg] = useState<{ texto: string; error?: boolean } | null>(null);
   const headers = useCallback(() => ({ "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("admin_pw") || "" }), []);
+  const [manuales, setManuales] = useState<string[]>([]);
+  const cargarManuales = useCallback(async () => {
+    const a = await fetch("/api/admin/charlas/autoenvio", { headers: headers() });
+    if (a.ok) setManuales(((await a.json()) as { manuales: string[] }).manuales ?? []);
+  }, [headers]);
+  useEffect(() => {
+    cargarManuales();
+  }, [cargarManuales]);
+  async function alternarManual(tipo: string, manual: boolean) {
+    await fetch("/api/admin/charlas/autoenvio", { method: "POST", headers: headers(), body: JSON.stringify({ carril: "magia", tipo, manual }) });
+    await cargarManuales();
+  }
 
   const cargar = useCallback(async () => {
     const r = await fetch("/api/admin/crm/aprendizaje", { headers: headers() });
@@ -144,16 +156,16 @@ export default function AprendizajesMagia() {
       <section className="rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="mb-1 text-[1rem] font-semibold">¿En qué tipos ya acierta?</h2>
         <p className="mb-3 text-[0.8rem] text-gray-500">
-          Un tipo está <strong>listo para nivel A</strong> cuando lleva {d.racha_para_automatico} envíos seguidos sin corrección (editar o elegir la opción B rompe la racha; descartar no cuenta como envío). En magia todavía no sale nada solo: «Listo» es la señal para decidir automatizarlo.
+          Cuando un tipo lleva {d.racha_para_automatico} envíos seguidos sin corrección (editar o elegir la opción B rompe la racha; descartar no cuenta como envío), <strong>sale solo</strong> si es por correo (WhatsApp y llamadas siguen siendo tuyos). Nunca en modo prueba ni fuera de L-V de 9 a 18, ni lo que la IA marca para ti, ni tarjetas con dos versiones, ni conversaciones abiertas, ni si te han escrito después de preparar la tarjeta.
         </p>
-        <Rachas titulo="Antiguos clientes, recuperar, intermediarios y referidos" filas={d.stats.filter((s) => s.segmento === "general")} meta={d.racha_para_automatico} vacio="Todavía no hay envíos." />
-        <Rachas titulo="Agencias de eventos" nota="1A, 1B y el recordatorio son texto fijo del guion: si los corriges, lo que toca es cambiar el guion." filas={d.stats.filter((s) => s.segmento === "agencia")} meta={d.racha_para_automatico} />
+        <Rachas titulo="Antiguos clientes, recuperar, intermediarios y referidos" filas={d.stats.filter((s) => s.segmento === "general")} meta={d.racha_para_automatico} vacio="Todavía no hay envíos." manuales={manuales} onManual={alternarManual} />
+        <Rachas titulo="Agencias de eventos" nota="1A, 1B y el recordatorio son texto fijo del guion: si los corriges, lo que toca es cambiar el guion." filas={d.stats.filter((s) => s.segmento === "agencia")} meta={d.racha_para_automatico} manuales={manuales} onManual={alternarManual} />
       </section>
     </div>
   );
 }
 
-function Rachas({ titulo, nota, filas, meta, vacio }: { titulo: string; nota?: string; filas: Stat[]; meta: number; vacio?: string }) {
+function Rachas({ titulo, nota, filas, meta, vacio, manuales, onManual }: { titulo: string; nota?: string; filas: Stat[]; meta: number; vacio?: string; manuales: string[]; onManual: (tipo: string, manual: boolean) => void }) {
   return (
     <div className="mt-4 first:mt-0">
       <h3 className="text-[0.8rem] font-medium uppercase tracking-wide text-gray-500">{titulo}</h3>
@@ -170,7 +182,12 @@ function Rachas({ titulo, nota, filas, meta, vacio }: { titulo: string; nota?: s
                 <span className="h-2 w-[120px] overflow-hidden rounded bg-gray-100">
                   <span className={`block h-full ${listo ? "bg-emerald-500" : "bg-[#0F2240]"}`} style={{ width: `${Math.min(100, Math.round((s.racha_sin_editar / meta) * 100))}%` }} />
                 </span>
-                <span className={`w-[90px] text-right ${listo ? "font-medium text-emerald-700" : "text-gray-600"}`}>{listo ? "Listo" : `${s.racha_sin_editar}/${meta}`}</span>
+                <span className={`w-[90px] text-right ${listo && !manuales.includes(`magia:${s.tipo}`) ? "font-medium text-emerald-700" : "text-gray-600"}`}>
+                  {manuales.includes(`magia:${s.tipo}`) ? "Manual" : listo ? "Automático" : `${s.racha_sin_editar}/${meta}`}
+                </span>
+                <button onClick={() => onManual(s.tipo, !manuales.includes(`magia:${s.tipo}`))} className="w-[130px] text-right text-[0.78rem] text-[#C47800]">
+                  {manuales.includes(`magia:${s.tipo}`) ? "Permitir automático" : "Dejar en manual"}
+                </button>
               </span>
             </div>
           );

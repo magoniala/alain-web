@@ -106,6 +106,19 @@ const ETIQUETA: Record<string, string> = {
   llamada_alain: "📞 Llamada",
   revisar_bloqueo: "Revisar bloqueo",
   revisar_correo: "✉️ Correo suyo sin respuesta",
+  // Vía ayuntamientos (lib/ayto-flujo.ts)
+  ayto_mail_1_concejal: "🏛️ Mail 1 a Educación del ayuntamiento",
+  ayto_mail_1_buzon: "🏛️ Mail 1 al buzón del ayuntamiento",
+  ayto_recordatorio: "🏛️ Recordatorio al ayuntamiento",
+  ayto_seguimiento_info: "🏛️ Seguimiento de la información",
+  ayto_cierre: "🏛️ Cierre (con otros formatos)",
+  ayto_reactivacion: "🏛️ Reactivación del ayuntamiento",
+  ayto_lo_llevamos: "🏛️ Lo llevan ellos",
+  ayto_calendario_abierto: "🏛️ Calendario abierto",
+  ayto_subvenciona_centros: "🏛️ Subvencionan a los centros",
+  ayto_no_es_nuestro: "🏛️ No son ellos (otra persona)",
+  ayto_no_interesa: "🏛️ No: puerta a otros formatos",
+  ayto_otros_formatos: "🔥 Ayuntamiento: interés en un show",
 };
 
 const URGENCIA = {

@@ -11,6 +11,7 @@
 
 import { supabaseCharlas } from "./charlas";
 import { normalizarFaltan, textoCatalogo, type FaltaDato } from "./conocimiento-catalogo";
+import { comprobarTopeIA, anotarGasto } from "./ia-presupuesto";
 
 // La caché del conocimiento se pide de 1 hora (no de 5 minutos): una tanda
 // de correos que se procesa en varias pasadas paga la escritura una sola
@@ -34,6 +35,13 @@ export const CLASIFICACIONES = [
   "acuse_automatico",
   "fuera_de_oficina",
   "otro",
+  // Vía ayuntamientos (lib/ayto-flujo.ts, CLASIFICACIONES_AYTO)
+  "ayto_lo_llevamos",
+  "ayto_calendario_abierto",
+  "ayto_subvenciona_centros",
+  "ayto_no_es_nuestro",
+  "ayto_no_interesa",
+  "ayto_otros_formatos",
 ] as const;
 export type Clasificacion = (typeof CLASIFICACIONES)[number];
 
@@ -103,7 +111,7 @@ Cómo escribe Alain (tienes ejemplos reales en los documentos tipo "ejemplos" �
 - Sigue las reglas fijas de los documentos (p. ej. la REGLA FIJA de Objeciones sobre noes por precio o fechas) y las reglas aprendidas.
 
 Qué decidir:
-- clasificacion: una de calendario_abierto | calendario_cerrado | pide_info | da_mes | pregunta_precio | lo_decide_otro | reenviado_a | pide_contacto_ayuntamiento | interesado_fechas | no_interesa | acuse_automatico | fuera_de_oficina | otro.
+- clasificacion: una de calendario_abierto | calendario_cerrado | pide_info | da_mes | pregunta_precio | lo_decide_otro | reenviado_a | pide_contacto_ayuntamiento | interesado_fechas | no_interesa | acuse_automatico | fuera_de_oficina | otro (y, solo en fichas de ayuntamiento, las ayto_* de más abajo).
   · "reenviado_a": secretaría o alguien dice que lo ha pasado a otra persona.
   · "interesado_fechas": quieren hablar de fechas concretas, formato o cerrar. Esto es un lead caliente.
   · "da_mes": dicen cuándo deciden / cuándo escribirles (enero, mayo, septiembre…).
@@ -112,11 +120,19 @@ Qué decidir:
 - respuesta.adjuntar_dossier: true cuando el Flujo dice dossier (piden info, calendario abierto, calendario cerrado sin dossier previo…). Mira el historial: si ya se le envió el dossier, no lo repitas salvo que lo pidan.
 - cambios_crm.estado: uno de los estados exactos del CRM ("4 Ha respondido", "5 Dossier enviado", "6 en conversación", "7 Ganado", "8 Perdido", "9 Aparcado (con fecha de reactivación)", "3.9 reenviado - pendiente"…). El estado es el que quedará DESPUÉS de enviar tu respuesta (si adjuntas dossier → "5 Dossier enviado"; si aparcas → "9 Aparcado (con fecha de reactivación)"). null si no cambia.
 - cambios_crm.fecha_proxima_accion (AAAA-MM-DD) y proxima_accion (texto corto): según el Flujo. Tras dossier: +7 días naturales para el seguimiento. Si dan un mes: el primer día laborable de ese mes (o el 15 si dicen "mediados"). Hoy es {{HOY}}.
-- necesita_alain: true si es un lead caliente (interesado_fechas), si hay queja o tono negativo, si hay dinero o fechas concretas que confirmar, si viene de un ayuntamiento o catálogo, o si no sabes qué responder. En esos casos redacta igualmente el borrador si puedes, pero Alain decide.
+- necesita_alain: true si es un lead caliente (interesado_fechas), si hay queja o tono negativo, si hay dinero o fechas concretas que confirmar, si viene de un catálogo (Kultura Eskola), o si no sabes qué responder. Los ayuntamientos siguen sus propias reglas (abajo). En esos casos redacta igualmente el borrador si puedes, pero Alain decide.
 - alternativa: cuando haya DOS formas razonables de contestar y la elección sea de Alain (por ejemplo: solo acuse de recibo frente a acuse + abrir la puerta a los shows según la REGLA FIJA; o contestar corto frente a aportar una referencia), redacta las dos completas. "respuesta" es la que recomiendas; "alternativa" es la otra, con "etiqueta" (2-5 palabras que digan en qué se diferencia, p. ej. "Con puerta a los shows") y "etiqueta_principal" (lo mismo para la recomendada, p. ej. "Solo acuse"). NUNCA escribas en nota_para_alain "tendrías que añadirlo tú": si hay algo que añadir, lo escribes tú como alternativa. null si solo hay una forma sensata de contestar.
 - nota_para_alain: una o dos frases sobre algo que deba saber antes de enviar (dato raro, duda, riesgo). null si nada.
 - resumen: una línea en castellano para el Registro, al estilo "Responde: calendario cerrado, deciden en mayo".
 - faltan_datos: lista de lo que necesitabas para contestar bien y no está en los documentos ni en la ficha. Cada elemento: {"que": "duración y necesidades técnicas del show familiar", "documento": la clave del documento del catálogo donde debería ir (p. ej. "show_magia_zaparrada") o null}. [] si no falta nada. Redacta igualmente el mejor borrador posible sin ese dato.
+
+Fichas de ayuntamiento (la ficha dice tipo "ayuntamiento"; vía institucional):
+- La referencia para estos correos son los documentos ayto_flujo y ayto_mails, no los guiones de centros. Una sola petición por correo. Por defecto en euskera (decisión de Alain); si ellos escriben en castellano, se contesta en castellano.
+- Clasifica con estas cuando encajen: ayto_lo_llevamos (programan o pagan ellos actividades para los institutos), ayto_calendario_abierto (lo están programando ahora o piden la propuesta), ayto_subvenciona_centros (subvencionan a los centros y cada centro elige sus actividades), ayto_no_es_nuestro (lo lleva otra área, la mancomunidad, la Diputación u otra persona), ayto_no_interesa (no contratan fuera, no hay presupuesto o no les interesa), ayto_otros_formatos (interés en un show, presentador, taller o magia itinerante). Siguen valiendo da_mes, pide_info, pregunta_precio, interesado_fechas, acuse_automatico, fuera_de_oficina y otro.
+- ayto_no_es_nuestro: si dan el correo de otra persona, ponlo en datos.persona_nueva con nombre y cargo y contesta solo "gracias, le escribo"; si no lo dan, pide ese contacto (es la única petición).
+- La "puerta a otros formatos" de ayto_mails va en ayto_subvenciona_centros, en ayto_no_interesa y en ayto_no_es_nuestro cuando no dan contacto (en ese caso como alternativa, no en la principal). Nunca con precios ni enlazada al precio.
+- Estado tras tu respuesta: ayto_lo_llevamos → "4 Ha respondido", proxima_accion "Esperar: cuándo deciden la programación", +14 días. da_mes → "9 Aparcado (con fecha de reactivación)" el primer día laborable de ese mes, proxima_accion "Enviar la información (dijeron <mes>)". ayto_calendario_abierto o pide_info → dossier adjunto, "5 Dossier enviado", "Seguimiento de la información", +7. ayto_subvenciona_centros y ayto_no_interesa → "9 Aparcado (con fecha de reactivación)" a +6 meses, "Reactivar (ayuntamientos)". ayto_no_es_nuestro sin contacto → "4 Ha respondido", "Esperar: que pasen el contacto", +10.
+- necesita_alain en ayuntamientos: true solo en ayto_otros_formatos, interesado_fechas, pregunta_precio, quejas o si dudas. En lo demás, false: Alain las revisa igual en la bandeja, y si las aprueba muchas veces sin corregir pasan a salir solas.
 
 Devuelve SOLO el JSON, sin texto alrededor, con esta forma exacta:
 {"clasificacion":"…","confianza":0.0,"idioma":"es|eu|mixto","resumen":"…","datos":{"mes_reactivacion":null,"persona_nueva":null,"n_grupos":null,"nivel":null,"motivo":null},"responder":true,"respuesta":{"asunto":"…","cuerpo":"…","adjuntar_dossier":false},"alternativa":null,"cambios_crm":{"estado":null,"proxima_accion":null,"fecha_proxima_accion":null,"calendario_abierto":null},"nota_para_alain":null,"necesita_alain":false,"faltan_datos":[]}
@@ -131,6 +147,8 @@ export interface EntradaIA {
   /** Tarea que toca por fecha, sin correo nuevo (modo programado). */
   programada?: { tipo: string; instrucciones: string; destinatario: string | null } | null;
   instruccion_extra?: string;
+  /** Etiqueta de coste en charlas_ia_uso (p. ej. "ayto_programada" para separar el gasto de los ayuntamientos). */
+  proposito?: string;
 }
 
 export async function llamarClaude(opciones: {
@@ -139,10 +157,12 @@ export async function llamarClaude(opciones: {
   maxTokens?: number;
   proposito: string;
   mensajeId?: string | null;
+  /** Para tareas baratas sin conocimiento (p. ej. la investigación de ayuntamientos con Haiku). Por defecto, el de config. */
+  modelo?: string;
 }): Promise<string> {
   const supabase = supabaseCharlas();
   const { data: cfg } = await supabase.from("charlas_config").select("valor").eq("clave", "modelo").maybeSingle();
-  const modelo = (cfg?.valor as string) || "claude-sonnet-5-5";
+  const modelo = opciones.modelo || (cfg?.valor as string) || "claude-sonnet-5-5";
 
   // A veces la API contesta 200 con el contenido vacío (sin bloques de texto).
   // Es transitorio: se reintenta hasta 2 veces más antes de rendirse, y si
@@ -151,6 +171,8 @@ export async function llamarClaude(opciones: {
   // presupuesto pensando: el siguiente intento le da el triple de margen.
   let ultimo = "";
   let maxTokens = opciones.maxTokens ?? 2000;
+  // Freno duro del presupuesto mensual (lib/ia-presupuesto.ts): nunca se pasa del tope.
+  await comprobarTopeIA();
   for (let intento = 1; intento <= 3; intento++) {
     const inicio = Date.now();
     const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -199,6 +221,7 @@ export async function llamarClaude(opciones: {
       error: r.ok ? (vacio ? `respuesta vacía (intento ${intento}): ${ultimo}` : null) : JSON.stringify(cuerpo?.error ?? cuerpo).slice(0, 500),
     });
 
+    anotarGasto(coste);
     if (!r.ok) throw new Error(`Anthropic ${r.status}: ${cuerpo?.error?.message ?? "error"}`);
     if (!vacio) return texto;
     if (cuerpo?.stop_reason === "max_tokens") maxTokens = Math.min(maxTokens * 3, 16000);
@@ -244,7 +267,7 @@ export async function procesarConIA(entrada: EntradaIA, mensajeId?: string | nul
     .filter(Boolean)
     .join("\n\n");
 
-  const texto = await llamarClaude({ system, usuario, proposito: entrada.instruccion_extra ? "regenerar" : entrada.programada ? "programada" : "procesar_entrante", mensajeId, maxTokens: 4500 });
+  const texto = await llamarClaude({ system, usuario, proposito: entrada.proposito ?? (entrada.instruccion_extra ? "regenerar" : entrada.programada ? "programada" : "procesar_entrante"), mensajeId, maxTokens: 4500 });
   let r: ResultadoIA;
   try {
     r = extraerJSON(texto) as ResultadoIA;

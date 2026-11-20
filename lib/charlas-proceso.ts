@@ -12,7 +12,7 @@ async function config<T>(clave: string, defecto: T): Promise<T> {
   return (data?.valor as T) ?? defecto;
 }
 
-const CALIENTES = new Set(["interesado_fechas", "otro", "pide_contacto_ayuntamiento"]);
+const CALIENTES = new Set(["interesado_fechas", "otro", "pide_contacto_ayuntamiento", "ayto_otros_formatos"]);
 
 export interface ResumenProceso {
   procesados: number;
@@ -142,6 +142,18 @@ export async function procesarMensaje(mensajeId: string, instruccion?: string): 
 
   const cambios: Record<string, unknown> = { ...resultado.cambios_crm };
   if (resultado.datos?.persona_nueva?.email) cambios.contacto_nuevo = resultado.datos.persona_nueva;
+  // Vía ayuntamientos (lib/ayto-flujo.ts): la persona que nos pasan queda como
+  // responsable y el motor le prepara el Mail 1 A, en un hilo nuevo, ese mismo día.
+  if (centro.tipo === "ayuntamiento") {
+    const pn = resultado.datos?.persona_nueva;
+    if (resultado.clasificacion === "ayto_no_es_nuestro" && pn?.email) {
+      cambios.contacto_nuevo = { ...pn, responsable: true };
+      cambios.estado = "4 Ha respondido";
+      cambios.proxima_accion = "Mail 1 A a la persona nueva";
+      cambios.fecha_proxima_accion = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
+    }
+    if (resultado.responder && ["ayto_subvenciona_centros", "ayto_no_interesa"].includes(resultado.clasificacion)) cambios.otros_formatos = "puerta abierta a otros formatos (respuesta de un ayuntamiento)";
+  }
   for (const k of Object.keys(cambios)) if (cambios[k] === null || cambios[k] === undefined) delete cambios[k];
 
   // Primera vez que se procesa: queda en el Registro que ha llegado.
@@ -181,7 +193,7 @@ export async function procesarMensaje(mensajeId: string, instruccion?: string): 
     faseDeEstado(centro.estado) >= 4 ||
     resultado.necesita_alain ||
     CALIENTES.has(resultado.clasificacion) ||
-    ["no_interesa", "lo_decide_otro", "reenviado_a", "pide_contacto_ayuntamiento", "pregunta_precio"].includes(resultado.clasificacion);
+    ["no_interesa", "lo_decide_otro", "reenviado_a", "pide_contacto_ayuntamiento", "pregunta_precio", "ayto_no_es_nuestro", "ayto_no_interesa", "ayto_subvenciona_centros", "ayto_otros_formatos"].includes(resultado.clasificacion);
   const sinNada = !resultado.responder && Object.keys(cambios).length === 0;
   if (sinNada && !importante) return { resultado, tarea: null };
   if (sinNada && importante && !resultado.nota_para_alain) {

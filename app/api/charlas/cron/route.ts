@@ -13,6 +13,10 @@ import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 import { aprenderMagia, tocaAprenderMagia } from "@/lib/crm-aprendizaje";
 import { indexarHistorico, leerBuzonesExtra } from "@/lib/correo-general";
 import { tomarCierre, soltarCierre } from "@/lib/cron-cierre";
+import { mail1Ayuntamientos } from "@/lib/ayuntamientos";
+import { investigarAyuntamientos } from "@/lib/ayto-investigar";
+import { autoenviarAyuntamientos } from "@/lib/ayto-autoenvio";
+import { autoenviarCharlas, autoenviarMagia } from "@/lib/autoenvio";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -136,6 +140,28 @@ async function ejecutarSinCierre(req: Request) {
     magia = await correrMagia();
   }
 
+  // Vía ayuntamientos: cola diaria del Mail 1 (usa la IA para redactar: solo en ventana) y,
+  // en cualquier pasada con la lectura al día, el envío automático de los tipos que ya
+  // llevan la racha (lib/ayto-autoenvio.ts; nunca en modo prueba ni fuera de horario).
+  const ayto =
+    lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 44000
+      ? await mail1Ayuntamientos({ presupuestoMs: Math.max(0, 50000 - (Date.now() - inicio)) }).catch((e) => ({ activo: true, hoy_ya: 0, creadas: 0, candidatos: 0, localizar: 0, errores: [(e as Error).message] }))
+      : null;
+  const aytoAuto =
+    lectura?.al_dia && !errorLectura && Date.now() - inicio < 46000
+      ? await autoenviarAyuntamientos({ presupuestoMs: Math.max(0, 52000 - (Date.now() - inicio)) }).catch((e) => ({ activo: true, enviados: 0, errores: [(e as Error).message] }))
+      : null;
+
+  // Envío automático por racha en centros y en magia (lib/autoenvio.ts): mismas guardas que ayuntamientos.
+  const autoCharlas =
+    lectura?.al_dia && !errorLectura && Date.now() - inicio < 47000
+      ? await autoenviarCharlas({ presupuestoMs: Math.max(0, 52000 - (Date.now() - inicio)) }).catch((e) => ({ enviados: 0, errores: [(e as Error).message] }))
+      : null;
+  const autoMagia =
+    lectura?.al_dia && !errorLectura && Date.now() - inicio < 48000
+      ? await autoenviarMagia({ presupuestoMs: Math.max(0, 53000 - (Date.now() - inicio)) }).catch((e) => ({ enviados: 0, errores: [(e as Error).message] }))
+      : null;
+
   // Tarjetas diarias para que Alain localice a mano el correo de unos pocos centros (sin IA).
   if (lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 47000) await localizarCorreosCharlas().catch(() => null);
 
@@ -149,6 +175,13 @@ async function ejecutarSinCierre(req: Request) {
   const correoHistorico =
     !panel && !toca && lectura?.al_dia && !errorLectura && Date.now() - inicio < 25000
       ? await indexarHistorico({ presupuestoMs: Math.max(0, 30000 - (Date.now() - inicio)) }).catch((e) => ({ hecho: false, guardadas: 0, error: (e as Error).message }))
+      : null;
+
+  // Investigación web de los ayuntamientos (red + una llamada corta a Haiku, sin el
+  // conocimiento): fuera de ventana, como el rastreo, uno o dos por pasada.
+  const aytoInvestigacion =
+    !panel && lectura?.al_dia && !errorLectura && !toca && Date.now() - inicio < 25000
+      ? await investigarAyuntamientos({ presupuestoMs: Math.min(25000, Math.max(0, 47000 - (Date.now() - inicio))) }).catch((e) => ({ activo: true, revisados: 0, con_educacion: 0, con_buzon: 0, sin_web: 0, errores: [(e as Error).message] }))
       : null;
 
   const rastreo =
@@ -188,7 +221,7 @@ async function ejecutarSinCierre(req: Request) {
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
   const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
 }
 
 // Solo una pasada a la vez: si otra está trabajando (cron solapado, o "Leer buzón ahora" mientras
