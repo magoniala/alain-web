@@ -153,7 +153,7 @@ export default function PrivacidadPage() {
                   Las valoraciones se conservan un máximo de 3 años desde el evento. Los testimonios publicados permanecen hasta que retires tu consentimiento. Los datos de las personas recomendadas se eliminan si en 3 meses no hay respuesta o no hay interés.
                 </p>
                 <p>
-                  Los datos de las reservas de un evento se eliminan a los 12 meses de su celebración. Las opiniones de asistentes se conservan un máximo de 3 años desde el evento.
+                  Los datos de las reservas de un evento y las opiniones de asistentes no tienen un plazo fijo de borrado: se conservan mientras sean útiles para organizar futuros eventos o hasta que solicites su supresión.
                 </p>
               </div>
             </div>
