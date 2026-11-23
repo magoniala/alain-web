@@ -594,7 +594,8 @@ export async function procesarPendientesMagia(opciones: { presupuestoMs: number;
   const inicio = Date.now();
   const sb = supabaseCharlas();
   const res = { procesados: 0, tareas: 0, errores: [] as string[] };
-  const { data: pendientes } = await sb.from("crm_mensajes").select("id, asunto, intentos").eq("direccion", "entrante").eq("estado", "nuevo").not("ficha_id", "is", null).lt("intentos", 3).order("fecha").limit(opciones.limite ?? 5);
+  // Solo los de fichas de magia: los de leads de Entrenatzaile los procesa lib/leads-motor.ts.
+  const { data: pendientes } = await sb.from("crm_mensajes").select("id, asunto, intentos, ficha:crm_fichas!inner(carril)").eq("direccion", "entrante").eq("estado", "nuevo").eq("ficha.carril", "magia").lt("intentos", 3).order("fecha").limit(opciones.limite ?? 5);
   for (const m of pendientes ?? []) {
     if (Date.now() - inicio > opciones.presupuestoMs) break;
     try {

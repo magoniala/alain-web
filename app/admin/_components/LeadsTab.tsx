@@ -52,7 +52,7 @@ interface FichaLista extends FichaT {
 }
 
 const ESTADOS = ["0 Por escribir", "1 Escrito", "2 Seguimiento enviado", "3 En conversación", "4 Hoja de Ruta propuesta", "5 Hoja de Ruta reservada", "6 Hoja de Ruta hecha", "7 Cliente", "8 Perdido", "9 Aparcado"];
-const ETIQUETA: Record<string, string> = { check_in: "Check-in", seguimiento: "Seguimiento", recordatorio: "Recordatorio", aparcar: "Aparcar" };
+const ETIQUETA: Record<string, string> = { check_in: "Check-in", seguimiento: "Seguimiento", recordatorio: "Recordatorio", aparcar: "Aparcar", respuesta: "✉️ Te ha escrito" };
 const hoyISO = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
 const fmt = (iso: string | null | undefined) => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—");
 const diasEntre = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400000);
@@ -69,6 +69,7 @@ export default function LeadsTab() {
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [recientes, setRecientes] = useState<Reciente[]>([]);
   const [modo, setModo] = useState<string>("apagado");
+  const [rachas, setRachas] = useState<Record<string, number> | null>(null);
   const [aviso, setAviso] = useState("");
   const [cargando, setCargando] = useState(true);
   const [buscando, setBuscando] = useState(false);
@@ -92,6 +93,7 @@ export default function LeadsTab() {
       setTareas(d.tareas ?? []);
       setRecientes(d.recientes ?? []);
       setModo(String(d.config?.leads_modo ?? "apagado"));
+      setRachas(d.rachas ?? null);
     } catch (e) {
       setAviso((e as Error).message);
     } finally {
@@ -116,8 +118,8 @@ export default function LeadsTab() {
     setBuscando(true);
     setAviso("");
     try {
-      const r = (await accion({ accion: "motor_leads" })) as { modo: string; creadas: number; solos: number; ya_abiertas: number; errores: string[] };
-      setAviso(r.modo === "apagado" ? "El motor está apagado: ponlo en «Prueba» o «Activo»." : `Hecho: ${r.creadas} tarjetas nuevas · ${r.solos} pasos automáticos · ${r.ya_abiertas} ya tenían tarjeta${r.errores.length ? ` · errores: ${r.errores.join("; ")}` : ""}`);
+      const r = (await accion({ accion: "motor_leads" })) as { modo: string; creadas: number; solos: number; ya_abiertas: number; entrantes: number; redactadas: number; errores: string[] };
+      setAviso(r.modo === "apagado" ? "El motor está apagado: ponlo en «Prueba» o «Activo»." : `Hecho: ${r.creadas} tarjetas nuevas · ${r.solos} pasos automáticos · ${r.entrantes} correos suyos · ${r.redactadas} borradores redactados con IA · ${r.ya_abiertas} ya tenían tarjeta${r.errores.length ? ` · errores: ${r.errores.join("; ")}` : ""}. Los borradores que falten los redacta la IA en las próximas pasadas (o pulsa «Redactar con IA»).`);
       await cargar();
     } catch (e) {
       setAviso((e as Error).message);
@@ -156,10 +158,16 @@ export default function LeadsTab() {
               {buscando ? "Buscando…" : "Buscar lo que toca ahora"}
             </button>
           </div>
+          {rachas && (
+            <p className="text-[0.78rem] text-gray-500">
+              Envío automático por racha (solo correo, solo borradores de la IA, en modo activo): {Object.entries(rachas).map(([k, n]) => `${ETIQUETA[k] ?? k} ${Math.min(n, 20)}/20`).join(" · ")} envíos seguidos sin editar. Al llegar a 20, ese tipo sale solo.
+            </p>
+          )}
           <UltimosCambios key={recientes[0]?.id ?? "vacio"} recientes={recientes} accion={accion} alTerminar={cargar} />
           <div className="space-y-4">
             {ordenadas.map((t) => (
-              <TarjetaLead key={t.id} t={t} accion={accion} alTerminar={cargar} />
+              // La clave cambia con el borrador: si la IA lo rehace, la caja de texto se recarga.
+              <TarjetaLead key={`${t.id}:${(t.borrador_texto ?? "").length}:${(t.borrador_texto ?? "").slice(0, 40)}`} t={t} accion={accion} alTerminar={cargar} />
             ))}
           </div>
           <section className="space-y-2 pt-4">
@@ -184,7 +192,7 @@ function TarjetaLead({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<s
   const [ocupado, setOcupado] = useState("");
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
-  const [caja, setCaja] = useState<"" | "contesto" | "fuera" | "descartar">("");
+  const [caja, setCaja] = useState<"" | "contesto" | "fuera" | "descartar" | "ia">("");
   const [canalFuera, setCanalFuera] = useState("Mail");
   const [abrioWa, setAbrioWa] = useState(false);
   // Editor de la ficha para los recordatorios (sin mensaje).
@@ -196,7 +204,7 @@ function TarjetaLead({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<s
   const fecha = f?.fecha_proxima_accion ?? t.contexto?.fecha_ficha ?? h;
   const retraso = fecha < h ? diasEntre(fecha, h) : 0;
   const instagram = !!t.contexto?.instagram;
-  const conMensaje = !!t.borrador_texto;
+  const conMensaje = !!t.borrador_texto || t.tipo === "respuesta";
   const wa = t.canal === "whatsapp" && t.destinatario ? `https://wa.me/${t.destinatario}?text=${encodeURIComponent(texto)}` : null;
   const caso = suCaso(f?.cuerpo_antes);
 
@@ -344,9 +352,17 @@ function TarjetaLead({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<s
 
       <div className="mt-3 flex flex-wrap gap-2 text-[0.8rem]">
         <button onClick={() => setCaja(caja === "contesto" ? "" : "contesto")} className="rounded-full px-3 py-1 text-gray-700 ring-1 ring-gray-300">Ha contestado</button>
+        {conMensaje && (
+          <button onClick={() => setCaja(caja === "ia" ? "" : "ia")} disabled={!!ocupado} className="rounded-full px-3 py-1 text-gray-700 ring-1 ring-gray-300 disabled:opacity-40">
+            {ocupado === "ia" ? "Redactando…" : "Redactar con IA"}
+          </button>
+        )}
         {conMensaje && <button onClick={() => setCaja(caja === "fuera" ? "" : "fuera")} className="rounded-full px-3 py-1 text-gray-700 ring-1 ring-gray-300">Lo he enviado por otra vía</button>}
         <button onClick={() => setCaja(caja === "descartar" ? "" : "descartar")} className="rounded-full px-3 py-1 text-gray-500 ring-1 ring-gray-200">Descartar</button>
       </div>
+      {caja === "ia" && (
+        <PreguntaEnLinea pregunta="¿Alguna indicación para la IA? (opcional: p. ej. más corto, pregúntale por la rodilla)" boton="Redactar" ocupado={!!ocupado} onCancelar={() => setCaja("")} onAceptar={(x) => { setCaja(""); hacer("ia", { accion: "rehacer", id: t.id, instruccion: x }, "Borrador nuevo listo."); }} />
+      )}
       {caja === "contesto" && (
         <PreguntaEnLinea pregunta="¿Qué te ha dicho? (pega su mensaje o resúmelo: pasa a 3 En conversación, con «contestar» para mañana)" boton="Apuntar" obligatorio ocupado={!!ocupado} onCancelar={() => setCaja("")} onAceptar={(x) => hacer("contesto", { accion: "ha_contestado", id: t.id, texto: x }, "Apuntado: pasa a 3 En conversación.")} />
       )}

@@ -215,3 +215,82 @@ export async function cerrarTareasObsoletasLeads(): Promise<number> {
   }
   return n;
 }
+
+// ---------------------------------------------------------------------------
+// Correos de leads (paso 8): el lector de alain@ ya los guarda en crm_mensajes con su
+// ficha (lib/charlas-correo.ts, índice de fichas). Aquí se procesan sin IA: el Flujo
+// dice que si contesta a cualquier correo vuelve a 3 En conversación; sale la tarjeta
+// «Te ha escrito» y la pasada de IA le prepara el borrador de respuesta.
+// ---------------------------------------------------------------------------
+const VUELVE_A_3 = new Set([0, 1, 2, 3, 4, 9]);
+
+export async function procesarPendientesLeads(opciones: { presupuestoMs: number }): Promise<{ procesados: number; errores: string[] }> {
+  const inicio = Date.now();
+  const sb = supabaseCharlas();
+  const res = { procesados: 0, errores: [] as string[] };
+  const { data } = await sb.from("crm_mensajes").select("id, ficha_id, de, asunto, fecha, texto, ficha:crm_fichas!inner(carril, estado, datos)").eq("direccion", "entrante").eq("estado", "nuevo").eq("ficha.carril", "entrenatzaile").order("fecha").limit(10);
+  for (const m of (data ?? []) as unknown as { id: string; ficha_id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null; ficha: { estado: string; datos: Record<string, unknown> | null } }[]) {
+    if (Date.now() - inicio > opciones.presupuestoMs) break;
+    try {
+      const h = hoy();
+      const pasaA3 = VUELVE_A_3.has(fase(m.ficha.estado));
+      const cambiosFicha: Record<string, unknown> = { fecha_proxima_accion: h, proxima_accion: "Contestar su correo (menos de 24 h)", datos: { ...(m.ficha.datos ?? {}), respondio: "sí" }, actualizado_por: "sistema" };
+      if (pasaA3) cambiosFicha.estado = "3 En conversación";
+      await sb.from("crm_fichas").update(cambiosFicha).eq("id", m.ficha_id);
+      const resumen = `${(m.texto ?? "").replace(/\s+/g, " ").trim().slice(0, 220)}${(m.texto ?? "").length > 220 ? "…" : ""}`;
+      await sb.from("crm_interacciones").insert({ ficha_id: m.ficha_id, fecha: (m.fecha ?? new Date().toISOString()).slice(0, 10), canal: "Recibido", texto: `Correo suyo («${m.asunto ?? "sin asunto"}»): ${resumen}${pasaA3 ? " · → 3 En conversación" : ""}`, orden: 500, origen: "sistema", mensaje_id: m.id });
+      // Cualquier otra tarjeta abierta (un check-in programado…) ya no toca: ha escrito.
+      await sb.from("crm_tareas").update({ estado: "descartada", motivo: "Ha escrito: sustituida por «Te ha escrito»", resuelto_en: new Date().toISOString(), resuelto_por: "sistema" }).eq("ficha_id", m.ficha_id).in("estado", ["revisar", "pendiente"]);
+      await sb.from("crm_tareas").insert({
+        ficha_id: m.ficha_id,
+        carril: "entrenatzaile",
+        tipo: "respuesta",
+        canal: "mail",
+        nivel: "B",
+        urgencia: 3,
+        urgencia_motivo: "Te ha escrito: contestar en menos de 24 h",
+        estado: "revisar",
+        idioma: "es",
+        mensaje_entrante_id: m.id,
+        destinatario: m.de,
+        borrador_texto: null,
+        cambios_crm: { estado: pasaA3 ? "3 En conversación" : m.ficha.estado, proxima_accion: "Si se enfría 3 días: un mensaje; si sigue sin contestar, 9 Aparcado con check-in a +30", fecha_proxima_accion: sumar(h, 3) },
+        nota_para_alain: pasaA3 ? null : `La ficha está en «${m.ficha.estado}»: no se ha movido de estado.`,
+        editado: false,
+        contexto: { programada: false, estado_ficha: pasaA3 ? "3 En conversación" : m.ficha.estado, resumen: "Te ha escrito", clasificacion: "respuesta", redaccion: "plantilla", fecha_ficha: h },
+      });
+      await sb.from("crm_mensajes").update({ estado: "procesado", resumen }).eq("id", m.id);
+      res.procesados++;
+    } catch (e) {
+      res.errores.push(`${m.asunto ?? m.id}: ${(e as Error).message}`);
+    }
+  }
+  return res;
+}
+
+/**
+ * Pasada de IA (paso 6): las tarjetas que salieron con plantilla y que Alain no ha tocado
+ * se reescriben con el protocolo y el contexto de la ficha. Solo empieza una llamada si
+ * queda margen (cada una tarda unos segundos). Interruptor: charlas_config.leads_ia (por defecto sí).
+ */
+export async function mejorarBorradoresLeads(opciones: { presupuestoMs: number; limite?: number }): Promise<{ redactadas: number; errores: string[] }> {
+  const inicio = Date.now();
+  const sb = supabaseCharlas();
+  const res = { redactadas: 0, errores: [] as string[] };
+  const { data: cfg } = await sb.from("charlas_config").select("valor").eq("clave", "leads_ia").maybeSingle();
+  if (cfg?.valor === false) return res;
+  const { data } = await sb.from("crm_tareas").select("id, tipo, contexto").eq("carril", "entrenatzaile").eq("estado", "revisar").eq("editado", false).eq("contexto->>redaccion", "plantilla").in("tipo", ["check_in", "seguimiento", "respuesta"]).order("urgencia", { ascending: false }).order("creado_en").limit(opciones.limite ?? 6);
+  const { redactarTareaLead } = await import("./leads-ia");
+  for (const t of data ?? []) {
+    if (opciones.presupuestoMs - (Date.now() - inicio) < 20000) break;
+    try {
+      await redactarTareaLead(t.id);
+      res.redactadas++;
+    } catch (e) {
+      res.errores.push((e as Error).message);
+      // Si falla, la tarjeta se queda con la plantilla (sigue sirviendo) y no se reintenta en bucle.
+      await sb.from("crm_tareas").update({ contexto: { ...(t.contexto ?? {}), redaccion: "plantilla_fallo_ia" } }).eq("id", t.id);
+    }
+  }
+  return res;
+}

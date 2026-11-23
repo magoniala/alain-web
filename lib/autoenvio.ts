@@ -174,11 +174,85 @@ export async function autoenviarMagia(opciones: { presupuestoMs: number; maximo?
 }
 
 /** Devuelve un tipo a manual (o le deja volver a automático). carril: charlas | magia. */
-export async function marcarManual(carril: "charlas" | "magia", tipo: string, manual: boolean) {
+export async function marcarManual(carril: "charlas" | "magia" | "leads", tipo: string, manual: boolean) {
   const cfg = await configAutoenvio();
   const lista = new Set(cfg.manuales);
   const k = `${carril}:${tipo}`;
   if (manual) lista.add(k);
   else lista.delete(k);
   await supabaseCharlas().from("charlas_config").upsert({ clave: "autoenvio_tipos_manuales", valor: [...lista], actualizado_en: new Date().toISOString() });
+}
+
+// ---------------------------------------------------------------------------
+// Leads de Entrenatzaile (decisión de Alain, 23-11-2026): un tipo de mensaje que
+// Alain ha enviado 20 veces seguidas sin editar (leads_racha_para_automatico) sale
+// solo. Solo correo (WhatsApp e Instagram no tienen API), solo check-in y
+// seguimiento (una conversación la contesta siempre Alain), solo borradores
+// redactados por la IA (nunca la plantilla), solo con leads_modo = activo y con
+// los mismos frenos que magia (horario, tope diario, tipos en manual, correo suyo).
+// ---------------------------------------------------------------------------
+const TIPOS_AUTO_LEADS = ["check_in", "seguimiento"];
+
+/** Racha de envíos seguidos sin editar por tipo (solo los que envió Alain; los automáticos no cuentan ni la rompen). */
+export async function rachasLeads(): Promise<Record<string, number>> {
+  const { data } = await supabaseCharlas().from("crm_tareas").select("tipo, editado, resuelto_por").eq("carril", "entrenatzaile").eq("estado", "enviada").in("tipo", TIPOS_AUTO_LEADS).order("resuelto_en", { ascending: false }).limit(400);
+  const racha: Record<string, number> = Object.fromEntries(TIPOS_AUTO_LEADS.map((t) => [t, 0]));
+  const roto = new Set<string>();
+  for (const t of data ?? []) {
+    if (roto.has(t.tipo) || t.resuelto_por === "sistema") continue;
+    if (t.editado) roto.add(t.tipo);
+    else racha[t.tipo] = (racha[t.tipo] ?? 0) + 1;
+  }
+  return racha;
+}
+
+export async function autoenviarLeads(opciones: { presupuestoMs: number; maximo?: number }): Promise<ResumenAuto> {
+  const inicio = Date.now();
+  const sb = supabaseCharlas();
+  const cfg = await configAutoenvio();
+  const res: ResumenAuto = { enviados: 0, errores: [] };
+  const { data: c } = await sb.from("charlas_config").select("clave, valor").in("clave", ["leads_modo", "leads_racha_para_automatico"]);
+  const lc = Object.fromEntries((c ?? []).map((x) => [x.clave, x.valor])) as Record<string, unknown>;
+  if (lc.leads_modo !== "activo") return { ...res, saltado: "leads no activo" };
+  if (!cfg.activo) return { ...res, saltado: "apagado" };
+  if (cfg.modoPrueba) return { ...res, saltado: "modo prueba" };
+  if (!enHorario()) return { ...res, saltado: "fuera de horario" };
+  const minimo = Number(lc.leads_racha_para_automatico ?? 20);
+  const rachas = await rachasLeads();
+  const tipos = TIPOS_AUTO_LEADS.filter((t) => (rachas[t] ?? 0) >= minimo && !cfg.manuales.includes(`leads:${t}`));
+  if (!tipos.length) return res;
+
+  const { data } = await sb
+    .from("crm_tareas")
+    .select("id, tipo, contexto, destinatario, creado_en, ficha_id, ficha:crm_fichas(nombre)")
+    .eq("carril", "entrenatzaile")
+    .eq("estado", "revisar")
+    .eq("canal", "mail")
+    .eq("contexto->>redaccion", "ia")
+    .is("contexto->>auto_error", null)
+    .in("tipo", tipos)
+    .not("borrador_texto", "is", null)
+    .not("destinatario", "is", null)
+    .order("creado_en", { ascending: true })
+    .limit(50);
+  const { count } = await sb.from("crm_tareas").select("id", { count: "exact", head: true }).eq("carril", "entrenatzaile").eq("estado", "enviada").eq("resuelto_por", "sistema").gte("resuelto_en", `${hoy()}T00:00:00`);
+  let hoyYa = count ?? 0;
+  for (const t of (data ?? []) as unknown as { id: string; tipo: string; contexto: Record<string, unknown> | null; destinatario: string; creado_en: string; ficha_id: string; ficha: { nombre: string } | null }[]) {
+    if (res.enviados >= (opciones.maximo ?? 3) || hoyYa >= cfg.topeDia || Date.now() - inicio > opciones.presupuestoMs) break;
+    if (!t.destinatario.includes("@")) continue;
+    const { data: nuevo } = await sb.from("crm_mensajes").select("id").eq("ficha_id", t.ficha_id).eq("direccion", "entrante").gt("fecha", t.creado_en).limit(1);
+    if (nuevo?.length) continue;
+    try {
+      await enviarMagia({ id: t.id, automatico: true });
+      res.enviados++;
+      hoyYa++;
+      await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "Sistema", texto: `Enviado automáticamente: «${t.tipo}» llevaba ${rachas[t.tipo]} envíos seguidos sin corrección.`, orden: 601, origen: "sistema" });
+    } catch (e) {
+      if (e instanceof DuplicadoMagia) continue;
+      res.errores.push(`${t.ficha?.nombre ?? t.id}: ${(e as Error).message}`);
+      // No se reintenta en cada pasada (p. ej. sin hilo ni asunto): la tarjeta se queda para Alain con el motivo.
+      await sb.from("crm_tareas").update({ contexto: { ...(t.contexto ?? {}), auto_error: (e as Error).message.slice(0, 200) } }).eq("id", t.id);
+    }
+  }
+  return res;
 }

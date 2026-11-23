@@ -6,7 +6,7 @@ import { tareasPorFecha, mail1Automatico, localizarCorreosCharlas } from "@/lib/
 import { rastrearContactos } from "@/lib/charlas-rastreo";
 import { tareasPorFechaMagia, procesarPendientesMagia } from "@/lib/crm-motor";
 import { notificarTareasNuevas, notificarTareasMagia, notificarTareasLeads } from "@/lib/charlas-push";
-import { tareasPorFechaLeads } from "@/lib/leads-motor";
+import { tareasPorFechaLeads, procesarPendientesLeads, mejorarBorradoresLeads } from "@/lib/leads-motor";
 import { enviarAvisosPendientes, alertasParaAlain } from "@/lib/ent-avisos";
 import { proponerPendientes } from "@/lib/ent-ia";
 import { notificarReservasHojaRuta } from "@/lib/hoja-ruta-bandeja";
@@ -17,7 +17,7 @@ import { tomarCierre, soltarCierre } from "@/lib/cron-cierre";
 import { mail1Ayuntamientos } from "@/lib/ayuntamientos";
 import { investigarAyuntamientos } from "@/lib/ayto-investigar";
 import { autoenviarAyuntamientos } from "@/lib/ayto-autoenvio";
-import { autoenviarCharlas, autoenviarMagia } from "@/lib/autoenvio";
+import { autoenviarCharlas, autoenviarMagia, autoenviarLeads } from "@/lib/autoenvio";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -165,7 +165,16 @@ async function ejecutarSinCierre(req: Request) {
 
   // Leads de Entrenatzaile (23-11-2026): tarjetas por fecha, sin IA (plantillas del guion).
   // Interruptor charlas_config.leads_modo (apagado | prueba | activo); no depende de la ventana de IA.
+  // Primero los correos suyos que ha dejado el lector (→ 3 En conversación y tarjeta «Te ha escrito»),
+  // luego lo que toca por fecha y, si queda margen, la IA reescribe los borradores de plantilla.
+  const leadsEntrantes = lectura?.al_dia && !errorLectura && Date.now() - inicio < 50000 ? await procesarPendientesLeads({ presupuestoMs: 3000 }).catch((e) => ({ procesados: 0, errores: [(e as Error).message] })) : null;
   const leads = Date.now() - inicio < 50000 ? await tareasPorFechaLeads({ presupuestoMs: Math.max(0, 54000 - (Date.now() - inicio)) }).catch((e) => ({ modo: "?", revisados: 0, creadas: 0, solos: 0, ya_abiertas: 0, errores: [(e as Error).message] })) : null;
+
+  // Leads: envío automático por racha (lib/autoenvio.ts; solo con leads_modo = activo).
+  const autoLeads =
+    lectura?.al_dia && !errorLectura && Date.now() - inicio < 49000
+      ? await autoenviarLeads({ presupuestoMs: Math.max(0, 53000 - (Date.now() - inicio)) }).catch((e) => ({ enviados: 0, errores: [(e as Error).message] }))
+      : null;
 
   // Tarjetas diarias para que Alain localice a mano el correo de unos pocos centros (sin IA).
   if (lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 47000) await localizarCorreosCharlas().catch(() => null);
@@ -227,7 +236,9 @@ async function ejecutarSinCierre(req: Request) {
   const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
   const pushLeads = await notificarTareasLeads().catch(() => ({ avisos: 0, tareas: 0 }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+  // Al final, con lo que sobre: la IA reescribe los borradores de plantilla de leads (unos segundos cada uno).
+  const leadsIA = leads && leads.modo !== "apagado" && leads.modo !== "?" ? await mejorarBorradoresLeads({ presupuestoMs: Math.max(0, 56000 - (Date.now() - inicio)), limite: 2 }).catch((e) => ({ redactadas: 0, errores: [(e as Error).message] })) : null;
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, leads_entrantes: leadsEntrantes, leads_ia: leadsIA, auto_leads: autoLeads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
 }
 
 // Solo una pasada a la vez: si otra está trabajando (cron solapado, o "Leer buzón ahora" mientras

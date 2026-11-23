@@ -94,10 +94,24 @@ export async function espejoProspectos({ dir, url, key, comprobar = false, carri
     porFicha.get(i.ficha_id).push(i);
   }
 
+  // Leads: lo enviado desde el panel se apunta en «## Mensajes» de la nota (como cuando se
+  // preparaba a mano), para que el vault siga teniendo el historial completo. Una vez.
+  const enviadas = new Map();
+  if (carril === "entrenatzaile") {
+    const filas = (await rest(`crm_tareas?carril=eq.entrenatzaile&estado=eq.enviada&texto_final=not.is.null&contexto->>en_vault=is.null&select=id,ficha_id,tipo,canal,texto_final,resuelto_en,contexto&order=resuelto_en`, { prefer: "return=representation" })) ?? [];
+    for (const x of filas) {
+      if (!enviadas.has(x.ficha_id)) enviadas.set(x.ficha_id, []);
+      enviadas.get(x.ficha_id).push(x);
+    }
+  }
+  const marcarEnVault = [];
+  const ETQ = { check_in: "Check-in", seguimiento: "Seguimiento", recordatorio: "Mensaje", respuesta: "Respuesta" };
+
   const enVault = new Set(readdirSync(dir).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3)));
   let iguales = 0;
   let distintas = 0;
   let nuevas = 0;
+  let cuerpos = 0;
   const manuales = [];
   const diferencias = [];
   const subidas = [];
@@ -129,6 +143,34 @@ export async function espejoProspectos({ dir, url, key, comprobar = false, carri
       const fila = { ficha_id: f.id, fecha: r.fecha, canal: r.canal ?? "Manual", texto: r.texto, raw: r.raw, orden: 900 + r.orden, origen: "manual" };
       manuales.push(fila);
       registro.push({ ...fila, creado_en: new Date().toISOString() });
+    }
+    for (const x of enviadas.get(f.id) ?? []) {
+      const dia = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit" }).format(new Date(x.resuelto_en ?? Date.now())).replace("/", "-");
+      const canal = x.canal === "mail" ? "mail, mismo hilo" : x.canal === "whatsapp" ? "WhatsApp" : "otra vía";
+      const bloque = `### ${ETQ[x.tipo] ?? x.tipo} · enviado desde el panel (${dia}, ${canal})\n\n\`\`\`\n${String(x.texto_final).trim()}\n\`\`\`\n\n`;
+      const desp = p.cuerpo_despues ?? "";
+      const i = desp.search(/^## Mensajes[^\n]*\n/m);
+      if (i >= 0) {
+        // Al final de la sección (va de más antiguo a más nuevo), antes del siguiente «## ».
+        const inicio = desp.indexOf("\n", i) + 1;
+        const sig = desp.slice(inicio).search(/^## /m);
+        const fin = sig >= 0 ? inicio + sig : desp.length;
+        const seccion = desp.slice(0, fin).replace(/\n*$/, "\n\n");
+        p.cuerpo_despues = `${seccion}${bloque}${desp.slice(fin)}`;
+      } else p.cuerpo_despues = `${desp.replace(/\n*$/, desp ? "\n\n" : "")}## Mensajes\n\n${bloque}`;
+      marcarEnVault.push(x);
+    }
+    // El cuerpo de la nota (Su caso, Mensajes, Notas, bloque mensaje-listo…) y la forma del
+    // frontmatter son del vault: el servidor nunca los escribe, y los chats y Alain sí los
+    // tocan a diario. Antes se regeneraba la nota con la copia de Supabase y un cambio en el
+    // cuerpo hecho en Obsidian se perdía en la pasada siguiente (visto el 23-11-2026 al meter
+    // los leads). Ahora se toma siempre el de la nota y, si ha cambiado, se sube.
+    if (p.cuerpo_antes !== f.cuerpo_antes || (p.cuerpo_despues ?? null) !== (f.cuerpo_despues ?? null) || p.frontmatter_raw !== f.frontmatter_raw) {
+      cuerpos++;
+      if (!comprobar) await rest(`crm_fichas?id=eq.${f.id}`, { method: "PATCH", body: JSON.stringify({ cuerpo_antes: p.cuerpo_antes, cuerpo_despues: p.cuerpo_despues, frontmatter_raw: p.frontmatter_raw }) });
+      f.cuerpo_antes = p.cuerpo_antes;
+      f.cuerpo_despues = p.cuerpo_despues;
+      f.frontmatter_raw = p.frontmatter_raw;
     }
     const db = (k) => valorDe(f, k, perfil);
     const calcularDifs = () => CLAVES.filter((k) => !igual(p.frontmatter[k], db(k), k, perfil)).map((k) => `${k}: vault="${p.frontmatter[k] ?? ""}" · db="${db(k) ?? ""}"`);
@@ -183,12 +225,13 @@ export async function espejoProspectos({ dir, url, key, comprobar = false, carri
   }
 
   if (!comprobar && manuales.length) await rest("crm_interacciones", { method: "POST", body: JSON.stringify(manuales) });
+  if (!comprobar) for (const x of marcarEnVault) await rest(`crm_tareas?id=eq.${x.id}`, { method: "PATCH", body: JSON.stringify({ contexto: { ...(x.contexto ?? {}), en_vault: true } }) });
   if (!comprobar) {
     guardarEstadoEspejo();
     guardarFotos();
   }
 
-  return { fichas: fichas.length, iguales, distintas, nuevas, manuales: manuales.length, subidas: subidas.length, sin_supabase: [...enVault], diferencias, detalle_subidas: subidas };
+  return { fichas: fichas.length, iguales, distintas, nuevas, cuerpos, manuales: manuales.length, subidas: subidas.length, sin_supabase: [...enVault], diferencias, detalle_subidas: subidas };
 }
 
 // Ejecución directa.

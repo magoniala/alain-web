@@ -249,7 +249,8 @@ interface IndiceMagia {
 }
 async function indiceMagia(): Promise<IndiceMagia | null> {
   const supabase = supabaseCharlas();
-  const { data: fichas, error } = await supabase.from("crm_fichas").select("id, email, responsable_email").eq("carril", "magia");
+  // También los leads de Entrenatzaile (23-11-2026): sus correos se guardan con su ficha y los procesa lib/leads-motor.ts (sin la IA de magia).
+  const { data: fichas, error } = await supabase.from("crm_fichas").select("id, email, responsable_email").in("carril", ["magia", "entrenatzaile"]);
   if (error) return null;
   const porEmail = new Map<string, string>();
   for (const f of fichas ?? []) {

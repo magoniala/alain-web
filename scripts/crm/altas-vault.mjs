@@ -132,9 +132,10 @@ function restDe(url, key) {
 const ficherosMd = (dir) => readdirSync(dir).filter((f) => f.endsWith(".md") && !f.startsWith("00 ") && !f.startsWith("_"));
 
 // --- Prospectos/ → crm_fichas (carril magia) -------------------------------
-async function altasProspectos({ dir, rest, comprobar, informe }) {
+// --- Vías/Entrenatzaile/Leads/ → crm_fichas (carril entrenatzaile), desde el 23-11-2026 ---
+async function altasProspectos({ dir, rest, comprobar, informe, carril = "magia", carpeta = "Prospectos" }) {
   if (!dir || !existsSync(dir)) return;
-  const existentes = await rest.todas("crm_fichas", "id,nombre,email,telefono,responsable_email,responsable_tel", "&carril=eq.magia");
+  const existentes = await rest.todas("crm_fichas", "id,nombre,email,telefono,responsable_email,responsable_tel", `&carril=eq.${carril}`);
   const nombres = new Set(existentes.map((f) => f.nombre));
   const identidades = existentes.map((f) => identidad(f.nombre, [f.email, f.responsable_email], [f.telefono, f.responsable_tel]));
 
@@ -144,9 +145,9 @@ async function altasProspectos({ dir, rest, comprobar, informe }) {
     if (nombres.has(nombre)) continue;
     let leido;
     try {
-      leido = filaDesdeFicha(nombre, readFileSync(join(dir, f), "utf8"));
+      leido = filaDesdeFicha(nombre, readFileSync(join(dir, f), "utf8"), carril);
     } catch (e) {
-      informe.errores.push({ carpeta: "Prospectos", nombre, error: e.message });
+      informe.errores.push({ carpeta, nombre, error: e.message });
       continue;
     }
     const { fila, registro } = leido;
@@ -158,10 +159,10 @@ async function altasProspectos({ dir, rest, comprobar, informe }) {
   for (const c of candidatas) {
     const motivos = sospechas(c.id, todas);
     if (motivos.length) {
-      informe.dudas.push({ carpeta: "Prospectos", nombre: c.nombre, motivos });
+      informe.dudas.push({ carpeta, nombre: c.nombre, motivos });
       continue;
     }
-    const alta = { carpeta: "Prospectos", tabla: "crm_fichas (magia)", nombre: c.nombre, lineas: c.registro.length, estado: c.fila.estado, proxima: c.fila.fecha_proxima_accion ?? null };
+    const alta = { carpeta, tabla: `crm_fichas (${carril})`, nombre: c.nombre, lineas: c.registro.length, estado: c.fila.estado, proxima: c.fila.fecha_proxima_accion ?? null };
     if (comprobar) {
       informe.altas.push(alta);
       continue;
@@ -177,8 +178,8 @@ async function altasProspectos({ dir, rest, comprobar, informe }) {
       informe.altas.push(alta);
     } catch (e) {
       // 409 = otra pasada la ha dado de alta mientras tanto: no es un error.
-      if (e.status === 409) informe.ya_estaban.push({ carpeta: "Prospectos", nombre: c.nombre });
-      else informe.errores.push({ carpeta: "Prospectos", nombre: c.nombre, error: e.message });
+      if (e.status === 409) informe.ya_estaban.push({ carpeta, nombre: c.nombre });
+      else informe.errores.push({ carpeta, nombre: c.nombre, error: e.message });
     }
   }
 }
@@ -265,10 +266,9 @@ export async function altasVault({ url, key, vaultCharlas, comprobar = false } =
   await altasProspectos({ dir: dirProspectos, rest, comprobar, informe });
   await altasCentros({ dirs: [dirCentros, dirInstituciones], rest, comprobar, informe });
 
-  // Leads de Entrenatzaile: hoy no hay tabla de fichas en Supabase (el carril
-  // 'entrenatzaile' de crm_fichas está previsto pero sin panel ni motor), así
-  // que no hay dónde darlos de alta. Se cuenta para que quede en el log.
-  if (existsSync(dirLeads)) informe.sin_tabla.push({ carpeta: "Leads (Entrenatzaile)", fichas: ficherosMd(dirLeads).length });
+  // Leads de Entrenatzaile (carril 'entrenatzaile' de crm_fichas desde el 23-11-2026):
+  // una ficha nueva creada en el vault (p. ej. un contacto de Instagram) sube igual que un prospecto.
+  await altasProspectos({ dir: dirLeads, rest, comprobar, informe, carril: "entrenatzaile", carpeta: "Leads" });
 
   informe.vault_charlas = vaultCharlas;
   return informe;

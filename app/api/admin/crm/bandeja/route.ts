@@ -8,7 +8,9 @@ import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-c
 import { cerrarTareasObsoletasMagia } from "@/lib/crm-tareas-obsoletas";
 import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, tareaPrevia } from "@/lib/bandeja-deshacer";
 import { cargarTarea, enviarMail, aplicarCambios, etiqueta, registrarCorreccion, sinPrefijo, EnvioDuplicado, guardarHiloDeBuzon } from "@/lib/crm-envio";
-import { cerrarTareasObsoletasLeads, tareasPorFechaLeads } from "@/lib/leads-motor";
+import { cerrarTareasObsoletasLeads, tareasPorFechaLeads, mejorarBorradoresLeads, procesarPendientesLeads } from "@/lib/leads-motor";
+import { redactarTareaLead } from "@/lib/leads-ia";
+import { rachasLeads } from "@/lib/autoenvio";
 
 // Bandeja del carril de MAGIA (fase 6a).
 //
@@ -61,6 +63,7 @@ export async function GET(req: Request) {
   ]);
   const config = Object.fromEntries((cfg.data ?? []).map((c) => [c.clave, c.valor]));
   const recientes = await recientesDeshacibles(sb, "crm", { carril }).catch(() => []);
+  const rachas = carril === "entrenatzaile" ? await rachasLeads().catch(() => null) : null;
   const h = hoy();
 
   // Último correo recibido y último enviado de cada ficha con tarjeta: la tarjeta
@@ -93,6 +96,7 @@ export async function GET(req: Request) {
       return { ...t, ultimos: ult, hilo_asunto: hilo_asunto || null, manual: manual ? { etiqueta: manual.etiqueta, texto: manual.texto } : null };
     }),
     error_tareas: tareas.error?.message ?? null,
+    rachas,
     cerradas_solas,
     errores: errores.data ?? [],
     recientes,
@@ -184,6 +188,10 @@ export async function POST(req: Request) {
       case "rehacer": {
         const t = await cargarTarea(String(body.id));
         const instruccion = String(body.instruccion ?? "").trim();
+        if (t.carril === "entrenatzaile") {
+          await redactarTareaLead(t.id, instruccion || undefined);
+          return NextResponse.json({ ok: true });
+        }
         if (!instruccion) throw new Error("Falta la indicación.");
         if (t.mensaje_entrante_id) {
           await procesarEntranteMagia(t.mensaje_entrante_id, instruccion);
@@ -270,9 +278,15 @@ export async function POST(req: Request) {
         await sb.from("crm_tareas").update({ estado: "enviada", cambios_crm: t.cambios_crm, texto_final: texto, editado: texto !== (t.borrador_texto ?? "").trim(), resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
-      case "motor_leads":
-        // «Buscar lo que toca ahora» en la pestaña de leads: la misma pasada que hace el cron.
-        return NextResponse.json({ ok: true, ...(await tareasPorFechaLeads({ presupuestoMs: 40000 })) });
+      case "motor_leads": {
+        // «Buscar lo que toca ahora» en la pestaña de leads: la misma pasada que hace el cron,
+        // y con el tiempo que quede, la IA redacta los borradores (hasta 3).
+        const inicio = Date.now();
+        const entrantes = await procesarPendientesLeads({ presupuestoMs: 5000 }).catch(() => ({ procesados: 0, errores: [] as string[] }));
+        const r = await tareasPorFechaLeads({ presupuestoMs: 15000 });
+        const ia = await mejorarBorradoresLeads({ presupuestoMs: Math.max(0, 55000 - (Date.now() - inicio)), limite: 3 }).catch((e) => ({ redactadas: 0, errores: [(e as Error).message] }));
+        return NextResponse.json({ ok: true, ...r, entrantes: entrantes.procesados, redactadas: ia.redactadas, errores: [...r.errores, ...entrantes.errores, ...ia.errores] });
+      }
       case "buscar_hilo": {
         const t = await cargarTarea(String(body.id));
         const email = String(body.destinatario ?? t.destinatario ?? "").trim();
