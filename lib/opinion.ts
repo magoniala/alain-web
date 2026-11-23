@@ -83,6 +83,27 @@ export const EVENTOS: Record<string, EventoOpinion> = {
       },
     },
   },
+  "haurtxokoak-irun": {
+    clave: "haurtxokoak-irun",
+    nombre: "Haurtxokoak Irun 2026",
+    ruta: "/opinion/haurtxokoak-irun",
+    // Sin reservas propias (23-11-2026): el enlace llega a las familias por la
+    // organizadora (Irati), en el mensaje de la palabra mágica del librillo.
+    // El mail no se usa; está porque el tipo lo pide.
+    envioRealAbierto: false,
+    mail: {
+      es: {
+        asunto: "Haurtxokoak Irun: ¿qué tal lo pasasteis?",
+        gracias: "Soy Alain, el mago del show y el taller de Haurtxokoak en Irun.",
+        motivo: "Te escribo porque viniste al show y taller de magia de Haurtxokoak",
+      },
+      eu: {
+        asunto: "Haurtxokoak Irun: zer moduz pasatu zenuten?",
+        gracias: "Alain naiz, Irungo Haurtxokoetako ikuskizun eta tailerreko magoa.",
+        motivo: "Haurtxokoetako magia ikuskizun eta tailerrera etorri zinelako idazten dizut",
+      },
+    },
+  },
 };
 
 export const eventoDe = (clave: unknown): EventoOpinion | null =>
