@@ -9,6 +9,9 @@
 //   node scripts/charlas/importar-directorio.mjs previsualizar <fichero> --territorio Navarra [--mapeo navarra]
 //       → aplica el mapeo y enseña cuántos centros quedan tras filtrar (ESO/Bach) y una muestra. No toca Supabase.
 //   node scripts/charlas/importar-directorio.mjs importar <fichero> --territorio Navarra [--mapeo navarra] [--prioridad-publicos]
+//   Castilla y León (mapeo propio, con filtro propio):
+//       … previsualizar|importar _directorios/directorio-cyl-2026.csv --territorio "Castilla y León" --provincia Burgos,Palencia,Soria
+//       --provincia (lista separada por comas) filtra por la columna PROVINCIA; solo vale con mapeos que la tengan.
 //       → crea las fichas en Supabase (estado "0 Por llamar"). Idempotente por nombre: lo que ya existe no se duplica.
 //
 // Los mapeos están abajo (MAPEOS). Cada uno dice qué columna del fichero
@@ -73,6 +76,77 @@ const MAPEOS = {
   },
 };
 MAPEOS.recd = MAPEOS.cantabria;
+// Junta de Castilla y León · directorio de centros docentes (CSV Latin-1, ";").
+// Sin columna de enseñanzas: el filtro y las etapas salen del tipo de centro (ver PERFILES).
+MAPEOS["castilla-leon"] = {
+  codigo: ["codigo"],
+  nombre: ["denominacion especifica"],
+  tipo_centro: ["denominacion generica breve"],
+  titularidad: ["naturaleza"],
+  provincia: ["provincia"],
+  localidad: ["localidad"],
+  via: ["via"],
+  nombre_via: ["nombre de la via"],
+  numero: ["numero"],
+  cp: ["c postal"],
+  telefono: ["telefono"],
+  email: ["correo electronico"],
+  web: ["web"],
+  concierto: ["concierto"],
+  ensenanza: [],
+  modalidad: [],
+};
+
+// Cómo se ponen en minúsculas los nombres en MAYÚSCULAS del directorio de CyL.
+const PEQUENAS = new Set(["de", "del", "la", "las", "los", "el", "y", "e", "o", "u", "en", "a", "al", "con", "por", "para"]);
+const aTitulo = (s) =>
+  String(s ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .split(" ")
+    .map((w, i) => {
+      if (i > 0 && PEQUENAS.has(w)) return w;
+      if (/^(i{1,3}|iv|vi{1,3}|ix)$/.test(w)) return w.toUpperCase();
+      return w.replace(/(^|[-'’(])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+    })
+    .join(" ");
+// «VIRGEN DEL CAMINO (LA)» → «La Virgen del Camino»
+const localidadCyL = (s) => {
+  const m = /^(.*?)\s*\((LA|EL|LOS|LAS)\)$/i.exec(String(s ?? "").trim());
+  return aTitulo(m ? `${m[2]} ${m[1]}` : s);
+};
+
+// Perfiles propios por mapeo: sustituyen al filtro genérico y fijan nombre, dirección y etapas.
+const PERFILES = {
+  "castilla-leon": {
+    // IES, IESO y CEO (públicos, llevan ESO) y «Colegio» privado concertado (CONCIERTO = S).
+    // Fuera: CEIP, EEI, EM, CEE, CEPA, EOI, CIFP, CPrFP, CPrEI, conservatorios, escuelas de arte, deportivos…
+    filtro: (f) => {
+      const t = f.tipo_centro.trim().toUpperCase();
+      if (["IES", "IESO", "CEO"].includes(t)) return true;
+      return t === "COLEGIO" && norm(f.titularidad) === "privado" && f.concierto.trim().toUpperCase() === "S";
+    },
+    esConcertado: (f) => f.tipo_centro.trim().toUpperCase() === "COLEGIO",
+    // Convención de La Rioja: «<tipo> <nombre> (<localidad>)», p. ej. «IES Tomás Mingot (Logroño)».
+    nombre: (f) => {
+      const esp = aTitulo(f.nombre);
+      const tipo = f.tipo_centro.trim();
+      const base = new RegExp(`^${tipo}\\b`, "i").test(esp) ? esp : `${tipo} ${esp}`;
+      return `${base} (${localidadCyL(f.localidad)})`;
+    },
+    localidad: (f) => localidadCyL(f.localidad),
+    direccion: (f) => {
+      const via = /^(calle|c\/?)$/i.test(f.via.trim()) ? "" : f.via.trim();
+      const calle = aTitulo([via, f.nombre_via].filter(Boolean).join(" "));
+      const cp = f.cp.trim() ? f.cp.trim().padStart(5, "0") : ""; // el CSV pierde el cero de Burgos, Soria…
+      return [[calle, f.numero.trim()].filter(Boolean).join(", "), cp, localidadCyL(f.localidad)].filter(Boolean).join(", ");
+    },
+    // IES: ESO + Bachillerato; IESO y CEO: ESO. Públicos: confirmadas por la propia denominación.
+    // Colegios concertados: el directorio no dice si llevan ESO → etapas_confirmadas = "no".
+    etapas: (f) => (f.tipo_centro.trim().toUpperCase() === "IES" ? ["ESO", "Bachillerato"] : ["ESO"]),
+  },
+};
 
 // Qué filas interesan: imparten ESO o Bachillerato. Si el fichero dice qué
 // enseñanzas da el centro, manda eso; si no lo dice, se mira el tipo y el nombre.
@@ -159,30 +233,32 @@ function euskeraDesde(modalidad, ensenanza, territorio) {
   return "no";
 }
 
-function aFichas(filas, territorio) {
+function aFichas(filas, territorio, perfil = null) {
   const vistos = new Set();
   const fichas = [];
   for (const f of filas) {
     if (!f.nombre) continue;
-    if (!TIENE_SECUNDARIA(f)) continue;
-    const nombre = f.nombre.replace(/\s+/g, " ").trim();
+    if (!(perfil ? perfil.filtro(f) : TIENE_SECUNDARIA(f))) continue;
+    const nombre = perfil ? perfil.nombre(f) : f.nombre.replace(/\s+/g, " ").trim();
+    const concertado = perfil?.esConcertado?.(f) ?? false;
     const clave = norm(nombre + " " + f.localidad);
     if (vistos.has(clave)) continue;
     vistos.add(clave);
     const email = (f.email.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/) ?? [""])[0].toLowerCase();
     fichas.push({
       nombre,
+      provincia: f.provincia ?? "",
       frontmatter: {
         codigo: f.codigo || null,
         territorio,
-        localidad: f.localidad || null,
+        localidad: (perfil ? perfil.localidad(f) : f.localidad) || null,
         tipo: tipoDesde(f.titularidad, f.tipo_centro, nombre),
         tipo_centro: f.tipo_centro || null,
         modelo_linguistico: f.modalidad || null,
         euskera: euskeraDesde(f.modalidad, f.ensenanza, territorio),
-        etapas: /bachiller|batxilergo/.test(norm(f.ensenanza)) ? ["ESO", "Bachillerato"] : ["ESO"],
-        etapas_confirmadas: f.ensenanza ? "sí" : "no",
-        direccion: [f.direccion, f.cp, f.localidad].filter(Boolean).join(", ") || null,
+        etapas: perfil ? perfil.etapas(f) : /bachiller|batxilergo/.test(norm(f.ensenanza)) ? ["ESO", "Bachillerato"] : ["ESO"],
+        etapas_confirmadas: perfil ? (concertado ? "no" : "sí") : f.ensenanza ? "sí" : "no",
+        direccion: (perfil ? perfil.direccion(f) : [f.direccion, f.cp, f.localidad].filter(Boolean).join(", ")) || null,
         telefono: f.telefono.replace(/\D/g, "") || null,
         email_centro: email || null,
         web: f.web || null,
@@ -192,7 +268,7 @@ function aFichas(filas, territorio) {
         mails_enviados: 0,
         fecha_creacion: new Date().toISOString().slice(0, 10),
       },
-      registro: [{ fecha: new Date().toISOString().slice(0, 10), canal: "Sistema", texto: `Ficha generada desde el directorio oficial de ${territorio}${f.codigo ? ` (código ${f.codigo})` : ""}; etapas según el directorio.`, raw: null }],
+      registro: [{ fecha: new Date().toISOString().slice(0, 10), canal: "Sistema", texto: `Ficha generada desde el directorio oficial de ${territorio}${f.codigo ? ` (código ${f.codigo})` : ""}; ${concertado ? "colegio concertado: el directorio no dice si imparte ESO, etapas por confirmar" : "etapas según el directorio"}.`, raw: null }],
       notas: "",
       secciones_extra: {},
     });
@@ -218,7 +294,7 @@ async function main() {
     return i >= 0 ? resto[i + 1] : d;
   };
   if (!orden || !ruta) {
-    console.log("Uso: inspeccionar <fichero> | previsualizar <fichero> --territorio X [--mapeo navarra|cantabria|recd] | importar <fichero> --territorio X [--mapeo …]");
+    console.log("Uso: inspeccionar <fichero> | previsualizar <fichero> --territorio X [--mapeo navarra|cantabria|recd|castilla-leon] [--provincia A,B] | importar <fichero> --territorio X [--mapeo …]");
     process.exit(1);
   }
   const filas = await leerFichero(ruta);
@@ -231,19 +307,34 @@ async function main() {
   }
   const territorio = arg("--territorio");
   if (!territorio) throw new Error("Falta --territorio");
-  const mapeoNombre = arg("--mapeo", territorio.toLowerCase() === "navarra" ? "navarra" : "cantabria");
+  const tNorm = norm(territorio);
+  const mapeoNombre = arg("--mapeo", tNorm === "navarra" ? "navarra" : tNorm === "castilla y leon" ? "castilla-leon" : "cantabria");
   const mapeo = MAPEOS[mapeoNombre];
   if (!mapeo) throw new Error(`Mapeo desconocido: ${mapeoNombre}`);
 
-  const { col, filas: mapeadas } = aplicarMapeo(filas, mapeo);
+  const { col, filas: mapeadasTodas } = aplicarMapeo(filas, mapeo);
   console.log("Columnas usadas:", JSON.stringify(col));
-  const fichas = priorizar(aFichas(mapeadas, territorio));
+  let mapeadas = mapeadasTodas;
+  const provincias = (arg("--provincia") ?? "").split(",").map((p) => norm(p)).filter(Boolean);
+  if (provincias.length) {
+    if (!col.provincia) throw new Error(`El mapeo ${mapeoNombre} no tiene columna de provincia: --provincia no vale`);
+    mapeadas = mapeadasTodas.filter((f) => provincias.includes(norm(f.provincia)));
+    console.log(`--provincia ${provincias.join(", ")}: ${mapeadas.length} de ${mapeadasTodas.length} filas.`);
+  }
+  const perfil = PERFILES[mapeoNombre] ?? null;
+  const fichas = priorizar(aFichas(mapeadas, territorio, perfil));
+  if (provincias.length) {
+    const porProv = {};
+    for (const f of fichas) porProv[f.provincia] = (porProv[f.provincia] ?? 0) + 1;
+    console.log(`Por provincia: ${JSON.stringify(porProv)} · descartadas por el filtro: ${mapeadas.length - fichas.length}`);
+  }
   const resumen = {};
   for (const f of fichas) resumen[f.frontmatter.tipo] = (resumen[f.frontmatter.tipo] ?? 0) + 1;
   console.log(`${filas.length} filas en el fichero → ${fichas.length} centros con secundaria · por tipo: ${JSON.stringify(resumen)} · con email: ${fichas.filter((f) => f.frontmatter.email_centro).length} · con teléfono: ${fichas.filter((f) => f.frontmatter.telefono).length}`);
 
   if (orden === "previsualizar") {
     for (const f of fichas.slice(0, 5)) console.log(JSON.stringify({ nombre: f.nombre, ...f.frontmatter }, null, 1));
+    if (provincias.length) console.log("\nTodos los nombres:\n" + fichas.map((f) => `  ${f.provincia} · ${f.frontmatter.tipo} · ${f.nombre}${f.frontmatter.email_centro ? "" : "  [SIN CORREO]"}`).join("\n"));
     return;
   }
   if (orden !== "importar") throw new Error(`Orden desconocida: ${orden}`);
