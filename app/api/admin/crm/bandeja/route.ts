@@ -160,7 +160,8 @@ export async function POST(req: Request) {
         const previa = tareaPrevia(t);
         const antes = await fotoFicha(sb, "crm", t.ficha_id, ["fecha_proxima_accion"]);
         const texto = `Aplazado al ${fecha.split("-").reverse().join("-")}: ${etiqueta(t.tipo)} · motivo: ${motivoAplazar}`;
-        await sb.from("crm_fichas").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.ficha_id);
+        // Las tarjetas del protocolo de eventos se aplazan solas (lib/eventos.ts la vuelve a sacar ese día): no tocan la próxima acción de la ficha.
+        if (t.tipo !== "evento_paso") await sb.from("crm_fichas").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.ficha_id);
         const { data: li } = await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "Sistema", texto, orden: 600, origen: "sistema" }).select("id").single();
         await sb
           .from("crm_tareas")

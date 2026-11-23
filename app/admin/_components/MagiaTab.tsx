@@ -78,7 +78,7 @@ interface Detalle {
 
 const ESTADOS = ["0 Por contactar", "1 Intentando", "2 Contacto conseguido", "3 Primer mensaje enviado", "4 Ha respondido", "5 Propuesta enviada", "6 En conversación", "7 Ganado", "8 Perdido", "9 Aparcado"];
 const ETIQUETA: Record<string, string> = {
-  reactivacion: "Reactivación", recordatorio_1: "Recordatorio 1", recordatorio_2: "Recordatorio 2 (último)", recuperacion: "Mensaje de recuperación", check_in: "Check-in", primer_contacto: "Primer contacto", agencia_1a: "Agencia · primer mail (formato)", agencia_1b: "Agencia · primer mail (a quién escribir)", localizar_contacto: "🔎 Localizar email de la agencia", propuesta: "Propuesta", seguimiento: "Seguimiento", cierre: "Cierre suave", aparcar: "Aparcar", revisar_bloqueo: "Revisar bloqueo", revisar_ganado: "Cliente ganado · acción programada", revisar_correo: "✉️ Correo suyo sin respuesta", llamada_alain: "📞 Llamada / conseguir contacto", respuesta: "Respuesta", actualizar_crm: "Actualizar ficha",
+  reactivacion: "Reactivación", recordatorio_1: "Recordatorio 1", recordatorio_2: "Recordatorio 2 (último)", recuperacion: "Mensaje de recuperación", check_in: "Check-in", primer_contacto: "Primer contacto", agencia_1a: "Agencia · primer mail (formato)", agencia_1b: "Agencia · primer mail (a quién escribir)", localizar_contacto: "🔎 Localizar email de la agencia", propuesta: "Propuesta", seguimiento: "Seguimiento", cierre: "Cierre suave", aparcar: "Aparcar", revisar_bloqueo: "Revisar bloqueo", revisar_ganado: "Cliente ganado · acción programada", evento_paso: "📅 Protocolo de evento", crear_evento: "📅 Crear evento", revisar_correo: "✉️ Correo suyo sin respuesta", llamada_alain: "📞 Llamada / conseguir contacto", respuesta: "Respuesta", actualizar_crm: "Actualizar ficha",
   interesado: "🔥 Quiere repetir", pide_propuesta: "Pide propuesta", da_fecha: "🔥 Da fecha", este_ano_no: "Este año no", no_interesa: "No le interesa", recomienda: "Pasa un contacto", pregunta: "Pregunta algo", acuse: "Acuse", fuera_de_oficina: "Fuera de oficina", otro: "Otro",
 };
 const URG = { 3: ["Ahora", "border-l-[#DC2626]", "bg-red-100 text-red-800"], 2: ["Hoy", "border-l-[#E8A33D]", "bg-amber-100 text-amber-900"], 1: ["Cuando puedas", "border-l-emerald-500", "bg-emerald-50 text-emerald-800"] } as const;
@@ -361,6 +361,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
       <UltimosMensajes ultimos={t.ultimos} omitirEntrante={!!t.entrante?.texto} />
       {t.nota_para_alain && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[0.82rem] text-amber-900">{t.nota_para_alain}</p>}
       <CajaFaltanDatos faltan={t.contexto?.faltan_datos} ocupado={ocupado === "completar"} onGuardar={(clave, txt) => hacer("completar", { accion: "completar", id: t.id, clave, texto: txt })} />
+      {t.tipo === "crear_evento" && t.ficha && <a href={`/admin?tab=Eventos&crear=${t.ficha.id}`} className="mt-3 inline-block bg-[#0F2240] px-4 py-2 text-[0.85rem] font-medium text-white">📅 Crear el evento</a>}
       {t.ficha && (t.contexto?.clasificacion === "pide_propuesta" || t.tipo === "propuesta" || t.tipo === "pide_propuesta") && <div className="mt-3 flex flex-wrap gap-2"><PromptPresupuesto fichaId={t.ficha.id} /><EnvioPresupuesto fichaId={t.ficha.id} onEnviado={alTerminar} /></div>}
 
       {conMensaje && (
@@ -497,6 +498,7 @@ function FichaMagia({ detalle, onGuardar }: { detalle: Detalle; onGuardar: (c: R
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-[1.1rem] font-semibold leading-tight">{f.nombre}</h2>
+            {fase(f.estado) === 7 && <a href={`/admin?tab=Eventos&crear=${f.id}`} className="mt-1 inline-block text-[0.8rem] text-[#0F2240] underline">📅 Crear evento con esta ficha</a>}
             <p className="mt-1 text-[0.82rem] text-gray-500">{[f.segmento, f.tipo_entidad, f.localidad, f.canal, f.idioma, f.prioridad ? `prioridad ${f.prioridad}` : null].filter(Boolean).join(" · ")}</p>
           </div>
           <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] ${colorEstado(f.estado)}`}>{f.estado}</span>

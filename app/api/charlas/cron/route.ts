@@ -18,6 +18,7 @@ import { mail1Ayuntamientos } from "@/lib/ayuntamientos";
 import { investigarAyuntamientos } from "@/lib/ayto-investigar";
 import { autoenviarAyuntamientos } from "@/lib/ayto-autoenvio";
 import { autoenviarCharlas, autoenviarMagia, autoenviarLeads } from "@/lib/autoenvio";
+import { avisosEventos } from "@/lib/eventos";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -224,6 +225,8 @@ async function ejecutarSinCierre(req: Request) {
   const entPropuestas = toca && Date.now() - inicio < 45000 ? await proponerPendientes({ presupuestoMs: Math.max(0, 55000 - (Date.now() - inicio)) }).catch((e) => ({ creadas: 0, errores: [(e as Error).message] })) : null;
 
   // Reservas de la Hoja de Ruta confirmadas sin WhatsApp aún: aviso al móvil (sin IA, en cada pasada).
+  // Protocolo de eventos de magia (lib/eventos.ts): pasos, tarjetas de los mensajes y avisos del día límite. Sin IA salvo traducir al euskera.
+  const eventos = Date.now() - inicio < 54000 ? await avisosEventos().catch((e) => ({ error: (e as Error).message })) : null;
   const hojaRuta = await notificarReservasHojaRuta().catch(() => ({ avisos: 0 }));
 
   // Bandeja general: los otros buzones (newsletter@, entrenatzaile@, niala.es),
@@ -238,7 +241,7 @@ async function ejecutarSinCierre(req: Request) {
 
   // Al final, con lo que sobre: la IA reescribe los borradores de plantilla de leads (unos segundos cada uno).
   const leadsIA = leads && leads.modo !== "apagado" && leads.modo !== "?" ? await mejorarBorradoresLeads({ presupuestoMs: Math.max(0, 56000 - (Date.now() - inicio)), limite: 2 }).catch((e) => ({ redactadas: 0, errores: [(e as Error).message] })) : null;
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, leads_entrantes: leadsEntrantes, leads_ia: leadsIA, auto_leads: autoLeads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, leads_entrantes: leadsEntrantes, leads_ia: leadsIA, auto_leads: autoLeads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, eventos, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
 }
 
 // Solo una pasada a la vez: si otra está trabajando (cron solapado, o "Leer buzón ahora" mientras

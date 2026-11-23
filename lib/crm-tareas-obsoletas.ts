@@ -50,6 +50,8 @@ function fasesDeTipo(t: TareaAbierta): number[] | null {
 /** Motivo por el que la tarjeta ya no toca, o null si sigue siendo válida. */
 export function motivoObsoleta(t: TareaAbierta): string | null {
   if (!t.ficha || t.mensaje_entrante_id) return null;
+  // Protocolo de eventos (lib/eventos.ts): su ciclo lo lleva el evento, no la fase de la ficha.
+  if (t.tipo === "evento_paso") return null;
   if (!(t.contexto as { programada?: boolean } | null)?.programada) return null;
   const deshecho = (t.contexto?.deshacer as { deshecho_en?: string } | undefined)?.deshecho_en;
   if (deshecho) return null;

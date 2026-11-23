@@ -296,12 +296,24 @@ async function postEventos() {
   }
 }
 
+// --- eventos de magia (tabla eventos ⇄ 📅 EVENTOS) ------------------------------------
+// Va antes del post-evento para que este lea las notas ya al día. Si falla, el espejo continúa.
+async function eventos() {
+  try {
+    const { espejoEventos, resumenEspejoEventos } = await import("../crm/espejo-eventos.mjs");
+    console.log(resumenEspejoEventos(await espejoEventos({ url: URL, key: KEY, vaultCharlas: VAULT, comprobar: COMPROBAR }), COMPROBAR));
+  } catch (e) {
+    console.log(`Eventos: no se ha podido hacer el espejo (${String(e.message).slice(0, 200)})`);
+  }
+}
+
 // --- principal -------------------------------------------------------------------
 async function main() {
   comprobarEntorno();
   await altas();
   await guiones();
   await conocimientoAyto();
+  await eventos();
   await postEventos();
   const [centros, interacciones] = await Promise.all([
     todas("charlas_centros", "*", "nombre"),

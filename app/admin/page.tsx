@@ -21,13 +21,15 @@ import OpinionFamiliasTab from "./_components/OpinionFamiliasTab";
 import ArretaTab from "./_components/ArretaTab";
 import CorreoTab from "./_components/CorreoTab";
 import MagiaTailerrakTab from "./_components/MagiaTailerrakTab";
+import EventosTab from "./_components/EventosTab";
 
-const TABS = ["Charlas", "Prospectos magia", "Leads Entrenatzaile", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Opiniones familias", "Mirariak 2026", "Arreta", "Bandeja general", "Magia-tailerrak"] as const;
+const TABS = ["Charlas", "Prospectos magia", "Eventos", "Leads Entrenatzaile", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Opiniones familias", "Mirariak 2026", "Arreta", "Bandeja general", "Magia-tailerrak"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
 const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
   { titulo: "Comercial", tabs: ["Charlas", "Prospectos magia", "Leads Entrenatzaile"] },
+  { titulo: "Eventos", tabs: ["Eventos"] },
   { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
   { titulo: "Correo", tabs: ["Bandeja general", "Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
@@ -43,6 +45,8 @@ const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
 const ICONO: Record<Tab, React.ReactNode> = {
   Charlas: <path d="M4 5h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-6l-3 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm3 3h6M7 11h4" />,
   "Prospectos magia": <path d="M4 16l6-11 6 11H4Zm6-7v4m-7 3h14M8 3l2 2 2-2" />,
+  // Calendario con una marca: los eventos y su checklist.
+  Eventos: <path d="M4 5h12v12H4zM4 8h12M7 3v3m6-3v3m-6 7 2 2 4-4" />,
   Entrenatzaile: <path d="M3 10h2m10 0h2M5 7v6m10-6v6M7 8v4m6-4v4M7 10h6" />,
   "Leads Entrenatzaile": <path d="M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 8c0-3 2-5 5-5 1.5 0 2.8.5 3.7 1.4M14 11v6m-3-3h6" />,
   Valoración: <path d="M6 3h8l3 3v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h6m-6 3h6m-6-6h3" />,
@@ -300,6 +304,7 @@ export default function AdminPage() {
             <div key={tab} className="admin-fade">
               {tab === "Charlas" && <CharlasTab />}
               {tab === "Prospectos magia" && <MagiaTab />}
+              {tab === "Eventos" && <EventosTab />}
               {tab === "Leads Entrenatzaile" && <LeadsTab />}
               {tab === "Entrenatzaile" && <EntrenatzaileTab />}
               {tab === "Valoración" && <ValoracionTab />}
