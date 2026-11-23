@@ -7,7 +7,8 @@ import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-catalogo";
 import { cerrarTareasObsoletasMagia } from "@/lib/crm-tareas-obsoletas";
 import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, tareaPrevia } from "@/lib/bandeja-deshacer";
-import { cargarTarea, enviarMail, aplicarCambios, etiqueta, registrarCorreccion, sinPrefijo, EnvioDuplicado } from "@/lib/crm-envio";
+import { cargarTarea, enviarMail, aplicarCambios, etiqueta, registrarCorreccion, sinPrefijo, EnvioDuplicado, guardarHiloDeBuzon } from "@/lib/crm-envio";
+import { cerrarTareasObsoletasLeads, tareasPorFechaLeads } from "@/lib/leads-motor";
 
 // Bandeja del carril de MAGIA (fase 6a).
 //
@@ -24,6 +25,12 @@ import { cargarTarea, enviarMail, aplicarCambios, etiqueta, registrarCorreccion,
 //        rehacer           → regenerar el borrador con una indicación
 //        completar         → «Me falta información»: guarda el texto en un documento del catálogo de shows y rehace el borrador (no envía nada)
 //        reintentar_mensaje→ un correo entrante que falló vuelve a la cola
+//
+// Leads de Entrenatzaile (?carril=entrenatzaile, 23-11-2026): mismas acciones y además
+//        ha_contestado     → { id, texto }: ha respondido (WhatsApp, Instagram…): lo apunta, pasa a 3 En conversación y cierra la tarjeta
+//        enviado_fuera     → { id, canal, texto }: lo mandó por otro camino (Mail del Mac, otro WhatsApp, Instagram)
+//        buscar_hilo       → { id }: busca en el buzón el último correo con su email para seguir en el mismo hilo
+// «aplazar» pide fecha y MOTIVO en todos los carriles (decisión de Alain, 23-11).
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -38,16 +45,18 @@ export async function GET(req: Request) {
   // Tarjetas programadas cuya ficha ya no está en la fase en que se crearon (p. ej. pasada a 8 Perdido): se cierran solas
   // y quedan en «Últimos cambios» con «Deshacer». Si falla, la bandeja se carga igual.
   const cerradas_solas = carril === "magia" ? await cerrarTareasObsoletasMagia(sb).catch(() => []) : [];
+  if (carril === "entrenatzaile") await cerrarTareasObsoletasLeads().catch(() => 0);
+  const camposFicha = carril === "entrenatzaile" ? ", datos, cuerpo_antes, mails_enviados, fecha_ultimo_contacto" : "";
   const [tareas, errores, cfg, uso] = await Promise.all([
     sb
       .from("crm_tareas")
-      .select("*, ficha:crm_fichas(id, nombre, segmento, tipo_entidad, estado, canal, idioma, web, responsable, responsable_tel, responsable_email, email, telefono, localidad, ultimo_evento, proxima_accion, fecha_proxima_accion), entrante:crm_mensajes!crm_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion)")
+      .select(`*, ficha:crm_fichas(id, nombre, segmento, tipo_entidad, estado, canal, idioma, web, responsable, responsable_tel, responsable_email, email, telefono, localidad, ultimo_evento, proxima_accion, fecha_proxima_accion${camposFicha}), entrante:crm_mensajes!crm_tareas_mensaje_entrante_id_fkey(id, de, asunto, fecha, texto, clasificacion)`)
       .eq("carril", carril)
       .in("estado", ["revisar", "error"])
       .order("urgencia", { ascending: false })
       .order("creado_en", { ascending: true }),
     sb.from("crm_mensajes").select("id, de, asunto, fecha, error").eq("estado", "error").order("fecha", { ascending: false }).limit(10),
-    sb.from("charlas_config").select("clave, valor").in("clave", ["magia_activo", "magia_por_dia", "modo_prueba"]),
+    sb.from("charlas_config").select("clave, valor").in("clave", ["magia_activo", "magia_por_dia", "modo_prueba", "leads_modo"]),
     sb.from("charlas_ia_uso").select("creado_en, coste_usd, proposito").gte("creado_en", new Date(Date.now() - 30 * 86400000).toISOString()).like("proposito", "magia_%"),
   ]);
   const config = Object.fromEntries((cfg.data ?? []).map((c) => [c.clave, c.valor]));
@@ -140,16 +149,18 @@ export async function POST(req: Request) {
         const t = await cargarTarea(String(body.id));
         if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
         const fecha = String(body.fecha ?? "");
+        const motivoAplazar = String(body.motivo ?? "").trim();
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("La fecha no es válida.");
         if (fecha < hoy()) throw new Error("Esa fecha ya pasó.");
+        if (motivoAplazar.length < 3) throw new Error("Falta el motivo del aplazamiento.");
         const previa = tareaPrevia(t);
         const antes = await fotoFicha(sb, "crm", t.ficha_id, ["fecha_proxima_accion"]);
-        const texto = `Aplazado al ${fecha.split("-").reverse().join("-")}: ${etiqueta(t.tipo)}`;
+        const texto = `Aplazado al ${fecha.split("-").reverse().join("-")}: ${etiqueta(t.tipo)} · motivo: ${motivoAplazar}`;
         await sb.from("crm_fichas").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.ficha_id);
         const { data: li } = await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "Sistema", texto, orden: 600, origen: "sistema" }).select("id").single();
         await sb
           .from("crm_tareas")
-          .update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplazar", resumen: texto, tarea_previa: previa, antes, despues: { fecha_proxima_accion: fecha }, interacciones: li?.id ? [li.id] : [] }) })
+          .update({ estado: "descartada", motivo: `Aplazada al ${fecha}: ${motivoAplazar}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplazar", resumen: texto, tarea_previa: previa, antes, despues: { fecha_proxima_accion: fecha }, interacciones: li?.id ? [li.id] : [] }) })
           .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }
@@ -159,7 +170,7 @@ export async function POST(req: Request) {
         const previa = tareaPrevia(t);
         let correccion: string | null = null;
         if (motivo && t.borrador_texto) {
-          const { data: co } = await sb.from("crm_correcciones").insert({ carril: "magia", tarea_id: t.id, tipo_mensaje: t.tipo, idioma: t.idioma, borrador: t.borrador_texto, final: "", motivo: `DESCARTADO: ${motivo}` }).select("id").single();
+          const { data: co } = await sb.from("crm_correcciones").insert({ carril: t.carril ?? "magia", tarea_id: t.id, tipo_mensaje: t.tipo, idioma: t.idioma, borrador: t.borrador_texto, final: "", motivo: `DESCARTADO: ${motivo}` }).select("id").single();
           correccion = co?.id ?? null;
         }
         await sb
@@ -228,7 +239,46 @@ export async function POST(req: Request) {
         for (const clave of ["magia_activo"]) {
           if (typeof body[clave] === "boolean") await sb.from("charlas_config").upsert({ clave, valor: body[clave], actualizado_en: new Date().toISOString() });
         }
+        if (["apagado", "prueba", "activo"].includes(String(body.leads_modo))) await sb.from("charlas_config").upsert({ clave: "leads_modo", valor: String(body.leads_modo), actualizado_en: new Date().toISOString() });
         return NextResponse.json({ ok: true });
+      }
+      case "ha_contestado": {
+        // Leads: ha respondido por un canal que el sistema no lee (WhatsApp, Instagram) o por correo antes de que se lea.
+        const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const texto = String(body.texto ?? "").trim();
+        if (!texto) throw new Error("Pega o resume lo que te ha dicho.");
+        const previa = tareaPrevia(t);
+        const { data: f } = await sb.from("crm_fichas").select("datos").eq("id", t.ficha_id).single();
+        const antes = await fotoFicha(sb, "crm", t.ficha_id, ["estado", "proxima_accion", "fecha_proxima_accion", "datos"]);
+        const manana = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date(Date.now() + 86400000));
+        const despues = { estado: "3 En conversación", proxima_accion: "Contestar (menos de 24 h; una o dos preguntas)", fecha_proxima_accion: manana, datos: { ...(f?.datos ?? {}), respondio: "sí" } };
+        await sb.from("crm_fichas").update({ ...despues, actualizado_por: "panel" }).eq("id", t.ficha_id);
+        const { data: li } = await sb.from("crm_interacciones").insert({ ficha_id: t.ficha_id, fecha: hoy(), canal: "Recibido", texto: `Responde: ${texto} · → 3 En conversación`, orden: 610, origen: "panel" }).select("id").single();
+        await sb.from("crm_tareas").update({ estado: "hecha", resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplicar", resumen: "Ha contestado → 3 En conversación", tarea_previa: previa, antes, despues, interacciones: li?.id ? [li.id] : [] }) }).eq("id", t.id);
+        return NextResponse.json({ ok: true });
+      }
+      case "enviado_fuera": {
+        // Leads: el mensaje salió por otro camino (Mail del Mac, el WhatsApp de la magia, Instagram).
+        const t = await cargarTarea(String(body.id));
+        if (t.estado !== "revisar" && t.estado !== "error") throw new Error(`La tarea ya está ${t.estado}.`);
+        const canal = ["Mail", "WhatsApp", "Instagram"].includes(String(body.canal)) ? String(body.canal) : "Otra vía";
+        const texto = String(body.texto ?? t.borrador_texto ?? "").trim();
+        t.cambios_crm = fusionarCambios(t.cambios_crm, body.cambios);
+        await registrarCorreccion(t, texto, body);
+        await aplicarCambios(t, { canal, texto, que: `${etiqueta(t.tipo)} (enviado fuera del panel)` });
+        await sb.from("crm_tareas").update({ estado: "enviada", cambios_crm: t.cambios_crm, texto_final: texto, editado: texto !== (t.borrador_texto ?? "").trim(), resuelto_en: new Date().toISOString(), resuelto_por: "alain" }).eq("id", t.id);
+        return NextResponse.json({ ok: true });
+      }
+      case "motor_leads":
+        // «Buscar lo que toca ahora» en la pestaña de leads: la misma pasada que hace el cron.
+        return NextResponse.json({ ok: true, ...(await tareasPorFechaLeads({ presupuestoMs: 40000 })) });
+      case "buscar_hilo": {
+        const t = await cargarTarea(String(body.id));
+        const email = String(body.destinatario ?? t.destinatario ?? "").trim();
+        if (!email.includes("@")) throw new Error("La tarjeta no tiene email.");
+        const h = await guardarHiloDeBuzon(t.ficha_id, email);
+        return NextResponse.json({ ok: true, encontrado: !!h, asunto: h?.asunto ?? null, fecha: h?.fecha ?? null });
       }
       default:
         return NextResponse.json({ error: "Acción desconocida." }, { status: 400 });

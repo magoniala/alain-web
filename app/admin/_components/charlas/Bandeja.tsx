@@ -722,7 +722,7 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, guiones, avisoGuiones, mo
               </button>
             </div>
           )}
-          <AplazarTarea ocupado={!!ocupado} deshabilitado={prueba} titulo={prueba ? "Desactiva el modo prueba para tocar el CRM" : undefined} onAplazar={(fecha) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha })} />
+          <AplazarTarea ocupado={!!ocupado} deshabilitado={prueba} titulo={prueba ? "Desactiva el modo prueba para tocar el CRM" : undefined} onAplazar={(fecha, motivo) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha, motivo })} />
           {mensaje && <p className="mt-3 text-[0.82rem] text-gray-800">{mensaje}</p>}
         </div>
       </div>

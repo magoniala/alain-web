@@ -802,3 +802,43 @@ export async function reponerEnviados(opciones: { presupuestoMs: number }): Prom
   }
   return res;
 }
+
+/**
+ * Último correo con una dirección en el buzón de alain@ (Recibidos «de» y Enviados «para»),
+ * para seguir en el mismo hilo cuando la ficha no tiene hilo guardado (leads de Entrenatzaile,
+ * 23-11-2026: los mails personales y los check-in salieron desde Mail del Mac antes de que
+ * existiera el carril). Solo se leen cabeceras. Devuelve null si no hay ninguno o si IMAP falla.
+ */
+export async function ultimoHiloCon(email: string): Promise<{ messageId: string; referencias: string[]; asunto: string | null; fecha: string | null } | null> {
+  const e = norm(email);
+  if (!e.includes("@")) return null;
+  let cliente: ImapFlow | null = null;
+  try {
+    cliente = new ImapFlow({ host: IMAP_HOST, port: 993, secure: true, auth: credenciales(), logger: false });
+    await cliente.connect();
+    const enviados = carpetaEnviados(await cliente.list());
+    const candidatos: { messageId: string; referencias: string[]; asunto: string | null; fecha: string | null }[] = [];
+    for (const [carpeta, criterio] of [["INBOX", { from: e }], [enviados, { to: e }]] as [string | null, Record<string, string>][]) {
+      if (!carpeta) continue;
+      const lock = await cliente.getMailboxLock(carpeta);
+      try {
+        const uids = ((await cliente.search(criterio, { uid: true })) || []) as number[];
+        // Los 3 más recientes de cada carpeta bastan para encontrar el último.
+        for (const uid of uids.sort((a, b) => b - a).slice(0, 3)) {
+          const m = await cliente.fetchOne(String(uid), { envelope: true, headers: ["references"] }, { uid: true }).catch(() => null);
+          const id = limpiarId(m ? m.envelope?.messageId : null);
+          if (!m || !id) continue;
+          candidatos.push({ messageId: id, referencias: idsDeReferencias(extraerCabecera(m.headers, "references")), asunto: m.envelope?.subject ?? null, fecha: m.envelope?.date ? new Date(m.envelope.date).toISOString() : null });
+        }
+      } finally {
+        lock.release();
+      }
+    }
+    candidatos.sort((a, b) => String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")));
+    return candidatos[0] ?? null;
+  } catch {
+    return null;
+  } finally {
+    await cliente?.logout().catch(() => {});
+  }
+}

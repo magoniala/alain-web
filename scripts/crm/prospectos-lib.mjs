@@ -15,6 +15,44 @@ export const CLAVES = [
 const ENTEROS = new Set(["intentos_llamada", "mails_enviados", "mes_temporada"]);
 const FECHAS = new Set(["fecha_ultimo_evento", "fecha_ultimo_contacto", "fecha_proxima_accion", "fecha_creacion"]);
 
+// Perfiles por carril (23-11-2026). El mismo código lee y escribe las fichas de
+// Prospectos/ (carril magia) y las de Vías/Entrenatzaile/Leads/ (carril
+// entrenatzaile). Cada perfil dice qué claves del frontmatter conoce, cuáles
+// son números o fechas y en qué columna de crm_fichas va cada una; las que no
+// tienen columna van a `datos` (jsonb).
+const CLAVES_LEADS = [
+  "negocio", "tirada", "estado", "fecha_entrada", "ventana_hasta", "respuesta", "email", "telefono", "whatsapp_consent", "escribio_wa",
+  "canal", "enlace_hoja_ruta", "mensajes_enviados", "respondio", "fecha_ultimo_contacto", "proxima_accion", "fecha_proxima_accion",
+  "supabase_id", "ficha_cliente", "fecha_creacion", "fecha_limite_propuesta", "linea_wa",
+];
+export const PERFILES = {
+  magia: {
+    carril: "magia",
+    claves: CLAVES,
+    enteros: ENTEROS,
+    fechas: FECHAS,
+    columnas: Object.fromEntries(CLAVES.map((k) => [k, k])),
+    tags: "tags: [prospecto]",
+    estadoInicial: "0 Por contactar",
+  },
+  entrenatzaile: {
+    carril: "entrenatzaile",
+    claves: CLAVES_LEADS,
+    enteros: new Set(["mensajes_enviados"]),
+    fechas: new Set(["fecha_entrada", "ventana_hasta", "fecha_ultimo_contacto", "fecha_proxima_accion", "fecha_creacion", "fecha_limite_propuesta"]),
+    // En el vault se llama mensajes_enviados; en crm_fichas es el mismo contador que mails_enviados.
+    columnas: { negocio: "negocio", estado: "estado", email: "email", telefono: "telefono", canal: "canal", mensajes_enviados: "mails_enviados", fecha_ultimo_contacto: "fecha_ultimo_contacto", proxima_accion: "proxima_accion", fecha_proxima_accion: "fecha_proxima_accion", fecha_creacion: "fecha_creacion" },
+    tags: "tags:\n  - lead",
+    estadoInicial: "0 Por escribir",
+  },
+};
+export const perfilDe = (carrilOFicha) => PERFILES[typeof carrilOFicha === "string" ? carrilOFicha : carrilOFicha?.carril] ?? PERFILES.magia;
+/** Valor de una clave del frontmatter en una fila de crm_fichas (columna o datos). */
+export function valorDe(ficha, clave, perfil = perfilDe(ficha)) {
+  const col = perfil.columnas[clave];
+  return (col ? ficha[col] : undefined) ?? ficha.datos?.[clave] ?? null;
+}
+
 /** Valor YAML escalar → JS: quita comillas, convierte números y booleanos. */
 export function valorYaml(s) {
   const t = (s ?? "").trim();
@@ -26,7 +64,7 @@ export function valorYaml(s) {
   return t;
 }
 
-export function parseFicha(texto) {
+export function parseFicha(texto, perfil = PERFILES.magia) {
   const m = /^---\n([\s\S]*?)\n---\n/.exec(texto);
   if (!m) throw new Error("Sin frontmatter");
   const rawLines = m[1].split("\n");
@@ -36,8 +74,8 @@ export function parseFicha(texto) {
     if (!k) continue;
     if (k[1] === "tags") continue;
     let v = valorYaml(k[2]);
-    if (v !== null && ENTEROS.has(k[1])) v = Number.isFinite(Number(v)) ? Math.trunc(Number(v)) : null;
-    if (v !== null && FECHAS.has(k[1])) v = /^(\d{4}-\d{2}-\d{2})/.exec(String(v))?.[1] ?? null;
+    if (v !== null && perfil.enteros.has(k[1])) v = Number.isFinite(Number(v)) ? Math.trunc(Number(v)) : null;
+    if (v !== null && perfil.fechas.has(k[1])) v = /^(\d{4}-\d{2}-\d{2})/.exec(String(v))?.[1] ?? null;
     fm[k[1]] = v;
   }
   const cuerpo = texto.slice(m[0].length);
@@ -89,13 +127,19 @@ export function parseRegistro(seccion) {
  * (altas-vault.mjs), para que las dos metan exactamente lo mismo.
  */
 export function filaDesdeFicha(nombre, texto, carril = "magia") {
-  const p = parseFicha(texto);
+  const perfil = perfilDe(carril);
+  const p = parseFicha(texto, perfil);
   const fm = p.frontmatter;
   const fila = { carril, nombre, frontmatter_raw: p.frontmatter_raw, cuerpo_antes: p.cuerpo_antes, cuerpo_despues: p.cuerpo_despues, actualizado_por: "vault", datos: {} };
-  for (const k of CLAVES) if (k in fm) fila[k] = fm[k];
-  for (const k of Object.keys(fm)) if (!CLAVES.includes(k)) fila.datos[k] = fm[k];
-  if (typeof fila.enviado !== "boolean") fila.enviado = fila.enviado == null ? null : String(fila.enviado) === "true";
-  if (!fila.estado) fila.estado = "0 Por contactar";
+  for (const k of Object.keys(fm)) {
+    const col = perfil.columnas[k];
+    if (col) fila[col] = fm[k];
+    else fila.datos[k] = fm[k];
+  }
+  if (carril === "magia" && typeof fila.enviado !== "boolean") fila.enviado = fila.enviado == null ? null : String(fila.enviado) === "true";
+  if (!fila.estado) fila.estado = perfil.estadoInicial;
+  // mails_enviados es NOT NULL en crm_fichas (una ficha sin la clave, p. ej. un cliente, entra con 0).
+  if (fila.mails_enviados == null) fila.mails_enviados = 0;
   return { fila, registro: p.registro };
 }
 
@@ -106,12 +150,12 @@ export function lineaRegistro(i) {
   return `- ${cab ? cab + " · " : ""}${i.texto}`;
 }
 
-function citar(v, clave) {
+function citar(v, clave, perfil = PERFILES.magia) {
   if (v === null || v === undefined || v === "") return "";
   if (typeof v === "boolean") return v ? "true" : "false";
   if (typeof v === "number") return String(v);
   const s = String(v);
-  const necesita = /[:#\[\]{}&*!|>'"%@`,]|^\s|\s$/.test(s) || /^(true|false|null|yes|no|on|off|~)$/i.test(s) || (/^[\d.+-]+$/.test(s) && !FECHAS.has(clave));
+  const necesita = /[:#\[\]{}&*!|>'"%@`,]|^\s|\s$/.test(s) || /^(true|false|null|yes|no|on|off|~)$/i.test(s) || (/^[\d.+-]+$/.test(s) && !perfil.fechas.has(clave));
   return necesita ? `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"` : s;
 }
 
@@ -120,10 +164,11 @@ function citar(v, clave) {
  * reescribe esa clave. Claves nuevas van al final.
  */
 export function renderFrontmatter(ficha) {
+  const perfil = perfilDe(ficha);
   const originales = (ficha.frontmatter_raw ?? "").split("\n");
   const vistas = new Set();
   const salida = [];
-  const original = parseFrontmatterValores(ficha.frontmatter_raw ?? "");
+  const original = parseFrontmatterValores(ficha.frontmatter_raw ?? "", perfil);
   for (const l of originales) {
     const k = /^([a-z_]+):/.exec(l);
     if (!k || k[1] === "tags") {
@@ -132,36 +177,36 @@ export function renderFrontmatter(ficha) {
     }
     const clave = k[1];
     vistas.add(clave);
-    const actual = ficha[clave] ?? ficha.datos?.[clave] ?? null;
-    if (igual(original[clave], actual, clave)) salida.push(l);
-    else salida.push(`${clave}: ${citar(actual, clave)}`);
+    const actual = valorDe(ficha, clave, perfil);
+    if (igual(original[clave], actual, clave, perfil)) salida.push(l);
+    else salida.push(`${clave}: ${citar(actual, clave, perfil)}`);
   }
-  for (const clave of CLAVES) {
+  for (const clave of perfil.claves) {
     if (vistas.has(clave)) continue;
-    const v = ficha[clave];
+    const v = valorDe(ficha, clave, perfil);
     if (v === null || v === undefined || v === "") continue;
-    salida.push(`${clave}: ${citar(v, clave)}`);
+    salida.push(`${clave}: ${citar(v, clave, perfil)}`);
   }
-  if (!salida.some((l) => /^tags:/.test(l))) salida.unshift("tags: [prospecto]");
+  if (!salida.some((l) => /^tags:/.test(l))) salida.unshift(perfil.tags);
   return salida.join("\n");
 }
 
-function parseFrontmatterValores(raw) {
+function parseFrontmatterValores(raw, perfil = PERFILES.magia) {
   const out = {};
   for (const l of raw.split("\n")) {
     const k = /^([a-z_]+):\s*(.*)$/.exec(l);
     if (k && k[1] !== "tags") {
       let v = valorYaml(k[2]);
-      if (v !== null && ENTEROS.has(k[1])) v = Number.isFinite(Number(v)) ? Math.trunc(Number(v)) : null;
-      if (v !== null && FECHAS.has(k[1])) v = /^(\d{4}-\d{2}-\d{2})/.exec(String(v))?.[1] ?? null;
+      if (v !== null && perfil.enteros.has(k[1])) v = Number.isFinite(Number(v)) ? Math.trunc(Number(v)) : null;
+      if (v !== null && perfil.fechas.has(k[1])) v = /^(\d{4}-\d{2}-\d{2})/.exec(String(v))?.[1] ?? null;
       out[k[1]] = v;
     }
   }
   return out;
 }
 
-export function igual(a, b, clave) {
-  const n = (v) => (v === null || v === undefined || v === "" ? null : ENTEROS.has(clave) ? Number(v) : typeof v === "boolean" ? v : String(v));
+export function igual(a, b, clave, perfil = PERFILES.magia) {
+  const n = (v) => (v === null || v === undefined || v === "" ? null : perfil.enteros.has(clave) ? Number(v) : typeof v === "boolean" ? v : String(v));
   return n(a) === n(b);
 }
 

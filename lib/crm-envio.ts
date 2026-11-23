@@ -4,7 +4,7 @@
 // por exactamente el mismo camino que el botón «Enviar».
 
 import { supabaseCharlas } from "@/lib/charlas";
-import { enviarCorreo } from "@/lib/charlas-correo";
+import { enviarCorreo, ultimoHiloCon } from "@/lib/charlas-correo";
 import { fusionarCambios } from "@/lib/bandeja-cambios";
 import { fotoFicha, sinActualizadoPor } from "@/lib/bandeja-deshacer";
 
@@ -32,7 +32,7 @@ export async function registrarCorreccion(t: Tarea, textoFinal: string, body: Re
   const motivo = typeof body.motivo === "string" && body.motivo.trim() ? body.motivo.trim() : null;
   if (editado || body.opcion === "b") {
     await sb.from("crm_correcciones").insert({
-      carril: "magia",
+      carril: t.carril ?? "magia",
       tarea_id: t.id,
       tipo_mensaje: t.tipo,
       idioma: t.idioma,
@@ -53,14 +53,21 @@ export async function enviarMail(body: Record<string, unknown>) {
   const destinatario = String(body.destinatario ?? t.destinatario ?? "").trim();
   // Hilo en el que va: el correo al que se contesta o, si no hay, el último con esta ficha.
   // Un seguimiento (recordatorio de agencia, etc.) no trae asunto: hereda «Re: …» del hilo.
-  const hilo = await hiloDe(t);
+  let hilo = await hiloDe(t);
+  // Leads: si la ficha no tiene hilo guardado, se busca el último correo con esa dirección en el buzón.
+  if (!hilo.inReplyTo && t.carril === "entrenatzaile" && destinatario.includes("@") && (await guardarHiloDeBuzon(t.ficha_id, destinatario))) hilo = await hiloDe(t);
   let asunto = String(body.asunto ?? "").trim() || String(t.borrador_asunto ?? "").trim();
   if (!asunto && hilo.asunto) asunto = `Re: ${hilo.asunto}`;
   if (!texto || !destinatario.includes("@")) throw new Error("Faltan texto o destinatario.");
   if (!asunto) throw new Error("No hay ningún correo anterior con esta ficha del que tomar el asunto: escribe uno.");
 
   const { data: cfg } = await sb.from("charlas_config").select("valor").eq("clave", "modo_prueba").maybeSingle();
-  const prueba = cfg?.valor !== false;
+  let prueba = cfg?.valor !== false;
+  // Leads de Entrenatzaile: interruptor propio (leads_modo = apagado | prueba | activo). Hasta «activo», los correos solo te llegan a ti.
+  if (t.carril === "entrenatzaile") {
+    const { data: m } = await sb.from("charlas_config").select("valor").eq("clave", "leads_modo").maybeSingle();
+    if (m?.valor !== "activo") prueba = true;
+  }
 
   // Freno anti-duplicados: si ya salió un correo real a esta ficha hace poco,
   // no se manda otro sin confirmación expresa de Alain.
@@ -105,6 +112,16 @@ export async function enviarMail(body: Record<string, unknown>) {
   return { ok: true, prueba: false, enviado_a: envio.para, smtp: envio.smtp };
 }
 
+/** Busca en el buzón el último correo con `email` y lo deja como hilo abierto de la ficha. */
+export async function guardarHiloDeBuzon(fichaId: string, email: string): Promise<{ asunto: string | null; fecha: string | null } | null> {
+  const h = await ultimoHiloCon(email);
+  if (!h) return null;
+  await supabaseCharlas()
+    .from("crm_hilos")
+    .upsert({ ficha_id: fichaId, canal: "principal", asunto: sinPrefijo(h.asunto), message_id_raiz: h.referencias[0] ?? h.messageId, ultimo_message_id: h.messageId, ultimo_mensaje_en: h.fecha }, { onConflict: "ficha_id,canal" });
+  return { asunto: sinPrefijo(h.asunto), fecha: h.fecha };
+}
+
 /**
  * Hilo de correo de la tarea: el entrante al que contesta; si no hay, el hilo
  * abierto de la ficha (crm_hilos, que también recoge lo enviado desde Mail del Mac);
@@ -146,6 +163,10 @@ export async function aplicarCambios(t: Tarea, envio: { canal: string; texto: st
   const { data: f } = await sb.from("crm_fichas").select("mails_enviados, email").eq("id", t.ficha_id).single();
   const cambios: Record<string, unknown> = { actualizado_por: "sistema", fecha_ultimo_contacto: hoy(), enviado: false };
   for (const k of ["estado", "proxima_accion", "fecha_proxima_accion"]) if (c[k]) cambios[k] = c[k];
+  // Leads: tras un check-in la ficha se queda sin fecha (sigue en el diario); un null explícito borra la fecha.
+  if (t.carril === "entrenatzaile" && "fecha_proxima_accion" in c && c.fecha_proxima_accion === null) cambios.fecha_proxima_accion = null;
+  // Un paso automático (sin envío) no es un contacto: no toca la fecha del último contacto.
+  if (!envio && t.carril === "entrenatzaile" && t.resuelto_por_sistema === true) delete cambios.fecha_ultimo_contacto;
   const persona = c.contacto_nuevo as { nombre?: string; email?: string; telefono?: string; cargo?: string; responsable?: boolean } | undefined;
   // El email de un contacto apuntado a mano queda también como email de la ficha si no tenía (no pisa el existente).
   if (persona?.email && !f?.email) cambios.email = persona.email.toLowerCase();
@@ -157,6 +178,8 @@ export async function aplicarCambios(t: Tarea, envio: { canal: string; texto: st
     if (persona.telefono) cambios.responsable_tel = persona.telefono;
   }
   if (envio?.canal === "Mail") cambios.mails_enviados = (f?.mails_enviados ?? 0) + 1;
+  // Leads: el contador (mensajes_enviados en el vault) cuenta cualquier canal.
+  if (envio && t.carril === "entrenatzaile") cambios.mails_enviados = (f?.mails_enviados ?? 0) + 1;
   // Foto de cómo estaba la ficha, para poder deshacerlo desde el panel.
   const antes = await fotoFicha(sb, "crm", t.ficha_id, Object.keys(cambios));
   await sb.from("crm_fichas").update(cambios).eq("id", t.ficha_id);

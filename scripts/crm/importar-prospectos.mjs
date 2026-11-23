@@ -8,6 +8,10 @@
 // Idempotente: las fichas se actualizan por nombre y el Registro que viene del
 // vault se reemplaza; lo que haya apuntado el sistema o el panel no se toca.
 // Igual que importar-directo.mjs para charlas.
+//
+// Leads de Entrenatzaile (23-11-2026): con --leads importa Vías/Entrenatzaile/Leads/
+// en el carril "entrenatzaile". Con --comprobar solo lee y cuenta, sin escribir.
+//   node scripts/crm/importar-prospectos.mjs --leads --comprobar [ruta a Leads/]
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -24,7 +28,10 @@ if (existsSync(envPath)) {
 }
 const URL = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_KEY;
-const DIR = process.argv[2] ?? (process.env.VAULT_CHARLAS_DIR ? join(process.env.VAULT_CHARLAS_DIR, "..", "..", "Prospectos") : null);
+const CARRIL = process.argv.includes("--leads") ? "entrenatzaile" : "magia";
+const COMPROBAR = process.argv.includes("--comprobar");
+const SUB = CARRIL === "magia" ? ["..", "..", "Prospectos"] : ["..", "Entrenatzaile", "Leads"];
+const DIR = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? (process.env.VAULT_CHARLAS_DIR ? join(process.env.VAULT_CHARLAS_DIR, ...SUB) : null);
 if (!URL || !KEY || !DIR || !existsSync(DIR)) {
   console.error("Faltan SUPABASE_URL / SUPABASE_SERVICE_KEY o la carpeta Prospectos/ (pásala como argumento o define VAULT_CHARLAS_DIR).");
   process.exit(1);
@@ -46,7 +53,7 @@ const registros = new Map();
 for (const f of ficheros) {
   let leido;
   try {
-    leido = filaDesdeFicha(f.slice(0, -3), readFileSync(join(DIR, f), "utf8"));
+    leido = filaDesdeFicha(f.slice(0, -3), readFileSync(join(DIR, f), "utf8"), CARRIL);
   } catch (e) {
     console.error(`  ${f}: ${e.message}`);
     continue;
@@ -57,7 +64,17 @@ for (const f of ficheros) {
 
 let nuevas = 0;
 let actualizadas = 0;
-const existentes = new Map(((await rest("crm_fichas?select=id,nombre&carril=eq.magia")) ?? []).map((c) => [c.nombre, c.id]));
+const existentes = new Map(((await rest(`crm_fichas?select=id,nombre&carril=eq.${CARRIL}`)) ?? []).map((c) => [c.nombre, c.id]));
+if (COMPROBAR) {
+  const lineas = [...registros.values()].reduce((s, r) => s + r.length, 0);
+  const porEstado = {};
+  for (const f of filas) porEstado[f.estado] = (porEstado[f.estado] ?? 0) + 1;
+  console.log(`[${CARRIL}] ${filas.length} fichas leídas · ${filas.filter((f) => !existentes.has(f.nombre)).length} nuevas · ${filas.filter((f) => existentes.has(f.nombre)).length} ya en Supabase · ${lineas} líneas de registro`);
+  console.log(porEstado);
+  console.log(JSON.stringify({ ...filas[0], frontmatter_raw: "…", cuerpo_antes: "…", cuerpo_despues: "…" }, null, 1));
+  console.log("(modo --comprobar: no se ha escrito nada)");
+  process.exit(0);
+}
 const idPorNombre = new Map(existentes);
 // PostgREST exige las mismas claves en todo el lote: con ?columns= las que
 // falten en una ficha toman el valor por defecto de la columna.

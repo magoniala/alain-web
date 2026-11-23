@@ -121,14 +121,17 @@ export async function POST(req: Request) {
         const fecha = String(body.fecha ?? "");
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("La fecha no es válida.");
         if (fecha < hoy()) throw new Error("Esa fecha ya pasó.");
+        // Motivo obligatorio (decisión de Alain, 23-11-2026): queda en el Registro.
+        const motivoAplazar = String(body.motivo ?? "").trim();
+        if (motivoAplazar.length < 3) throw new Error("Falta el motivo del aplazamiento.");
         const previa = tareaPrevia(t);
         const antes = await fotoFicha(supabase, "charlas", t.centro_id, ["fecha_proxima_accion"]);
-        const texto = `Aplazado al ${fecha.split("-").reverse().join("-")}: ${String(t.tipo).replace(/_/g, " ")}`;
+        const texto = `Aplazado al ${fecha.split("-").reverse().join("-")}: ${String(t.tipo).replace(/_/g, " ")} · motivo: ${motivoAplazar}`;
         await supabase.from("charlas_centros").update({ fecha_proxima_accion: fecha, actualizado_por: "panel" }).eq("id", t.centro_id);
         const { data: li } = await supabase.from("charlas_interacciones").insert({ centro_id: t.centro_id, fecha: hoy(), canal: "Sistema", texto, orden: 600, origen: "sistema" }).select("id").single();
         await supabase
           .from("charlas_tareas")
-          .update({ estado: "descartada", motivo: `Aplazada al ${fecha}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplazar", resumen: texto, tarea_previa: previa, antes, despues: { fecha_proxima_accion: fecha }, interacciones: li?.id ? [li.id] : [] }) })
+          .update({ estado: "descartada", motivo: `Aplazada al ${fecha}: ${motivoAplazar}`, resuelto_en: new Date().toISOString(), resuelto_por: "alain", contexto: contextoConDeshacer(t.contexto, { accion: "aplazar", resumen: texto, tarea_previa: previa, antes, despues: { fecha_proxima_accion: fecha }, interacciones: li?.id ? [li.id] : [] }) })
           .eq("id", t.id);
         return NextResponse.json({ ok: true });
       }

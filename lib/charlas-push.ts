@@ -142,3 +142,24 @@ export async function notificarTareasMagia(): Promise<{ avisos: number; tareas: 
   await supabase.from("crm_tareas").update({ notificada_en: new Date().toISOString() }).in("id", tareas.map((t) => t.id));
   return { avisos: r.enviados ? 1 : 0, tareas: tareas.length };
 }
+
+/** Avisos de los leads de Entrenatzaile (23-11-2026): un resumen por pasada con las tarjetas nuevas. */
+export async function notificarTareasLeads(): Promise<{ avisos: number; tareas: number }> {
+  const supabase = supabaseCharlas();
+  const { data: tareas, error } = await supabase
+    .from("crm_tareas")
+    .select("id, tipo, ficha:crm_fichas(nombre)")
+    .eq("carril", "entrenatzaile")
+    .eq("estado", "revisar")
+    .is("notificada_en", null);
+  if (error || !tareas?.length) return { avisos: 0, tareas: 0 };
+  const nombres = tareas.map((t) => (t.ficha as unknown as { nombre: string } | null)?.nombre).filter(Boolean);
+  const r = await enviarPush({
+    title: `💪 Leads: ${tareas.length} ${tareas.length === 1 ? "mensaje" : "mensajes"} para revisar`,
+    body: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? "…" : ""),
+    url: "/admin?tab=Leads%20Entrenatzaile",
+    tag: "leads-resumen",
+  });
+  await supabase.from("crm_tareas").update({ notificada_en: new Date().toISOString() }).in("id", tareas.map((t) => t.id));
+  return { avisos: r.enviados ? 1 : 0, tareas: tareas.length };
+}

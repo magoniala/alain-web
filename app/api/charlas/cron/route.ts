@@ -5,7 +5,8 @@ import { procesarPendientes } from "@/lib/charlas-proceso";
 import { tareasPorFecha, mail1Automatico, localizarCorreosCharlas } from "@/lib/charlas-motor";
 import { rastrearContactos } from "@/lib/charlas-rastreo";
 import { tareasPorFechaMagia, procesarPendientesMagia } from "@/lib/crm-motor";
-import { notificarTareasNuevas, notificarTareasMagia } from "@/lib/charlas-push";
+import { notificarTareasNuevas, notificarTareasMagia, notificarTareasLeads } from "@/lib/charlas-push";
+import { tareasPorFechaLeads } from "@/lib/leads-motor";
 import { enviarAvisosPendientes, alertasParaAlain } from "@/lib/ent-avisos";
 import { proponerPendientes } from "@/lib/ent-ia";
 import { notificarReservasHojaRuta } from "@/lib/hoja-ruta-bandeja";
@@ -162,6 +163,10 @@ async function ejecutarSinCierre(req: Request) {
       ? await autoenviarMagia({ presupuestoMs: Math.max(0, 53000 - (Date.now() - inicio)) }).catch((e) => ({ enviados: 0, errores: [(e as Error).message] }))
       : null;
 
+  // Leads de Entrenatzaile (23-11-2026): tarjetas por fecha, sin IA (plantillas del guion).
+  // Interruptor charlas_config.leads_modo (apagado | prueba | activo); no depende de la ventana de IA.
+  const leads = Date.now() - inicio < 50000 ? await tareasPorFechaLeads({ presupuestoMs: Math.max(0, 54000 - (Date.now() - inicio)) }).catch((e) => ({ modo: "?", revisados: 0, creadas: 0, solos: 0, ya_abiertas: 0, errores: [(e as Error).message] })) : null;
+
   // Tarjetas diarias para que Alain localice a mano el correo de unos pocos centros (sin IA).
   if (lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 47000) await localizarCorreosCharlas().catch(() => null);
 
@@ -220,8 +225,9 @@ async function ejecutarSinCierre(req: Request) {
   // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
   const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
+  const pushLeads = await notificarTareasLeads().catch(() => ({ avisos: 0, tareas: 0 }));
 
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
 }
 
 // Solo una pasada a la vez: si otra está trabajando (cron solapado, o "Leer buzón ahora" mientras

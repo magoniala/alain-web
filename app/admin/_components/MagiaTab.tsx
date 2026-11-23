@@ -431,7 +431,7 @@ function TarjetaMagia({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<
       {pregunta === "descartar" && <PreguntaEnLinea pregunta="¿Por qué lo descartas? (opcional)" boton="Descartar la tarjeta" ocupado={!!ocupado} onCancelar={() => setPregunta(null)} onAceptar={(m) => { setPregunta(null); hacer("descartar", { accion: "descartar", id: t.id, motivo: m }); }} />}
       {pregunta === "rehacer" && <PreguntaEnLinea pregunta="¿Qué cambio quieres en el borrador?" boton="Rehacer" obligatorio ocupado={!!ocupado} onCancelar={() => setPregunta(null)} onAceptar={(i) => { setPregunta(null); hacer("rehacer", { accion: "rehacer", id: t.id, instruccion: i }); }} />}
       {pregunta === "redactar" && <PreguntaEnLinea pregunta="¿Qué quieres decirle? (opcional)" boton="Redactar" ocupado={!!ocupado} onCancelar={() => setPregunta(null)} onAceptar={(i) => { setPregunta(null); hacer("rehacer", { accion: "redactar", id: t.id, instruccion: i }); }} />}
-      <AplazarTarea ocupado={!!ocupado} onAplazar={(fecha) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha })} />
+      <AplazarTarea ocupado={!!ocupado} onAplazar={(fecha, motivo) => hacer("aplazar", { accion: "aplazar", id: t.id, fecha, motivo })} />
       {err && <p className="mt-2 text-[0.82rem] text-[#DC2626]">{err}</p>}
     </article>
   );

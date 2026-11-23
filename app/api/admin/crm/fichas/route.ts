@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { supabaseCharlas } from "@/lib/charlas";
 
-// Fichas del CRM genérico (carril magia por ahora).
+// Fichas del CRM genérico (carriles magia y entrenatzaile).
 //
 //   GET   /api/admin/crm/fichas?carril=magia           → lista + resumen por estado y segmento
 //   GET   /api/admin/crm/fichas?id=<uuid>              → ficha con Registro, tareas y mensajes
 //   PATCH /api/admin/crm/fichas  { id, ...campos, registro?, registro_canal? }
 
 const CAMPOS_LISTA =
-  "id, carril, nombre, segmento, tipo_entidad, territorio, localidad, prioridad, estado, canal, idioma, responsable, responsable_email, responsable_tel, email, telefono, ultimo_evento, fecha_ultimo_evento, mes_temporada, mails_enviados, intentos_llamada, fecha_ultimo_contacto, proxima_accion, bloqueado_por, fecha_proxima_accion, nivel_autonomia, actualizado_en";
+  "id, carril, nombre, segmento, tipo_entidad, territorio, localidad, prioridad, estado, canal, idioma, responsable, responsable_email, responsable_tel, email, telefono, ultimo_evento, fecha_ultimo_evento, mes_temporada, mails_enviados, intentos_llamada, fecha_ultimo_contacto, proxima_accion, bloqueado_por, fecha_proxima_accion, nivel_autonomia, actualizado_en, datos";
 
 const EDITABLES = new Set([
   "estado", "segmento", "tipo_entidad", "prioridad", "canal", "idioma", "responsable", "responsable_cargo", "responsable_email", "responsable_tel",

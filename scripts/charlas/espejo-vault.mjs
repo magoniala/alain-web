@@ -605,6 +605,21 @@ async function espejoMagia() {
   }
 }
 
+// Leads de Entrenatzaile (Vías/Entrenatzaile/Leads/, carril "entrenatzaile" de crm_fichas), desde el
+// 23-11-2026. Mismo espejo y mismas reglas que Prospectos. Va DESPUÉS de las reservas: lo que estas
+// apunten en la nota se sube a Supabase en esta misma pasada (cuenta como cambio hecho en Obsidian).
+async function espejoLeads() {
+  try {
+    const { espejoProspectos } = await import("../crm/espejo-prospectos.mjs");
+    const r = await espejoProspectos({ url: URL, key: KEY, comprobar: COMPROBAR, carril: "entrenatzaile", dir: join(VAULT, "..", "Entrenatzaile", "Leads") });
+    if (r.saltado) return console.log(`Leads: saltado (${r.saltado})`);
+    console.log(`Leads (Entrenatzaile): ${r.fichas} fichas · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${COMPROBAR ? "detectados" : "subidos"} · ${r.subidas} fichas cambiadas en Obsidian ${COMPROBAR ? "por subir" : "subidas"}${r.sin_supabase.length ? ` · en el vault sin Supabase: ${r.sin_supabase.join(", ")}` : ""}`);
+    for (const d of r.detalle_subidas ?? []) console.log(`  ↑ Leads/${d.nombre} (cambiada en Obsidian)\n      ${d.difs.join("\n      ")}`);
+  } catch (e) {
+    console.log(`Leads: no espejados (${String(e.message).slice(0, 160)})`);
+  }
+}
+
 // Reservas de la Hoja de Ruta con WhatsApp enviado desde el panel → ficha del lead en Vías/Entrenatzaile/Leads/.
 async function espejoReservasHojaRuta() {
   try {
@@ -622,6 +637,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   main()
     .then(espejoMagia)
     .then(espejoReservasHojaRuta)
+    .then(espejoLeads)
     .catch((e) => {
       console.error(e);
       process.exit(1);

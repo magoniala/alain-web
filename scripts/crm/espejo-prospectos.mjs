@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseFicha, renderFicha, igual, CLAVES } from "./prospectos-lib.mjs";
+import { parseFicha, renderFicha, igual, perfilDe, valorDe } from "./prospectos-lib.mjs";
 
 
 // Qué notas escribió el propio espejo (ruta → mtime): una nota con ese mtime
@@ -34,7 +34,7 @@ function guardarEstadoEspejo() {
 // 0 Por contactar porque se añadió una línea al Registro desde Obsidian).
 const FOTOS_ESPEJO = join(dirname(fileURLToPath(import.meta.url)), ".espejo-fotos.json");
 const fotos = (() => { try { return JSON.parse(readFileSync(FOTOS_ESPEJO, "utf8")); } catch { return {}; } })();
-const fotoDe = (f) => Object.fromEntries(CLAVES.map((k) => [k, f[k] ?? f.datos?.[k] ?? null]));
+const fotoDe = (f) => Object.fromEntries(perfilDe(f).claves.map((k) => [k, valorDe(f, k)]));
 function guardarFotos() {
   try { writeFileSync(FOTOS_ESPEJO, JSON.stringify(fotos), "utf8"); } catch { /* no es crítico */ }
 }
@@ -43,7 +43,11 @@ const tocadaEnObsidian = (ruta, actualizadoEn) => {
   return escritas[ruta] !== m && m > Date.parse(actualizadoEn) + 5000;
 };
 
-export async function espejoProspectos({ dir, url, key, comprobar = false } = {}) {
+// Desde el 23-11-2026 sirve para los dos carriles del CRM genérico: magia
+// (Prospectos/) y entrenatzaile (Vías/Entrenatzaile/Leads/). Mismas reglas.
+export async function espejoProspectos({ dir, url, key, comprobar = false, carril = "magia" } = {}) {
+  const perfil = perfilDe(carril);
+  const CLAVES = perfil.claves;
   const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
   if (!url || !key) {
     const envPath = join(RAIZ, ".env.local");
@@ -56,8 +60,9 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     url = url ?? process.env.SUPABASE_URL;
     key = key ?? process.env.SUPABASE_SERVICE_KEY;
   }
-  dir = dir ?? (process.env.VAULT_CHARLAS_DIR ? join(process.env.VAULT_CHARLAS_DIR, "..", "..", "Prospectos") : null);
-  if (!url || !key || !dir || !existsSync(dir)) throw new Error("espejo-prospectos: faltan credenciales o la carpeta Prospectos/");
+  const sub = carril === "magia" ? ["..", "..", "Prospectos"] : ["..", "Entrenatzaile", "Leads"];
+  dir = dir ?? (process.env.VAULT_CHARLAS_DIR ? join(process.env.VAULT_CHARLAS_DIR, ...sub) : null);
+  if (!url || !key || !dir || !existsSync(dir)) throw new Error(`espejo (${carril}): faltan credenciales o la carpeta de fichas`);
 
   const rest = async (ruta, opciones = {}) => {
     const r = await fetch(`${url}/rest/v1/${ruta}`, {
@@ -78,10 +83,11 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     return out;
   };
 
-  const { data: cfg } = { data: await rest("charlas_config?select=valor&clave=eq.magia_espejo") };
-  if (cfg?.[0]?.valor === false) return { saltado: "magia_espejo = false" };
+  const claveCfg = carril === "magia" ? "magia_espejo" : "leads_espejo";
+  const { data: cfg } = { data: await rest(`charlas_config?select=valor&clave=eq.${claveCfg}`) };
+  if (cfg?.[0]?.valor === false) return { saltado: `${claveCfg} = false` };
 
-  const [fichas, interacciones] = await Promise.all([todas("crm_fichas", "*", "nombre").then((f) => f.filter((x) => x.carril === "magia")), todas("crm_interacciones", "*", "ficha_id,fecha,orden")]);
+  const [fichas, interacciones] = await Promise.all([todas("crm_fichas", "*", "nombre").then((f) => f.filter((x) => x.carril === carril)), todas("crm_interacciones", "*", "ficha_id,fecha,orden")]);
   const porFicha = new Map();
   for (const i of interacciones) {
     if (!porFicha.has(i.ficha_id)) porFicha.set(i.ficha_id, []);
@@ -111,7 +117,7 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     const actual = readFileSync(ruta, "utf8");
     let p;
     try {
-      p = parseFicha(actual);
+      p = parseFicha(actual, perfil);
     } catch {
       diferencias.push({ nombre: f.nombre, difs: ["no se puede leer el frontmatter; no se toca"] });
       continue;
@@ -124,8 +130,8 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
       manuales.push(fila);
       registro.push({ ...fila, creado_en: new Date().toISOString() });
     }
-    const db = (k) => f[k] ?? f.datos?.[k] ?? null;
-    const calcularDifs = () => CLAVES.filter((k) => !igual(p.frontmatter[k], db(k), k)).map((k) => `${k}: vault="${p.frontmatter[k] ?? ""}" · db="${db(k) ?? ""}"`);
+    const db = (k) => valorDe(f, k, perfil);
+    const calcularDifs = () => CLAVES.filter((k) => !igual(p.frontmatter[k], db(k), k, perfil)).map((k) => `${k}: vault="${p.frontmatter[k] ?? ""}" · db="${db(k) ?? ""}"`);
     let difs = calcularDifs();
     // Si la nota se ha tocado en Obsidian después del último cambio en
     // Supabase, se suben SOLO los campos que Alain ha cambiado en Obsidian
@@ -134,8 +140,8 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
     // bajara un cambio del panel): ahí gana Supabase y la nota se reescribe.
     const base = fotos[ruta];
     if (difs.length && tocadaEnObsidian(ruta, f.actualizado_en)) {
-      const tocados = base ? CLAVES.filter((k) => !igual(p.frontmatter[k], base[k] ?? null, k)) : CLAVES;
-      const aSubir = tocados.filter((k) => !igual(p.frontmatter[k], db(k), k));
+      const tocados = base ? CLAVES.filter((k) => !igual(p.frontmatter[k], base[k] ?? null, k, perfil)) : CLAVES;
+      const aSubir = tocados.filter((k) => !igual(p.frontmatter[k], db(k), k, perfil));
       const cambios = {};
       const datos = { ...(f.datos ?? {}) };
       let conDatos = false;
@@ -143,7 +149,8 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
         let v = p.frontmatter[k];
         if (v === "" || v === undefined) v = null;
         if (k === "enviado" && v !== null && typeof v !== "boolean") v = String(v) === "true";
-        if (k in f) cambios[k] = v;
+        const col = perfil.columnas[k];
+        if (col) cambios[col] = v;
         else {
           datos[k] = v;
           conDatos = true;
@@ -187,11 +194,12 @@ export async function espejoProspectos({ dir, url, key, comprobar = false } = {}
 // Ejecución directa.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const comprobar = process.argv.includes("--comprobar");
+  const carril = process.argv.includes("--leads") ? "entrenatzaile" : "magia";
   const dir = process.argv.slice(2).find((a) => !a.startsWith("--"));
-  espejoProspectos({ dir, comprobar })
+  espejoProspectos({ dir, comprobar, carril })
     .then((r) => {
       if (r.saltado) return console.log(`Prospectos: saltado (${r.saltado})`);
-      console.log(`Prospectos (magia): ${r.fichas} fichas en Supabase · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${comprobar ? "detectados" : "subidos"} · ${r.subidas} fichas cambiadas en Obsidian ${comprobar ? "por subir" : "subidas"}${r.sin_supabase.length ? ` · en el vault sin Supabase: ${r.sin_supabase.slice(0, 5).join(", ")}` : ""}`);
+      console.log(`${carril === "magia" ? "Prospectos (magia)" : "Leads (Entrenatzaile)"}: ${r.fichas} fichas en Supabase · ${r.iguales} iguales · ${r.distintas} con diferencias · ${r.nuevas} nuevas · ${r.manuales} apuntes a mano ${comprobar ? "detectados" : "subidos"} · ${r.subidas} fichas cambiadas en Obsidian ${comprobar ? "por subir" : "subidas"}${r.sin_supabase.length ? ` · en el vault sin Supabase: ${r.sin_supabase.slice(0, 5).join(", ")}` : ""}`);
       for (const d of r.detalle_subidas.slice(0, 10)) console.log(`↑ ${d.nombre} (cambiada en Obsidian)\n    ${d.difs.join("\n    ")}`);
       for (const d of r.diferencias.slice(0, 10)) console.log(`· ${d.nombre}\n    ${d.difs.join("\n    ")}`);
       if (comprobar) console.log("(modo --comprobar: no se ha escrito nada)");
