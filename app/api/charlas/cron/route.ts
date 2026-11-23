@@ -119,6 +119,10 @@ async function ejecutarSinCierre(req: Request) {
   // Fase 3 (Mail 1 automático) y carril de magia comparten lo que queda de
   // ventana. Para que ninguno se quede siempre sin tiempo, van alternando el
   // orden en cada pasada (los minutos pares, magia primero).
+  // Protocolo de eventos de magia (lib/eventos.ts): pasos, tarjetas de los mensajes y avisos del día límite.
+  // Va pronto a propósito: es rápido (pocas consultas, IA solo para traducir al euskera) y lo de después
+  // (rastreo, avisos de la app) agota el margen de los 60 s, así que al final casi nunca llegaba a correr.
+  const eventos = await avisosEventos().catch((e) => ({ error: (e as Error).message }));
   const magiaPrimero = Math.floor(Date.now() / 600000) % 2 === 0;
   const correrMail1 = async () =>
     lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 40000
@@ -225,8 +229,6 @@ async function ejecutarSinCierre(req: Request) {
   const entPropuestas = toca && Date.now() - inicio < 45000 ? await proponerPendientes({ presupuestoMs: Math.max(0, 55000 - (Date.now() - inicio)) }).catch((e) => ({ creadas: 0, errores: [(e as Error).message] })) : null;
 
   // Reservas de la Hoja de Ruta confirmadas sin WhatsApp aún: aviso al móvil (sin IA, en cada pasada).
-  // Protocolo de eventos de magia (lib/eventos.ts): pasos, tarjetas de los mensajes y avisos del día límite. Sin IA salvo traducir al euskera.
-  const eventos = Date.now() - inicio < 54000 ? await avisosEventos().catch((e) => ({ error: (e as Error).message })) : null;
   const hojaRuta = await notificarReservasHojaRuta().catch(() => ({ avisos: 0 }));
 
   // Bandeja general: los otros buzones (newsletter@, entrenatzaile@, niala.es),
