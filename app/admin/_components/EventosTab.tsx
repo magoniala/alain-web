@@ -123,8 +123,7 @@ export default function EventosTab() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[1.4rem] font-semibold">Eventos</h1>
-          <p className="text-[0.85rem] text-gray-500">Los pasos del protocolo salen solos: los mensajes, como tarjeta en la Bandeja de Magia en su fecha ideal; la preparación, en la nota diaria. El día límite llega un aviso al móvil.</p>
+          <p className="max-w-[640px] text-[0.85rem] text-gray-500">Los pasos del protocolo salen solos: los mensajes, como tarjeta en la Bandeja de Magia en su fecha ideal; la preparación, en la nota diaria. El día límite llega un aviso al móvil.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={cargar} className="px-3 py-2 text-[0.85rem] text-gray-700 ring-1 ring-gray-300">{cargando ? "Cargando…" : "Actualizar"}</button>
@@ -165,7 +164,7 @@ export default function EventosTab() {
             <div key={p.clave} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-2 text-[0.85rem] last:border-0">
               <span className="font-medium">{p.nombre} <span className="font-normal text-gray-500">· {corta(p.fecha_evento)}</span></span>
               <span className="text-[0.78rem] text-gray-600">
-                D+1: {p.d1_tarea ? "✓ tarjeta creada" : p.d1_omitido ? `— ${p.d1_omitido}` : "pendiente"} · D+30: {p.d30_tarea ? "✓ tarjeta creada" : p.d30_omitido ? `— ${p.d30_omitido}` : dias(hoy, p.fecha_evento) + 30 > 0 ? `el ${corta(new Date(Date.parse(p.fecha_evento + "T12:00:00Z") + 30 * 86400000).toISOString())}` : "pendiente"}
+                D+1: {p.d1_tarea ? "✓ tarjeta creada" : p.d1_omitido ? `— ${p.d1_omitido}` : "pendiente"} · D+30: {p.d30_tarea ? "✓ tarjeta creada" : p.d30_omitido ? `— ${p.d30_omitido}` : p.clave.startsWith("serie:") ? "no toca (sesiones recurrentes)" : dias(hoy, p.fecha_evento) + 30 > 0 ? `el ${corta(new Date(Date.parse(p.fecha_evento + "T12:00:00Z") + 30 * 86400000).toISOString())}` : "pendiente"}
               </span>
             </div>
           ))}
