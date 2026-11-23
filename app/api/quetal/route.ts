@@ -5,8 +5,9 @@ import {
   EMAIL_RE,
   FECHA_RE,
   LIMITES,
-  PERMISOS,
+  PERMISOS_FORM,
   REPETIR,
+  conEntidad,
   REPETIR_CORTO,
   TIPOS_EVENTO,
   TOKEN_RE,
@@ -16,7 +17,7 @@ import {
   preguntaVisible,
   preguntasDe,
   tiposCorto,
-  type Permiso,
+  type PermisoForm,
   type Repetir,
   type TipoEvento,
 } from "@/lib/quetal";
@@ -99,8 +100,8 @@ export async function POST(req: Request) {
   const nps = b.nps;
   if (typeof nps !== "number" || !Number.isInteger(nps) || nps < 0 || nps > 10) return falla("NPS no válido.");
 
-  const permiso = b.permiso as Permiso;
-  if (!PERMISOS.includes(permiso)) return falla("Permiso no válido.");
+  const permiso = b.permiso as PermisoForm;
+  if (!PERMISOS_FORM.includes(permiso)) return falla("Permiso no válido.");
   if (b.privacidad !== true) return falla("Falta aceptar la privacidad.");
 
   let repetir: Repetir | null = null;
@@ -161,7 +162,7 @@ export async function POST(req: Request) {
     referido_permiso_mencion: b.referidoPermiso === true,
     mejora_privada: texto(b.mejora, LIMITES.largo),
     permiso_publicacion: permiso,
-    permiso_logo: (permiso === "completo" || permiso === "entidad") && b.permisoLogo === true,
+    permiso_logo: conEntidad(permiso) && b.permisoLogo === true,
     permiso_fotos: b.permisoFotos === true,
     privacidad_aceptada: true,
   };

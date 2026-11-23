@@ -7,7 +7,7 @@
 // el idioma en que se contestaron: cambiar un texto no cambia lo que ya está
 // guardado.
 
-import type { Audiencia, CampoValoracion, Opcion, Permiso, Repetir, TipoEvento } from "./quetal";
+import type { Audiencia, CampoValoracion, Opcion, PermisoForm, Repetir, TipoEvento } from "./quetal";
 
 type Textos = {
   meta: string;
@@ -66,7 +66,7 @@ type Textos = {
   mejoraPrivada: string;
 
   permiso: string;
-  permisoOpciones: Record<Permiso, string>;
+  permisoOpciones: Record<PermisoForm, string>;
   permisoLogo: string;
   permisoFotos: string;
   privacidadAntes: string;
@@ -232,9 +232,11 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     permiso: "¿Puedo publicar tu valoración en mi web y redes?",
     permisoOpciones: {
       completo: "Sí, con mi nombre, cargo y entidad",
+      nombre: "Sí, con mi nombre y la entidad, sin cargo",
+      iniciales: "Sí, con mis iniciales, cargo y entidad",
+      cargo: "Sí, con mi cargo y la entidad, sin nombre",
       entidad: "Sí, solo con la entidad",
       anonimo: "Sí, de forma anónima",
-      no: "No, es solo para ti",
     },
     permisoLogo: "Puedes usar el logo de la entidad junto a la valoración",
     permisoFotos: "Puedes usar fotos o vídeos del evento",
@@ -400,9 +402,11 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     permiso: "Zure balorazioa nire webgunean eta sare sozialetan argitara dezaket?",
     permisoOpciones: {
       completo: "Bai, nire izena, kargua eta erakundea jarrita",
+      nombre: "Bai, nire izena eta erakundea jarrita, kargurik gabe",
+      iniciales: "Bai, nire inizialak, kargua eta erakundea jarrita",
+      cargo: "Bai, nire kargua eta erakundea jarrita, izenik gabe",
       entidad: "Bai, erakundea bakarrik jarrita",
       anonimo: "Bai, modu anonimoan",
-      no: "Ez, zuretzat bakarrik da",
     },
     permisoLogo: "Erakundearen logoa erabil dezakezu balorazioarekin batera",
     permisoFotos: "Ekitaldiko argazkiak edo bideoak erabil ditzakezu",

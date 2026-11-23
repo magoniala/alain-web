@@ -20,8 +20,16 @@ export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 export const REPETIR = ["proxima", "otro_tipo", "puede", "no"] as const;
 export type Repetir = (typeof REPETIR)[number];
 
-export const PERMISOS = ["completo", "entidad", "anonimo", "no"] as const;
+// Permiso de publicación. «no» ya no se ofrece en el formulario (decisión de
+// Alain, 23-11-2026: una opinión anónima no molesta a nadie y, si das la
+// opción de no publicar, muchos la marcan). Se mantiene solo para leer las
+// respuestas antiguas. Las nuevas opciones requieren sql/quetal_permisos.sql.
+export const PERMISOS = ["completo", "nombre", "iniciales", "cargo", "entidad", "anonimo", "no"] as const;
 export type Permiso = (typeof PERMISOS)[number];
+export const PERMISOS_FORM = ["completo", "nombre", "iniciales", "cargo", "entidad", "anonimo"] as const satisfies readonly Permiso[];
+export type PermisoForm = (typeof PERMISOS_FORM)[number];
+// Con cualquiera de estos se nombra a la entidad, así que cabe pedir el logo.
+export const conEntidad = (p: Permiso | "") => p !== "" && p !== "anonimo" && p !== "no";
 
 export const ESTADOS = ["nuevo", "revisado", "aprobado_por_cliente", "publicado", "archivado"] as const;
 export type Estado = (typeof ESTADOS)[number];
@@ -167,9 +175,12 @@ export const REPETIR_CORTO: Record<Repetir, string> = QUETAL_TEXTOS.es.repetirOp
 
 export const PERMISO_CORTO: Record<Permiso, string> = {
   completo: "Nombre, cargo y entidad",
+  nombre: "Nombre y entidad (sin cargo)",
+  iniciales: "Iniciales, cargo y entidad",
+  cargo: "Cargo y entidad (sin nombre)",
   entidad: "Solo entidad",
   anonimo: "Anónimo",
-  no: "No publicable",
+  no: "No publicable (opción antigua)",
 };
 
 export const ESTADO_CORTO: Record<Estado, string> = {

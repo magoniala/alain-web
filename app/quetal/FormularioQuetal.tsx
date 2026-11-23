@@ -6,15 +6,16 @@ import {
   AUDIENCIA,
   EMAIL_RE,
   LIMITES,
-  PERMISOS,
+  PERMISOS_FORM,
   REPETIR,
+  conEntidad,
   TIPOS_EVENTO,
   VALORACIONES,
   preguntaVisible,
   preguntasDe,
   type CampoValoracion,
   type Idioma,
-  type Permiso,
+  type PermisoForm,
   type Repetir,
   type TipoEvento,
 } from "@/lib/quetal";
@@ -100,7 +101,7 @@ type Datos = {
   referidoContacto: string;
   referidoPermiso: boolean;
   mejora: string;
-  permiso: Permiso | "";
+  permiso: PermisoForm | "";
   permisoLogo: boolean;
   permisoFotos: boolean;
   privacidad: boolean;
@@ -267,7 +268,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
     const respuestasTipo = Object.fromEntries(
       visibles.map((q) => [q.id, d.tipoResp[q.id]?.trim() ?? ""]).filter(([, v]) => v)
     );
-    const logoPosible = d.permiso === "completo" || d.permiso === "entidad";
+    const logoPosible = conEntidad(d.permiso);
     try {
       const res = await fetch("/api/quetal", {
         method: "POST",
@@ -569,13 +570,13 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
         );
 
       case 6: {
-        const logoPosible = d.permiso === "completo" || d.permiso === "entidad";
+        const logoPosible = conEntidad(d.permiso);
         return (
           <>
             {bloque(
               <>
                 {pregunta(T.permiso, true)}
-                {PERMISOS.map((p) => (
+                {PERMISOS_FORM.map((p) => (
                   <Opcion key={p} elegida={d.permiso === p} onClick={() => set("permiso", p)}>
                     {T.permisoOpciones[p]}
                   </Opcion>

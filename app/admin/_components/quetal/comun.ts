@@ -95,6 +95,10 @@ export function metricas(lista: Respuesta[]) {
 export const fechaCorta = (iso: string | null) =>
   iso ? new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
+// «Mónica Pérez Arrieta» → «M. P. A.»
+const iniciales = (nombre: string) =>
+  nombre.trim().split(/\s+/).filter(Boolean).map((p) => `${p[0].toUpperCase()}.`).join(" ");
+
 // El texto listo para pegar en la web o en redes, según lo que haya
 // permitido. Usa mi versión pulida si la hay.
 export function textoParaPublicar(r: Respuesta): string | null {
@@ -104,6 +108,14 @@ export function textoParaPublicar(r: Respuesta): string | null {
       const quien = [r.nombre, r.cargo].filter(Boolean).join(", ");
       return `"${texto}" — ${quien} · ${r.entidad}`;
     }
+    case "nombre":
+      return `"${texto}" — ${r.nombre} · ${r.entidad}`;
+    case "iniciales": {
+      const quien = [iniciales(r.nombre), r.cargo].filter(Boolean).join(", ");
+      return `"${texto}" — ${quien} · ${r.entidad}`;
+    }
+    case "cargo":
+      return r.cargo ? `"${texto}" — ${r.cargo} · ${r.entidad}` : `"${texto}" — ${r.entidad}`;
     case "entidad":
       return `"${texto}" — ${r.entidad}`;
     case "anonimo":

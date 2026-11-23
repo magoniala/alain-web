@@ -200,7 +200,7 @@ function Ficha({ r, onCambio, aviso }: { r: Respuesta; onCambio: (r: Respuesta) 
         {publicar ? (
           <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-[0.85rem] text-gray-600">{publicar}</p>
         ) : (
-          <p className="mt-3 text-[0.82rem] text-gray-400">🔒 No publicable: «No, es solo para ti».</p>
+          <p className="mt-3 text-[0.82rem] text-gray-400">🔒 No publicable: marcó «No, es solo para ti» (opción que ya no se ofrece).</p>
         )}
         <p className="mt-2 text-[0.8rem] text-gray-500">
           Logo: {r.permiso_logo ? "sí" : "no"} · Fotos/vídeos: {r.permiso_fotos ? "sí" : "no"}
