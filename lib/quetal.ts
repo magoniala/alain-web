@@ -107,6 +107,23 @@ export const AUDIENCIA: Record<TipoEvento, Audiencia> = {
   privado: "privado",
 };
 
+// Sin enlace, el organizador puede marcar varios tipos (23-11-2026): un
+// evento puede ser a la vez «fiestas» y «taller», por ejemplo. El primero
+// que marca es el principal (tipo_evento): de él salen la audiencia, los
+// enunciados de porTipo y la firma anónima. Todos van en tipos_evento.
+export function tiposDe(r: { tipo_evento: TipoEvento; tipos_evento?: TipoEvento[] | null }): TipoEvento[] {
+  return r.tipos_evento?.length ? r.tipos_evento : [r.tipo_evento];
+}
+
+// Las preguntas de varios tipos juntas, en orden y sin repetir las comunes
+// (familiar y fiestas comparten las de «magia antes»).
+export function preguntasDe(tipos: TipoEvento[]): PreguntaTipo[] {
+  const vistas = new Set<string>();
+  return tipos.flatMap((t) => PREGUNTAS_TIPO[t]).filter((q) => !vistas.has(q.id) && (vistas.add(q.id), true));
+}
+
+export const tiposCorto = (tipos: TipoEvento[]) => tipos.map((t) => TIPO_CORTO[t]).join(" + ");
+
 // Una pregunta condicionada solo cuenta si se cumple su condición.
 export function preguntaVisible(p: PreguntaTipo, r: Record<string, string>): boolean {
   return p.tipo !== "texto" || !p.si || r[p.si.id] === p.si.valor;

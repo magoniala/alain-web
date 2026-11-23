@@ -8,6 +8,8 @@ import {
   REPETIR_CORTO,
   TIPOS_EVENTO,
   TIPO_CORTO,
+  tiposCorto,
+  tiposDe,
   VALORACIONES,
   VALORACION_CORTO,
   mensajeWhatsApp,
@@ -123,7 +125,7 @@ function Ficha({ r, onCambio, aviso }: { r: Respuesta; onCambio: (r: Respuesta) 
           <div className="min-w-0">
             <p className="text-[1.35rem] font-semibold leading-tight">{r.entidad}</p>
             <p className="mt-1 text-[0.88rem] text-gray-500">
-              {r.nombre_evento} · {TIPO_CORTO[r.tipo_evento]} · {fechaCorta(r.fecha_evento)}
+              {r.nombre_evento} · {tiposCorto(tiposDe(r))} · {fechaCorta(r.fecha_evento)}
             </p>
             <p className="mt-0.5 text-[0.8rem] text-gray-400">
               Recibida el {new Date(r.created_at).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })} · en {r.idioma === "eu" ? "euskera" : "castellano"}
@@ -228,7 +230,7 @@ function Ficha({ r, onCambio, aviso }: { r: Respuesta; onCambio: (r: Respuesta) 
         <Dato p={T.dudas} r={r.dudas_previas} />
       </Bloque>
 
-      <Bloque titulo={`3 · Según el tipo (${TIPO_CORTO[r.tipo_evento]})`}>
+      <Bloque titulo={`3 · Según el tipo (${tiposCorto(tiposDe(r))})`}>
         {r.respuestas_tipo.length ? (
           r.respuestas_tipo.map((x) => <Dato key={x.id} p={x.pregunta} r={x.respuesta} />)
         ) : (
@@ -504,7 +506,7 @@ export default function QuetalTab() {
     () =>
       (lista ?? []).filter(
         (r) =>
-          (!fTipo || r.tipo_evento === fTipo) &&
+          (!fTipo || tiposDe(r).includes(fTipo)) &&
           (!fEstado || r.estado === fEstado) &&
           RANGOS[fNps][1](r.nps) &&
           (!fReferido || tieneReferido(r)) &&
@@ -630,7 +632,7 @@ export default function QuetalTab() {
                     </div>
                     <p className="mt-0.5 flex justify-between gap-2 text-[0.78rem] text-gray-400">
                       <span className="truncate">
-                        {fechaCorta(r.fecha_evento)} · {TIPO_CORTO[r.tipo_evento]}
+                        {fechaCorta(r.fecha_evento)} · {tiposCorto(tiposDe(r))}
                       </span>
                       <span className="shrink-0">
                         {ESTADO_CORTO[r.estado]} · {PERMISO_CORTO[r.permiso_publicacion]}

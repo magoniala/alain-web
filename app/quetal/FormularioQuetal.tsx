@@ -7,11 +7,11 @@ import {
   EMAIL_RE,
   LIMITES,
   PERMISOS,
-  PREGUNTAS_TIPO,
   REPETIR,
   TIPOS_EVENTO,
   VALORACIONES,
   preguntaVisible,
+  preguntasDe,
   type CampoValoracion,
   type Idioma,
   type Permiso,
@@ -81,7 +81,7 @@ const TOTAL_PASOS = 6;
 type ValorNota = number | "na" | "";
 
 type Datos = {
-  tipo: TipoEvento | "";
+  tipos: TipoEvento[]; // el primero es el principal
   nombreEvento: string;
   fecha: string;
   nombre: string;
@@ -107,7 +107,7 @@ type Datos = {
   web: string; // honeypot
 };
 
-function Opcion({ elegida, onClick, children }: { elegida: boolean; onClick: () => void; children: React.ReactNode }) {
+function Opcion({ elegida, onClick, children, varias }: { elegida: boolean; onClick: () => void; children: React.ReactNode; varias?: boolean }) {
   return (
     <button
       type="button"
@@ -127,7 +127,7 @@ function Opcion({ elegida, onClick, children }: { elegida: boolean; onClick: () 
       }}
       className={elegida ? "" : "text-[#F2F2F0]/62 hover:text-[#F2F2F0]/90"}
     >
-      {elegida ? "→ " : ""}
+      {elegida ? (varias ? "✓ " : "→ ") : ""}
       {children}
     </button>
   );
@@ -181,7 +181,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
   const abiertoEn = useRef(0);
   const tarjeta = useRef<HTMLDivElement>(null);
   const [d, setD] = useState<Datos>({
-    tipo: inicial.tipo ?? "",
+    tipos: inicial.tipo ? [inicial.tipo] : [],
     nombreEvento: inicial.nombreEvento,
     fecha: inicial.fecha,
     nombre: inicial.nombre,
@@ -209,6 +209,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
 
   const T = QUETAL_TEXTOS[idioma];
   const conToken = Boolean(inicial.token);
+  const principal = d.tipos[0];
   const set = <K extends keyof Datos>(k: K, v: Datos[K]) => {
     setD((prev) => ({ ...prev, [k]: v }));
     setError("");
@@ -232,7 +233,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
   function validar(p: number): string {
     if (p === 1) {
       if (!d.nombre.trim() || !d.entidad.trim() || !d.nombreEvento.trim()) return T.errores.obligatorios;
-      if (!conToken && (!d.tipo || !d.fecha)) return T.errores.obligatorios;
+      if (!conToken && (!d.tipos.length || !d.fecha)) return T.errores.obligatorios;
       if (d.email.trim() && !EMAIL_RE.test(d.email.trim())) return T.errores.email;
     }
     if (p === 2) {
@@ -262,8 +263,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
   async function enviar() {
     setEnviando(true);
     setError("");
-    const tipo = d.tipo as TipoEvento;
-    const visibles = PREGUNTAS_TIPO[tipo].filter((q) => preguntaVisible(q, d.tipoResp));
+    const visibles = preguntasDe(d.tipos).filter((q) => preguntaVisible(q, d.tipoResp));
     const respuestasTipo = Object.fromEntries(
       visibles.map((q) => [q.id, d.tipoResp[q.id]?.trim() ?? ""]).filter(([, v]) => v)
     );
@@ -275,7 +275,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
         body: JSON.stringify({
           token: inicial.token ?? null,
           idioma,
-          tipo,
+          tipos: d.tipos,
           nombreEvento: d.nombreEvento,
           fecha: d.fecha || null,
           nombre: d.nombre,
@@ -377,17 +377,23 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
             {!conToken && (
               <div style={{ marginBottom: "2rem" }}>
                 <span style={labelStyle}>{T.tipoEvento} *</span>
+                <p style={{ ...ayudaStyle, marginTop: 0, marginBottom: "0.4rem" }}>{T.tipoEventoVarios}</p>
                 {TIPOS_EVENTO.map((t) => (
-                  <Opcion key={t} elegida={d.tipo === t} onClick={() => setD((p) => ({ ...p, tipo: t, tipoResp: p.tipo === t ? p.tipoResp : {} }))}>
+                  <Opcion
+                    key={t}
+                    varias
+                    elegida={d.tipos.includes(t)}
+                    onClick={() => set("tipos", d.tipos.includes(t) ? d.tipos.filter((x) => x !== t) : [...d.tipos, t])}
+                  >
                     {T.tipos[t]}
                   </Opcion>
                 ))}
               </div>
             )}
-            {conToken && d.tipo && (
+            {conToken && principal && (
               <p style={{ marginBottom: "2rem" }}>
                 <span style={labelStyle}>{T.tipoEvento}</span>
-                <span className="text-[#F2F2F0]/80">{T.tipos[d.tipo]}</span>
+                <span className="text-[#F2F2F0]/80">{T.tipos[principal]}</span>
               </p>
             )}
             {campo("nombreEvento", T.nombreEvento, { obligatorio: true })}
@@ -408,7 +414,7 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
         );
 
       case 2: {
-        const audiencia = d.tipo ? AUDIENCIA[d.tipo] : "generico";
+        const audiencia = principal ? AUDIENCIA[principal] : "generico";
         return (
           <>
             {bloque(
@@ -440,17 +446,17 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
                 {area(d.momento, (v) => set("momento", v), { id: "q-momento" })}
               </>
             )}
-            {pregunta((d.tipo && T.porTipo[d.tipo]?.dudas) || T.dudas, false, "q-dudas")}
+            {pregunta((principal && T.porTipo[principal]?.dudas) || T.dudas, false, "q-dudas")}
             {area(d.dudas, (v) => set("dudas", v), { id: "q-dudas" })}
           </>
         );
       }
 
       case 3:
-        if (!d.tipo) return <p style={ayudaStyle}>{T.sinPreguntasTipo}</p>;
+        if (!d.tipos.length) return <p style={ayudaStyle}>{T.sinPreguntasTipo}</p>;
         return (
           <>
-            {PREGUNTAS_TIPO[d.tipo]
+            {preguntasDe(d.tipos)
               .filter((q) => preguntaVisible(q, d.tipoResp))
               .map((q) => (
                 <div key={q.id}>
@@ -515,10 +521,10 @@ export default function FormularioQuetal({ inicial, resenaUrl }: { inicial: Inic
           <>
             {bloque(
               <>
-                {pregunta((d.tipo && T.porTipo[d.tipo]?.repetir) || T.repetir)}
+                {pregunta((principal && T.porTipo[principal]?.repetir) || T.repetir)}
                 {REPETIR.map((r) => (
                   <Opcion key={r} elegida={d.repetir === r} onClick={() => set("repetir", d.repetir === r ? "" : r)}>
-                    {((d.tipo && T.porTipo[d.tipo]?.repetirOpciones) || T.repetirOpciones)[r]}
+                    {((principal && T.porTipo[principal]?.repetirOpciones) || T.repetirOpciones)[r]}
                   </Opcion>
                 ))}
               </>

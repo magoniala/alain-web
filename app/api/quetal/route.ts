@@ -6,15 +6,16 @@ import {
   FECHA_RE,
   LIMITES,
   PERMISOS,
-  PREGUNTAS_TIPO,
   REPETIR,
   REPETIR_CORTO,
-  TIPO_CORTO,
+  TIPOS_EVENTO,
   TOKEN_RE,
   VALORACIONES,
   esIdioma,
   esTipo,
   preguntaVisible,
+  preguntasDe,
+  tiposCorto,
   type Permiso,
   type Repetir,
   type TipoEvento,
@@ -72,8 +73,12 @@ export async function POST(req: Request) {
     link = data as Link;
   }
 
-  const tipo = link?.tipo_evento ?? b.tipo;
-  if (!esTipo(tipo)) return falla("Tipo de evento no válido.");
+  // Sin enlace pueden marcar varios (b.tipos); b.tipo queda por si llega un
+  // envío de la versión anterior del formulario.
+  const pedidos: unknown[] = link ? [link.tipo_evento] : Array.isArray(b.tipos) ? b.tipos : [b.tipo];
+  if (!pedidos.length || pedidos.length > TIPOS_EVENTO.length || !pedidos.every(esTipo)) return falla("Tipo de evento no válido.");
+  const tipos = [...new Set(pedidos as TipoEvento[])];
+  const tipo = tipos[0];
 
   const nombre = texto(b.nombre, LIMITES.corto);
   const entidad = texto(b.entidad, LIMITES.corto);
@@ -120,7 +125,7 @@ export async function POST(req: Request) {
   const r: Record<string, string> = {};
   for (const [k, v] of Object.entries(crudas)) if (typeof v === "string") r[k] = v;
   const respuestasTipo: { id: string; pregunta: string; respuesta: string }[] = [];
-  for (const q of PREGUNTAS_TIPO[tipo]) {
+  for (const q of preguntasDe(tipos)) {
     if (!preguntaVisible(q, r)) continue;
     const v = r[q.id]?.trim();
     if (!v) continue;
@@ -136,6 +141,7 @@ export async function POST(req: Request) {
     link_id: link?.id ?? null,
     idioma,
     tipo_evento: tipo,
+    tipos_evento: tipos,
     nombre_evento: nombreEvento,
     fecha_evento: fecha,
     nombre,
@@ -163,12 +169,21 @@ export async function POST(req: Request) {
   // Primero se guarda; el enlace se marca después. Si el insert falla, el
   // enlace sigue sirviendo. Dos envíos a la vez con el mismo enlace los
   // para el índice único de link_id (23505).
-  const { data: guardada, error } = await supabase.from("feedback_organizadores").insert(fila).select("id").single();
+  let { data: guardada, error } = await supabase.from("feedback_organizadores").insert(fila).select("id").single();
+  // Si aún no está aplicada sql/quetal_varios_tipos.sql, falta la columna
+  // tipos_evento (PGRST204): se guarda sin ella y solo queda el principal.
+  if (error?.code === "PGRST204") {
+    console.warn("quetal: falta la columna tipos_evento; guardo solo el tipo principal");
+    const sinTipos: Partial<typeof fila> = { ...fila };
+    delete sinTipos.tipos_evento;
+    ({ data: guardada, error } = await supabase.from("feedback_organizadores").insert(sinTipos).select("id").single());
+  }
   if (error) {
     if (error.code === "23505") return falla("Ya respondido.", 409);
     console.error("quetal: error guardando:", error.message, error.code, error.details);
     return falla("Error al guardar.", 500);
   }
+  if (!guardada) return falla("Error al guardar.", 500);
 
   if (link) {
     const { error: e2 } = await supabase
@@ -189,7 +204,7 @@ export async function POST(req: Request) {
       `[Valoración] ${entidad} · NPS ${nps}`,
       `<h2>Nueva valoración de ${esc(entidad)}</h2>
         ${p("Entidad", entidad)}
-        ${p("Evento", `${nombreEvento} (${TIPO_CORTO[tipo]}${fecha ? `, ${fecha}` : ""})`)}
+        ${p("Evento", `${nombreEvento} (${tiposCorto(tipos)}${fecha ? `, ${fecha}` : ""})`)}
         ${p("Quién", [nombre, fila.cargo].filter(Boolean).join(" · "))}
         <p><strong>NPS:</strong> ${nps}</p>
         <p><strong>Testimonio:</strong></p>

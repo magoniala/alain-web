@@ -30,6 +30,7 @@ type Textos = {
   emailAyuda: string;
   eventoTitulo: string;
   tipoEvento: string;
+  tipoEventoVarios: string;
   nombreEvento: string;
   fechaEvento: string;
   tipos: Record<TipoEvento, string>;
@@ -112,6 +113,7 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     emailAyuda: "Opcional, por si quiero enseñarte el texto antes de publicarlo.",
     eventoTitulo: "El evento",
     tipoEvento: "Tipo de evento",
+    tipoEventoVarios: "Puedes marcar más de uno.",
     nombreEvento: "Nombre del evento",
     fechaEvento: "Fecha",
     tipos: {
@@ -279,6 +281,7 @@ export const QUETAL_TEXTOS: Record<"es" | "eu", Textos> = {
     emailAyuda: "Aukerakoa, argitaratu aurretik testua erakutsi nahi badizut.",
     eventoTitulo: "Ekitaldia",
     tipoEvento: "Ekitaldi mota",
+    tipoEventoVarios: "Bat baino gehiago hauta ditzakezu.",
     nombreEvento: "Ekitaldiaren izena",
     fechaEvento: "Data",
     tipos: {

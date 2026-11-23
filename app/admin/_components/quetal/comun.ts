@@ -4,10 +4,11 @@ import {
   ESTADO_CORTO,
   PERMISO_CORTO,
   REPETIR_CORTO,
-  TIPO_CORTO,
   TIPO_FIRMA,
   VALORACIONES,
   VALORACION_CORTO,
+  tiposCorto,
+  tiposDe,
   type Estado,
   type Idioma,
   type Permiso,
@@ -20,7 +21,8 @@ export type Respuesta = {
   created_at: string;
   link_id: string | null;
   idioma: Idioma;
-  tipo_evento: TipoEvento;
+  tipo_evento: TipoEvento; // el principal
+  tipos_evento: TipoEvento[] | null; // todos los marcados (null en las antiguas)
   nombre_evento: string;
   fecha_evento: string | null;
   nombre: string;
@@ -148,7 +150,7 @@ export function csvRespuestas(lista: Respuesta[]): string {
     [
       new Date(r.created_at).toLocaleString("es-ES"),
       r.fecha_evento ?? "",
-      TIPO_CORTO[r.tipo_evento],
+      tiposCorto(tiposDe(r)),
       r.nombre_evento,
       r.entidad,
       r.nombre,
