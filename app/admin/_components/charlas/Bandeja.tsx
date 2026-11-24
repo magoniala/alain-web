@@ -11,6 +11,7 @@ import UltimosCambios, { type Reciente } from "../UltimosCambios";
 import PreguntaEnLinea from "../PreguntaEnLinea";
 import { confirmar } from "../confirmar";
 import GuionLlamada from "./GuionLlamada";
+import PruebaEnvio from "./PruebaEnvio";
 import { guionPara, guionParaTarjetaLlamada, TITULOS_GUION, type ClaveGuion, type Guion } from "@/lib/charlas-guiones";
 
 // Bandeja de charlas · fase 1.
@@ -311,6 +312,7 @@ export default function Bandeja({ centros, onCambio, guiones, avisoGuiones }: { 
           <input type="checkbox" checked={prueba} onChange={(e) => cambiarConfig("modo_prueba", e.target.checked)} />
           {prueba ? "Modo prueba: los envíos te llegan a ti" : "Envío real a los centros"}
         </label>
+        <PruebaEnvio headers={headers} />
       </div>
       {leyendo && (
         <div className="overflow-hidden rounded-2xl border border-[#0F2240]/15 bg-white">
