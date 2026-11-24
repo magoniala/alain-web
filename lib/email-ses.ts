@@ -105,6 +105,43 @@ function registrarEnvio(destino: string, asunto: string, mensajes: MensajeDeResp
   console.log(`mailjet: enviado a ${destino} · "${asunto}" · ${uuid}`);
 }
 
+// Mailjet solo recibía HTMLPart: los filtros de spam penalizan el mail sin
+// versión de texto (MIME_HTML_ONLY) y el HTML sin etiqueta <html>
+// (HTML_MIME_NO_HTML_TAG). Esta función da las dos cosas a partir del mismo HTML.
+function decodificarEntidades(t: string): string {
+  const nombradas: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", hellip: "…", mdash: "—", ndash: "–", laquo: "«", raquo: "»", iexcl: "¡", iquest: "¿", ntilde: "ñ", Ntilde: "Ñ", euro: "€" };
+  for (const v of "aeiouAEIOU") for (const [n, ac] of [["acute", "áéíóúÁÉÍÓÚ"], ["uml", "äëïöüÄËÏÖÜ"], ["grave", "àèìòùÀÈÌÒÙ"]]) nombradas[v + n] = ac["aeiouAEIOU".indexOf(v)];
+  return t.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+    if (e[0] === "#") {
+      const n = e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
+    }
+    return nombradas[e] ?? nombradas[e.toLowerCase()] ?? m;
+  });
+}
+
+export function partesDeCorreo(html: string): { HTMLPart: string; TextPart: string } {
+  const texto = decodificarEntidades(
+    html
+      .replace(/<(head|style|script)[\s\S]*?<\/\1>/gi, "")
+      // Enlaces: «texto (url)»; la url queda tal cual (utm%5Fsource incluido).
+      .replace(/<a\b[^>]*?href\s*=\s*("([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi, (_m, _q, d: string, s: string, inner: string) => {
+        const url = decodificarEntidades((d ?? s ?? "").trim());
+        const t = decodificarEntidades(inner.replace(/<[^>]*>/g, "")).replace(/\s+/g, " ").trim();
+        if (!url || url.startsWith("#")) return t;
+        return !t || t === url ? url : `${t} (${url})`;
+      })
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|h[1-6]|li|tr|table|ul|ol|blockquote)>/gi, "\n\n")
+      .replace(/<[^>]*>/g, "")
+  )
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const conHtml = /<html[\s>]/i.test(html) ? html : `<!DOCTYPE html><html><body>${html}</body></html>`;
+  return { HTMLPart: conHtml, TextPart: texto };
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
@@ -143,7 +180,7 @@ export async function sendEmail(
           From: fromParsed,
           To: [parseAddress(to)],
           Subject: subject,
-          HTMLPart: html,
+          ...partesDeCorreo(html),
           ReplyTo: { Email: "newsletter@alainzulaika.com" },
           // Sin esto Mailjet no registra ni aperturas ni clics, y no hay
           // estadísticas que sacar después.
@@ -204,7 +241,7 @@ export async function sendEmailBatch(
       From: fromParsed,
       To: [parseAddress(to)],
       Subject: subject,
-      HTMLPart: html,
+      ...partesDeCorreo(html),
       ReplyTo: fromParsed,
       TrackOpens: "enabled",
       TrackClicks: "enabled",
