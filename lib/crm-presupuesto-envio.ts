@@ -2,11 +2,14 @@
 // presupuestos se sube a la ficha (bucket privado `presupuestos` de Supabase
 // Storage, carpeta = id de la ficha) y se manda con el mail corto, en el mismo
 // hilo que la conversación. Al enviarlo la ficha pasa a «5 Propuesta enviada»
-// con seguimiento a 4 días laborables. No toca el espejo del vault: el PDF del
-// vault lo sigue guardando el chat de presupuestos.
+// con la secuencia de la validez ya puesta (aviso el laborable anterior →
+// pedir el no el último día → aparcar o liberar; lib/presupuesto-validez).
+// «Enviado a mano» hace lo mismo sin mandar nada (Mail del Mac, WhatsApp).
+// No toca el espejo del vault: el PDF del vault lo sigue guardando el chat de presupuestos.
 
 import { supabaseCharlas } from "./charlas";
 import { enviarCorreo } from "./charlas-correo";
+import { extraerNumero, seguimientoAlEnviar } from "./presupuesto-validez";
 
 export const BUCKET_PRESUPUESTOS = "presupuestos";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -110,6 +113,9 @@ export async function enviarPresupuesto(b: Record<string, unknown>) {
   if (!para.includes("@")) throw new Error("Falta el email del destinatario.");
   if (!asunto) throw new Error("Falta el asunto.");
   if (!texto) throw new Error("Pega el mail que va con el presupuesto.");
+  const validez = String(b.validez ?? "");
+  const numero = String(b.numero ?? "").trim() || extraerNumero(ruta, texto);
+  seguimientoAlEnviar(validez, numero, hoy()); // la validez es obligatoria: se comprueba antes de mandar nada
   const sb = supabaseCharlas();
 
   const { data: blob, error } = await sb.storage.from(BUCKET_PRESUPUESTOS).download(ruta);
@@ -123,13 +129,33 @@ export async function enviarPresupuesto(b: Record<string, unknown>) {
   if (prueba) return { ok: true, prueba: true, enviado_a: envio.para };
 
   const ahora = new Date().toISOString();
-  const siguiente = sumarLaborables(hoy(), 4);
   await sb.from("crm_mensajes").insert({ ficha_id: ficha, direccion: "saliente", message_id: envio.messageId, in_reply_to: hilo.inReplyTo, referencias: hilo.referencias, de: "alain@alainzulaika.com", para: [para], asunto, texto, fecha: ahora, estado: "procesado", tipo_salida: "presupuesto" });
   await sb.from("crm_hilos").upsert({ ficha_id: ficha, canal: "principal", asunto: asunto.replace(/^((re|rv|fw|fwd|erantz)\s*:\s*)+/i, ""), message_id_raiz: hilo.referencias[0] ?? envio.messageId, ultimo_message_id: envio.messageId, ultimo_mensaje_en: ahora }, { onConflict: "ficha_id,canal" });
+  const seg = await dejarEnPropuesta(ficha, { validez, numero, canal: "Mail", detalle: `con el PDF (${nombre})`, para, contarMail: true });
+  return { ok: true, prueba: false, enviado_a: envio.para, ...seg };
+}
+
+/** Lo enviado fuera del panel (Mail del Mac, WhatsApp…): mismo efecto en la ficha, sin mandar nada. */
+export async function presupuestoAMano(b: Record<string, unknown>) {
+  const ficha = validarFicha(b.ficha);
+  const canal = ["Mail", "WhatsApp"].includes(String(b.canal)) ? String(b.canal) : "Otra vía";
+  const validez = String(b.validez ?? "");
+  const numero = String(b.numero ?? "").trim() || null;
+  seguimientoAlEnviar(validez, numero, hoy()); // valida antes de tocar nada
+  const seg = await dejarEnPropuesta(ficha, { validez, numero, canal, detalle: "a mano, fuera del panel", para: null, contarMail: canal === "Mail" });
+  return { ok: true, ...seg };
+}
+
+/** Ficha → «5 Propuesta enviada» con la secuencia de la validez, línea en el Registro y fuera las tarjetas que ya no tocan. */
+async function dejarEnPropuesta(ficha: string, o: { validez: string; numero: string | null; canal: string; detalle: string; para: string | null; contarMail: boolean }) {
+  const sb = supabaseCharlas();
+  const ahora = new Date().toISOString();
+  const s = seguimientoAlEnviar(o.validez, o.numero, hoy());
   const { data: f } = await sb.from("crm_fichas").select("mails_enviados, email").eq("id", ficha).single();
-  await sb.from("crm_fichas").update({ estado: "5 Propuesta enviada", fecha_ultimo_contacto: hoy(), mails_enviados: (f?.mails_enviados ?? 0) + 1, proxima_accion: "Seguimiento del presupuesto", fecha_proxima_accion: siguiente, enviado: false, actualizado_por: "panel", ...(f && !f.email ? { email: para.toLowerCase() } : {}) }).eq("id", ficha);
-  await sb.from("crm_interacciones").insert({ ficha_id: ficha, fecha: hoy(), canal: "Mail", texto: `Presupuesto enviado por Mail con el PDF (${nombre}) · → 5 Propuesta enviada · siguiente: Seguimiento del presupuesto el ${siguiente}`, orden: 620, origen: "panel" });
+  await sb.from("crm_fichas").update({ estado: "5 Propuesta enviada", fecha_ultimo_contacto: hoy(), ...(o.contarMail ? { mails_enviados: (f?.mails_enviados ?? 0) + 1 } : {}), proxima_accion: s.proxima_accion, fecha_proxima_accion: s.fecha_proxima_accion, enviado: false, actualizado_por: "panel", ...(o.para && f && !f.email ? { email: o.para.toLowerCase() } : {}) }).eq("id", ficha);
+  const pasos = s.aviso ? `aviso (MSG 06) el ${s.aviso} · pedir el no (MSG 07) el ${s.pedir_no}` : `sin tiempo para el aviso: pedir el no (MSG 07) el ${s.pedir_no}`;
+  await sb.from("crm_interacciones").insert({ ficha_id: ficha, fecha: hoy(), canal: o.canal, texto: `Presupuesto ${o.numero ?? ""} enviado por ${o.canal} ${o.detalle}`.replace(/\s+/g, " ") + ` · → 5 Propuesta enviada · validez hasta ${o.validez} · ${pasos}`, orden: 620, origen: "panel" });
   // Las tarjetas abiertas de esta ficha ya no tocan: acaba de salir el presupuesto.
-  await sb.from("crm_tareas").update({ estado: "descartada", motivo: "Presupuesto enviado desde el panel", resuelto_en: ahora, resuelto_por: "sistema" }).eq("ficha_id", ficha).eq("estado", "revisar").neq("tipo", "llamada_alain");
-  return { ok: true, prueba: false, enviado_a: envio.para, siguiente };
+  await sb.from("crm_tareas").update({ estado: "descartada", motivo: "Presupuesto enviado", resuelto_en: ahora, resuelto_por: "sistema" }).eq("ficha_id", ficha).eq("estado", "revisar").neq("tipo", "llamada_alain");
+  return { siguiente: s.fecha_proxima_accion, aviso: s.aviso, pedir_no: s.pedir_no, proxima_accion: s.proxima_accion };
 }

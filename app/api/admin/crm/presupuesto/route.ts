@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { promptPresupuesto } from "@/lib/crm-presupuesto-prompt";
-import { apuntarSubida, datosEnvio, enviarPresupuesto, urlSubida } from "@/lib/crm-presupuesto-envio";
+import { apuntarSubida, datosEnvio, enviarPresupuesto, presupuestoAMano, urlSubida } from "@/lib/crm-presupuesto-envio";
 
 // Presupuesto desde el panel (tarjetas de magia que piden propuesta y ficha del CRM).
 //
@@ -9,7 +9,9 @@ import { apuntarSubida, datosEnvio, enviarPresupuesto, urlSubida } from "@/lib/c
 //   GET  ?ficha=<uuid>&envio=1          → para, asunto del hilo y PDFs ya subidos (con enlace de 1 h)
 //   POST { accion: "subir", ficha, nombre }        → URL firmada para subir el PDF directo a Storage
 //   POST { accion: "subido", ficha, ruta }         → apunta en el Registro que se ha subido
-//   POST { accion: "enviar", ficha, ruta, para, asunto, texto } → mail con el PDF en el hilo; ficha a «5 Propuesta enviada»
+//   POST { accion: "enviar", ficha, ruta, para, asunto, texto, validez, numero? } → mail con el PDF en el hilo; ficha a «5 Propuesta enviada»
+//   POST { accion: "a_mano", ficha, validez, numero?, canal }  → lo mandó él fuera del panel: mismo efecto en la ficha
+//   (las dos dejan puesta la secuencia de la validez: lib/presupuesto-validez)
 //   (lib/crm-presupuesto-envio)
 
 export const dynamic = "force-dynamic";
@@ -35,6 +37,7 @@ export async function POST(req: Request) {
     if (b.accion === "subir") return NextResponse.json(await urlSubida(b.ficha, b.nombre));
     if (b.accion === "subido") return NextResponse.json(await apuntarSubida(b.ficha, b.ruta));
     if (b.accion === "enviar") return NextResponse.json(await enviarPresupuesto(b));
+    if (b.accion === "a_mano") return NextResponse.json(await presupuestoAMano(b));
     return NextResponse.json({ error: "Acción desconocida." }, { status: 400 });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

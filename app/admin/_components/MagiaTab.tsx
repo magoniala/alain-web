@@ -8,6 +8,7 @@ import AplazarTarea from "./AplazarTarea";
 import AprendizajesMagia from "./magia/Aprendizajes";
 import PromptPresupuesto from "./magia/PromptPresupuesto";
 import EnvioPresupuesto from "./magia/EnvioPresupuesto";
+import { controlPresupuestos } from "@/lib/presupuesto-validez";
 import CatalogoShows from "./CatalogoShows";
 import CajaFaltanDatos, { type FaltaDato } from "./CajaFaltanDatos";
 import UltimosCambios, { type Reciente } from "./UltimosCambios";
@@ -78,7 +79,7 @@ interface Detalle {
 
 const ESTADOS = ["0 Por contactar", "1 Intentando", "2 Contacto conseguido", "3 Primer mensaje enviado", "4 Ha respondido", "5 Propuesta enviada", "6 En conversación", "7 Ganado", "8 Perdido", "9 Aparcado"];
 const ETIQUETA: Record<string, string> = {
-  reactivacion: "Reactivación", recordatorio_1: "Recordatorio 1", recordatorio_2: "Recordatorio 2 (último)", recuperacion: "Mensaje de recuperación", check_in: "Check-in", primer_contacto: "Primer contacto", agencia_1a: "Agencia · primer mail (formato)", agencia_1b: "Agencia · primer mail (a quién escribir)", localizar_contacto: "🔎 Localizar email de la agencia", propuesta: "Propuesta", seguimiento: "Seguimiento", cierre: "Cierre suave", aparcar: "Aparcar", revisar_bloqueo: "Revisar bloqueo", revisar_ganado: "Cliente ganado · acción programada", evento_paso: "📅 Protocolo de evento", crear_evento: "📅 Crear evento", revisar_correo: "✉️ Correo suyo sin respuesta", llamada_alain: "📞 Llamada / conseguir contacto", respuesta: "Respuesta", actualizar_crm: "Actualizar ficha",
+  reactivacion: "Reactivación", recordatorio_1: "Recordatorio 1", recordatorio_2: "Recordatorio 2 (último)", recuperacion: "Mensaje de recuperación", check_in: "Check-in", primer_contacto: "Primer contacto", agencia_1a: "Agencia · primer mail (formato)", agencia_1b: "Agencia · primer mail (a quién escribir)", localizar_contacto: "🔎 Localizar email de la agencia", propuesta: "Propuesta", seguimiento: "Seguimiento", cierre: "Cierre suave", aviso_validez: "⏳ Aviso: el presupuesto vence (MSG 06)", pedir_no: "⏳ Pedir el no: vence hoy (MSG 07)", fin_validez: "⏳ Presupuesto vencido: liberar fecha o aparcar", aparcar: "Aparcar", revisar_bloqueo: "Revisar bloqueo", revisar_ganado: "Cliente ganado · acción programada", evento_paso: "📅 Protocolo de evento", crear_evento: "📅 Crear evento", revisar_correo: "✉️ Correo suyo sin respuesta", llamada_alain: "📞 Llamada / conseguir contacto", respuesta: "Respuesta", actualizar_crm: "Actualizar ficha",
   interesado: "🔥 Quiere repetir", pide_propuesta: "Pide propuesta", da_fecha: "🔥 Da fecha", este_ano_no: "Este año no", no_interesa: "No le interesa", recomienda: "Pasa un contacto", pregunta: "Pregunta algo", acuse: "Acuse", fuera_de_oficina: "Fuera de oficina", otro: "Otro",
 };
 const URG = { 3: ["Ahora", "border-l-[#DC2626]", "bg-red-100 text-red-800"], 2: ["Hoy", "border-l-[#E8A33D]", "bg-amber-100 text-amber-900"], 1: ["Cuando puedas", "border-l-emerald-500", "bg-emerald-50 text-emerald-800"] } as const;
@@ -181,6 +182,8 @@ export default function MagiaTab() {
     return [...l].sort((a, b) => (a.fecha_proxima_accion ?? "9999").localeCompare(b.fecha_proxima_accion ?? "9999") || a.nombre.localeCompare(b.nombre));
   }, [fichas, vista, filtroSeg, filtroEstado, busqueda, hoy]);
 
+  // Control del protocolo de presupuestos: fichas en «5 Propuesta enviada» fuera de la secuencia de la validez.
+  const descontrol = useMemo(() => controlPresupuestos(fichas), [fichas]);
   const calientes = tareas.filter((t) => t.nivel === "C" || t.urgencia === 3);
   const resto = tareas.filter((t) => !calientes.includes(t));
 
@@ -212,6 +215,17 @@ export default function MagiaTab() {
             </label>
             <span className="text-gray-400">Nada sale solo: cada tarea pasa por aquí.</span>
           </div>
+          {descontrol.length > 0 && (
+            <div className="rounded-xl bg-amber-50 px-4 py-3 text-[0.85rem] text-amber-900">
+              <p className="font-medium">⏳ Presupuestos sin el seguimiento de la validez · {descontrol.length}</p>
+              <p className="text-[0.78rem]">El aviso tiene que caer el día laborable anterior a la validez. Ábrela y usa «Presupuesto enviado a mano» con su validez (o corrige la próxima acción).</p>
+              <ul className="mt-1 space-y-0.5">
+                {descontrol.map((d) => (
+                  <li key={d.id}><button onClick={() => { setSeccion("crm"); setVista("todos"); abrir(d.id); }} className="underline">{d.nombre}</button> · {d.motivo}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <UltimosCambios key={recientes[0]?.id ?? "vacio"} recientes={recientes} accion={accion} alTerminar={() => { cargarBandeja(); cargarFichas(); }} />
           {cargando && <p className="text-[0.85rem] text-gray-500">Cargando…</p>}
           {!cargando && tareas.length === 0 && <p className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-[0.9rem] text-gray-500">Bandeja de magia vacía. El motor mira cada ficha cuando llega su fecha de próxima acción.</p>}

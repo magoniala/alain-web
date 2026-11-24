@@ -16,12 +16,17 @@
 //   agencia   0 → mail 1-B (pide a quién escribir; sin responsable) o 1-A (pregunta por el formato; con responsable), texto fijo → 3, recordatorio único a +4 laborables
 //             3 → recordatorio único (texto fijo) → 9, check-in a +6 meses · nunca se llama hasta tener contacto con nombre (regla de Alain, 5-11-2026)
 //   4 Ha respondido → propuesta (Alain, con borrador) · 5/6 → seguimiento de propuesta (+3 laborables) / cierre suave · "Esperar…" → aviso
+//   5 con validez (Protocolo — Seguimiento de presupuestos, 24-11-2026; lib/presupuesto-validez):
+//             "Aviso: mañana vence…" → MSG 06 fijo → "Pedir el no…" el día de la validez → MSG 07 fijo
+//             → "Sin respuesta: aparcar o liberar fecha" el laborable siguiente → decide Alain (MSG 01 o 9 Aparcado)
+//             Si lo último es un correo suyo, sale «Correo suyo sin respuesta» en su lugar: la secuencia se para.
 //   7 Ganado con fecha → recordatorio para Alain (cobro, confirmación, post-evento)
 
 import { tarjetaYaCreada } from "@/lib/cron-cierre";
 import { supabaseCharlas } from "./charlas";
 import { procesarMagiaConIA, type ResultadoMagia } from "./crm-ia";
 import { cerrarTareasObsoletasMagia } from "./crm-tareas-obsoletas";
+import { laborableSiguiente, leerPaso, mensajeValidez, nombreSaludo, PASO_FIN, textoPasoPedirNo } from "./presupuesto-validez";
 
 export const ESTADOS_MAGIA = [
   "0 Por contactar",
@@ -131,6 +136,8 @@ interface Decision {
   nota?: string;
   /** Texto fijo (sin IA): se usa tal cual cuando el canal es correo. */
   borrador?: { asunto: string | null; cuerpo: string };
+  /** El texto fijo vale también para WhatsApp (mensajes comunes MSG 06/07), no solo para correo. */
+  fijoEnWhatsapp?: boolean;
 }
 
 
@@ -339,6 +346,48 @@ export function decidirMagia(f: Ficha): Decision | null {
       cambios: { estado: "5 Propuesta enviada", proxima_accion: "Seguimiento de la propuesta (3 días laborables)", fecha_proxima_accion: laborables(h, 3) },
     };
   }
+  if (fase === 5) {
+    // Presupuesto con validez: aviso → pedir el no → aparcar o liberar (texto fijo, sin IA).
+    const p = leerPaso(f.proxima_accion);
+    const eu = (f.idioma ?? "").toLowerCase() === "eu";
+    const nombre = nombreSaludo(f.responsable, eu);
+    if (p.paso === "aviso") {
+      const validez = p.validez ?? laborableSiguiente(f.fecha_proxima_accion ?? h);
+      return {
+        tipo: "aviso_validez",
+        nivel: "B",
+        conMensaje: true,
+        instrucciones: "Aviso de fin de validez del presupuesto (Mensajes comunes · MSG 06), dentro del mismo hilo. Texto fijo.",
+        cambios: { proxima_accion: textoPasoPedirNo(p.numero), fecha_proxima_accion: validez },
+        borrador: { asunto: null, cuerpo: mensajeValidez("aviso", { eu, nombre, validez, hoy: h }) },
+        fijoEnWhatsapp: true,
+        nota: `${p.numero ?? "El presupuesto"} vale hasta el ${validez}. Si no contesta, ese día toca pedir el no (MSG 07).`,
+      };
+    }
+    if (p.paso === "pedir_no") {
+      const validez = f.fecha_proxima_accion ?? h;
+      return {
+        tipo: "pedir_no",
+        nivel: "B",
+        conMensaje: true,
+        instrucciones: "Último día de validez del presupuesto: pedir el no (Mensajes comunes · MSG 07), dentro del mismo hilo. Texto fijo.",
+        cambios: { proxima_accion: PASO_FIN, fecha_proxima_accion: laborableSiguiente(validez) },
+        borrador: { asunto: null, cuerpo: mensajeValidez("pedir_no", { eu, nombre, validez, hoy: h }) },
+        fijoEnWhatsapp: true,
+        nota: "Si no contesta, el siguiente día laborable se decide: liberar la fecha o aparcar. No hay más mensajes de seguimiento.",
+      };
+    }
+    if (p.paso === "fin") {
+      return {
+        tipo: "fin_validez",
+        nivel: "C",
+        conMensaje: false,
+        instrucciones: "",
+        cambios: { estado: "9 Aparcado", proxima_accion: "Reactivación", fecha_proxima_accion: antesDeTemporada(f) },
+        nota: "Venció el presupuesto sin respuesta y no se manda nada más. Si tenías la fecha bloqueada, manda tú MSG 01 (liberación de fecha) por el mismo hilo; si no, aplica: queda en 9 Aparcado hasta antes de su temporada (cambia la fecha aquí si prefieres otra).",
+      };
+    }
+  }
   if (fase === 5 || fase === 6) {
     if (/cierre/.test(pa)) {
       return { tipo: "cierre", nivel: "B", conMensaje: true, instrucciones: "Cierre suave (Mensajes comunes · Cierre suave) dentro del hilo: dos frases, sin presión, con salida fácil. Sin saludo ni firma.", cambios: { proxima_accion: "Aparcar si no contesta", fecha_proxima_accion: laborables(h, 5) } };
@@ -423,7 +472,8 @@ function urgenciaMagia(tipo: string, clasificacion?: string | null): { urgencia:
   if (clasificacion === "interesado" || clasificacion === "da_fecha") return { urgencia: 3, motivo: "Quiere repetir o da fecha: cerrar" };
   if (clasificacion === "pide_propuesta" || tipo === "propuesta") return { urgencia: 2, motivo: "Hay que mandar la propuesta" };
   if (clasificacion === "recomienda") return { urgencia: 2, motivo: "Te pasan un contacto" };
-  if (tipo === "respuesta" || tipo === "revisar_correo" || tipo === "llamada_alain") return { urgencia: 2, motivo: "Hay algo que decidir" };
+  if (tipo === "aviso_validez" || tipo === "pedir_no") return { urgencia: 2, motivo: "El presupuesto está a punto de vencer: hoy toca este mensaje" };
+  if (tipo === "respuesta" || tipo === "revisar_correo" || tipo === "llamada_alain" || tipo === "fin_validez") return { urgencia: 2, motivo: "Hay algo que decidir" };
   return { urgencia: 1, motivo: "Paso programado del flujo" };
 }
 
@@ -453,12 +503,12 @@ async function crearTareaMagia(f: Ficha, d: Decision) {
     await sb.from("crm_tareas").insert({ ...base, contexto: { programada: true, estado_ficha: f.estado, resumen: etiquetaMagia(d.tipo), clasificacion: d.tipo } });
     return;
   }
-  if (d.borrador && canal === "mail") {
+  if (d.borrador && (canal === "mail" || (canal === "whatsapp" && d.fijoEnWhatsapp))) {
     // Texto fijo del guion: sin llamada a la IA, el borrador sale exacto.
     await sb.from("crm_tareas").insert({
       ...base,
-      contexto: { programada: true, estado_ficha: f.estado, clasificacion: d.tipo, instrucciones: d.instrucciones, canal_ia: "mail", resumen: etiquetaMagia(d.tipo), confianza: 1, etiqueta_principal: null, alternativa: null, redaccion: "texto_fijo" },
-      borrador_asunto: d.borrador.asunto,
+      contexto: { programada: true, estado_ficha: f.estado, clasificacion: d.tipo, instrucciones: d.instrucciones, canal_ia: canal, resumen: etiquetaMagia(d.tipo), confianza: 1, etiqueta_principal: null, alternativa: null, redaccion: "texto_fijo" },
+      borrador_asunto: canal === "mail" ? d.borrador.asunto : null,
       borrador_texto: d.borrador.cuerpo,
     });
     return;
@@ -626,6 +676,9 @@ export function etiquetaMagia(tipo: string): string {
       propuesta: "Propuesta",
       seguimiento: "Seguimiento",
       cierre: "Cierre suave",
+      aviso_validez: "Aviso: el presupuesto vence (MSG 06)",
+      pedir_no: "Pedir el no: el presupuesto vence hoy (MSG 07)",
+      fin_validez: "Presupuesto vencido sin respuesta: liberar fecha o aparcar",
       aparcar: "Aparcar",
       revisar_bloqueo: "Revisar bloqueo",
       revisar_ganado: "Cliente ganado: acción programada",
