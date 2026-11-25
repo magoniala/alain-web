@@ -15,7 +15,7 @@
 //   5 + "Mail de cierre…"         → mail_cierre (Mail 4 cierre)  → sigue en 5, "Aparcar…", +7
 //   5 + "Aparcar…"                → aparcar                      → 9, reactivar trimestre siguiente
 //   9 Aparcado                    → reactivacion (Mail 1 C)      → 3, +7
-//   3.9 reenviado - pendiente     → llamada_alain (nivel C, sin correo)
+//   3.9 reenviado - pendiente     → llamada_alain (nivel C, sin correo; entra en la sesión de llamadas, la primera)
 //   6 en conversación             → seguimiento_conversacion (nivel C)
 //   bloqueado_por                 → revisar_bloqueo (nivel C, sin correo): +30 días
 //   0/1/2                         → llamada_alain (nivel C)
@@ -26,6 +26,7 @@
 //   directo, B al buzón si no), `mail1_por_dia` al día, sin llamada previa. Ver mail1Automatico().
 
 import { tarjetaYaCreada } from "@/lib/cron-cierre";
+import { rangoSesion, ordenarParaSesion } from "@/lib/charlas-sesion-orden";
 import { leerSesiones, proximaSesion, sesionVigente, bonita } from "@/lib/charlas-sesiones";
 import { supabaseCharlas, faseDeEstado, puntuarUrgencia } from "./charlas";
 import { procesarConIA } from "./charlas-ia";
@@ -322,6 +323,7 @@ export async function mail1Automatico(opciones: { presupuestoMs: number }): Prom
     try {
       await crearTarea(c, d);
       res.creadas++;
+      if (d.tipo === "llamada_alain" && rangoSesion(c.estado) !== null) llamadasSesion++;
     } catch (e) {
       res.errores.push(`${c.nombre}: ${(e as Error).message}`);
     }
@@ -424,16 +426,31 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
   const ultimoPorCentro = new Map<string, { direccion: string; fecha: string }>();
   for (const m of recientes ?? []) ultimoPorCentro.set(m.centro_id as string, { direccion: m.direccion as string, fecha: String(m.fecha).slice(0, 10) });
 
-  const cola = (centros ?? []).filter((c) => {
-    if (conTarea.has(c.id)) {
-      res.ya_abiertas++;
-      return false;
-    }
-    return true;
-  });
+  // Sesión de llamadas: dentro de ella, primero las de 3.9 reenviado y luego las sin correo (fase 0-2).
+  const cola = ordenarParaSesion(
+    (centros ?? []).filter((c) => {
+      if (conTarea.has(c.id)) {
+        res.ya_abiertas++;
+        return false;
+      }
+      return true;
+    }),
+  );
+
+  // Tope por sesión: cuenta las llamadas de sesión ya creadas desde que empezó la sesión vigente (pasadas anteriores).
+  const cfgSesiones = await leerSesiones();
+  const sesionActual = sesionVigente(hoy(), cfgSesiones);
+  let llamadasSesion = 0;
+  if (sesionActual) {
+    const { data: previas } = await supabase
+      .from("charlas_tareas")
+      .select("centro:charlas_centros(estado)")
+      .eq("tipo", "llamada_alain")
+      .gte("creado_en", `${sesionActual}T00:00:00`);
+    llamadasSesion = (previas ?? []).filter((t) => rangoSesion((t as unknown as { centro: { estado: string } | null }).centro?.estado) !== null).length;
+  }
 
   let i = 0;
-  let sesionesCfg: Awaited<ReturnType<typeof leerSesiones>> | undefined;
   for (; i < cola.length && res.creadas + res.errores.length < limite; i++) {
     if (Date.now() - inicio > opciones.presupuestoMs) break;
     const c = cola[i] as Centro;
@@ -441,10 +458,10 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
     let d = decidir(c);
     if (!d) continue;
     // Llamadas en frío (fase 0-2): no salen sueltas, se acumulan para la sesión de llamadas (lib/charlas-sesiones).
-    if (d.tipo === "llamada_alain" && faseDeEstado(c.estado) <= 2) {
-      sesionesCfg ??= await leerSesiones();
-      if (!sesionVigente(hoy(), sesionesCfg)) {
-        await supabase.from("charlas_centros").update({ fecha_proxima_accion: proximaSesion(hoy(), sesionesCfg), actualizado_por: "sistema" }).eq("id", c.id);
+    // Entran también las de 3.9 reenviado. Fuera de sesión, o con el tope lleno, pasan a la siguiente sesión.
+    if (d.tipo === "llamada_alain" && rangoSesion(c.estado) !== null) {
+      if (!sesionActual || llamadasSesion >= cfgSesiones.max_llamadas) {
+        await supabase.from("charlas_centros").update({ fecha_proxima_accion: proximaSesion(hoy(), cfgSesiones), actualizado_por: "sistema" }).eq("id", c.id);
         continue;
       }
     }

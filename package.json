@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test scripts/newsletter/test-markdown.mts scripts/newsletter/test-fechas.mts"
+    "test": "node --test scripts/newsletter/test-markdown.mts scripts/newsletter/test-fechas.mts scripts/charlas/test-sesion-orden.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
