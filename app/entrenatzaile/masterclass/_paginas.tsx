@@ -38,7 +38,7 @@ function Marco({ idioma, pagina, children }: { idioma: Idioma; pagina: Pagina; c
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[860px] px-6 py-14 md:px-10 md:py-20">{children}</main>
+      <main className="mx-auto max-w-[720px] px-6 py-14 md:px-10 md:py-20">{children}</main>
       <footer className="border-t border-[#E0D4C0] px-6 py-10 md:px-16">
         <div className="mx-auto flex max-w-[860px] flex-col gap-3 text-[0.88rem] text-[#4A5C73] md:flex-row md:items-center md:justify-between">
           <p>© Alain Zulaika · contacto@alainzulaika.com</p>

@@ -4,7 +4,10 @@ import { useState } from "react";
 import { CONTENIDO } from "./_contenido";
 import { BOTON_PAGO, CASILLA_NEWSLETTER } from "@/lib/preventa-textos";
 import type { Idioma, Oferta } from "@/lib/preventa-reglas";
-import { AMBER, CARD, LINE, NAVY, fieldStyle, inputStyle, labelStyle } from "../_ui";
+import { AMBER, CARD, LINE, NAVY, fieldStyle, inputStyle, labelStyle as labelBase } from "../_ui";
+
+// Etiquetas legibles para gente de 50+: sin mayúsculas pequeñas (26-11-2026).
+const labelStyle: React.CSSProperties = { ...labelBase, fontSize: "1rem", textTransform: "none", letterSpacing: 0, color: "rgba(15,34,64,0.85)", fontWeight: 600 };
 
 // Formulario de compra en dos pasos:
 //   1) nombre + correo + casilla de newsletter (aparte y sin marcar) → el

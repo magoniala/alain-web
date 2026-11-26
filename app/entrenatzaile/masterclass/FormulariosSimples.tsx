@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import type { Idioma } from "@/lib/preventa-reglas";
-import { NAVY, fieldStyle, inputStyle, labelStyle } from "../_ui";
+import { NAVY, fieldStyle, inputStyle, labelStyle as labelBase } from "../_ui";
+
+// Etiquetas legibles para gente de 50+: sin mayúsculas pequeñas (26-11-2026).
+const labelStyle: React.CSSProperties = { ...labelBase, fontSize: "1rem", textTransform: "none", letterSpacing: 0, color: "rgba(15,34,64,0.85)", fontWeight: 600 };
 
 const boton =
   "inline-block rounded-xl bg-[#0F2240] px-8 py-4 text-[0.98rem] tracking-[0.06em] text-[#F7F1E6] shadow-md transition-all duration-200 hover:brightness-110 disabled:opacity-50";
