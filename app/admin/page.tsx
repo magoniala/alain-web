@@ -22,15 +22,16 @@ import ArretaTab from "./_components/ArretaTab";
 import CorreoTab from "./_components/CorreoTab";
 import MagiaTailerrakTab from "./_components/MagiaTailerrakTab";
 import EventosTab from "./_components/EventosTab";
+import PreventaTab from "./_components/PreventaTab";
 
-const TABS = ["Charlas", "Prospectos magia", "Eventos", "Leads Entrenatzaile", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Opiniones familias", "Mirariak 2026", "Arreta", "Bandeja general", "Magia-tailerrak"] as const;
+const TABS = ["Charlas", "Prospectos magia", "Eventos", "Leads Entrenatzaile", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Preventa", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Opiniones familias", "Mirariak 2026", "Arreta", "Bandeja general", "Magia-tailerrak"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
 const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
   { titulo: "Comercial", tabs: ["Charlas", "Prospectos magia", "Leads Entrenatzaile"] },
   { titulo: "Eventos", tabs: ["Eventos"] },
-  { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta"] },
+  { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta", "Preventa"] },
   { titulo: "Correo", tabs: ["Bandeja general", "Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
   { titulo: "Magia", tabs: ["Mirariak 2026", "Magia-tailerrak", "Magic"] },
@@ -53,6 +54,8 @@ const ICONO: Record<Tab, React.ReactNode> = {
   "PAR-Q+": <path d="M10 17s-6-3.5-6-8a3.5 3.5 0 0 1 6-2.4A3.5 3.5 0 0 1 16 9c0 4.5-6 8-6 8Zm-3-7h2l1-2 1.5 4 1-2H15" />,
   Newsletter: <path d="M3 5h14v10H3zM3 5l7 6 7-6" />,
   Nurture: <path d="M10 17c-4-2-6-5-6-8a6 6 0 0 1 6-6 6 6 0 0 1 6 6c0 3-2 6-6 8Zm0-11v7m-3-4 3 3 3-3" />,
+  // Etiqueta de precio: la preventa de las masterclasses.
+  Preventa: <path d="M3 10V4h6l8 8-6 6-8-8Zm4-3h.01" />,
   "Hoja de Ruta": <path d="M4 4l4-1 4 2 4-1v13l-4 1-4-2-4 1zM8 3v13m4-11v13" />,
   Acompañamiento: <path d="M7 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6 0a3 3 0 1 0 0-6M2 17c0-3 2-5 5-5s5 2 5 5m1-5c3 0 5 2 5 5" />,
   Arrogante: <path d="M10 3l2 4.5 5 .5-3.8 3.3 1.1 4.9L10 13.8 5.7 16.2l1.1-4.9L3 8l5-.5z" />,
@@ -312,6 +315,7 @@ export default function AdminPage() {
               {tab === "Newsletter" && <NewsletterTab />}
               {tab === "Nurture" && <NurtureTab />}
               {tab === "Hoja de Ruta" && <HojaDeRutaTab />}
+              {tab === "Preventa" && <PreventaTab />}
               {tab === "Acompañamiento" && <AcompanamientoTab />}
               {tab === "Arrogante" && <ArroganteTab />}
               {tab === "Estadísticas guías" && <EstadisticasGuiasTab />}

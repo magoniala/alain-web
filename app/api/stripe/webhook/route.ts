@@ -5,6 +5,7 @@ import { pasarANewsletterPorEmail, textoPasoNewsletter, wrapNurture } from "@/li
 import { botonWaConfirmacionHtml } from "@/lib/entrenatzaile-wa";
 import { formatearHueco } from "@/lib/entrenatzaile-huecos";
 import { getStripe } from "@/lib/stripe";
+import { esDePreventa, confirmarCompraPreventa, marcarExpiradaPreventa } from "@/lib/preventa";
 import { NextResponse } from "next/server";
 
 // Webhook de Stripe: la ÚNICA fuente de verdad del pago.
@@ -113,12 +114,20 @@ export async function POST(req: Request) {
 
   try {
     switch (evento.type) {
-      case "checkout.session.completed":
-        await confirmarPago(evento.data.object as Stripe.Checkout.Session);
+      // Las compras de la preventa de las masterclasses llevan metadata.tipo
+      // = "preventa" y van por lib/preventa.ts. Todo lo demás es la Hoja de Ruta.
+      case "checkout.session.completed": {
+        const sesion = evento.data.object as Stripe.Checkout.Session;
+        if (esDePreventa(sesion)) await confirmarCompraPreventa(sesion);
+        else await confirmarPago(sesion);
         break;
-      case "checkout.session.expired":
-        await marcarExpirada(evento.data.object as Stripe.Checkout.Session);
+      }
+      case "checkout.session.expired": {
+        const sesion = evento.data.object as Stripe.Checkout.Session;
+        if (esDePreventa(sesion)) await marcarExpiradaPreventa(sesion);
+        else await marcarExpirada(sesion);
         break;
+      }
       default:
         break;
     }

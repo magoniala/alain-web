@@ -19,6 +19,7 @@ import { investigarAyuntamientos } from "@/lib/ayto-investigar";
 import { autoenviarAyuntamientos } from "@/lib/ayto-autoenvio";
 import { autoenviarCharlas, autoenviarMagia, autoenviarLeads } from "@/lib/autoenvio";
 import { avisosEventos } from "@/lib/eventos";
+import { cronPreventa } from "@/lib/preventa";
 
 // Ciclo de la bandeja de charlas: lee el buzón y procesa lo nuevo.
 //
@@ -123,6 +124,9 @@ async function ejecutarSinCierre(req: Request) {
   // Va pronto a propósito: es rápido (pocas consultas, IA solo para traducir al euskera) y lo de después
   // (rastreo, avisos de la app) agota el margen de los 60 s, así que al final casi nunca llegaba a correr.
   const eventos = await avisosEventos().catch((e) => ({ error: (e as Error).message }));
+  // Preventa de las masterclasses (lib/preventa.ts): recuento del 10-dic y entregas del 28-dic y 10-ene.
+  // Antes del 10-dic no hace nada (una comparación de fechas). Sin IA, rápido.
+  const preventa = await cronPreventa().catch((e) => ({ error: (e as Error).message }));
   const magiaPrimero = Math.floor(Date.now() / 600000) % 2 === 0;
   const correrMail1 = async () =>
     lectura?.al_dia && !errorLectura && toca && Date.now() - inicio < 40000
@@ -243,7 +247,7 @@ async function ejecutarSinCierre(req: Request) {
 
   // Al final, con lo que sobre: la IA reescribe los borradores de plantilla de leads (unos segundos cada uno).
   const leadsIA = leads && leads.modo !== "apagado" && leads.modo !== "?" ? await mejorarBorradoresLeads({ presupuestoMs: Math.max(0, 56000 - (Date.now() - inicio)), limite: 2 }).catch((e) => ({ redactadas: 0, errores: [(e as Error).message] })) : null;
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, leads_entrantes: leadsEntrantes, leads_ia: leadsIA, auto_leads: autoLeads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, eventos, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, leads_entrantes: leadsEntrantes, leads_ia: leadsIA, auto_leads: autoLeads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, eventos, preventa, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
 }
 
 // Solo una pasada a la vez: si otra está trabajando (cron solapado, o "Leer buzón ahora" mientras
