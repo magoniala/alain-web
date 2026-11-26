@@ -323,7 +323,6 @@ export async function mail1Automatico(opciones: { presupuestoMs: number }): Prom
     try {
       await crearTarea(c, d);
       res.creadas++;
-      if (d.tipo === "llamada_alain" && rangoSesion(c.estado) !== null) llamadasSesion++;
     } catch (e) {
       res.errores.push(`${c.nombre}: ${(e as Error).message}`);
     }
