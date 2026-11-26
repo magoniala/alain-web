@@ -1,7 +1,8 @@
 "use client";
 
-// Pestaña «Preventa» (26-11-2026): la preventa de las masterclasses de diciembre.
-// Contador n de 3 por producto, compras, familia y amigos (no cuentan),
+// Pestaña «Preventa» (26-11-2026): la preventa de la masterclass de diciembre.
+// Modelo del 26-11 (tarde): se vende "Que la espalda no te pare" a 17 €; del 1 al
+// 4-dic con "Por dónde empezar" de regalo. Contador n de 3, compras, familia y amigos (no cuentan),
 // devoluciones con fecha y motivo, recuento del 10-dic, desistimientos y
 // ajustes (vídeos y correos de prueba). Lógica: lib/preventa.ts · reglas:
 // lib/preventa-reglas.ts · API: app/api/admin/preventa.
@@ -20,6 +21,7 @@ interface Compra {
   importe_cent: number;
   estado: string;
   devuelto_cent: number;
+  con_bonus: boolean;
   prueba: boolean;
   pagado_en: string | null;
   newsletter_ok: boolean;
@@ -28,8 +30,8 @@ interface Compra {
 }
 interface Datos {
   fase: string;
-  cuenta: { llegaA: boolean; llegaB: boolean; cuenta: { A: number; B: number } };
-  recuento: null | { llegaA: boolean; llegaB: boolean; cuenta: { A: number; B: number }; en: string };
+  cuenta: { llega: boolean; cuenta: { A: number; conBonus: number } };
+  recuento: null | { llega: boolean; cuenta: { A: number; conBonus: number }; en: string };
   pendientes: { compra_id: string; email: string; importe: number; motivo: string }[];
   compras: Compra[];
   intentos: number;
@@ -45,12 +47,12 @@ const fecha = (s: string | null) =>
   s ? new Date(s).toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 const FASE: Record<string, string> = {
   antes: "Aún no ha abierto (abre el mar 1-dic)",
-  B: "Fase B: 7 € (hasta el vie 4-dic 23:59)",
-  A: "Fase A: 17 € / subida 10 € (hasta el mié 9-dic 23:59)",
+  bonus: "Abierta, con el bonus «Por dónde empezar» (hasta el vie 4-dic 23:59)",
+  venta: "Abierta, sin bonus (hasta el mié 9-dic 23:59)",
   cerrada: "Cerrada",
 };
-const PRODUCTO: Record<string, string> = { B: "B · empezar", A: "A · espalda (+B)", subida: "Subida B→A" };
-const MOTIVO: Record<string, string> = { umbral_no: "no llegó a 3", diferencia_a: "B sí, A no", desistimiento: "desistimiento", manual: "manual" };
+const producto = (c: Compra) => (c.producto === "B" ? "B suelta (modelo anterior)" : c.producto === "subida" ? "Subida (modelo anterior)" : c.con_bonus ? "Espalda + bonus" : "Espalda, sin bonus");
+const MOTIVO: Record<string, string> = { umbral_no: "no llegó a 3", diferencia_a: "B sí, A no (modelo anterior)", desistimiento: "desistimiento", manual: "manual" };
 
 export default function PreventaTab() {
   const [d, setD] = useState<Datos | null>(null);
@@ -95,7 +97,7 @@ export default function PreventaTab() {
     if (!txt) return;
     const importe = Math.round(parseFloat(txt.replace(",", ".")) * 100);
     if (!(importe > 0)) return;
-    const motivo = window.prompt("Motivo: desistimiento · manual · umbral_no · diferencia_a", "desistimiento") ?? "manual";
+    const motivo = window.prompt("Motivo: desistimiento · manual · umbral_no", "desistimiento") ?? "manual";
     if (!(await confirmar(`Devolver ${eur(importe)} a ${c.email} (${motivo}). Sale de Stripe al momento y no se puede deshacer.`))) return;
     await accion({ accion: "devolver", compra_id: c.id, importe_cent: importe, motivo });
   }
@@ -113,19 +115,15 @@ export default function PreventaTab() {
         {error && <p className="mt-2 text-red-600">{error}</p>}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {(["B", "A"] as const).map((p) => (
-          <div key={p} className="rounded-xl border p-5">
-            <p className="text-sm opacity-70">{p === "B" ? "B · Por dónde empezar a partir de los 50" : "A · Que la espalda no te pare"}</p>
-            <p className="text-4xl font-semibold">
-              {n.cuenta[p]} <span className="text-lg font-normal opacity-60">de 3</span>
-            </p>
-            <p className="text-sm">{(p === "B" ? n.llegaB : n.llegaA) ? "✅ Llega: se graba" : "Aún no llega"}</p>
-          </div>
-        ))}
+      <div className="rounded-xl border p-5">
+        <p className="text-sm opacity-70">Que la espalda no te pare · 17 €</p>
+        <p className="text-4xl font-semibold">
+          {n.cuenta.A} <span className="text-lg font-normal opacity-60">de 3</span>
+        </p>
+        <p className="text-sm">{n.llega ? "✅ Llega: se graba" : "Aún no llega"} · con el bonus «Por dónde empezar»: {n.cuenta.conBonus}</p>
       </div>
       <p className="text-xs opacity-70">
-        Cuenta personas distintas; A suma también en B. No cuentan: familia y amigos marcados, compras de prueba y devueltas enteras. La landing solo enseña «ya somos 3» cuando se llega.
+        Cuenta personas distintas. No cuentan: familia y amigos marcados, compras de prueba y devueltas enteras. La landing solo enseña «ya somos 3» cuando se llega.
         {d.intentos ? ` Intentos sin pagar: ${d.intentos}.` : ""}
       </p>
 
@@ -134,8 +132,7 @@ export default function PreventaTab() {
         {d.recuento ? (
           <>
             <p className="text-sm">
-              Hecho el {fecha(d.recuento.en)}: B {d.recuento.cuenta.B} de 3 ({d.recuento.llegaB ? "llega" : "no llega"}) · A {d.recuento.cuenta.A} de 3 (
-              {d.recuento.llegaA ? "llega" : "no llega"}). Avisos enviados: {d.envios.recuento ?? 0}.
+              Hecho el {fecha(d.recuento.en)}: {d.recuento.cuenta.A} de 3 ({d.recuento.llega ? "llega: se graba" : "no llega"}), con bonus {d.recuento.cuenta.conBonus}. Avisos enviados: {d.envios.recuento ?? 0}.
             </p>
             {d.pendientes.length > 0 ? (
               <div className="mt-3">
@@ -171,7 +168,7 @@ export default function PreventaTab() {
           </p>
         )}
         <p className="mt-2 text-xs opacity-70">
-          Entregas automáticas: B el lun 28-dic, A el dom 10-ene, a las 9:00, si llegó a 3 y hay vídeo puesto abajo. Enviadas: B {d.envios.entrega_B ?? 0} · A {d.envios.entrega_A ?? 0}.
+          Entregas automáticas, a las 9:00, si llegó a 3 y hay vídeo puesto abajo: el bonus «Por dónde empezar» (vídeo de B) el lun 28-dic, solo a quien lo tiene; «Que la espalda no te pare» (vídeo de A) el dom 10-ene. Enviadas: bonus {d.envios.entrega_B ?? 0} · espalda {d.envios.entrega_A ?? 0}.
         </p>
       </section>
 
@@ -203,7 +200,7 @@ export default function PreventaTab() {
                       {c.newsletter_ok && <span className="opacity-70"> · newsletter</span>}
                       {!c.confirmacion_enviada && <span className="block text-red-600">Confirmación no enviada{c.confirmacion_error ? `: ${c.confirmacion_error}` : ""}</span>}
                     </td>
-                    <td className="p-2">{PRODUCTO[c.producto]}</td>
+                    <td className="p-2">{producto(c)}</td>
                     <td className="p-2">
                       {eur(c.importe_cent)}
                       {c.devuelto_cent > 0 && <span className="block opacity-70">devuelto {eur(c.devuelto_cent)}</span>}
@@ -277,10 +274,10 @@ export default function PreventaTab() {
         <h3 className="mb-3 font-semibold">Ajustes</h3>
         {(
           [
-            ["video_B", "Vídeo de B (URL del reproductor, con la descarga desactivada)"],
-            ["video_A", "Vídeo de A (URL del reproductor, con la descarga desactivada)"],
+            ["video_B", "Vídeo del bonus «Por dónde empezar» (URL del reproductor, con la descarga desactivada)"],
+            ["video_A", "Vídeo de «Que la espalda no te pare» (URL del reproductor, con la descarga desactivada)"],
             ["correos_prueba", "Correos de prueba (pueden comprar antes de abrir; sus compras no cuentan)"],
-            ["prueba_fase", "Fase que ven los correos de prueba: B o A"],
+            ["prueba_fase", "Qué ven los correos de prueba: bonus (con el regalo) o sin"],
           ] as const
         ).map(([k, etiqueta]) => (
           <label key={k} className="mb-3 block text-sm">

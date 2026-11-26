@@ -8,11 +8,11 @@ import { AMBER, CARD, LINE, NAVY, fieldStyle, inputStyle, labelStyle } from "../
 
 // Formulario de compra en dos pasos:
 //   1) nombre + correo + casilla de newsletter (aparte y sin marcar) → el
-//      servidor dice qué puede comprar ese correo hoy (B, A o la subida de 10 €)
+//      servidor dice si ese correo puede comprar hoy y si lleva el bonus
 //   2) se enseña el precio final con IVA, la fecha de entrega y el
 //      desistimiento, y el botón "Pedido con obligación de pago" → Stripe.
 
-export default function CompraForm({ idioma, fase }: { idioma: Idioma; fase: "A" | "B" }) {
+export default function CompraForm({ idioma, boton: textoBoton }: { idioma: Idioma; boton: string }) {
   const t = CONTENIDO[idioma].form;
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
@@ -85,7 +85,7 @@ export default function CompraForm({ idioma, fase }: { idioma: Idioma; fase: "A"
           </>
         ) : (
           <p style={{ color: NAVY, fontSize: "1.05rem", lineHeight: 1.7 }}>
-            {oferta.tipo === "ya_la_tiene" ? (oferta.producto === "A" ? t.yaA : t.yaB) : t.noAbierta}
+            {oferta.tipo === "ya_la_tiene" ? t.yaLaTiene : t.noAbierta}
           </p>
         )}
         {error && <p style={{ color: "#A33", marginTop: "1rem" }}>{error}</p>}
@@ -117,13 +117,12 @@ export default function CompraForm({ idioma, fase }: { idioma: Idioma; fase: "A"
         </label>
         <input id="pv-email" type="email" required style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" maxLength={200} />
       </div>
-      {fase === "A" && <p style={{ fontSize: "0.92rem", color: "rgba(15,34,64,0.75)", margin: "-1.2rem 0 1.6rem 0" }}>{t.emailAyudaA}</p>}
       <label style={{ display: "flex", gap: "0.7rem", alignItems: "flex-start", marginBottom: "2rem", cursor: "pointer", padding: "0.9rem 1rem", border: `1px solid ${LINE}`, background: CARD, borderRadius: "0.6rem" }}>
         <input type="checkbox" checked={newsletter} onChange={(e) => setNewsletter(e.target.checked)} style={{ marginTop: "0.3rem" }} />
         <span style={{ fontSize: "0.95rem", color: NAVY, lineHeight: 1.55 }}>{CASILLA_NEWSLETTER[idioma]}</span>
       </label>
       <button type="submit" className={boton} disabled={cargando}>
-        {cargando ? t.cargando : t.continuar}
+        {cargando ? t.cargando : textoBoton}
       </button>
       {error && <p style={{ color: "#A33", marginTop: "1rem" }}>{error}</p>}
     </form>

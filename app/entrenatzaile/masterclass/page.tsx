@@ -4,8 +4,8 @@ import { Landing } from "./_paginas";
 type Busqueda = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export const metadata: Metadata = {
-  title: "Masterclassak aurrez salgai — Entrenatzaile",
-  description: "Zer egin 50 urtetik aurrera entrenatzen hasteko · Bizkarrak ez zaitzala gelditu",
+  title: "Bizkarrak ez zaitzala gelditu — Entrenatzaileren bideozko masterclassa",
+  description: "Bideozko masterclass bat, bizkarreko mina izan arren gorputz osoa entrenatzen jarraitzeko. 17 €, abenduaren 9ra arte aurrez salgai.",
 };
 
 export default async function Page({ searchParams }: { searchParams: Busqueda }) {

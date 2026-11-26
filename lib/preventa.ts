@@ -1,4 +1,5 @@
-// Servidor de la preventa de las masterclasses (diciembre 2026, Entrenatzaile):
+// Servidor de la preventa de la masterclass (diciembre 2026, Entrenatzaile;
+// modelo del 26-11-2026: A 17 € con B de bonus del 1 al 4-dic):
 // compras, cobro con Stripe Checkout, confirmación desde el webhook, devoluciones,
 // recuento del 10-dic, entregas y acceso a los vídeos.
 //
@@ -31,7 +32,6 @@ import {
   type Fase,
   type Idioma,
   type Oferta,
-  type Producto,
   type Resultado,
 } from "@/lib/preventa-reglas";
 import {
@@ -70,7 +70,7 @@ export interface Compra extends CompraRegla {
 }
 
 const CAMPOS =
-  "id, email, nombre, idioma, producto, importe_cent, estado, devuelto_cent, prueba, stripe_session_id, stripe_payment_intent, pagado_en, newsletter_ok, confirmacion_enviada, confirmacion_error, created_at";
+  "id, email, nombre, idioma, producto, importe_cent, estado, devuelto_cent, con_bonus, prueba, stripe_session_id, stripe_payment_intent, pagado_en, newsletter_ok, confirmacion_enviada, confirmacion_error, created_at";
 
 // ---------------------------------------------------------------------------
 // Reloj y ajustes
@@ -116,15 +116,20 @@ function correosPrueba(cfg: Record<string, string>): Set<string> {
 /**
  * La fase que vale para este correo. Para todo el mundo, la del reloj. Para
  * los correos de prueba de Alain (panel → Preventa), la que él haya puesto en
- * "prueba_fase", para poder hacer una compra real de prueba antes del 1-dic.
+ * "prueba_fase" ("bonus" o "sin"), para poder hacer una compra real de prueba
+ * antes del 1-dic. Se aceptan también "B" (= bonus) y "A" (= sin), del modelo anterior.
  */
+export function faseDePrueba(valor: string | undefined): Fase {
+  const v = (valor ?? "").trim().toLowerCase();
+  return v === "sin" || v === "a" || v === "venta" ? "venta" : "bonus";
+}
+
 export async function faseParaEmail(email: string | null): Promise<{ fase: Fase; prueba: boolean }> {
   const real = faseEn(ahora());
   if (!email) return { fase: real, prueba: false };
   const cfg = await leerConfig();
   if (correosPrueba(cfg).has(normalizarEmail(email))) {
-    const f = cfg.prueba_fase === "A" || cfg.prueba_fase === "B" ? cfg.prueba_fase : "B";
-    return { fase: f, prueba: true };
+    return { fase: faseDePrueba(cfg.prueba_fase), prueba: true };
   }
   return { fase: real, prueba: false };
 }
@@ -187,7 +192,7 @@ export async function crearCheckout(a: {
   const { oferta, prueba } = await ofertaParaEmail(a.email);
   if (oferta.tipo !== "comprar") return { error: oferta.tipo, oferta };
 
-  const lineas = infoPrevia(oferta.producto, oferta.importe_cent, a.idioma);
+  const lineas = infoPrevia(oferta.conBonus, oferta.importe_cent, a.idioma);
   const { data: fila, error } = await db()
     .from("preventa_compras")
     .insert({
@@ -196,6 +201,7 @@ export async function crearCheckout(a: {
       idioma: a.idioma,
       producto: oferta.producto,
       importe_cent: oferta.importe_cent,
+      con_bonus: oferta.conBonus,
       prueba,
       newsletter_ok: a.newsletter,
       newsletter_texto: a.newsletter ? CASILLA_NEWSLETTER[a.idioma] : null,
@@ -220,23 +226,23 @@ export async function crearCheckout(a: {
           price_data: {
             currency: "eur",
             unit_amount: oferta.importe_cent,
-            product_data: { name: nombreLinea(oferta.producto, a.idioma) },
+            product_data: { name: nombreLinea(oferta.conBonus, a.idioma) },
           },
         },
       ],
       customer_email: a.email,
-      metadata: { tipo: "preventa", compra_id: fila.id, producto: oferta.producto, idioma: a.idioma },
+      metadata: { tipo: "preventa", compra_id: fila.id, producto: oferta.producto, con_bonus: oferta.conBonus ? "si" : "no", idioma: a.idioma },
       payment_intent_data: {
         // Con receipt_email Stripe manda el justificante del pago (en live).
         receipt_email: a.email,
-        description: nombreLinea(oferta.producto, a.idioma),
+        description: nombreLinea(oferta.conBonus, a.idioma),
         metadata: { tipo: "preventa", compra_id: fila.id },
       },
       // 35 minutos: el mínimo de Stripe es 30. Una sesión abierta antes del
       // cierre se puede terminar de pagar unos minutos después: la oferta se
       // aceptó dentro de plazo.
       expires_at: Math.floor(Date.now() / 1000) + 35 * 60,
-      success_url: `${base}${prefijo}${rutaPreventa(a.idioma, "gracias")}?p=${oferta.producto}`,
+      success_url: `${base}${prefijo}${rutaPreventa(a.idioma, "gracias")}?b=${oferta.conBonus ? "1" : "0"}`,
       cancel_url: `${base}${prefijo}${pagina}`,
       locale: "es",
       custom_text: {
@@ -295,7 +301,7 @@ export async function confirmarCompraPreventa(sesion: Stripe.Checkout.Session) {
   // lo enseña) y el pago sigue guardado.
   try {
     const { asunto, html } = correoConfirmacion({
-      producto: compra.producto,
+      conBonus: !!compra.con_bonus,
       importeCent: compra.importe_cent,
       nombre: compra.nombre,
       idioma: compra.idioma,
@@ -312,17 +318,17 @@ export async function confirmarCompraPreventa(sesion: Stripe.Checkout.Session) {
   // Aviso a Alain, con la cuenta al día y si es una compra repetida.
   try {
     const otras = (await comprasDe(compra.email)).filter((x) => x.id !== compra.id);
-    const repetida =
-      compra.producto === "B" ? tieneB(otras) : compra.producto === "A" ? tieneA(otras) || tieneB(otras) : tieneA(otras);
+    const repetida = tieneA(otras);
     const r = await cuentaActual();
+    const que = compra.con_bonus ? "espalda + bonus" : "espalda, sin bonus";
     await sendEmail(
       AVISO_INTERNO,
-      `Preventa — ${compra.prueba ? "PRUEBA " : ""}${euros(compra.importe_cent)} · ${compra.producto} · ${compra.nombre ?? compra.email}`,
+      `Preventa — ${compra.prueba ? "PRUEBA " : ""}${euros(compra.importe_cent)} · ${que} · ${compra.nombre ?? compra.email}`,
       `<div style="font-family:monospace;font-size:0.9rem;line-height:1.7;">
         <p><strong>${compra.nombre ?? "(sin nombre)"}</strong> · ${compra.email} · ${compra.idioma}</p>
-        <p>Producto: ${compra.producto} · ${euros(compra.importe_cent)}${compra.prueba ? " · COMPRA DE PRUEBA (no cuenta)" : ""}<br>
+        <p>Compra: ${que} · ${euros(compra.importe_cent)}${compra.prueba ? " · COMPRA DE PRUEBA (no cuenta)" : ""}<br>
         Newsletter: ${compra.newsletter_ok ? "sí" : "no"}</p>
-        <p>Cuenta: B ${r.cuenta.B} de 3 · A ${r.cuenta.A} de 3</p>
+        <p>Cuenta: ${r.cuenta.A} de 3 (con bonus: ${r.cuenta.conBonus})</p>
         ${repetida ? "<p><strong>OJO: este correo ya tenía esto comprado. Seguramente pagó dos veces: devuélvele una desde /admin → Preventa.</strong></p>" : ""}
       </div>`,
       DE_INTERNO
@@ -342,6 +348,7 @@ export async function marcarExpiradaPreventa(sesion: Stripe.Checkout.Session) {
 // Devoluciones (desde el panel)
 // ---------------------------------------------------------------------------
 
+// "diferencia_a" es del modelo anterior (B sí, A no): ya no la genera el recuento.
 export type MotivoDevolucion = "umbral_no" | "diferencia_a" | "desistimiento" | "manual";
 
 export async function devolver(compraId: string, importeCent: number, motivo: MotivoDevolucion, nota?: string | null) {
@@ -376,7 +383,7 @@ export async function pendientesSegunRecuento(): Promise<{ compra: Compra; impor
   if (!r) return [];
   const compras = await todasLasCompras();
   return compras
-    .map((c) => ({ compra: c, importe: devolucionTrasRecuento(c, r), motivo: (r.llegaB ? "diferencia_a" : "umbral_no") as MotivoDevolucion }))
+    .map((c) => ({ compra: c, importe: devolucionTrasRecuento(c, r), motivo: "umbral_no" as MotivoDevolucion }))
     .filter((x) => x.importe > 0);
 }
 
@@ -446,15 +453,16 @@ export async function videosDe(email: string): Promise<{ disponibles: VideoDispo
     disponibles.push({ producto: p, url: cfg[`video_${p}`] || null, hasta });
   };
   // Las compras de prueba de Alain también ven el vídeo: así puede comprobar la entrega.
-  ver("B", tieneB(compras), !!r?.llegaB, FECHAS.entregaB, (c) => c.estado === "pagado" || c.estado === "devuelto_parcial");
-  ver("A", tieneA(compras), !!r?.llegaA, FECHAS.entregaA, (c) => c.producto !== "B" && c.estado === "pagado" && c.devuelto_cent === 0);
+  const cobrada = (c: Compra) => (c.estado === "pagado" || c.estado === "devuelto_parcial") && c.devuelto_cent < c.importe_cent;
+  ver("B", tieneB(compras), !!r?.llega, FECHAS.entregaB, (c) => cobrada(c) && (c.producto === "B" || !!c.con_bonus));
+  ver("A", tieneA(compras), !!r?.llega, FECHAS.entregaA, (c) => cobrada(c) && c.producto !== "B");
   return { disponibles, proximas };
 }
 
 /** "Perdí el enlace": se lo reenvía si tiene alguna compra vigente. No dice si existe o no. */
 export async function reenviarEnlace(email: string, l: Idioma) {
   const compras = await comprasDe(email);
-  if (!tieneB(compras)) return;
+  if (!tieneA(compras) && !tieneB(compras)) return;
   const { asunto, html } = correoEnlaceAcceso({ idioma: l, enlace: enlaceAcceso(email, l) });
   await sendEmail(email, asunto, html, DE);
 }
@@ -526,9 +534,9 @@ export async function cronPreventa(): Promise<Record<string, unknown>> {
     const pendientes = await pendientesSegunRecuento();
     await sendEmail(
       AVISO_INTERNO,
-      `Preventa — RECUENTO: B ${r.cuenta.B} de 3 (${r.llegaB ? "LLEGA" : "no llega"}) · A ${r.cuenta.A} de 3 (${r.llegaA ? "LLEGA" : "no llega"})`,
+      `Preventa — RECUENTO: ${r.cuenta.A} de 3 (${r.llega ? "LLEGA: se graba" : "no llega"})`,
       `<div style="font-family:monospace;font-size:0.9rem;line-height:1.7;">
-        <p>B: ${r.cuenta.B} de 3 · ${r.llegaB ? "se graba" : "NO se graba"}<br>A: ${r.cuenta.A} de 3 · ${r.llegaA ? "se graba" : "NO se graba"}</p>
+        <p>"Que la espalda no te pare": ${r.cuenta.A} de 3 · ${r.llega ? "se graba" : "NO se graba"}<br>Con el bonus "Por dónde empezar": ${r.cuenta.conBonus}</p>
         <p>Los compradores reciben ahora el aviso automático.</p>
         <p>Devoluciones pendientes: ${pendientes.length} (${euros(pendientes.reduce((s, p) => s + p.importe, 0))}). ${pendientes.length ? "Hazlas en /admin → Preventa → «Devolver lo del recuento»." : ""}</p>
       </div>`,
@@ -552,7 +560,7 @@ export async function cronPreventa(): Promise<Record<string, unknown>> {
       nombre: u.nombre,
       idioma: u.idioma,
       devolverCent: reales.reduce((s, c) => s + devolucionTrasRecuento(c, r!), 0),
-      comproA: tieneA(reales),
+      conBonus: tieneB(reales),
     });
     try {
       await sendEmail(u.nombre ? `${u.nombre} <${email}>` : email, asunto, html, DE);
@@ -564,12 +572,11 @@ export async function cronPreventa(): Promise<Record<string, unknown>> {
   }
   salida.avisos_recuento = avisos;
 
-  // 3) Entregas: B el 28-dic, A el 10-ene. Solo con el vídeo puesto en el panel.
+  // 3) Entregas: B (bonus) el 28-dic, A el 10-ene. Solo si se llegó a 3 y con el vídeo puesto en el panel.
   const cfg = await leerConfig();
   for (const p of ["B", "A"] as const) {
     const entrega = p === "B" ? FECHAS.entregaB : FECHAS.entregaA;
-    const llega = p === "B" ? r.llegaB : r.llegaA;
-    if (t < entrega || !llega) continue;
+    if (t < entrega || !r.llega) continue;
     if (!cfg[`video_${p}`]) {
       const hoy = t.toISOString().slice(0, 10);
       if (await apuntar(`falta_video_${p}`, hoy))
@@ -610,14 +617,12 @@ export async function cronPreventa(): Promise<Record<string, unknown>> {
 }
 
 /** Para la landing: ¿ya hay 3? (no se enseña el contador mientras no se llegue). */
-export async function yaHayTres(): Promise<{ A: boolean; B: boolean }> {
+export async function yaHayTres(): Promise<boolean> {
   try {
-    const r = await cuentaActual();
-    return { A: r.llegaA, B: r.llegaB };
+    return (await cuentaActual()).llega;
   } catch {
-    return { A: false, B: false };
+    return false;
   }
 }
 
-export const PRECIOS = PRECIO_CENT;
-export type { Producto };
+export const PRECIO = PRECIO_CENT;

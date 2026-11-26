@@ -4,8 +4,8 @@ import { Landing } from "../../masterclass/_paginas";
 type Busqueda = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export const metadata: Metadata = {
-  title: "Masterclasses en preventa — Entrenatzaile",
-  description: "Por dónde empezar a entrenar a partir de los 50 · Que la espalda no te pare",
+  title: "Que la espalda no te pare — masterclass en vídeo de Entrenatzaile",
+  description: "Una masterclass en vídeo para seguir entrenando todo el cuerpo aunque tengas dolor de espalda. 17 €, en preventa hasta el 9 de diciembre.",
 };
 
 export default async function Page({ searchParams }: { searchParams: Busqueda }) {

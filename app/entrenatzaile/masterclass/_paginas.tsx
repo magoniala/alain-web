@@ -1,4 +1,4 @@
-// Páginas de la preventa de las masterclasses (castellano y euskera).
+// Páginas de la preventa de la masterclass (castellano y euskera; modelo del 26-11-2026).
 // Las rutas son finas: app/entrenatzaile/masterclass/** (euskera) y
 // app/entrenatzaile/es/masterclass/** (castellano) solo llaman a esto.
 // En el subdominio se ven en entrenatzaile.alainzulaika.com/masterclass y /es/masterclass.
@@ -11,7 +11,7 @@ import { DesistimientoForm, EnlaceForm } from "./FormulariosSimples";
 import { ahora, enlaceAcceso, firmaValida, videosDe, yaHayTres } from "@/lib/preventa";
 import { FECHAS, faseEn, NOMBRE, type Fase, type Idioma } from "@/lib/preventa-reglas";
 import { AVISO_SALUD, DATOS, DESISTIMIENTO, MODELO_DESISTIMIENTO, fechaLarga, rutaPreventa } from "@/lib/preventa-textos";
-import { AMBER, CARD, LINE, NAVY, PAPER, cardStyle, emphasisP, proseP, sectionTitle } from "../_ui";
+import { AMBER, CARD, LINE, MUTED, NAVY, PAPER, cardStyle, emphasisP, proseP, sectionTitle } from "../_ui";
 
 type Pagina = "" | "gracias" | "desistimiento" | "acceso";
 
@@ -81,100 +81,203 @@ function BloqueDesistimiento({ idioma }: { idioma: Idioma }) {
   );
 }
 
+/** "?fase=bonus" / "?fase=sin" (también "B" y "A", del modelo anterior) para revisar la página antes de tiempo. */
+function faseDeVista(v?: string): Fase | null {
+  const x = (v ?? "").trim().toLowerCase();
+  if (x === "bonus" || x === "b") return "bonus";
+  if (x === "sin" || x === "a" || x === "venta") return "venta";
+  return null;
+}
+
+const DIA_MS = 24 * 3600 * 1000;
+
+const boton =
+  "inline-block rounded-xl bg-[#0F2240] px-9 py-[1.05rem] text-center text-[1.05rem] tracking-[0.02em] text-[#F7F1E6] shadow-md transition hover:brightness-110 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C47800]";
+
+/** Precio, plazo y botón: se repite arriba y a mitad de página. */
+function Compra({ c, abierta }: { c: (typeof CONTENIDO)["es"]; abierta: boolean }) {
+  return (
+    <div style={{ marginBottom: "0.5rem" }}>
+      <p style={{ display: "flex", alignItems: "baseline", gap: "0.9rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
+        <span style={{ fontFamily: "var(--font-fraunces), Georgia, serif", fontSize: "2.6rem", fontWeight: 500, color: NAVY, lineHeight: 1 }}>{c.precio}</span>
+        <span style={{ fontSize: "1rem", color: MUTED, lineHeight: 1.5 }}>{c.plazo}</span>
+      </p>
+      {abierta ? (
+        <a href="#apuntate" className={`${boton} mt-4 w-full sm:w-auto`}>
+          {c.cta}
+        </a>
+      ) : (
+        <p style={{ ...proseP, fontWeight: 600, color: NAVY, margin: "1rem 0 0 0" }}>{c.abre}</p>
+      )}
+      <p style={{ fontSize: "0.98rem", lineHeight: 1.6, color: MUTED, marginTop: "1rem" }}>{c.garantia}</p>
+    </div>
+  );
+}
+
+/** El vale del regalo: lo único que destaca en la página. Desaparece el sáb 5-dic. */
+function Vale({ c, aviso }: { c: (typeof CONTENIDO)["es"]; aviso: string }) {
+  const muesca: React.CSSProperties = { position: "absolute", top: "-13px", width: 26, height: 26, borderRadius: "50%", background: PAPER };
+  return (
+    <aside aria-label={c.bonus.titulo} style={{ background: NAVY, color: PAPER, borderRadius: "1rem", margin: "3.2rem 0", overflow: "hidden" }}>
+      <div style={{ padding: "1.6rem 1.7rem 1.3rem" }}>
+        <p style={{ color: "#F0A63A", fontSize: "1.02rem", lineHeight: 1.5, margin: 0 }}>{c.bonus.titulo}</p>
+        <p style={{ display: "inline-block", marginTop: "0.9rem", background: "#F0A63A", color: NAVY, fontWeight: 600, borderRadius: "999px", padding: "0.3rem 0.95rem", fontSize: "0.98rem" }}>{aviso}</p>
+      </div>
+      <div style={{ position: "relative", height: 0, borderTop: "2px dashed rgba(247,241,230,0.35)", margin: "0 1.3rem" }}>
+        <span aria-hidden style={{ ...muesca, left: "calc(-1.3rem - 13px)" }} />
+        <span aria-hidden style={{ ...muesca, right: "calc(-1.3rem - 13px)" }} />
+      </div>
+      <div style={{ padding: "1.4rem 1.7rem 1.7rem" }}>
+        <p style={{ fontFamily: "var(--font-fraunces), Georgia, serif", fontSize: "clamp(1.45rem,2.6vw,1.85rem)", lineHeight: 1.2, margin: "0 0 0.9rem 0" }}>&quot;{c.bonus.nombre}&quot;</p>
+        <p style={{ fontSize: "1.08rem", lineHeight: 1.65, color: "rgba(247,241,230,0.88)", margin: "0 0 0.9rem 0" }}>{c.bonus.texto}</p>
+        <p style={{ fontSize: "1.08rem", lineHeight: 1.6, margin: 0 }}>{c.bonus.entrega}</p>
+      </div>
+    </aside>
+  );
+}
+
+function Lista({ items, marca }: { items: string[]; marca: "si" | "no" }) {
+  return (
+    <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1.6rem 0" }}>
+      {items.map((t, i) => (
+        <li key={i} style={{ ...proseP, display: "grid", gridTemplateColumns: "1.6rem 1fr", marginBottom: "0.8rem" }}>
+          <span aria-hidden style={{ color: marca === "si" ? AMBER : MUTED, fontWeight: 700 }}>
+            {marca === "si" ? "✓" : "✕"}
+          </span>
+          <span>{t}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
- * La landing. `faseVista` deja ver la página de una fase antes de tiempo
- * (?fase=B o ?fase=A) para revisarla y para las compras de prueba de Alain;
- * quién puede pagar lo sigue decidiendo el servidor por fecha y correo.
+ * La landing. Se vende "Que la espalda no te pare" a 17 €; del 1 al 4-dic
+ * lleva de regalo "Por dónde empezar" (el vale). `faseVista` (?fase=bonus o
+ * ?fase=sin) deja ver la página de una fase antes de tiempo; quién puede pagar
+ * y con qué lo decide siempre el servidor por fecha y correo.
  */
 export async function Landing({ idioma, faseVista }: { idioma: Idioma; faseVista?: string }) {
   const c = CONTENIDO[idioma];
-  const real = faseEn(ahora());
-  const fase: Fase = (real === "antes" || real === "cerrada") && (faseVista === "A" || faseVista === "B") ? faseVista : real;
-  const tres = fase === "A" || fase === "B" ? await yaHayTres() : { A: false, B: false };
+  const t = ahora();
+  const real = faseEn(t);
+  const vista = faseDeVista(faseVista);
+  const fase: Fase = (real === "antes" || real === "cerrada") && vista ? vista : real;
 
-  if (fase === "antes" || fase === "cerrada") {
-    const bloque = fase === "antes" ? c.antes : c.cerrada;
+  if (fase === "cerrada") {
     return (
       <Marco idioma={idioma} pagina="">
-        <p style={{ ...peq, color: AMBER, letterSpacing: "0.12em", textTransform: "uppercase" }}>{c.marca}</p>
-        <h1 style={{ ...sectionTitle, fontSize: "clamp(2rem,4vw,3rem)" }}>{bloque.titulo}</h1>
-        {bloque.texto.map((t, i) => (
+        <h1 style={{ ...sectionTitle, fontSize: "clamp(2rem,4vw,3rem)" }}>{c.cerrada.titulo}</h1>
+        {c.cerrada.texto.map((x, i) => (
           <p key={i} style={proseP}>
-            {t}
+            {x}
           </p>
         ))}
-        {fase === "cerrada" && (
-          <div style={{ ...cardStyle, padding: "1.8rem" }}>
-            <EnlaceForm idioma={idioma} />
-          </div>
-        )}
+        <div style={{ ...cardStyle, padding: "1.8rem" }}>
+          <EnlaceForm idioma={idioma} />
+        </div>
       </Marco>
     );
   }
 
-  const p = c[fase];
+  const abierta = fase === "bonus" || fase === "venta";
+  const conBonus = fase === "antes" || fase === "bonus";
+  const tres = abierta ? await yaHayTres() : false;
+  const desde = Math.max(t.getTime(), FECHAS.inicio.getTime());
+  const dias = Math.ceil((FECHAS.finBonus.getTime() - desde) / DIA_MS);
+  const aviso = fase === "antes" ? c.bonus.antes : dias <= 1 ? c.bonus.ultimoDia : c.bonus.quedan(dias);
+
   return (
     <Marco idioma={idioma} pagina="">
-      <p style={{ ...peq, color: AMBER, letterSpacing: "0.12em", textTransform: "uppercase" }}>{c.marca}</p>
-      <h1 style={{ ...sectionTitle, fontSize: "clamp(2.1rem,4.4vw,3.3rem)", marginBottom: "1.4rem" }}>{p.titulo}</h1>
-      <p style={proseP}>{p.promesa}</p>
-      <p style={emphasisP}>{p.paraQuien}</p>
-      {tres[fase] && (
-        <p style={{ display: "inline-block", padding: "0.5rem 1rem", border: `1px solid ${AMBER}`, color: AMBER, borderRadius: "0.5rem", marginBottom: "2rem" }}>{c.yaSomosTres}</p>
-      )}
-      <p style={{ marginBottom: "3.2rem" }}>
-        <a href="#apuntate" className="inline-block rounded-xl bg-[#0F2240] px-9 py-4 text-[0.98rem] tracking-[0.06em] text-[#F7F1E6] shadow-md transition-all hover:brightness-110">
-          {fase === "B" ? (idioma === "es" ? "Apuntarme por 7 €" : "Apuntatu 7 €-tan") : idioma === "es" ? "Apuntarme por 17 €" : "Apuntatu 17 €-tan"}
-        </a>
-      </p>
+      <section style={{ marginBottom: "1rem" }}>
+        <p style={{ fontSize: "1rem", color: AMBER, marginBottom: "1rem" }}>{c.marca}</p>
+        <h1 style={{ ...sectionTitle, fontSize: "clamp(2.6rem,7vw,4.4rem)", lineHeight: 1.02, letterSpacing: "-0.03em", marginBottom: "1.6rem" }}>{c.titulo}</h1>
+        <p style={{ ...proseP, fontSize: "clamp(1.15rem,1.6vw,1.3rem)", color: NAVY, marginBottom: "1.2rem" }}>{c.promesa}</p>
+        <p style={{ ...proseP, marginBottom: "2rem" }}>{c.paraQuien}</p>
+        {tres && (
+          <p style={{ display: "inline-block", padding: "0.45rem 1rem", border: `1px solid ${AMBER}`, color: AMBER, borderRadius: "0.5rem", marginBottom: "1.6rem" }}>{c.yaSomosTres}</p>
+        )}
+        <Compra c={c} abierta={abierta} />
+      </section>
+
+      {conBonus && <Vale c={c} aviso={aviso} />}
 
       <section style={seccion}>
-        <h2 style={h2}>{c.queRecibes.titulo}</h2>
-        {c.queRecibes.lineas.map((l, i) => (
+        <h2 style={h2}>{c.paraTi.titulo}</h2>
+        <Lista items={c.paraTi.si} marca="si" />
+        <h3 style={{ ...h2, fontSize: "1.25rem", marginBottom: "0.9rem" }}>{c.paraTi.noTitulo}</h3>
+        <Lista items={c.paraTi.no} marca="no" />
+      </section>
+
+      <section style={seccion}>
+        <h2 style={h2}>{c.aprendes.titulo}</h2>
+        <Lista items={c.aprendes.lineas} marca="si" />
+        <h3 style={{ ...h2, fontSize: "1.25rem", marginBottom: "0.9rem" }}>{c.formato.titulo}</h3>
+        {c.formato.lineas.map((x, i) => (
           <p key={i} style={{ ...proseP, marginBottom: "0.9rem" }}>
-            {l}
+            {x}
           </p>
         ))}
       </section>
 
       <section style={seccion}>
-        <h2 style={h2}>{c.precio.titulo}</h2>
-        <p style={{ ...proseP, marginBottom: "0.9rem", opacity: fase === "A" ? 0.55 : 1 }}>{c.precio.B}</p>
-        <p style={{ ...proseP, marginBottom: "0.9rem" }}>{c.precio.A}</p>
-        <p style={proseP}>{c.precio.real}</p>
-      </section>
-
-      <section style={seccion}>
-        <h2 style={h2}>{c.preventa.titulo}</h2>
-        {c.preventa.texto.map((t, i) => (
-          <p key={i} style={{ ...proseP, marginBottom: "0.9rem" }}>
-            {t}
+        <h2 style={h2}>{c.como.titulo}</h2>
+        <ol style={{ listStyle: "none", padding: 0, margin: 0, borderLeft: `2px solid ${LINE}` }}>
+          {c.como.pasos
+            .filter((p) => conBonus || !p.soloBonus)
+            .map((p, i) => (
+              <li key={i} style={{ position: "relative", padding: "0 0 1.5rem 1.4rem" }}>
+                <span aria-hidden style={{ position: "absolute", left: -7, top: "0.45rem", width: 12, height: 12, borderRadius: "50%", background: AMBER }} />
+                <p style={{ fontWeight: 600, color: NAVY, fontSize: "1.08rem", margin: "0 0 0.25rem 0" }}>{p.cuando}</p>
+                <p style={{ ...proseP, margin: 0 }}>{p.que}</p>
+              </li>
+            ))}
+        </ol>
+        {abierta && (
+          <p style={{ marginTop: "1.6rem" }}>
+            <a href="#apuntate" className={`${boton} w-full sm:w-auto`}>
+              {c.cta}
+            </a>
           </p>
-        ))}
+        )}
       </section>
 
       <section style={seccion}>
         <h2 style={h2}>{c.quienSoy.titulo}</h2>
-        <p style={proseP}>{c.quienSoy.texto}</p>
-        <blockquote style={{ ...cardStyle, padding: "1.4rem 1.6rem", margin: 0 }}>
-          <p style={{ ...emphasisP, marginBottom: "0.6rem" }}>&quot;{c.testimonio.cita}&quot;</p>
-          <p style={peq}>{c.testimonio.autor}</p>
+        <div className="grid items-center gap-5 sm:grid-cols-[132px_1fr]">
+          <Image src="/otra-vez-lumbago/alain.png" alt={c.quienSoy.alt} width={264} height={264} className="h-[132px] w-[132px] rounded-full object-cover" />
+          <p style={{ ...proseP, margin: 0 }}>{c.quienSoy.texto}</p>
+        </div>
+        <blockquote style={{ margin: "1.8rem 0 0 0", paddingLeft: "1.2rem", borderLeft: `3px solid ${AMBER}` }}>
+          <p style={{ ...emphasisP, marginBottom: "0.5rem" }}>&quot;{c.testimonio.cita}&quot;</p>
+          <p style={{ ...peq, margin: 0 }}>{c.testimonio.autor}</p>
         </blockquote>
       </section>
 
       <section style={seccion}>
         <h2 style={h2}>{c.faqTitulo}</h2>
-        {c.faq.map((f, i) => (
-          <div key={i} style={{ marginBottom: "1.3rem" }}>
-            <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>{f.p}</p>
-            <p style={{ ...proseP, marginBottom: 0 }}>{f.r}</p>
-          </div>
-        ))}
+        {c.faq
+          .filter((f) => conBonus || !f.soloBonus)
+          .map((f, i) => (
+            <details key={i} style={{ borderTop: `1px solid ${LINE}`, padding: "1rem 0" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: "1.1rem", color: NAVY }}>{f.p}</summary>
+              <p style={{ ...proseP, margin: "0.7rem 0 0 0" }}>{f.r}</p>
+            </details>
+          ))}
       </section>
 
-      <section id="apuntate" style={{ ...cardStyle, padding: "2rem 1.6rem", marginBottom: "3.2rem" }}>
-        <h2 style={h2}>{fase === "A" ? c.form.tituloSubida : c.form.titulo}</h2>
-        <CompraForm idioma={idioma} fase={fase} />
+      <section id="apuntate" style={{ ...cardStyle, padding: "2rem 1.6rem", marginBottom: "3.2rem", scrollMarginTop: "1.5rem" }}>
+        <h2 style={h2}>{c.form.titulo}</h2>
+        {abierta ? (
+          <>
+            <p style={{ ...proseP, marginBottom: "1.8rem" }}>
+              {c.precio}. {conBonus ? `${c.bonus.titulo}: "${c.bonus.nombre}".` : c.plazo}
+            </p>
+            <CompraForm idioma={idioma} boton={c.form.continuar} />
+          </>
+        ) : (
+          <p style={{ ...proseP, margin: 0 }}>{c.abre}</p>
+        )}
       </section>
 
       <p style={{ ...peq, marginBottom: "3.2rem" }}>{AVISO_SALUD[idioma]}</p>
@@ -189,9 +292,9 @@ export async function Landing({ idioma, faseVista }: { idioma: Idioma; faseVista
   );
 }
 
-export function Gracias({ idioma, producto }: { idioma: Idioma; producto?: string }) {
+export function Gracias({ idioma, bonus }: { idioma: Idioma; bonus?: string }) {
   const es = idioma === "es";
-  const dosFechas = producto === "A" || producto === "subida";
+  const conBonus = bonus === "1" || bonus === "A";
   return (
     <Marco idioma={idioma} pagina="gracias">
       <h1 style={{ ...sectionTitle, fontSize: "clamp(2rem,4vw,2.8rem)" }}>{es ? "Gracias. Ya estás dentro." : "Eskerrik asko. Barruan zaude."}</h1>
@@ -202,8 +305,8 @@ export function Gracias({ idioma, producto }: { idioma: Idioma; producto?: strin
       </p>
       <p style={proseP}>
         {es
-          ? `El jueves 10 de diciembre cuento cuántas somos y te escribo. Si llegamos a 3, ${dosFechas ? "la de empezar te llega el 28 de diciembre y la de la espalda el 10 de enero" : "te llega el 28 de diciembre"}.`
-          : `Abenduaren 10ean zenbat garen kontatuko dut eta idatziko dizut. 3ra iristen bagara, ${dosFechas ? "hastekoa abenduaren 28an jasoko duzu eta bizkarrekoa urtarrilaren 10ean" : "abenduaren 28an jasoko duzu"}.`}
+          ? `El jueves 10 de diciembre cuento cuántas personas somos y te escribo. Si llegamos a 3, ${conBonus ? "el regalo te llega el 28 de diciembre y la de la espalda el 10 de enero" : "te llega el 10 de enero"}.`
+          : `Abenduaren 10ean zenbat garen kontatuko dut eta idatziko dizut. 3ra iristen bagara, ${conBonus ? "oparia abenduaren 28an jasoko duzu eta bizkarrekoa urtarrilaren 10ean" : "urtarrilaren 10ean jasoko duzu"}.`}
       </p>
       <p style={peq}>{AVISO_SALUD[idioma]}</p>
     </Marco>

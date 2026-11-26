@@ -3,9 +3,9 @@ import { crearCheckout, ofertaParaEmail, reenviarEnlace, registrarDesistimiento 
 import { infoPrevia } from "@/lib/preventa-textos";
 import { normalizarEmail, type Idioma } from "@/lib/preventa-reglas";
 
-// API pública de la preventa de las masterclasses (landing /masterclass y /es/masterclass).
+// API pública de la preventa de la masterclass (landing /masterclass y /es/masterclass).
 //
-//   resumen      → qué puede comprar este correo hoy y lo que se le enseña antes de pagar
+//   resumen      → si puede comprar (y si con el bonus) y lo que se le enseña antes de pagar
 //   pagar        → crea la sesión de Stripe Checkout y devuelve su URL
 //   enlace       → reenvía el enlace de acceso a los vídeos (si tiene compra)
 //   desistir     → formulario de desistimiento
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
         const { oferta } = await ofertaParaEmail(email);
         return NextResponse.json({
           oferta,
-          info: oferta.tipo === "comprar" ? infoPrevia(oferta.producto, oferta.importe_cent, idioma) : [],
+          info: oferta.tipo === "comprar" ? infoPrevia(oferta.conBonus, oferta.importe_cent, idioma) : [],
         });
       }
       case "pagar": {

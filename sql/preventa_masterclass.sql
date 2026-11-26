@@ -38,6 +38,10 @@ CREATE TABLE IF NOT EXISTS preventa_compras (
   created_at             timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS preventa_compras_email ON preventa_compras (lower(email));
+
+-- 26-11-2026 (modelo nuevo: A 17 € con B de bonus del 1 al 4-dic): si la compra
+-- lleva de regalo "Por dónde empezar". También en sql/preventa_masterclass_bonus.sql.
+ALTER TABLE preventa_compras ADD COLUMN IF NOT EXISTS con_bonus boolean NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS preventa_compras_estado ON preventa_compras (estado);
 
 -- Cada devolución hecha desde el panel, con fecha y motivo.
@@ -84,7 +88,7 @@ CREATE TABLE IF NOT EXISTS preventa_desistimientos (
 -- Ajustes que se cambian desde /admin → Preventa:
 --   video_B, video_A     URL del reproductor (embed) de cada masterclass
 --   correos_prueba       correos de Alain que pueden comprar antes de abrir (separados por comas)
---   prueba_fase          B | A: la fase que ven esos correos
+--   prueba_fase          bonus | sin: la fase que ven esos correos (con o sin el regalo)
 CREATE TABLE IF NOT EXISTS preventa_config (
   clave      text PRIMARY KEY,
   valor      text,

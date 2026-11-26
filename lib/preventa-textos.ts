@@ -1,4 +1,4 @@
-// Textos de la preventa de las masterclasses (castellano y euskera): lo legal
+// Textos de la preventa de la masterclass (castellano y euskera; modelo del 26-11-2026: A 17 € con B de bonus): lo legal
 // que se repite en la landing y en los correos, y los correos automáticos.
 //
 // Sin dependencias de servidor: lo importan la landing (cliente) y lib/preventa.ts.
@@ -6,7 +6,7 @@
 // preguntas sin ¿ de apertura y con ??; postdata como "Pd:".
 // El euskera es de Álex y Alain no lo ha repasado (26-11-2026).
 
-import { FECHAS, NOMBRE, euros, type Idioma, type Producto, type CasoRecuento } from "./preventa-reglas";
+import { FECHAS, NOMBRE, euros, nombrePila, type Idioma, type CasoRecuento } from "./preventa-reglas";
 
 export const CONTACTO = "contacto@alainzulaika.com";
 export const BASE_ENT = "https://entrenatzaile.alainzulaika.com";
@@ -94,36 +94,28 @@ export const BOTON_PAGO: Record<Idioma, string> = {
 };
 
 /** Lo que se enseña justo antes del botón de pago (y se guarda tal cual en la compra). */
-export function infoPrevia(p: Producto, importeCent: number, l: Idioma): string[] {
+export function infoPrevia(conBonus: boolean, importeCent: number, l: Idioma): string[] {
   const entregaB = fechaLarga(FECHAS.entregaB, l);
   const entregaA = fechaLarga(FECHAS.entregaA, l);
   if (l === "eu") {
-    const que =
-      p === "B"
-        ? `"${NOMBRE.B.eu}" masterclassa`
-        : p === "A"
-          ? `"${NOMBRE.A.eu}" masterclassa, eta "${NOMBRE.B.eu}" opari`
-          : `"${NOMBRE.A.eu}" masterclassa (hastekoa baduzu jada: aldea bakarrik ordaintzen duzu)`;
     return [
-      `Zer erosten duzu: ${que}.`,
+      conBonus
+        ? `Zer erosten duzu: "${NOMBRE.A.eu}" masterclassa, eta "${NOMBRE.B.eu}" opari.`
+        : `Zer erosten duzu: "${NOMBRE.A.eu}" masterclassa.`,
       `Azken prezioa: ${euros(importeCent)}, BEZa (% 21) barne.`,
-      p === "B" ? `Noiz jasoko duzu: ${entregaB}.` : `Noiz jasoko duzu: hastekoa ${entregaB}; bizkarrekoa ${entregaA}.`,
-      "Aurrez salmenta da: gutxienez 3 pertsona apuntatzen badira bakarrik grabatzen dut. Abenduaren 10ean kontatuko dut; iristen ez bagara, dirua itzuliko dizut.",
+      conBonus ? `Noiz jasoko dituzu: oparia ${entregaB}; bizkarrekoa ${entregaA}.` : `Noiz jasoko duzu: ${entregaA}.`,
+      "Aurrez salmenta da: gutxienez 3 pertsonak erosten badute bakarrik grabatzen dut. Abenduaren 10ean kontatuko dut; iristen ez bagara, dirua itzuliko dizut.",
       "Atzera egitea: 15 egun erosketatik eta beste 15 sarbidea jasotzen duzunetik.",
       "Bideoak gaztelaniaz daude. Nire webgunean ikusten dira zure postarekin, 24 hilabetez; ezin dira deskargatu.",
     ];
   }
-  const que =
-    p === "B"
-      ? `la masterclass "${NOMBRE.B.es}"`
-      : p === "A"
-        ? `la masterclass "${NOMBRE.A.es}" y, de regalo, "${NOMBRE.B.es}"`
-        : `la masterclass "${NOMBRE.A.es}" (ya tienes la de empezar: pagas solo la diferencia)`;
   return [
-    `Qué compras: ${que}.`,
+    conBonus
+      ? `Qué compras: la masterclass "${NOMBRE.A.es}" y, de regalo, "${NOMBRE.B.es}".`
+      : `Qué compras: la masterclass "${NOMBRE.A.es}".`,
     `Precio final: ${euros(importeCent)}, IVA (21 %) incluido.`,
-    p === "B" ? `Cuándo la recibes: el ${entregaB}.` : `Cuándo las recibes: la de empezar, el ${entregaB}; la de la espalda, el ${entregaA}.`,
-    "Es una preventa: la grabo solo si se apuntan al menos 3 personas. Lo cuento el 10 de diciembre; si no llegamos, te devuelvo el dinero.",
+    conBonus ? `Cuándo las recibes: la de regalo, el ${entregaB}; la de la espalda, el ${entregaA}.` : `Cuándo la recibes: el ${entregaA}.`,
+    "Es una preventa: la grabo solo si la compran al menos 3 personas. Lo cuento el 10 de diciembre; si no llegamos, te devuelvo el dinero.",
     "Desistimiento: 15 días desde la compra y otros 15 desde que recibas el acceso.",
     "Los vídeos están en castellano. Se ven en mi web con tu correo, durante 24 meses; no se pueden descargar.",
   ];
@@ -133,8 +125,9 @@ export function infoPrevia(p: Producto, importeCent: number, l: Idioma): string[
 // Correos
 // ---------------------------------------------------------------------------
 
-const P = "margin:0 0 1.4rem 0;";
-const PEQ = "margin:0 0 0.9rem 0;font-size:0.95rem;color:#444;";
+// Cuerpo legible, sin aire de más (Alain, 26-11: "la letra y el espacio me agobian").
+const P = "margin:0 0 1rem 0;";
+const LEGAL = "margin:0 0 0.7rem 0;font-size:0.92rem;line-height:1.55;color:#4a4a4a;";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const parr = (s: string) => `<p style="${P}">${s}</p>`;
@@ -142,94 +135,93 @@ const parr = (s: string) => `<p style="${P}">${s}</p>`;
 /** Envoltorio de los correos de la preventa: transaccionales, sin enlace de baja. */
 export function envolver(cuerpo: string): string {
   return `
-    <div style="font-family:Georgia,serif;max-width:580px;margin:0 auto;padding:2.5rem 2rem;color:#1a1a1a;background:#ffffff;">
-      <div style="font-size:1.1rem;line-height:1.9;color:#1a1a1a;">${cuerpo}</div>
-      <div style="margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid #eee;font-size:0.88rem;color:#666;line-height:1.8;">
-        <p style="margin:0;">Alain Zulaika · Entrenatzaile · <a href="mailto:${CONTACTO}" style="color:#666;">${CONTACTO}</a></p>
-      </div>
+    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:2rem 1.5rem;color:#1a1a1a;background:#ffffff;">
+      <div style="font-size:1.05rem;line-height:1.6;color:#1a1a1a;">${cuerpo}</div>
+      <p style="margin:2rem 0 0 0;font-size:0.85rem;color:#777;line-height:1.6;">Alain Zulaika · Entrenatzaile · <a href="mailto:${CONTACTO}" style="color:#777;">${CONTACTO}</a></p>
     </div>`;
 }
 
+/** Fechas clave en lista corta: lo primero que se lee del correo. */
+function lista(lineas: string[]): string {
+  return `<ul style="margin:0 0 1.2rem 0;padding-left:1.2rem;">${lineas.map((t) => `<li style="margin:0 0 0.45rem 0;">${t}</li>`).join("")}</ul>`;
+}
+
+/** Bloque legal completo, debajo de la firma, en una caja aparte para que no pese en el cuerpo. */
 function bloqueDesistimiento(l: Idioma): string {
   const d = DESISTIMIENTO[l];
   const form = `${BASE_ENT}${rutaPreventa(l, "desistimiento")}`;
   const modelo = MODELO_DESISTIMIENTO[l].split("\n").map(esc).join("<br>");
   return `
-    <p style="${P}"><strong>${d.titulo}</strong></p>
-    ${d.parrafos.map((t) => `<p style="${PEQ}">${esc(t)}</p>`).join("")}
-    <p style="${PEQ}">${l === "es" ? "Formulario de desistimiento" : "Atzera egiteko formularioa"}: <a href="${form}">${form}</a></p>
-    <p style="${PEQ}">${l === "es" ? "Modelo de formulario" : "Formulario-eredua"}:<br>${modelo}</p>`;
+    <div style="margin:2rem 0 0 0;padding:1.2rem 1.3rem;background:#f6f3ee;border-radius:8px;font-family:Arial,Helvetica,sans-serif;">
+      <p style="margin:0 0 0.8rem 0;font-size:0.95rem;font-weight:bold;color:#1a1a1a;">${d.titulo}</p>
+      ${d.parrafos.map((t) => `<p style="${LEGAL}">${esc(t)}</p>`).join("")}
+      <p style="${LEGAL}">${l === "es" ? "Formulario de desistimiento" : "Atzera egiteko formularioa"}: <a href="${form}" style="color:#4a4a4a;">${form}</a></p>
+      <p style="${LEGAL}margin-bottom:0;">${l === "es" ? "Modelo de formulario" : "Formulario-eredua"}:<br>${modelo}</p>
+    </div>`;
 }
 
 function saludo(nombre: string | null, l: Idioma) {
-  const n = nombre?.trim().split(/\s+/)[0];
+  const n = nombrePila(nombre);
   return l === "es" ? (n ? `Hola, ${esc(n)}.` : "Hola.") : n ? `Kaixo, ${esc(n)}.` : "Kaixo.";
 }
 
 export function correoConfirmacion(a: {
-  producto: Producto;
+  conBonus: boolean;
   importeCent: number;
   nombre: string | null;
   idioma: Idioma;
   accesoHasta: Date;
 }): { asunto: string; html: string } {
-  const { producto: p, idioma: l } = a;
+  const { conBonus, idioma: l } = a;
   const entregaB = fechaLarga(FECHAS.entregaB, l);
   const entregaA = fechaLarga(FECHAS.entregaA, l);
   const hasta = fechaLarga(a.accesoHasta, l);
+  const firma = `<p style="margin:0;">Alain</p>`;
   if (l === "eu") {
-    const que =
-      p === "B"
-        ? `"${NOMBRE.B.eu}" masterclassean duzu lekua (${euros(a.importeCent)}, BEZa barne).`
-        : p === "A"
-          ? `"${NOMBRE.A.eu}" masterclassean duzu lekua, eta "${NOMBRE.B.eu}" opari (${euros(a.importeCent)}, BEZa barne). Zure erosketak bietan kontatzen du.`
-          : `Hastekoa bazenuen jada; ${euros(a.importeCent)} hauekin "${NOMBRE.A.eu}" ere baduzu (BEZa barne).`;
-    const noiz =
-      p === "B"
-        ? `3ra iristen bagara, ${entregaB} jasoko duzu posta honetan, nire webgunetik ikusteko esteka batekin.`
-        : `3ra iristen bagara, hastekoa ${entregaB} jasoko duzu, eta bizkarrekoa ${entregaA}, posta honetan, nire webgunetik ikusteko esteka batekin.`;
     return {
-      asunto: p === "B" ? `Erosketa berretsita: ${NOMBRE.B.eu}` : `Erosketa berretsita: ${NOMBRE.A.eu}`,
+      asunto: `Erosketa berretsita: ${NOMBRE.A.eu}`,
       html: envolver(
         [
           parr(saludo(a.nombre, l)),
-          parr(`Ordainketa jaso dut. ${esc(que)}`),
-          parr("Aurrez salmenta da: oraindik ez dut grabatu. Gutxienez 3 pertsona desberdin apuntatzen badira grabatzen dut. Abenduaren 10ean, ostegunean, zenbat garen kontatuko dut eta idatziko dizut esateko. 3ra iristen ez bagara, dirua itzuliko dizut."),
-          parr(esc(noiz)),
-          parr(`Bideoak gaztelaniaz daude. ${esc(hasta)} arte dituzu ikusgai (erosi eta 24 hilabete). Ezin dira deskargatu.`),
-          p === "B" ? parr(`Abenduaren 5etik 9ra bizkarrekoa irekiko dut ("${esc(NOMBRE.A.eu)}"). Hau baduzunez, nahi baduzu, 10 € gehiago bakarrik ordainduko dituzu.`) : "",
-          parr("Ordainketaren egiaztagiria Stripek bidaltzen dizu. Faktura osoa behar baduzu zure datuekin, erantzun mezu honi izenarekin edo sozietatearen izenarekin, IFZarekin eta helbidearekin, eta bidaliko dizut."),
-          bloqueDesistimiento(l),
+          parr(
+            conBonus
+              ? `Ordainketa jaso dut: "${esc(NOMBRE.A.eu)}" masterclassean duzu lekua, eta "${esc(NOMBRE.B.eu)}" opari (${euros(a.importeCent)}, BEZa barne).`
+              : `Ordainketa jaso dut: "${esc(NOMBRE.A.eu)}" masterclassean duzu lekua (${euros(a.importeCent)}, BEZa barne).`
+          ),
+          lista([
+            "<strong>Abenduaren 10ean</strong> zenbat garen kontatuko dut eta idatziko dizut. 3 pertsonara iristen ez bagara, dirua itzuliko dizut.",
+            ...(conBonus ? [`<strong>${esc(entregaB)}</strong>: oparia jasoko duzu.`] : []),
+            `<strong>${esc(entregaA)}</strong>: bizkarrekoa jasoko duzu.`,
+            `Nire webgunean ikusiko dituzu zure postarekin, ${esc(hasta)} arte. Gaztelaniaz, deskargatu gabe.`,
+          ]),
+          parr("Ordainketaren egiaztagiria Stripek bidaltzen dizu. Faktura behar baduzu, erantzun mezu honi zure izenarekin edo sozietatearen izenarekin, IFZarekin eta helbidearekin."),
           parr("Zalantzarik baduzu, erantzun mezu honi."),
-          `<p style="margin:0;">Alain</p>`,
+          firma,
+          bloqueDesistimiento(l),
         ].join("")
       ),
     };
   }
-  const que =
-    p === "B"
-      ? `tienes tu plaza en la masterclass "${NOMBRE.B.es}" (${euros(a.importeCent)}, IVA incluido).`
-      : p === "A"
-        ? `tienes tu plaza en la masterclass "${NOMBRE.A.es}" y, de regalo, en "${NOMBRE.B.es}" (${euros(a.importeCent)}, IVA incluido). Tu compra cuenta para las dos.`
-        : `ya tenías la de empezar; con estos ${euros(a.importeCent)} te llevas también "${NOMBRE.A.es}" (IVA incluido).`;
-  const noiz =
-    p === "B"
-      ? `Si llegamos a 3, la recibes el ${entregaB} en este correo, con un enlace para verla desde mi web.`
-      : `Si llegamos a 3, la de empezar te llega el ${entregaB} y la de la espalda el ${entregaA}, en este correo, con un enlace para verlas desde mi web.`;
   return {
-    asunto: p === "B" ? `Compra confirmada: ${NOMBRE.B.es}` : `Compra confirmada: ${NOMBRE.A.es}`,
+    asunto: `Compra confirmada: ${NOMBRE.A.es}`,
     html: envolver(
       [
         parr(saludo(a.nombre, l)),
-        parr(`Pago recibido: ${esc(que)}`),
-        parr("Es una preventa: todavía no la he grabado. La grabo si se apuntan al menos 3 personas distintas. El jueves 10 de diciembre cuento cuántas somos y te escribo para decírtelo. Si no llegamos a 3, te devuelvo el dinero."),
-        parr(esc(noiz)),
-        parr(`Los vídeos están en castellano. Los tienes hasta el ${esc(hasta)} (24 meses desde la compra). No se pueden descargar.`),
-        p === "B" ? parr(`Del sábado 5 al miércoles 9 de diciembre abro la de la espalda ("${esc(NOMBRE.A.es)}"). Como ya tienes esta, si la quieres pagarás solo 10 € más.`) : "",
-        parr("El justificante del pago te lo manda Stripe. Si necesitas factura completa con tus datos, respóndeme a este correo con tu nombre o razón social, NIF y dirección, y te la mando."),
-        bloqueDesistimiento(l),
+        parr(
+          conBonus
+            ? `Pago recibido: tienes tu plaza en "${esc(NOMBRE.A.es)}" y, de regalo, en "${esc(NOMBRE.B.es)}" (${euros(a.importeCent)}, IVA incluido).`
+            : `Pago recibido: tienes tu plaza en "${esc(NOMBRE.A.es)}" (${euros(a.importeCent)}, IVA incluido).`
+        ),
+        lista([
+          "<strong>Jueves 10 de diciembre:</strong> cuento cuántas personas somos y te escribo. Si no llegamos a 3, te devuelvo el dinero.",
+          ...(conBonus ? [`<strong>${esc(entregaB.charAt(0).toUpperCase() + entregaB.slice(1))}:</strong> te llega la de regalo.`] : []),
+          `<strong>${esc(entregaA.charAt(0).toUpperCase() + entregaA.slice(1))}:</strong> te llega la de la espalda.`,
+          `Las ves en mi web con tu correo hasta el ${esc(hasta)}. En castellano, sin descarga.`,
+        ]),
+        parr("El justificante del pago te lo manda Stripe. Si necesitas factura, respóndeme con tu nombre o razón social, NIF y dirección."),
         parr("Cualquier duda, respóndeme a este correo."),
-        `<p style="margin:0;">Alain</p>`,
+        firma,
+        bloqueDesistimiento(l),
       ].join("")
     ),
   };
@@ -240,14 +232,14 @@ export function correoRecuento(a: {
   nombre: string | null;
   idioma: Idioma;
   devolverCent: number;
-  comproA: boolean;
+  conBonus: boolean;
 }): { asunto: string; html: string } {
   const l = a.idioma;
   const entregaB = fechaLarga(FECHAS.entregaB, l);
   const entregaA = fechaLarga(FECHAS.entregaA, l);
   const firma = `<p style="margin:0;">Alain</p>`;
   if (l === "eu") {
-    if (a.caso === "nada_llega")
+    if (a.caso === "no_llega")
       return {
         asunto: "Ez gara 3ra iritsi: dirua itzuliko dizut",
         html: envolver(
@@ -257,27 +249,17 @@ export function correoRecuento(a: {
             firma
         ),
       };
-    if (a.caso === "b_si_a_no")
-      return {
-        asunto: "Hastekoa grabatuko dut; bizkarrekoa ez",
-        html: envolver(
-          parr(saludo(a.nombre, l)) +
-            parr(`Gaur kontatu dut zenbat garen. Hastekoa ("${esc(NOMBRE.B.eu)}") 3ra iritsi da eta grabatuko dut: ${esc(entregaB)} jasoko duzu.`) +
-            parr(`Bizkarrekoa ("${esc(NOMBRE.A.eu)}") ez da iritsi, beraz 10 €-ko aldea itzuliko dizut. Dena itzultzea nahiago baduzu, erantzun mezu honi eta hala egingo dut.`) +
-            firma
-        ),
-      };
     return {
       asunto: "3ra iritsi gara: grabatuko dut",
       html: envolver(
         parr(saludo(a.nombre, l)) +
           parr("Gaur kontatu dut zenbat garen, eta 3ra iritsi gara: grabatuko dut.") +
-          parr(a.comproA ? `Hastekoa ${esc(entregaB)} jasoko duzu, eta bizkarrekoa ${esc(entregaA)}, posta honetan.` : `${esc(entregaB)} jasoko duzu, posta honetan.`) +
+          parr(a.conBonus ? `Oparia ${esc(entregaB)} jasoko duzu, eta bizkarrekoa ${esc(entregaA)}, posta honetan.` : `${esc(entregaA)} jasoko duzu, posta honetan.`) +
           firma
       ),
     };
   }
-  if (a.caso === "nada_llega")
+  if (a.caso === "no_llega")
     return {
       asunto: "No hemos llegado a 3: te devuelvo el dinero",
       html: envolver(
@@ -287,22 +269,12 @@ export function correoRecuento(a: {
           firma
       ),
     };
-  if (a.caso === "b_si_a_no")
-    return {
-      asunto: "La de empezar se graba; la de la espalda, no",
-      html: envolver(
-        parr(saludo(a.nombre, l)) +
-          parr(`Hoy he contado cuántas personas somos. La de empezar ("${esc(NOMBRE.B.es)}") ha llegado a 3 y la grabo: te llega el ${esc(entregaB)}.`) +
-          parr(`La de la espalda ("${esc(NOMBRE.A.es)}") no ha llegado, así que te devuelvo los 10 € de la diferencia. Si prefieres que te devuelva todo, respóndeme a este correo y lo hago.`) +
-          firma
-      ),
-    };
   return {
     asunto: "Hemos llegado a 3: se graba",
     html: envolver(
       parr(saludo(a.nombre, l)) +
         parr("Hoy he contado cuántas personas somos y hemos llegado a 3: se graba.") +
-        parr(a.comproA ? `La de empezar te llega el ${esc(entregaB)} y la de la espalda el ${esc(entregaA)}, en este correo.` : `Te llega el ${esc(entregaB)}, en este correo.`) +
+        parr(a.conBonus ? `La de regalo te llega el ${esc(entregaB)} y la de la espalda el ${esc(entregaA)}, en este correo.` : `Te llega el ${esc(entregaA)}, en este correo.`) +
         firma
     ),
   };
@@ -328,8 +300,8 @@ export function correoEntrega(a: {
           parr(`"${esc(n)}" masterclassa prest dago. Nire webgunean ikusten da, esteka honekin (zure postari lotuta dago; ez ezazu publikoki partekatu):`) +
           boton("Masterclassa ikusi") +
           parr(`Bideoa gaztelaniaz dago. ${esc(hasta)} arte duzu ikusgai.`) +
-          `<p style="${PEQ}">${esc(AVISO_SALUD.eu)}</p>` +
-          `<p style="${PEQ}">Gustatzen ez bazaizu, 15 egun dituzu gaurtik aurrera itzulketa eskatzeko: erantzun mezu honi, besterik ez.</p>` +
+          `<p style="${LEGAL}">${esc(AVISO_SALUD.eu)}</p>` +
+          `<p style="${LEGAL}">Gustatzen ez bazaizu, 15 egun dituzu gaurtik aurrera itzulketa eskatzeko: erantzun mezu honi, besterik ez.</p>` +
           `<p style="margin:0;">Alain</p>`
       ),
     };
@@ -340,8 +312,8 @@ export function correoEntrega(a: {
         parr(`La masterclass "${esc(n)}" ya está lista. Se ve en mi web, con este enlace (va ligado a tu correo; no lo publiques):`) +
         boton("Ver la masterclass") +
         parr(`La tienes hasta el ${esc(hasta)}.`) +
-        `<p style="${PEQ}">${esc(AVISO_SALUD.es)}</p>` +
-        `<p style="${PEQ}">Si no te convence, tienes 15 días desde hoy para pedirme la devolución: basta con responder a este correo.</p>` +
+        `<p style="${LEGAL}">${esc(AVISO_SALUD.es)}</p>` +
+        `<p style="${LEGAL}">Si no te convence, tienes 15 días desde hoy para pedirme la devolución: basta con responder a este correo.</p>` +
         `<p style="margin:0;">Alain</p>`
     ),
   };
