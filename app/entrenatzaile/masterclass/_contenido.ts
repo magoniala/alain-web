@@ -3,7 +3,7 @@
 // "Por dónde empezar a entrenar a partir de los 50" de regalo.
 // Sale de la nota del vault «2026-11-24 Preventa masterclass — Material para la
 // landing» (§1 qué cubre cada una, §10 legal) y del encargo del 26-11. Nada
-// inventado: ni duración, ni valor en euros del regalo (nunca se ha vendido
+// inventado: la duración es la horquilla que dio Alain (20 min a 5 h, 26-11); ni ni valor en euros del regalo (nunca se ha vendido
 // suelto a ese precio). El euskera es de Álex y Alain no lo ha repasado.
 // Reglas de Alain: comillas "así", sin separadores. (Lo de las preguntas sin ¿
 // y con ?? es solo para los mails.)
@@ -129,12 +129,12 @@ export const CONTENIDO: Record<Idioma, Contenido> = {
     },
     faqTitulo: "Preguntas",
     faq: [
-      { p: "¿Cuánto dura?", r: "Lo que tenga que durar para que te sirva. No te prometo una duración." },
+      { p: "¿Cuánto dura?", r: "Lo que tenga que durar para que te sirva. No te prometo una duración exacta, pero calculo que entre 20 minutos y 5 horas." },
       { p: "¿Qué pasa si no se apunta nadie más?", r: "Si el 10 de diciembre no hemos llegado a 3 personas, no la grabo y te devuelvo el dinero. No tienes que pedírmelo." },
       { p: "¿Y si no me gusta?", r: "Tienes 15 días desde la compra y otros 15 desde que recibes el acceso para pedirme la devolución, sin dar ningún motivo." },
       { p: "¿Me quita el dolor de espalda?", r: "No lo prometo. Te enseño a adaptar el entrenamiento para que el dolor no te pare." },
-      { p: "¿Qué pasa con el regalo si compro el sábado 5 o después?", r: "La masterclass sigue costando 17 €, pero ya sin el regalo. El regalo es solo para quien compra hasta el viernes 4 a las 23:59.", soloBonus: true },
-      { p: "¿Cómo la veo?", r: "Desde mi web, con tu correo, durante 24 meses desde la compra. No se puede descargar." },
+      { p: "¿Qué pasa con el regalo si compro el sábado 5 o después?", r: "La masterclass sigue costando 17 €, pero ya sin el regalo. El regalo es solo para quien compra antes del viernes 4 a las 23:59.", soloBonus: true },
+      { p: "¿Cómo la veo?", r: "Desde mi web (en el ordenador, el móvil o la tablet), con tu correo, durante 24 meses desde la compra. No se puede descargar." },
       { p: "¿En qué idioma está?", r: "Los vídeos, en castellano. Esta página y los correos, en castellano y en euskera." },
       { p: "¿Me haces factura?", r: "Stripe te manda el justificante del pago. Si necesitas factura completa con tus datos, respóndeme al correo de confirmación y te la mando." },
       { p: "¿Puedo preguntarte dudas?", r: "Sí, escribiéndome a contacto@alainzulaika.com." },
@@ -234,12 +234,12 @@ export const CONTENIDO: Record<Idioma, Contenido> = {
     },
     faqTitulo: "Galderak",
     faq: [
-      { p: "Zenbat irauten du?", r: "Balio dizun arte behar duena. Ez dizut iraupenik agintzen." },
+      { p: "Zenbat irauten du?", r: "Balio dizun arte behar duena. Ez dizut iraupen zehatzik agintzen, baina 20 minutu eta 5 ordu artean izango dela uste dut." },
       { p: "Eta inor gehiago apuntatzen ez bada?", r: "Abenduaren 10ean 3 pertsonara iritsi ez bagara, ez dut grabatuko eta dirua itzuliko dizut. Ez duzu eskatu beharrik." },
       { p: "Eta gustatzen ez bazait?", r: "Erosi eta 15 egun dituzu, eta beste 15 sarbidea jasotzen duzunetik, itzulketa eskatzeko, arrazoirik eman gabe." },
       { p: "Bizkarreko mina kentzen dit?", r: "Ez dut agintzen. Entrenamendua egokitzen irakasten dizut, minak gelditu ez zaitzan." },
-      { p: "Zer gertatzen da opariarekin abenduaren 5ean edo geroago erosten badut?", r: "Masterclassak 17 € balio ditu oraindik, baina opari gabe. Oparia abenduaren 4ko 23:59ra arte erosten dutenentzat bakarrik da.", soloBonus: true },
-      { p: "Nola ikusten dut?", r: "Nire webgunetik, zure postarekin, erosi eta 24 hilabetez. Ezin da deskargatu." },
+      { p: "Zer gertatzen da opariarekin abenduaren 5ean edo geroago erosten badut?", r: "Masterclassak 17 € balio ditu oraindik, baina opari gabe. Oparia abenduaren 4ko 23:59 baino lehen erosten dutenentzat bakarrik da.", soloBonus: true },
+      { p: "Nola ikusten dut?", r: "Nire webgunetik (ordenagailuan, mugikorrean edo tabletan), zure postarekin, erosi eta 24 hilabetez. Ezin da deskargatu." },
       { p: "Zein hizkuntzatan dago?", r: "Bideoak, gaztelaniaz. Orri hau eta mezuak, euskaraz eta gaztelaniaz." },
       { p: "Faktura egiten didazu?", r: "Stripek ordainketaren egiaztagiria bidaltzen dizu. Faktura osoa behar baduzu zure datuekin, erantzun berrespen-mezuari eta bidaliko dizut." },
       { p: "Zalantzak galdetu ditzaket?", r: "Bai, contacto@alainzulaika.com helbidera idatzita." },
