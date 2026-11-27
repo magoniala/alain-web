@@ -55,6 +55,8 @@ interface Tarea {
   } | null;
   entrante: { id: string; de: string | null; asunto: string | null; fecha: string | null; texto: string | null } | null;
   ultimos?: Ultimos;
+  /** Pista del ayuntamiento para los centros: en un centro, la de su municipio; en un ayuntamiento, la suya. */
+  pista_ayto?: { ayuntamiento: string; texto: string } | null;
 }
 
 interface Huerfano {
@@ -574,6 +576,18 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, guiones, avisoGuiones, mo
         {/* Lo que se propone */}
         <div className="p-5">
           {t.nota_para_alain && <p className="mb-3 bg-amber-50 px-3 py-2 text-[0.82rem] text-amber-900">⚑ {t.nota_para_alain}</p>}
+          {t.pista_ayto && t.centro?.tipo !== "ayuntamiento" && (
+            <p className="mb-3 bg-sky-50 px-3 py-2 text-[0.82rem] text-sky-900">🏛️ Recado de {t.pista_ayto.ayuntamiento}: {t.pista_ayto.texto}</p>
+          )}
+          {t.centro?.tipo === "ayuntamiento" && (
+            <PistaParaCentros
+              actual={t.pista_ayto?.texto ?? null}
+              sugerida={t.contexto?.resumen ?? ""}
+              ocupado={ocupado === "pista"}
+              deshabilitado={prueba}
+              onGuardar={(txt) => hacer("pista", { accion: "pista_centros", centro_id: t.centro?.id, texto: txt })}
+            />
+          )}
           {(t.contexto?.faltan_datos?.length ?? 0) > 0 && (
             <div className="mb-3">
               <CajaFaltanDatos faltan={t.contexto?.faltan_datos} ocupado={ocupado === "completar"} onGuardar={(clave, txt) => hacer("completar", { accion: "completar", id: t.id, clave, texto: txt })} />
@@ -729,6 +743,37 @@ function TarjetaTarea({ t, prueba, accion, alTerminar, guiones, avisoGuiones, mo
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * Tarjeta de ayuntamiento: «Guardar para los centros». Lo que dice el ayuntamiento y sirve para sus
+ * centros (p. ej. "la ayuda la piden los centros") queda en su ficha y en el Registro de cada centro
+ * del municipio, y sale en sus tarjetas (lib/ayto-municipio.ts). No cierra la tarjeta.
+ */
+function PistaParaCentros({ actual, sugerida, ocupado, deshabilitado, onGuardar }: { actual: string | null; sugerida: string; ocupado: boolean; deshabilitado: boolean; onGuardar: (texto: string) => void }) {
+  const [abierta, setAbierta] = useState(false);
+  const [texto, setTexto] = useState(actual ?? sugerida);
+  return (
+    <div className="mb-3 text-[0.82rem]">
+      {actual && <p className="mb-1 bg-sky-50 px-3 py-2 text-sky-900">🏛️ Pista para los centros: {actual}</p>}
+      {!abierta ? (
+        <button onClick={() => setAbierta(true)} disabled={deshabilitado} title={deshabilitado ? "Desactiva el modo prueba para tocar el CRM" : "Lo que dice el ayuntamiento y sirve para escribir a sus centros"} className="px-3 py-1 text-[#0F2240] ring-1 ring-[#0F2240]/40 disabled:opacity-40">
+          {actual ? "Cambiar la pista para los centros" : "Guardar para los centros"}
+        </button>
+      ) : (
+        <div className="space-y-2 rounded-lg bg-sky-50/60 p-3">
+          <p className="text-gray-600">Qué tienen que saber sus centros (se copia en el Registro de cada centro del municipio y sale en sus tarjetas):</p>
+          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={3} className="w-full rounded border border-gray-300 p-2" />
+          <div className="flex gap-2">
+            <button onClick={() => onGuardar(texto)} disabled={ocupado || texto.trim().length < 5} className="bg-[#1a1a1a] px-3 py-1 text-white disabled:opacity-40">
+              {ocupado ? "Guardando…" : "Guardar para los centros"}
+            </button>
+            <button onClick={() => setAbierta(false)} className="px-3 py-1 text-gray-600 ring-1 ring-gray-300">Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -117,8 +117,9 @@ const ORDEN = [
   "responsable", "responsable_cargo", "responsable_email", "responsable_tel", "ampa", "ampa_contacto", "ampa_email",
   "calendario_abierto", "intentos_llamada", "mails_enviados", "fecha_ultimo_contacto", "proxima_accion",
   "bloqueado_por", "fecha_proxima_accion", "fecha_creacion", "ficha_cliente", "otros_formatos",
+  "pista_para_centros", // ayuntamientos: lo que sirve para sus centros (lib/ayto-municipio.ts)
 ];
-const OPCIONALES = new Set(["via", "bloqueado_por", "ficha_cliente", "otros_formatos"]);
+const OPCIONALES = new Set(["via", "bloqueado_por", "ficha_cliente", "otros_formatos", "pista_para_centros"]);
 const SIEMPRE_COMILLAS = new Set(["codigo", "telefono", "ficha_cliente", "proxima_accion"]);
 const NUMERICOS = new Set(["intentos_llamada", "mails_enviados"]);
 

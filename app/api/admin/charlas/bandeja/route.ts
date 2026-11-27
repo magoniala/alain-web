@@ -9,6 +9,8 @@ import { anadirAlCatalogo, instruccionTrasCompletar } from "@/lib/conocimiento-c
 import { leerSesiones, proximaSesion, bonita } from "@/lib/charlas-sesiones";
 import { contextoConDeshacer, deshacer, fotoFicha, recientesDeshacibles, tareaPrevia } from "@/lib/bandeja-deshacer";
 import { enviar, aplicarCambios, cargarTarea, EnvioDuplicado } from "@/lib/charlas-envio";
+import { guardarPistaParaCentros, pistasAyto } from "@/lib/ayto-municipio";
+import { pistaDeLocalidad } from "@/lib/ayto-municipio-reglas";
 
 // Bandeja de charlas en el panel.
 //
@@ -26,6 +28,7 @@ import { enviar, aplicarCambios, cargarTarea, EnvioDuplicado } from "@/lib/charl
 //   asignar     { mensaje_id, centro_id }    correo huérfano → centro, y se procesa
 //   ignorar     { mensaje_id }               correo huérfano que no es de charlas
 //   config      { modo_prueba?: boolean, lector_activo?: boolean }
+//   pista_centros { centro_id, texto }      tarjeta de ayuntamiento: «Guardar para los centros» (lib/ayto-municipio)
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -70,6 +73,15 @@ export async function GET(req: Request) {
   // «Sin emparejar»: centros candidatos para asociar con un toque.
   const candidatos = await candidatosHuerfanos(supabase, (huerfanos.data ?? []).map((h) => ({ ...h, texto: h.texto ? quitarCita(h.texto) : null }))).catch(() => ({} as Record<string, unknown[]>));
 
+  // Pista del ayuntamiento para los centros de su municipio (lib/ayto-municipio): en las tarjetas
+  // de centro, la del ayuntamiento de su localidad; en las de ayuntamiento, la suya (para editarla).
+  const pistas = await pistasAyto(supabase).catch(() => []);
+  const pistaDeTarea = (t: { centro?: { id?: string; tipo?: string | null; localidad?: string | null } | null }) => {
+    if (!t.centro) return null;
+    const p = t.centro.tipo === "ayuntamiento" ? pistas.find((x) => x.id === t.centro?.id) ?? null : pistaDeLocalidad(pistas, t.centro.localidad);
+    return p?.pista_para_centros ? { ayuntamiento: p.nombre, texto: p.pista_para_centros } : null;
+  };
+
   const cfg = Object.fromEntries((config.data ?? []).map((c) => [c.clave, c.valor]));
   const recientes = await recientesDeshacibles(supabase, "charlas").catch(() => []);
   const hoyISO = hoy();
@@ -77,7 +89,7 @@ export async function GET(req: Request) {
   const coste30 = (uso.data ?? []).reduce((s, u) => s + Number(u.coste_usd), 0);
 
   return NextResponse.json({
-    tareas: (tareas.data ?? []).map((t) => ({ ...t, ultimos: ultimos[t.centro_id] ?? { entrante: null, saliente: null } })),
+    tareas: (tareas.data ?? []).map((t) => ({ ...t, ultimos: ultimos[t.centro_id] ?? { entrante: null, saliente: null }, pista_ayto: pistaDeTarea(t) })),
     error_tareas: tareas.error?.message ?? null,
     huerfanos: (huerfanos.data ?? []).map((h) => ({ id: h.id, de: h.de, asunto: h.asunto, fecha: h.fecha, texto: h.texto, rescatado: h.match_por === "rescate", candidatos: candidatos[h.id] ?? [] })),
     errores: errores.data ?? [],
@@ -247,6 +259,10 @@ export async function POST(req: Request) {
       case "ignorar": {
         await supabase.from("charlas_mensajes").update({ estado: "ignorado" }).eq("id", String(body.mensaje_id));
         return NextResponse.json({ ok: true });
+      }
+      case "pista_centros": {
+        const r = await guardarPistaParaCentros(String(body.centro_id ?? ""), String(body.texto ?? ""));
+        return NextResponse.json({ ok: true, ...r, aviso: r.centros.length ? `Guardada y copiada en el Registro de: ${r.centros.join(", ")}.` : "Guardada. No hay centros de este municipio en el CRM." });
       }
       case "config": {
         for (const clave of ["modo_prueba", "lector_activo"]) {

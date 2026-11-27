@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { supabaseCharlas } from "@/lib/charlas";
+import { pistasAyto } from "@/lib/ayto-municipio";
+import { pistaDeLocalidad } from "@/lib/ayto-municipio-reglas";
 
 // Lectura del CRM de charlas para el panel.
 //
@@ -55,8 +57,11 @@ export async function GET(req: Request) {
       supabase.from("charlas_eventos").select("*").eq("centro_id", id).order("fecha_evento"),
     ]);
     if (centro.error) return NextResponse.json({ error: centro.error.message }, { status: 404 });
+    // Pista que dejó el ayuntamiento de su municipio para los centros (lib/ayto-municipio).
+    const pista = centro.data.tipo === "ayuntamiento" ? null : pistaDeLocalidad(await pistasAyto(supabase), centro.data.localidad);
     return NextResponse.json({
       centro: centro.data,
+      pista_ayto: pista ? { ayuntamiento: pista.nombre, texto: pista.pista_para_centros } : null,
       registro: registro.data ?? [],
       contactos: contactos.data ?? [],
       tareas: tareas.data ?? [],

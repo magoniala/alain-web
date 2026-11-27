@@ -244,6 +244,8 @@ export interface ResumenColaAyto {
   creadas: number;
   candidatos: number;
   localizar: number;
+  /** Mail 1 que no salen por la regla del municipio (charla ya cobrada y sin más centros). */
+  saltadas?: number;
   errores: string[];
 }
 
@@ -287,8 +289,9 @@ export async function mail1Ayuntamientos(opciones: { presupuestoMs: number }): P
     const d = decisionMail1(c as never, h);
     if (!d) continue;
     try {
-      await crearTarea(c as never, d);
-      res.creadas++;
+      // La regla del municipio (lib/ayto-municipio.ts) puede dejarla sin tarjeta: ya hay charla cobrada y no quedan centros.
+      if ((await crearTarea(c as never, d)) === "saltada") res.saltadas = (res.saltadas ?? 0) + 1;
+      else res.creadas++;
     } catch (e) {
       res.errores.push(`${c.nombre}: ${(e as Error).message}`);
     }

@@ -31,6 +31,8 @@ import { leerSesiones, proximaSesion, sesionVigente, bonita } from "@/lib/charla
 import { supabaseCharlas, faseDeEstado, puntuarUrgencia } from "./charlas";
 import { procesarConIA } from "./charlas-ia";
 import { decidirAyuntamiento, ETIQUETAS_AYTO } from "./ayto-flujo";
+import { filtroMail1Municipio, pistasAyto } from "./ayto-municipio";
+import { pistaDeLocalidad } from "./ayto-municipio-reglas";
 
 const hoy = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
 /** Medianoche de hoy en Madrid, en ISO con su desfase (+01:00 en invierno, +02:00 en verano). */
@@ -72,6 +74,7 @@ export interface Centro {
   otros_formatos?: string | null;
   tipo?: string | null;
   responsable_cargo?: string | null;
+  localidad?: string | null;
 }
 
 export interface Decision {
@@ -403,7 +406,7 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
 
   const { data: centros } = await supabase
     .from("charlas_centros")
-    .select("id, nombre, estado, euskera, responsable, responsable_email, email_centro, proxima_accion, fecha_proxima_accion, bloqueado_por, nivel_autonomia, mails_enviados, intentos_llamada, via, otros_formatos, tipo, responsable_cargo")
+    .select("id, nombre, estado, euskera, responsable, responsable_email, email_centro, proxima_accion, fecha_proxima_accion, bloqueado_por, nivel_autonomia, mails_enviados, intentos_llamada, via, otros_formatos, tipo, responsable_cargo, localidad")
     .lte("fecha_proxima_accion", hoy())
     .not("estado", "like", "7%")
     .not("estado", "like", "8%")
@@ -478,8 +481,7 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
       };
     }
     try {
-      await crearTarea(c, d);
-      res.creadas++;
+      if ((await crearTarea(c, d)) !== "saltada") res.creadas++;
     } catch (e) {
       res.errores.push(`${c.nombre}: ${(e as Error).message}`);
     }
@@ -488,8 +490,12 @@ export async function tareasPorFecha(opciones: { presupuestoMs: number; limite?:
   return res;
 }
 
-export async function crearTarea(c: Centro, d: Decision) {
+export async function crearTarea(c: Centro, d0: Decision): Promise<"creada" | "saltada" | void> {
   const supabase = supabaseCharlas();
+  // Mail 1 a un ayuntamiento: regla del municipio (lib/ayto-municipio.ts). Puede no salir o salir con aviso.
+  const filtrada = c.tipo === "ayuntamiento" ? await filtroMail1Municipio(c, d0) : d0;
+  if (!filtrada) return "saltada";
+  const d = filtrada;
   const idioma: "es" | "eu" = c.euskera === "sí" || c.euskera === "parcial" ? "eu" : "es";
   const alBuzon = d.tipo === "mail_b" || (d.tipo === "reactivacion" && !c.responsable_email);
   const destinatario = ((alBuzon ? c.email_centro : c.responsable_email ?? c.email_centro) ?? "").split(/[\/;,\s]+/).find((e) => e.includes("@")) ?? null;
@@ -537,11 +543,18 @@ export async function crearTarea(c: Centro, d: Decision) {
   const { secciones_extra, creado_en, actualizado_en, actualizado_por, id, ...limpia } = ficha ?? {};
   void secciones_extra; void creado_en; void actualizado_en; void actualizado_por; void id;
 
+  // Centro (no ayuntamiento) de un municipio cuyo ayuntamiento dejó una pista: va a la IA.
+  let instrucciones = d.instrucciones;
+  if (c.tipo !== "ayuntamiento") {
+    const pista = pistaDeLocalidad(await pistasAyto(supabase), (ficha as { localidad?: string | null } | null)?.localidad);
+    if (pista) instrucciones += ` RECADO DE ${pista.nombre.toUpperCase()} PARA LOS CENTROS: "${pista.pista_para_centros}". Tenlo en cuenta si encaja (p. ej. que la actividad la puede cubrir la ayuda municipal), en una frase y sin inventar nada más.`;
+  }
+
   const r = await procesarConIA({
     centro: limpia,
     registro: (registro ?? []).slice(-40),
     hilo: (hilo ?? []).reverse(),
-    programada: { tipo: d.tipo, instrucciones: d.instrucciones, destinatario },
+    programada: { tipo: d.tipo, instrucciones, destinatario },
     ...(d.tipo.startsWith("ayto_") ? { proposito: "ayto_programada" } : {}),
   });
 

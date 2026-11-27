@@ -56,6 +56,8 @@ interface Detalle {
   contactos: { id: string; nombre: string | null; cargo: string | null; email: string | null; telefono: string | null; rol: string; origen: string }[];
   tareas: { id: string; tipo: string; nivel: string; estado: string; fecha_prevista: string }[];
   eventos: { id: string; nombre: string; fecha_evento: string | null; estado_evento: string | null; importe_base: number | null }[];
+  /** Pista del ayuntamiento de su municipio para los centros (lib/ayto-municipio). */
+  pista_ayto?: { ayuntamiento: string; texto: string } | null;
 }
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -513,6 +515,8 @@ function Ficha({ detalle, onGuardar, centros, abrir }: { detalle: Detalle; onGua
           </div>
           <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] ${colorEstado(c.estado)}`}>{c.estado}</span>
         </div>
+
+        {detalle.pista_ayto && <p className="mt-3 bg-sky-50 px-3 py-2 text-[0.82rem] text-sky-900">🏛️ Recado de {detalle.pista_ayto.ayuntamiento}: {detalle.pista_ayto.texto}</p>}
 
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-[0.85rem] sm:grid-cols-3">
           <div>
