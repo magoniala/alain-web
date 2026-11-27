@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { processText } from "@/lib/newsletter-texto";
 import { MARCA_DEVUELTO_A_CONFIRMAR } from "@/lib/newsletter-fechas";
+import GruposEnvioPanel from "./GruposEnvioPanel";
 
 interface Contacto {
   id: string;
@@ -41,7 +42,7 @@ interface SendResult {
   error?: string;
 }
 
-const TABS = ["Por confirmar", "Nuevo email", "Programadas", "Cola B", "Suscriptores"] as const;
+const TABS = ["Por confirmar", "Nuevo email", "Programadas", "Cola B", "Grupos", "Suscriptores"] as const;
 type Tab = (typeof TABS)[number];
 
 const REMITENTES = ["newsletter@alainzulaika.com"] as const;
@@ -1484,6 +1485,8 @@ export default function NewsletterTab() {
         )}
 
         {/* ── TAB: SUSCRIPTORES ── */}
+        {tab === "Grupos" && <GruposEnvioPanel />}
+
         {tab === "Suscriptores" && (
           <section className="bg-white border border-gray-200 p-5 md:p-6 space-y-8">
 

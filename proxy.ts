@@ -34,6 +34,9 @@ const NO_REDIRECT_PATHS = [
   // misma URL (el QR va impreso); el idioma va en la cookie `lang` y se elige
   // con el selector de la propia plataforma o con ?h=es / ?h=eu (abajo).
   "/magia-tailerrak",
+  // Baja de los envíos a grupos (lib/grupos-envio.ts): una sola página con el
+  // idioma en ?h=, que llega desde el pie del mail.
+  "/correos",
 ];
 
 export function proxy(request: NextRequest) {
