@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 /** Vídeo de YouTube que solo se carga al pulsar (miniatura + botón de play). */
-export default function Bideoa({ id, izenburua }: { id: string; izenburua: string }) {
+export default function Bideoa({ id, izenburua, etiketa }: { id: string; izenburua: string; /** «Ikusi bideoa: …» en el idioma de la página. */ etiketa: string }) {
   const [martxan, setMartxan] = useState(false);
   return (
     <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", background: "#000" }}>
@@ -18,7 +18,7 @@ export default function Bideoa({ id, izenburua }: { id: string; izenburua: strin
       ) : (
         <button
           onClick={() => setMartxan(true)}
-          aria-label={`Ikusi bideoa: ${izenburua}`}
+          aria-label={etiketa}
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%", border: "none", cursor: "pointer",
             backgroundImage: `url(https://img.youtube.com/vi/${id}/hqdefault.jpg)`, backgroundSize: "cover", backgroundPosition: "center",

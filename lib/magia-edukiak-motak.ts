@@ -17,6 +17,8 @@ export interface Liburutxoa {
    * Solo viene si la columna existe (sql/magia_giltza.sql). Nunca al cliente público.
    */
   giltza?: string | null;
+  /** Nombre en castellano («6-7 años»). Solo si existe la columna (sql/magia_gaztelania.sql). */
+  etiketa_es?: string | null;
 }
 
 /** Para comparar la palabra mágica: sin mayúsculas, tildes, espacios ni signos. */
@@ -39,6 +41,15 @@ export interface Edukia {
   ordena: number;
   ikusgai: boolean;
   prezioa_cent: number | null;
+  // Castellano (sql/magia_gaztelania.sql). Vacío = sale el texto en euskera;
+  // sin vídeo en castellano = sale el de euskera con aviso (y al revés).
+  izenburua_es?: string | null;
+  etiketa_es?: string | null;
+  sarrera_es?: string | null;
+  materiala_es?: string | null;
+  youtube_es?: string | null;
+  /** Solo en las páginas públicas: idioma del vídeo que se ve (lo pone edukiaHizkuntzan). */
+  bideoHizkuntza?: "eu" | "es" | null;
 }
 
 export interface Katalogoa {
@@ -46,6 +57,8 @@ export interface Katalogoa {
   edukiak: Edukia[];
   /** db = tablas con filas · kodea = catálogo del código (tablas vacías o sin crear). */
   iturria: "db" | "kodea";
+  /** ¿Existen las columnas en castellano? (sql/magia_gaztelania.sql ejecutado). */
+  gaztelania: boolean;
   errorea: string | null;
 }
 

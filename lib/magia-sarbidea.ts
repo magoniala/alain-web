@@ -1,12 +1,13 @@
 // Quién puede ver qué librillo (lo usan la página del librillo y la de cada juego).
 import { ikusgaiak, katalogoa, liburutxoaDago, liburutxokoEdukiak, type Edukia } from "@/lib/magia-edukiak";
+import { katalogoaHizkuntzan, type Hizkuntza } from "@/lib/magia-hizkuntza";
 import { nireLiburutxoak, nireSaioa } from "@/lib/magia-plataforma";
 
 export const PALOAK = ["♠", "♥", "♦", "♣"] as const;
 export const gorria = (paloa: string) => paloa === "♥" || paloa === "♦";
 
-export async function liburutxoSarbidea(liburutxoa: string) {
-  const k = ikusgaiak(await katalogoa());
+export async function liburutxoSarbidea(liburutxoa: string, h: Hizkuntza) {
+  const k = katalogoaHizkuntzan(ikusgaiak(await katalogoa()), h);
   if (!liburutxoaDago(k, liburutxoa)) return null;
   const l = k.liburutxoak.find((x) => x.slug === liburutxoa)!;
   const saioa = await nireSaioa();

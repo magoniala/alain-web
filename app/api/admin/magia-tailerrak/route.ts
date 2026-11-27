@@ -66,12 +66,26 @@ function leerEdukia(x: Record<string, unknown>): Edukia | string {
   }
   const liburutxoak = Array.isArray(x.liburutxoak) ? x.liburutxoak.filter((s): s is string => typeof s === "string" && SLUG_ONA.test(s)) : [];
   const prezioa = typeof x.prezioa_cent === "number" && x.prezioa_cent >= 0 ? Math.round(x.prezioa_cent) : null;
-  return {
+  const e: Edukia = {
     slug, mota, egoera, izenburua,
     etiketa: texto(x.etiketa, 80), sarrera: texto(x.sarrera), materiala: texto(x.materiala), youtube,
     liburutxoak, ordena: typeof x.ordena === "number" ? x.ordena : 0, ikusgai: x.ikusgai !== false,
     prezioa_cent: egoera === "ordainpekoa" ? prezioa : null,
   };
+  // Castellano: solo si el panel lo manda (columnas de sql/magia_gaztelania.sql).
+  if ("youtube_es" in x) {
+    let youtubeEs: string | null = null;
+    if (typeof x.youtube_es === "string" && x.youtube_es.trim()) {
+      youtubeEs = youtubeId(x.youtube_es);
+      if (!youtubeEs) return "No reconozco el enlace de YouTube del vídeo en castellano.";
+    }
+    e.youtube_es = youtubeEs;
+    e.izenburua_es = texto(x.izenburua_es, 120);
+    e.etiketa_es = texto(x.etiketa_es, 80);
+    e.sarrera_es = texto(x.sarrera_es);
+    e.materiala_es = texto(x.materiala_es);
+  }
+  return e;
 }
 
 function leerLiburutxoa(x: Record<string, unknown>): Liburutxoa | string {
@@ -82,6 +96,7 @@ function leerLiburutxoa(x: Record<string, unknown>): Liburutxoa | string {
   const l: Liburutxoa = { slug, etiketa, ordena: typeof x.ordena === "number" ? x.ordena : 0, ikusgai: x.ikusgai !== false };
   // Solo si viene: sin la columna (sql/magia_giltza.sql sin ejecutar) no se toca.
   if ("giltza" in x) l.giltza = texto(x.giltza, 40);
+  if ("etiketa_es" in x) l.etiketa_es = texto(x.etiketa_es, 60);
   return l;
 }
 
@@ -93,6 +108,7 @@ export async function PUT(req: Request) {
   if (b.mota === "edukia" && b.edukia) {
     const e = leerEdukia(b.edukia);
     if (typeof e === "string") return mal(e);
+    if ("youtube_es" in e && !k.gaztelania) return mal("Antes hay que ejecutar sql/magia_gaztelania.sql en Supabase (campos en castellano).");
     const r = await db().from("magia_edukiak").upsert({ ...e, updated_at: new Date().toISOString() });
     if (r.error) return mal(r.error.message, 500);
     return NextResponse.json({ ok: true, edukia: e });

@@ -30,7 +30,9 @@ const NO_REDIRECT_PATHS = [
   // euskaldunes con el móvil en castellano, y la redirección por idioma del
   // navegador las mandaba a /es/tumision.
   "/tumision",
-  // Plataforma de magia del QR de los librillos: solo en euskera (de momento).
+  // Plataforma de magia del QR de los librillos: euskera y castellano en la
+  // misma URL (el QR va impreso); el idioma va en la cookie `lang` y se elige
+  // con el selector de la propia plataforma o con ?h=es / ?h=eu (abajo).
   "/magia-tailerrak",
 ];
 
@@ -85,6 +87,20 @@ export function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = pathname === "/" ? "/creadores" : `/creadores${pathname}`;
     return NextResponse.rewrite(url);
+  }
+
+  // Plataforma de magia: ?h=es / ?h=eu fija el idioma (cookie `lang`, 1 año) y
+  // se quita de la URL. Sin ?h ni cookie, la plataforma sale en euskera.
+  if (pathname === "/magia-tailerrak" || pathname.startsWith("/magia-tailerrak/")) {
+    const h = request.nextUrl.searchParams.get("h");
+    if (h === "es" || h === "eu") {
+      const url = request.nextUrl.clone();
+      url.searchParams.delete("h");
+      const res = NextResponse.redirect(url);
+      res.cookies.set("lang", h, { path: "/", maxAge: 31536000, sameSite: "lax" });
+      return res;
+    }
+    return NextResponse.next();
   }
 
   // Rutas sin versión /es: pasar siempre sin redirigir

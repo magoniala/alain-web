@@ -4,7 +4,8 @@
 // con dos librillos puede tener los dos.
 import { NextResponse } from "next/server";
 import { ikusgaiak, katalogoa } from "@/lib/magia-edukiak";
-import { db, giltzaZuzena, liburutxoCookieaJarri, nireSaioa } from "@/lib/magia-plataforma";
+import { TESTUAK } from "@/lib/magia-hizkuntza";
+import { db, giltzaZuzena, hizkuntza, liburutxoCookieaJarri, nireSaioa } from "@/lib/magia-plataforma";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   if (!giltzaZuzena(l, body.giltza)) {
     // Un poco de espera para que no compense ir probando palabras.
     await new Promise((r) => setTimeout(r, 800));
-    return NextResponse.json({ error: "Hitz magiko hori ez da zuzena. Begiratu berriro zure liburutxoan." }, { status: 400 });
+    return NextResponse.json({ error: TESTUAK[await hizkuntza()].giltzaOkerra }, { status: 400 });
   }
   await liburutxoCookieaJarri(l);
 

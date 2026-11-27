@@ -133,14 +133,23 @@ export async function tumisionDisponible(email: string, idioma: "es" | "eu"): Pr
 
 // ---------- Altas ----------
 
-/** Alta desde la plataforma de los librillos (siempre en euskera). */
-export async function apuntarTumisionLibrillo(email: string, ahora = new Date()): Promise<"apuntado" | "ya-estaba" | "no" | "error"> {
-  const disp = await tumisionDisponible(email, "eu");
+/**
+ * Alta desde la plataforma de los librillos, en el idioma elegido en ella
+ * (27-nov: la plataforma es bilingüe). Si en castellano no hay mails activos,
+ * va en euskera, como antes de que hubiera castellano.
+ */
+export async function apuntarTumisionLibrillo(email: string, hizkuntza: "es" | "eu" = "eu", ahora = new Date()): Promise<"apuntado" | "ya-estaba" | "no" | "error"> {
+  let idioma = hizkuntza;
+  let disp = await tumisionDisponible(email, idioma);
+  if (!disp.usar && idioma === "es") {
+    idioma = "eu";
+    disp = await tumisionDisponible(email, idioma);
+  }
   if (!disp.usar) return "no";
   const proximo = disp.modo === "prueba" ? ahora : primerHueco(ahora);
   const { error } = await db()
     .from("mision_contactos")
-    .insert({ email, idioma: "eu", canal: "librillo", tumision_pos: 1, tumision_proximo: proximo.toISOString() });
+    .insert({ email, idioma, canal: "librillo", tumision_pos: 1, tumision_proximo: proximo.toISOString() });
   if (error) {
     if (error.code === "23505") return "ya-estaba";
     console.error("tumision: error en el alta del librillo:", error.message);

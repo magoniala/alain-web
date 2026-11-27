@@ -8,6 +8,9 @@ import { confirmar } from "./confirmar";
 // Desde aquí se edita todo lo que se ve: librillos, juegos (texto, material,
 // vídeo), el regalo por email, los bloques cerrados, el orden y si algo está
 // visible. Los cambios salen al momento en la web. Debajo, quién ha dejado el email.
+// Euskera y castellano (27-nov): cada texto y cada vídeo tiene su campo ES al
+// lado del EU (columnas *_es, sql/magia_gaztelania.sql). ES vacío = en la web
+// sale el euskera; sin vídeo ES = sale el EU con un aviso (y al revés).
 
 const pw = () => sessionStorage.getItem("admin_pw") || "";
 const campo = "w-full border border-gray-300 bg-white px-2.5 py-2 text-[0.85rem] text-gray-900";
@@ -65,8 +68,15 @@ function Etiqueta({ egoera }: { egoera: Egoera }) {
 
 const VACIO = (liburutxoak: string[]): Edukia => ({ slug: "", mota: "jolasa", egoera: "irekia", izenburua: "", etiketa: "", sarrera: "", materiala: "", youtube: "", liburutxoak, ordena: 0, ikusgai: true, prezioa_cent: null });
 
-function FormEdukia({ inicial, liburutxoak, nuevo, onCerrar, onGuardado }: { inicial: Edukia; liburutxoak: Liburutxoa[]; nuevo: boolean; onCerrar: () => void; onGuardado: () => Promise<void> }) {
-  const [f, setF] = useState<Edukia>({ ...inicial, etiketa: inicial.etiketa ?? "", sarrera: inicial.sarrera ?? "", materiala: inicial.materiala ?? "", youtube: inicial.youtube ?? "" });
+const ytLink = (id: string | null | undefined, h: string) =>
+  id ? <a className={`${boton} text-emerald-700`} href={`https://youtu.be/${id}`} target="_blank" rel="noreferrer">▶ {h}</a> : <span className="text-[0.72rem] text-gray-400">sin vídeo {h}</span>;
+
+function FormEdukia({ inicial, liburutxoak, nuevo, gaztelania, onCerrar, onGuardado }: { inicial: Edukia; liburutxoak: Liburutxoa[]; nuevo: boolean; gaztelania: boolean; onCerrar: () => void; onGuardado: () => Promise<void> }) {
+  const [f, setF] = useState<Edukia>({
+    ...inicial, etiketa: inicial.etiketa ?? "", sarrera: inicial.sarrera ?? "", materiala: inicial.materiala ?? "", youtube: inicial.youtube ?? "",
+    // Los campos ES solo viajan si existen las columnas (si no, el guardado fallaría).
+    ...(gaztelania ? { izenburua_es: inicial.izenburua_es ?? "", etiketa_es: inicial.etiketa_es ?? "", sarrera_es: inicial.sarrera_es ?? "", materiala_es: inicial.materiala_es ?? "", youtube_es: inicial.youtube_es ?? "" } : {}),
+  });
   const [estado, setEstado] = useState<"" | "guardando" | string>("");
   const set = <K extends keyof Edukia>(k: K, v: Edukia[K]) => setF((x) => ({ ...x, [k]: v }));
   const esSecreto = f.mota === "sekretua";
@@ -74,7 +84,7 @@ function FormEdukia({ inicial, liburutxoak, nuevo, onCerrar, onGuardado }: { ini
   async function guardar() {
     setEstado("guardando");
     try {
-      await api({ method: "PUT", body: JSON.stringify({ mota: "edukia", edukia: { ...f, youtube: f.youtube || null } }) });
+      await api({ method: "PUT", body: JSON.stringify({ mota: "edukia", edukia: { ...f, youtube: f.youtube || null, ...(gaztelania ? { youtube_es: f.youtube_es || null } : {}) } }) });
       await onGuardado();
       onCerrar();
     } catch (e) {
@@ -84,9 +94,17 @@ function FormEdukia({ inicial, liburutxoak, nuevo, onCerrar, onGuardado }: { ini
 
   return (
     <div className="mt-3 grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <label className={etiqueta}>Título {esSecreto && "(no se muestra: sale «???»; sirve para reconocerlo aquí)"}</label>
+      <div>
+        <label className={etiqueta}>Título EU {esSecreto && "(no se muestra: sale «???»; sirve para reconocerlo aquí)"}</label>
         <input className={campo} value={f.izenburua} onChange={(e) => { set("izenburua", e.target.value); if (nuevo && !f.slug) set("slug", slugDesde(e.target.value)); }} placeholder="Goma saltaria" />
+      </div>
+      <div>
+        {gaztelania && !esSecreto ? (
+          <>
+            <label className={etiqueta}>Título ES (vacío = sale el EU)</label>
+            <input className={campo} value={f.izenburua_es ?? ""} onChange={(e) => set("izenburua_es", e.target.value)} placeholder="La goma saltarina" />
+          </>
+        ) : null}
       </div>
       <div>
         <label className={etiqueta}>Identificador (URL interna, sin espacios)</label>
@@ -118,20 +136,55 @@ function FormEdukia({ inicial, liburutxoak, nuevo, onCerrar, onGuardado }: { ini
       {!esSecreto && (
         <>
           <div>
-            <label className={etiqueta}>Etiqueta pequeña (encima del título)</label>
+            <label className={etiqueta}>Vídeo EU (enlace o id de YouTube)</label>
+            <input className={campo} value={f.youtube ?? ""} onChange={(e) => set("youtube", e.target.value)} placeholder="https://youtu.be/…" />
+          </div>
+          <div>
+            {gaztelania && (
+              <>
+                <label className={etiqueta}>Vídeo ES (enlace o id de YouTube)</label>
+                <input className={campo} value={f.youtube_es ?? ""} onChange={(e) => set("youtube_es", e.target.value)} placeholder="https://youtu.be/…" />
+              </>
+            )}
+          </div>
+          <p className="-mt-1 text-[0.72rem] text-gray-500 sm:col-span-2">
+            Sin vídeo en un idioma, la web pone el del otro con un aviso. Sin ninguno, sale «Grabatzen / Grabando» y no se puede abrir.
+          </p>
+          <div>
+            <label className={etiqueta}>Etiqueta pequeña EU (encima del título)</label>
             <input className={campo} value={f.etiketa ?? ""} onChange={(e) => set("etiketa", e.target.value)} placeholder="Magia gomekin" />
           </div>
           <div>
-            <label className={etiqueta}>Vídeo de YouTube (enlace o id; vacío = «Laster: bideoa»)</label>
-            <input className={campo} value={f.youtube ?? ""} onChange={(e) => set("youtube", e.target.value)} placeholder="https://youtu.be/…" />
+            {gaztelania && (
+              <>
+                <label className={etiqueta}>Etiqueta pequeña ES</label>
+                <input className={campo} value={f.etiketa_es ?? ""} onChange={(e) => set("etiketa_es", e.target.value)} placeholder="Magia con gomas" />
+              </>
+            )}
           </div>
-          <div className="sm:col-span-2">
-            <label className={etiqueta}>Qué ve el público (en euskera)</label>
-            <textarea className={campo} rows={3} value={f.sarrera ?? ""} onChange={(e) => set("sarrera", e.target.value)} />
+          <div>
+            <label className={etiqueta}>Qué ve el público EU</label>
+            <textarea className={campo} rows={4} value={f.sarrera ?? ""} onChange={(e) => set("sarrera", e.target.value)} />
           </div>
-          <div className="sm:col-span-2">
-            <label className={etiqueta}>Behar duzuna (material)</label>
+          <div>
+            {gaztelania && (
+              <>
+                <label className={etiqueta}>Qué ve el público ES</label>
+                <textarea className={campo} rows={4} value={f.sarrera_es ?? ""} onChange={(e) => set("sarrera_es", e.target.value)} />
+              </>
+            )}
+          </div>
+          <div>
+            <label className={etiqueta}>Material EU (Behar duzuna)</label>
             <input className={campo} value={f.materiala ?? ""} onChange={(e) => set("materiala", e.target.value)} placeholder="2 goma · billete bat" />
+          </div>
+          <div>
+            {gaztelania && (
+              <>
+                <label className={etiqueta}>Material ES (Lo que necesitas)</label>
+                <input className={campo} value={f.materiala_es ?? ""} onChange={(e) => set("materiala_es", e.target.value)} placeholder="2 gomas · un billete" />
+              </>
+            )}
           </div>
         </>
       )}
@@ -163,6 +216,7 @@ export default function MagiaTailerrakTab() {
   const [ocupado, setOcupado] = useState(false);
   const [nuevoLib, setNuevoLib] = useState<{ slug: string; etiketa: string } | null>(null);
   const [editLib, setEditLib] = useState<Record<string, string>>({});
+  const [editLibEs, setEditLibEs] = useState<Record<string, string>>({});
   const [editGiltza, setEditGiltza] = useState<Record<string, string>>({});
 
   const cargar = useCallback(async () => {
@@ -200,6 +254,8 @@ export default function MagiaTailerrakTab() {
   const etiketaOf = (s: string) => k.liburutxoak.find((l) => l.slug === s)?.etiketa ?? s;
   const juegos = k.edukiak.filter((e) => e.mota === "jolasa");
   const conVideo = juegos.filter((e) => e.youtube).length;
+  const conVideoEs = juegos.filter((e) => e.youtube_es).length;
+  const es = enBd && k.gaztelania;
   // La columna giltza existe si la API la devuelve (aunque sea null).
   const giltzaBai = enBd && k.liburutxoak.some((l) => "giltza" in l);
 
@@ -234,9 +290,15 @@ export default function MagiaTailerrakTab() {
         </p>
       )}
 
+      {enBd && !k.gaztelania && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[0.82rem] text-amber-900">
+          Falta un paso para el <b>castellano</b>: ejecuta <code>sql/magia_gaztelania.sql</code> en el SQL editor de Supabase (añade los campos ES y carga los vídeos y textos en castellano). Hasta entonces la web en castellano muestra los textos y vídeos en euskera.
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Cifra titulo="Emails" valor={resumen.total} detalle={`${resumen.hoy} hoy`} />
-        <Cifra titulo="Vídeos" valor={`${conVideo}/${juegos.length}`} detalle="juegos con vídeo" />
+        <Cifra titulo="Vídeos" valor={es ? `${conVideo} · ${conVideoEs}` : `${conVideo}/${juegos.length}`} detalle={es ? `EU · ES, de ${juegos.length} juegos` : "juegos con vídeo"} />
         {k.liburutxoak.slice(0, 2).map((l) => <Cifra key={l.slug} titulo={l.etiketa} valor={resumen.porLibrillo[l.slug] ?? 0} detalle="emails" />)}
       </div>
 
@@ -252,7 +314,10 @@ export default function MagiaTailerrakTab() {
                 <button className={boton} disabled={!enBd || ocupado || i === 0} title="Subir" onClick={() => accion(() => api({ method: "PATCH", body: JSON.stringify({ mota: "liburutxoa", slug: l.slug, norabidea: "gora" }) }))}>↑</button>
                 <button className={boton} disabled={!enBd || ocupado || i === k.liburutxoak.length - 1} title="Bajar" onClick={() => accion(() => api({ method: "PATCH", body: JSON.stringify({ mota: "liburutxoa", slug: l.slug, norabidea: "behera" }) }))}>↓</button>
               </div>
-              <input className={`${campo} max-w-[200px]`} disabled={!enBd} value={editLib[l.slug] ?? l.etiketa} onChange={(e) => setEditLib((x) => ({ ...x, [l.slug]: e.target.value }))} />
+              <input className={`${campo} max-w-[140px]`} disabled={!enBd} aria-label={`Nombre EU de ${l.etiketa}`} title="Nombre EU" value={editLib[l.slug] ?? l.etiketa} onChange={(e) => setEditLib((x) => ({ ...x, [l.slug]: e.target.value }))} />
+              {es && (
+                <input className={`${campo} max-w-[140px]`} aria-label={`Nombre ES de ${l.etiketa}`} title="Nombre ES (vacío = sale el EU)" placeholder="ES: 6-7 años" value={editLibEs[l.slug] ?? l.etiketa_es ?? ""} onChange={(e) => setEditLibEs((x) => ({ ...x, [l.slug]: e.target.value }))} />
+              )}
               <code className="text-[0.75rem] text-gray-500">/{l.slug}</code>
               <span className="text-[0.75rem] text-gray-500">{k.edukiak.filter((e) => e.mota === "jolasa" && e.liburutxoak.includes(l.slug)).length} juegos · {resumen.porLibrillo[l.slug] ?? 0} emails</span>
               {!l.ikusgai && <span className="rounded border border-gray-300 bg-gray-100 px-1.5 text-[0.68rem] text-gray-600">Oculto</span>}
@@ -267,8 +332,12 @@ export default function MagiaTailerrakTab() {
                 </span>
               )}
               <span className="ml-auto flex gap-1">
-                {editLib[l.slug] != null && editLib[l.slug] !== l.etiketa && (
-                  <button className={botonOscuro} disabled={ocupado} onClick={() => accion(async () => { await api({ method: "PUT", body: JSON.stringify({ mota: "liburutxoa", liburutxoa: { ...l, etiketa: editLib[l.slug] } }) }); setEditLib((x) => { const y = { ...x }; delete y[l.slug]; return y; }); })}>Guardar</button>
+                {((editLib[l.slug] != null && editLib[l.slug] !== l.etiketa) || (editLibEs[l.slug] != null && editLibEs[l.slug] !== (l.etiketa_es ?? ""))) && (
+                  <button className={botonOscuro} disabled={ocupado} onClick={() => accion(async () => {
+                    await api({ method: "PUT", body: JSON.stringify({ mota: "liburutxoa", liburutxoa: { ...l, etiketa: editLib[l.slug] ?? l.etiketa, ...(es ? { etiketa_es: editLibEs[l.slug] ?? l.etiketa_es ?? "" } : {}) } }) });
+                    const sin = (x: Record<string, string>) => { const y = { ...x }; delete y[l.slug]; return y; };
+                    setEditLib(sin); setEditLibEs(sin);
+                  })}>Guardar</button>
                 )}
                 <button className={boton} disabled={!enBd || ocupado} onClick={() => accion(() => api({ method: "PUT", body: JSON.stringify({ mota: "liburutxoa", liburutxoa: { ...l, ikusgai: !l.ikusgai } }) }))}>{l.ikusgai ? "Ocultar" : "Mostrar"}</button>
                 <button className={botonRojo} disabled={!enBd || ocupado} onClick={async () => { if (await confirmar(`¿Borrar el librillo «${l.etiketa}»? Sus juegos no se borran, pero dejan de salir en él.`, { aceptar: "Borrar" })) accion(() => api({ method: "DELETE" }, `?mota=liburutxoa&slug=${encodeURIComponent(l.slug)}`)); }}>Borrar</button>
@@ -291,7 +360,7 @@ export default function MagiaTailerrakTab() {
         nota="En la web salen en este orden, agrupados: primero lo que se abre por email, luego los juegos abiertos y al final los candados. Pulsa un contenido para editarlo."
         extra={enBd && abierto !== "nuevo" && <button className={botonOscuro} onClick={() => setAbierto("nuevo")}>+ Nuevo contenido</button>}
       >
-        {abierto === "nuevo" && <FormEdukia inicial={VACIO([])} liburutxoak={k.liburutxoak} nuevo onCerrar={() => setAbierto(null)} onGuardado={cargar} />}
+        {abierto === "nuevo" && <FormEdukia inicial={VACIO([])} liburutxoak={k.liburutxoak} nuevo gaztelania={es} onCerrar={() => setAbierto(null)} onGuardado={cargar} />}
         <ul className="mt-2 divide-y divide-gray-100">
           {k.edukiak.map((e, i) => (
             <li key={e.slug} className="py-2">
@@ -302,15 +371,17 @@ export default function MagiaTailerrakTab() {
                 </div>
                 <button className="min-w-0 flex-1 text-left" onClick={() => setAbierto(abierto === e.slug ? null : e.slug)}>
                   <span className={`text-[0.88rem] font-medium ${e.ikusgai ? "text-gray-900" : "text-gray-400 line-through"}`}>{e.izenburua}</span>
+                  {es && e.mota !== "sekretua" && <span className="ml-1.5 text-[0.8rem] text-gray-500">/ {e.izenburua_es || <i className="text-amber-700">sin título ES</i>}</span>}
                   <span className="ml-2 text-[0.75rem] text-gray-500">{MOTA_IZENA[e.mota]}{e.etiketa ? ` · ${e.etiketa}` : ""}</span>
                   <span className="block text-[0.75rem] text-gray-500">{e.liburutxoak.length ? e.liburutxoak.map(etiketaOf).join(" · ") : "Todos los librillos"}</span>
                 </button>
                 <Etiqueta egoera={e.egoera} />
-                {e.mota !== "sekretua" && (e.youtube ? <a className={`${boton} text-emerald-700`} href={`https://youtu.be/${e.youtube}`} target="_blank" rel="noreferrer">▶ Vídeo</a> : <span className="text-[0.72rem] text-gray-400">sin vídeo</span>)}
+                {e.mota !== "sekretua" && ytLink(e.youtube, "EU")}
+                {e.mota !== "sekretua" && es && ytLink(e.youtube_es, "ES")}
                 {!e.ikusgai && <span className="rounded border border-gray-300 bg-gray-100 px-1.5 text-[0.68rem] text-gray-600">Oculto</span>}
                 <button className={botonRojo} disabled={!enBd || ocupado} onClick={async () => { if (await confirmar(`¿Borrar «${e.izenburua}»? No se puede deshacer. Si solo quieres quitarlo de la web, edítalo y desmarca «Visible».`, { aceptar: "Borrar" })) accion(() => api({ method: "DELETE" }, `?mota=edukia&slug=${encodeURIComponent(e.slug)}`)); }}>Borrar</button>
               </div>
-              {abierto === e.slug && <FormEdukia inicial={e} liburutxoak={k.liburutxoak} nuevo={false} onCerrar={() => setAbierto(null)} onGuardado={cargar} />}
+              {abierto === e.slug && <FormEdukia inicial={e} liburutxoak={k.liburutxoak} nuevo={false} gaztelania={es} onCerrar={() => setAbierto(null)} onGuardado={cargar} />}
             </li>
           ))}
         </ul>

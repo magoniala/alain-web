@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { TESTUAK, type Hizkuntza } from "@/lib/magia-hizkuntza";
 import { K } from "./estiloa";
 
 /** Notas del juego, guardadas solo en este dispositivo (localStorage). */
-export default function Oharrak({ gakoa }: { gakoa: string }) {
+export default function Oharrak({ gakoa, h }: { gakoa: string; h: Hizkuntza }) {
+  const t = TESTUAK[h];
   const k = `magia-oharrak:${gakoa}`;
   const [testua, setTestua] = useState("");
   const [gordeta, setGordeta] = useState(false);
@@ -31,14 +33,14 @@ export default function Oharrak({ gakoa }: { gakoa: string }) {
 
   return (
     <div>
-      <label htmlFor="oharrak" style={{ display: "block", fontSize: "1.15rem", fontWeight: 500, marginBottom: "0.35rem" }}>Nire oharrak</label>
-      <p style={{ fontSize: "0.85rem", color: K.muy, marginBottom: "0.75rem" }}>Idatzi hemen zer ikasi duzun edo zer landu behar duzun. Gailu honetan bakarrik gordetzen dira.</p>
+      <label htmlFor="oharrak" style={{ display: "block", fontSize: "1.15rem", fontWeight: 500, marginBottom: "0.35rem" }}>{t.nireOharrak}</label>
+      <p style={{ fontSize: "0.85rem", color: K.muy, marginBottom: "0.75rem" }}>{t.oharrakAzalpena}</p>
       <textarea
         id="oharrak" value={testua} onChange={(e) => aldatu(e.target.value)} rows={5}
-        placeholder="Adibidez: eskua lasai mantendu, eta begiratu ikusleari begietara…"
+        placeholder={t.oharrakAdibidea}
         style={{ width: "100%", boxSizing: "border-box", background: "rgba(242,242,240,0.04)", color: K.fg, border: `1px solid ${K.borde}`, borderRadius: 10, padding: "0.85rem", fontSize: "0.98rem", lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" }}
       />
-      <p aria-live="polite" style={{ fontSize: "0.78rem", color: K.muy, minHeight: "1.2em", marginTop: "0.35rem" }}>{gordeta ? "Gordeta" : ""}</p>
+      <p aria-live="polite" style={{ fontSize: "0.78rem", color: K.muy, minHeight: "1.2em", marginTop: "0.35rem" }}>{gordeta ? t.gordeta : ""}</p>
     </div>
   );
 }

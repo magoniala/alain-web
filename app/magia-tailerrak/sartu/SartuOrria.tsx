@@ -1,0 +1,81 @@
+"use client";
+
+// Entrar en la plataforma de magia desde otro dispositivo: email → código → dentro.
+// El idioma lo decide page.tsx (servidor, cookie `lang`).
+import Link from "next/link";
+import { useState } from "react";
+import { TESTUAK, type Hizkuntza } from "@/lib/magia-hizkuntza";
+import Goiburua from "../_components/Goiburua";
+import { K, boton, contenedor, etiqueta, input, main } from "../_components/estiloa";
+
+export default function SartuOrria({ h, oina }: { h: Hizkuntza; oina: React.ReactNode }) {
+  const t = TESTUAK[h];
+  const [email, setEmail] = useState("");
+  const [kodea, setKodea] = useState("");
+  const [urratsa, setUrratsa] = useState<"email" | "kodea" | "ezDago">("email");
+  const [lanean, setLanean] = useState(false);
+  const [mezua, setMezua] = useState("");
+
+  async function kodeaEskatu(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setMezua(t.emailOkerra);
+    setLanean(true); setMezua("");
+    const res = await fetch("/api/magia-tailerrak/kodea", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim() }),
+    });
+    const d = await res.json().catch(() => ({}));
+    setLanean(false);
+    if (d.ezDago) return setUrratsa("ezDago");
+    if (d.kodea) {
+      setUrratsa("kodea");
+      return setMezua(d.kodea === "itxaron" ? t.kodeaBidaliBerri : t.kodeaBidalita);
+    }
+    setMezua(d.error || t.gaizki);
+  }
+
+  async function egiaztatu(e: React.FormEvent) {
+    e.preventDefault();
+    setLanean(true); setMezua("");
+    const res = await fetch("/api/magia-tailerrak/egiaztatu", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), kodea }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.ok) { window.location.href = d.librillo ? `/magia-tailerrak/${d.librillo}` : "/magia-tailerrak"; return; }
+    setLanean(false);
+    setMezua(d.error || t.kodeOkerra);
+  }
+
+  return (
+    <main style={main}>
+      <Goiburua email={null} h={h} />
+      <section style={{ ...contenedor, maxWidth: "460px", padding: "1.5rem 1.25rem 5rem", textAlign: "center" }}>
+        <div aria-hidden style={{ width: 64, height: 90, margin: "0 auto 1.5rem", borderRadius: 9, background: K.fg, color: K.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", boxShadow: `0 0 0 1px ${K.cyan}, 0 8px 22px rgba(46,211,230,0.18)`, transform: "rotate(-4deg)" }}>♠</div>
+        <p style={{ ...etiqueta, marginBottom: "0.5rem" }}>{t.zureGunea}</p>
+        <h1 style={{ fontSize: "2.2rem", fontWeight: 500, letterSpacing: "-0.03em", marginBottom: "1rem" }}>{t.sartu}</h1>
+
+        {urratsa === "ezDago" ? (
+          <>
+            <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.5rem" }}>
+              {t.ezDagoKonturik}
+            </p>
+            <Link href="/magia-tailerrak" style={{ color: K.cyan }}>{t.joanLiburutxoetara}</Link>
+          </>
+        ) : urratsa === "email" ? (
+          <form onSubmit={kodeaEskatu}>
+            <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.5rem" }}>{t.sartuAzalpena}</p>
+            <input type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setMezua(""); }} placeholder={t.zurePosta} style={{ ...input, marginBottom: "1.5rem" }} />
+            {mezua && <p style={{ fontSize: "0.85rem", color: "#ff6b6b", marginBottom: "1rem" }}>{mezua}</p>}
+            <button type="submit" disabled={lanean} style={boton}>{lanean ? t.bidaltzen : t.bidaliKodea}</button>
+          </form>
+        ) : (
+          <form onSubmit={egiaztatu}>
+            <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.5rem" }}>{mezua}</p>
+            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={kodea} onChange={(e) => setKodea(e.target.value.replace(/\D/g, ""))} placeholder={t.kodea6} style={{ ...input, fontSize: "1.4rem", letterSpacing: "0.3em", marginBottom: "1.5rem" }} />
+            <button type="submit" disabled={kodea.length !== 6 || lanean} style={boton}>{lanean ? t.egiaztatzen : t.sartu}</button>
+          </form>
+        )}
+      </section>
+      {oina}
+    </main>
+  );
+}

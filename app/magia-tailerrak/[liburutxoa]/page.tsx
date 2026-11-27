@@ -5,9 +5,9 @@
 //    (decisión de Alain, 9-nov: por ahora no se vende nada).
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LIBURUTXO_IZENA } from "@/lib/magia-catalogo";
 import { ikusgaiak, katalogoa, liburutxoaDago, liburutxokoEdukiak, type Edukia } from "@/lib/magia-edukiak";
-import { nireLiburutxoak, nireSaioa } from "@/lib/magia-plataforma";
+import { TESTUAK, katalogoaHizkuntzan } from "@/lib/magia-hizkuntza";
+import { hizkuntza, nireLiburutxoak, nireSaioa } from "@/lib/magia-plataforma";
 import Goiburua from "../_components/Goiburua";
 import GiltzaForm from "../_components/GiltzaForm";
 import Gogoratu from "../_components/Gogoratu";
@@ -57,7 +57,9 @@ function Abanikoa({ jolasak }: { jolasak: Edukia[] }) {
 
 export default async function LiburutxoOrria({ params }: { params: Promise<{ liburutxoa: string }> }) {
   const { liburutxoa } = await params;
-  const k = ikusgaiak(await katalogoa());
+  const h = await hizkuntza();
+  const t = TESTUAK[h];
+  const k = katalogoaHizkuntzan(ikusgaiak(await katalogoa()), h);
   if (!liburutxoaDago(k, liburutxoa)) notFound();
   const l = k.liburutxoak.find((x) => x.slug === liburutxoa)!;
   const etiketaOf = (slug: string) => k.liburutxoak.find((x) => x.slug === slug)?.etiketa ?? slug;
@@ -72,24 +74,24 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
   if (l.giltza && !nireak.includes(liburutxoa)) {
     return (
       <main style={main}>
-        <Goiburua email={saioa?.email ?? null} />
+        <Goiburua email={saioa?.email ?? null} h={h} />
         <section style={{ ...contenedor, maxWidth: "460px", padding: "1.5rem 1.25rem 4rem", textAlign: "center" }}>
           <KartaItxia />
-          <p style={{ ...etiqueta, marginBottom: "0.5rem" }}>{l.etiketa}ko liburutxoa</p>
-          <h1 style={{ ...h1, marginBottom: "1rem" }}>Hitz magikoa</h1>
+          <p style={{ ...etiqueta, marginBottom: "0.5rem" }}>{t.liburutxoaDe(l.etiketa)}</p>
+          <h1 style={{ ...h1, marginBottom: "1rem" }}>{t.hitzMagikoa}</h1>
           <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "2rem" }}>
-            Zure liburutxoan hitz magiko bat dago, eskuz idatzita. Idatzi hemen eta zure magia-gunea irekiko da.
+            {t.giltzaAzalpena}
           </p>
-          <GiltzaForm librillo={liburutxoa} />
+          <GiltzaForm librillo={liburutxoa} h={h} />
           <p style={{ marginTop: "2rem", fontSize: "0.9rem", color: K.muy }}>
             {nireak.length ? (
-              <Link href={`/magia-tailerrak/${nireak[0]}`} style={{ color: K.tenue }}>Itzuli nire liburutxora ({etiketaOf(nireak[0])})</Link>
+              <Link href={`/magia-tailerrak/${nireak[0]}`} style={{ color: K.tenue }}>{t.itzuliNirera(etiketaOf(nireak[0]))}</Link>
             ) : (
-              <>Ez da hau zure liburutxoa? <Link href="/magia-tailerrak?aldatu=1" style={{ color: K.tenue }}>Aldatu</Link></>
+              <>{t.ezDaZureaGaldera} <Link href="/magia-tailerrak?aldatu=1" style={{ color: K.tenue }}>{t.aldatu}</Link></>
             )}
           </p>
         </section>
-        <Oina />
+        <Oina h={h} />
       </main>
     );
   }
@@ -98,22 +100,22 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
   if (!nirea) {
     return (
       <main style={main}>
-        <Goiburua email={saioa?.email ?? null} />
+        <Goiburua email={saioa?.email ?? null} h={h} />
         <section style={{ ...contenedor, maxWidth: "460px", padding: "1.5rem 1.25rem 4rem", textAlign: "center" }}>
           <KartaItxia />
-          <p style={{ ...etiqueta, marginBottom: "0.5rem" }}>{l.etiketa}ko liburutxoa</p>
-          <h1 style={{ ...h2, fontSize: "2rem" }}>Liburutxo hau ez da zurea</h1>
+          <p style={{ ...etiqueta, marginBottom: "0.5rem" }}>{t.liburutxoaDe(l.etiketa)}</p>
+          <h1 style={{ ...h2, fontSize: "2rem" }}>{t.ezDaZurea}</h1>
           <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "2rem" }}>
-            {saioa ? `Zure gunean ${etiketaOf(nireak[0])}ko liburutxoa duzu.` : "Liburutxo hau baduzu eta beste bat aukeratu bazenuen, sakatu behean."}
+            {saioa ? t.zureGuneanDuzu(etiketaOf(nireak[0])) : t.besteBatAukeratu}
           </p>
           <div style={{ display: "grid", gap: "0.9rem" }}>
-            {!saioa && <HauDaNirea librillo={liburutxoa} />}
+            {!saioa && <HauDaNirea librillo={liburutxoa} h={h} />}
             <Link href={`/magia-tailerrak/${nireak[0]}`} style={{ color: K.tenue, fontSize: "0.9rem", textAlign: "center" }}>
-              Itzuli nire liburutxora ({etiketaOf(nireak[0])})
+              {t.itzuliNirera(etiketaOf(nireak[0]))}
             </Link>
           </div>
         </section>
-        <Oina />
+        <Oina h={h} />
       </main>
     );
   }
@@ -130,18 +132,18 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
   return (
     <main style={main}>
       {nireak.length === 0 && <Gogoratu librillo={liburutxoa} />}
-      <Goiburua email={saioa?.email ?? null} />
+      <Goiburua email={saioa?.email ?? null} h={h} />
 
       <section style={{ ...contenedor, padding: "1.75rem 1.25rem 0", textAlign: "center" }}>
-        <p style={{ color: K.cyan, fontSize: "0.9rem", marginBottom: "0.6rem" }}>{LIBURUTXO_IZENA}</p>
-        <h1 style={{ ...h1, marginBottom: "0.4rem" }}>Zure magia-gunea</h1>
-        <p style={{ color: K.tenue, marginBottom: "1.75rem" }}>{l.etiketa}ko liburutxoa</p>
+        <p style={{ color: K.cyan, fontSize: "0.9rem", marginBottom: "0.6rem" }}>{t.liburutxoIzena}</p>
+        <h1 style={{ ...h1, marginBottom: "0.4rem" }}>{t.zureGunea}</h1>
+        <p style={{ color: K.tenue, marginBottom: "1.75rem" }}>{t.liburutxoaDe(l.etiketa)}</p>
         {jolasak.length > 0 && <Abanikoa jolasak={jolasak} />}
         <p style={{ fontSize: "1.05rem", fontWeight: 500, marginBottom: "0.5rem" }}>
-          {prest === 0 ? `${jolasak.length} jolas, bideoak bidean` : `${prest}/${jolasak.length} bideo prest`}
+          {prest === 0 ? t.bideoakBidean(jolasak.length) : t.bideoPrest(prest, jolasak.length)}
         </p>
         <p style={{ color: K.tenue, lineHeight: 1.7, fontSize: "0.95rem", maxWidth: "34rem", margin: "0 auto 2.75rem" }}>
-          Liburutxo hauek berri-berriak dira, eta zuek zarete lehenak. Jolas bakoitza bideoan grabatzen ari naiz: ikusleen aurrean nola egiten den eta sekretua, pausoz pauso. Prest dagoen bakoitza hemen irekiko da.
+          {t.berriak}
         </p>
       </section>
 
@@ -149,23 +151,23 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
         <section id="oparia" style={{ ...contenedor, padding: "0 1.25rem 3rem", scrollMarginTop: "1rem", display: "grid", gap: "1rem" }}>
           {opariak.map((e, i) => (
             <div key={e.slug} style={{ border: "1px solid rgba(46,211,230,0.5)", borderRadius: 14, background: "linear-gradient(160deg, rgba(46,211,230,0.10), rgba(46,211,230,0.02) 60%)", padding: "1.4rem 1.25rem" }}>
-              <p style={{ color: K.cyan, fontSize: "0.9rem", marginBottom: "0.5rem" }}>{e.etiketa ?? "Opari extra bat"}</p>
+              <p style={{ color: K.cyan, fontSize: "0.9rem", marginBottom: "0.5rem" }}>{e.etiketa ?? t.opariExtra}</p>
               <h2 style={h2}>{e.izenburua}</h2>
               {e.sarrera && <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.25rem" }}>{e.sarrera}</p>}
               {emailaUtzita ? (
                 <Link href={orria(e.slug)} className={css.botoia}>
                   <span aria-hidden className={`${css.play} ${css.playIluna}`} />
-                  Ikusi bideoa
+                  {t.ikusiBideoa}
                 </Link>
               ) : i === 0 ? (
                 <>
                   <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.25rem" }}>
-                    Utzi zure emaila eta desblokeatu bideoa. Heldu batek bete behar du: eskatu laguntza aitari edo amari.
+                    {t.utziEmaila}
                   </p>
-                  <OpariForm librillo={liburutxoa} helburua={orria(e.slug)} />
+                  <OpariForm librillo={liburutxoa} helburua={orria(e.slug)} h={h} />
                 </>
               ) : (
-                <p style={{ color: K.muy, fontSize: "0.9rem" }}>Goiko emailarekin irekitzen da hau ere.</p>
+                <p style={{ color: K.muy, fontSize: "0.9rem" }}>{t.goikoEmailarekin}</p>
               )}
             </div>
           ))}
@@ -174,8 +176,8 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
 
       {jolasak.length > 0 && (
         <section style={{ ...contenedor, padding: "0 1.25rem" }}>
-          <h2 style={{ ...h2, marginBottom: "0.35rem" }}>Liburutxoko jolasak</h2>
-          <p style={{ color: K.muy, fontSize: "0.9rem", marginBottom: "1.1rem" }}>Liburutxoan duzun ordena berean.</p>
+          <h2 style={{ ...h2, marginBottom: "0.35rem" }}>{t.liburutxokoJolasak}</h2>
+          <p style={{ color: K.muy, fontSize: "0.9rem", marginBottom: "1.1rem" }}>{t.ordenaBerean}</p>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "0.65rem" }}>
             {jolasak.map((e, i) => {
               const izkina = (
@@ -190,13 +192,13 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
                     <Link href={orria(e.slug)} className={css.lerroa}>
                       {izkina}
                       <span className={css.izenburua}>{e.izenburua}</span>
-                      <span className={css.play} aria-label="Ikusi bideoa" />
+                      <span className={css.play} aria-label={t.ikusiBideoa} />
                     </Link>
                   ) : (
-                    <div className={css.lerroa} aria-label={`${e.izenburua}: bideoa grabatzen`}>
+                    <div className={css.lerroa} aria-label={t.bideoaGrabatzen(e.izenburua)}>
                       {izkina}
                       <span className={css.izenburua} style={{ color: K.tenue }}>{e.izenburua}</span>
-                      <span className={css.egoera}><span className={css.rec} aria-hidden />Grabatzen</span>
+                      <span className={css.egoera}><span className={css.rec} aria-hidden />{t.grabatzen}</span>
                     </div>
                   )}
                 </li>
@@ -208,13 +210,13 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
 
       {itxiak.length > 0 && (
         <section style={{ ...contenedor, padding: "3.5rem 1.25rem 3.5rem" }}>
-          <h2 style={{ ...h2, marginBottom: "0.35rem" }}>Sekretuak</h2>
+          <h2 style={{ ...h2, marginBottom: "0.35rem" }}>{t.sekretuak}</h2>
           <p style={{ color: K.tenue, lineHeight: 1.7, marginBottom: "1.25rem" }}>
-            Gune honetan sekretu gehiago daude gordeta. Oraindik ezin dira ireki… baina laster!
+            {t.sekretuakTestua}
           </p>
           <div className={css.sekretuak}>
             {itxiak.map((e) => (
-              <div key={e.slug} className={`${css.sekretua} ${css.atzea}`} aria-label={e.egoera === "sekretua" ? "Sekretu itxia" : `Itxita: ${e.izenburua}`}>
+              <div key={e.slug} className={`${css.sekretua} ${css.atzea}`} aria-label={e.egoera === "sekretua" ? t.sekretuItxia : t.itxita(e.izenburua)}>
                 <span className={css.sekretuaGaldera} aria-hidden>?</span>
                 {e.egoera === "ordainpekoa" && <span className={css.sekretuaIzena}>{e.izenburua}</span>}
               </div>
@@ -225,10 +227,10 @@ export default async function LiburutxoOrria({ params }: { params: Promise<{ lib
 
       {!saioa && (
         <p style={{ ...contenedor, padding: "0 1.25rem 3rem", fontSize: "0.85rem", color: K.muy, textAlign: "center" }}>
-          Ez da hau zure liburutxoa? <Link href="/magia-tailerrak?aldatu=1" style={{ color: K.tenue }}>Aldatu</Link>
+          {t.ezDaZureaGaldera} <Link href="/magia-tailerrak?aldatu=1" style={{ color: K.tenue }}>{t.aldatu}</Link>
         </p>
       )}
-      <Oina />
+      <Oina h={h} />
     </main>
   );
 }

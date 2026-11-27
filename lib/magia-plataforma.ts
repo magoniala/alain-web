@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail, resolveNewsletterFrom } from "@/lib/email-ses";
 import { giltzaGarbia, type Liburutxoa } from "@/lib/magia-edukiak-motak";
+import { HIZKUNTZA_COOKIE, hizkuntzaGarbia, type Hizkuntza } from "@/lib/magia-hizkuntza";
 
 export const COOKIE_SAIOA = "magia_saioa";
 export const COOKIE_LIBURUTXOA = "magia_liburutxoa";
@@ -36,6 +37,13 @@ const cookieAukerak = (maxAge: number) => ({
   path: "/",
   maxAge,
 });
+
+// ---------- Idioma ----------
+
+/** El idioma elegido por quien visita (cookie `lang`); sin cookie, euskera. */
+export async function hizkuntza(): Promise<Hizkuntza> {
+  return hizkuntzaGarbia((await cookies()).get(HIZKUNTZA_COOKIE)?.value);
+}
 
 // ---------- Sesión ----------
 
@@ -146,7 +154,7 @@ export async function nireLiburutxoak(saioa: NireSaioa | null, liburutxoak: Libu
 
 export type KodeaEmaitza = "bidalita" | "itxaron";
 
-export async function kodeaBidali(email: string): Promise<KodeaEmaitza> {
+export async function kodeaBidali(email: string, h: Hizkuntza = "eu"): Promise<KodeaEmaitza> {
   const { data: azkena } = await db()
     .from("magia_codigos")
     .select("created_at")
@@ -161,17 +169,22 @@ export async function kodeaBidali(email: string): Promise<KodeaEmaitza> {
   const { error } = await db().from("magia_codigos").insert({ email, codigo_hash: hash(`${email}:${kodea}`), expira });
   if (error) throw new Error(`magia: no se ha podido guardar el código: ${error.message}`);
 
+  const kodeaHtml = `<p style="font-size:2rem;letter-spacing:0.3em;font-weight:bold;margin:1.5rem 0;">${kodea}</p>`;
   await sendEmail(
     email,
-    `Zure sarbide-kodea: ${kodea}`,
-    wrap(`
+    h === "es" ? `Tu código de acceso: ${kodea}` : `Zure sarbide-kodea: ${kodea}`,
+    wrap(h === "es" ? `
+      <p>Este es el código para entrar en tu espacio de magia:</p>
+      ${kodeaHtml}
+      <p>Vale durante ${KODEA_MIN} minutos. Si no lo has pedido tú, no tienes que hacer nada.</p>
+    ` : `
       <p>Hona hemen zure magia-gunean sartzeko kodea:</p>
-      <p style="font-size:2rem;letter-spacing:0.3em;font-weight:bold;margin:1.5rem 0;">${kodea}</p>
+      ${kodeaHtml}
       <p>${KODEA_MIN} minutuz balio du. Zuk eskatu ez baduzu, ez egin ezer.</p>
     `),
     resolveNewsletterFrom(null),
     undefined,
-    { campana: "magia-kodea", customId: email, idioma: "eu" }
+    { campana: "magia-kodea", customId: email, idioma: h }
   );
   return "bidalita";
 }
@@ -210,8 +223,27 @@ function wrap(content: string) {
     </div>`;
 }
 
-export async function ongiEtorriaBidali(email: string, baseUrl: string) {
-  const url = `${baseUrl}/magia-tailerrak`;
+export async function ongiEtorriaBidali(email: string, baseUrl: string, h: Hizkuntza = "eu") {
+  // ?h= fija el idioma también si abre el enlace en otro dispositivo (proxy.ts).
+  const url = `${baseUrl}/magia-tailerrak?h=${h}`;
+  if (h === "es") {
+    await sendEmail(
+      email,
+      "Tu espacio de magia está listo",
+      wrap(`
+        <p>Hola:</p>
+        <p>Gracias por dejar tu email. El regalo extra ya está desbloqueado en tu espacio de magia.</p>
+        <p>Para volver: <a href="${url}" style="color:#1a1a1a;font-weight:bold;">alainzulaika.com/magia-tailerrak</a>.
+        Si entras desde otro dispositivo, pulsa "Entrar", escribe tu email y el código que te enviaré.</p>
+        <p>Estos librillos son nuevísimos, y sois los primeros. Voy subiendo el vídeo de cada juego semana a semana.</p>
+        <p>Alain</p>
+      `),
+      resolveNewsletterFrom(null),
+      undefined,
+      { campana: "magia-ongietorria", customId: email, idioma: "es" }
+    );
+    return;
+  }
   await sendEmail(
     email,
     "Zure magia-gunea prest dago",

@@ -25,7 +25,22 @@ export function katalogoaKodetik(): Katalogoa {
     }),
     ...SEKRETUAK.map((n) => ({ slug: `sekretua-${n}`, mota: "sekretua" as const, egoera: "sekretua" as const, izenburua: `Sekretua ${n}`, etiketa: null, sarrera: null, materiala: null, youtube: null, liburutxoak: [], ordena: 900 + n * 10, ikusgai: true, prezioa_cent: null })),
   ];
-  return { liburutxoak, edukiak, iturria: "kodea", errorea: null };
+  return { liburutxoak, edukiak, iturria: "kodea", errorea: null, gaztelania: false };
+}
+
+const ES = ["izenburua_es", "etiketa_es", "sarrera_es", "materiala_es", "youtube_es"] as const;
+const testua = (v: unknown) => (typeof v === "string" ? v : null);
+
+/** Una fila de magia_edukiak → Edukia (solo las columnas conocidas; las *_es si existen). */
+function edukiaErrenkadatik(x: Record<string, unknown>): Edukia {
+  const e: Edukia = {
+    slug: x.slug as string, mota: x.mota as Edukia["mota"], egoera: x.egoera as Edukia["egoera"],
+    izenburua: x.izenburua as string, etiketa: testua(x.etiketa), sarrera: testua(x.sarrera), materiala: testua(x.materiala),
+    youtube: testua(x.youtube), liburutxoak: (x.liburutxoak as string[] | null) ?? [], ordena: Number(x.ordena) || 0,
+    ikusgai: x.ikusgai !== false, prezioa_cent: typeof x.prezioa_cent === "number" ? x.prezioa_cent : null,
+  };
+  for (const k of ES) if (k in x) e[k] = testua(x[k]);
+  return e;
 }
 
 const porOrden = <T extends { ordena: number; slug: string }>(a: T, b: T) => a.ordena - b.ordena || a.slug.localeCompare(b.slug);
@@ -36,7 +51,8 @@ export async function katalogoa(): Promise<Katalogoa> {
     // «*» y no la lista de columnas: así, si aún no existe la columna giltza
     // (sql/magia_giltza.sql sin ejecutar), el catálogo sigue saliendo de la BD.
     db().from("magia_liburutxoak").select("*"),
-    db().from("magia_edukiak").select("slug, mota, egoera, izenburua, etiketa, sarrera, materiala, youtube, liburutxoak, ordena, ikusgai, prezioa_cent"),
+    // Igual con «*»: las columnas *_es (sql/magia_gaztelania.sql) pueden no existir aún.
+    db().from("magia_edukiak").select("*"),
   ]);
   const error = l.error ?? e.error;
   if (error) {
@@ -49,12 +65,14 @@ export async function katalogoa(): Promise<Katalogoa> {
       .map((x) => {
         const b: Liburutxoa = { slug: x.slug, etiketa: x.etiketa, ordena: x.ordena, ikusgai: x.ikusgai };
         if ("giltza" in x) b.giltza = typeof x.giltza === "string" && giltzaGarbia(x.giltza) ? x.giltza : null;
+        if ("etiketa_es" in x) b.etiketa_es = typeof x.etiketa_es === "string" ? x.etiketa_es : null;
         return b;
       })
       .sort(porOrden),
-    edukiak: (e.data as Edukia[]).map((x) => ({ ...x, liburutxoak: x.liburutxoak ?? [] })).sort(porOrden),
+    edukiak: (e.data as Record<string, unknown>[]).map(edukiaErrenkadatik).sort(porOrden),
     iturria: "db",
     errorea: null,
+    gaztelania: "youtube_es" in (e.data[0] as Record<string, unknown>),
   };
 }
 

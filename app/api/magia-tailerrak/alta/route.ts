@@ -7,17 +7,24 @@
 // tumisión (lib/tumision.ts), si está en marcha, con el mail 1 a las 19:15, y
 // al terminarla pasa a la diaria (y se marca newsletter_alta_at). Con
 // tumisión en «off», solo se guarda el email, como hasta ahora.
+//
+// Idioma: el que tenga elegido en la plataforma (cookie `lang`; sin cookie,
+// euskera). Se guarda en magia_usuarios y decide el idioma de la bienvenida,
+// del código y de tumisión (decisión de Alain, 27-nov).
 
 import { NextResponse } from "next/server";
 import { ikusgaiak, katalogoa } from "@/lib/magia-edukiak";
 import { apuntarTumisionLibrillo } from "@/lib/tumision";
-import { db, emailGarbia, kodeaBidali, liburutxoAukeratua, ongiEtorriaBidali, saioaIreki } from "@/lib/magia-plataforma";
+import { TESTUAK } from "@/lib/magia-hizkuntza";
+import { db, emailGarbia, hizkuntza, kodeaBidali, liburutxoAukeratua, ongiEtorriaBidali, saioaIreki } from "@/lib/magia-plataforma";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
+  const h = await hizkuntza();
+  const t = TESTUAK[h];
   const email = emailGarbia(body.email);
-  if (!email) return NextResponse.json({ error: "Sartu posta elektroniko baliodun bat." }, { status: 400 });
-  if (body.baimena !== true) return NextResponse.json({ error: "Markatu laukia jarraitzeko." }, { status: 400 });
+  if (!email) return NextResponse.json({ error: t.emailOkerra }, { status: 400 });
+  if (body.baimena !== true) return NextResponse.json({ error: t.markatuLaukia }, { status: 400 });
   const k = await katalogoa();
   // El librillo solo se apunta en la cuenta si este navegador ya lo tiene
   // abierto (con su palabra mágica, si la tiene).
@@ -26,16 +33,16 @@ export async function POST(req: Request) {
 
   const { data: badago } = await db().from("magia_usuarios").select("email").eq("email", email).maybeSingle();
   if (badago) {
-    const r = await kodeaBidali(email);
+    const r = await kodeaBidali(email, h);
     return NextResponse.json({ kodea: r });
   }
 
-  const { error } = await db().from("magia_usuarios").insert({ email, librillo, canal: "librillo", idioma: "eu" });
+  const { error } = await db().from("magia_usuarios").insert({ email, librillo, canal: "librillo", idioma: h });
   if (error) {
     // Dos envíos a la vez del mismo email: el segundo va por código.
-    if (error.code === "23505") return NextResponse.json({ kodea: await kodeaBidali(email) });
+    if (error.code === "23505") return NextResponse.json({ kodea: await kodeaBidali(email, h) });
     console.error("magia: error en el alta:", error.message);
-    return NextResponse.json({ error: "Zerbait gaizki joan da. Saiatu berriro." }, { status: 500 });
+    return NextResponse.json({ error: t.gaizki }, { status: 500 });
   }
   // Queda apuntado qué se abrió con el email (todo lo «emaila» de ese momento).
   const opariak = k.edukiak.filter((e) => e.egoera === "emaila").map((e) => ({ email, contenido: e.slug, origen: "email" }));
@@ -45,12 +52,12 @@ export async function POST(req: Request) {
   const host = req.headers.get("host") || "alainzulaika.com";
   const base = `${host.includes("localhost") ? "http" : "https"}://${host}`;
   try {
-    await ongiEtorriaBidali(email, base);
+    await ongiEtorriaBidali(email, base, h);
   } catch (err) {
     console.error("magia: no se ha podido enviar la bienvenida:", err);
   }
   try {
-    const r = await apuntarTumisionLibrillo(email);
+    const r = await apuntarTumisionLibrillo(email, h);
     if (r === "error") console.error("magia: no se ha podido apuntar en tumisión:", email);
   } catch (err) {
     console.error("magia: error apuntando en tumisión:", err);
