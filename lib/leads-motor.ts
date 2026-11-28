@@ -19,6 +19,7 @@
 import { tarjetaYaCreada } from "@/lib/cron-cierre";
 import { supabaseCharlas } from "./charlas";
 import { telefonoWa } from "./crm-motor";
+import { llamadaDe, mensajeConfirmacion, mensajePreparacion, pasoEnviadoEnTexto, pasoQueToca, siguienteTrasPaso, ETIQUETA_PASO, type Faltas, type PasoReserva } from "./leads-guion";
 
 const hoy = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
 const sumar = (iso: string, dias: number) => {
@@ -39,6 +40,23 @@ export interface DecisionLead {
   conMensaje: boolean;
   cambios: Record<string, unknown>;
   nota?: string;
+  /** Por qué no hay mensaje (solo si conMensaje es false): se enseña en la tarjeta en vez de un «Sin mensaje» mudo. */
+  motivoSinMensaje?: string;
+}
+
+/**
+ * Motivo en una línea de por qué una tarjeta no trae mensaje. Nunca «Sin mensaje» a secas.
+ * (La tarjeta del panel repite esta lógica con los datos de la ficha para las tarjetas ya creadas: LeadsTab.tsx.)
+ */
+export function motivoSinMensaje(f: Pick<FichaLead, "estado" | "proxima_accion">): string {
+  const fa = fase(f.estado);
+  const pa = (f.proxima_accion ?? "").trim();
+  if (fa === 8) return "nada que enviar, cerrar o aplazar";
+  if (fa === 7) return "es cliente: nada que enviar desde aquí, cierra o aplaza";
+  if (fa === 9) return "aparcado: nada que enviar, cierra o aplaza";
+  if (fa === 5) return pa ? `Hoja de Ruta reservada, ahora no hay mensaje del guion que enviar («${pa.length > 90 ? `${pa.slice(0, 90)}…` : pa}»)` : "Hoja de Ruta reservada, pero no encuentro la fecha de la llamada: míralo en la ficha";
+  if (/esper/i.test(pa)) return `espera su respuesta («${pa.length > 90 ? `${pa.slice(0, 90)}…` : pa}»)`;
+  return pa ? `no hay mensaje para este paso («${pa.length > 90 ? `${pa.slice(0, 90)}…` : pa}»): decide desde aquí` : "la ficha no dice qué toca: decide desde aquí (aplazar, cambiar estado o descartar)";
 }
 
 const CHECKIN_SIGUIENTE = "Sin acción: sigue en el diario. Si contesta a cualquier mensaje, vuelve a 3 En conversación";
@@ -64,7 +82,7 @@ export function decidirLead(f: FichaLead, h = hoy()): DecisionLead | null {
   if (fa === 9 && /check-?in/i.test(pa)) {
     return { tipo: "check_in", conMensaje: true, cambios: { estado: "9 Aparcado", proxima_accion: CHECKIN_SIGUIENTE, fecha_proxima_accion: null } };
   }
-  return { tipo: "recordatorio", conMensaje: false, cambios: { fecha_proxima_accion: sumar(h, 3) }, nota: pa ? `La ficha dice: «${pa}»` : "La ficha no dice qué toca: decide desde aquí (aplazar, cambiar estado o descartar)." };
+  return { tipo: "recordatorio", conMensaje: false, cambios: { fecha_proxima_accion: sumar(h, 3) }, nota: pa ? `La ficha dice: «${pa}»` : "La ficha no dice qué toca: decide desde aquí (aplazar, cambiar estado o descartar).", motivoSinMensaje: motivoSinMensaje(f) };
 }
 
 /** Canal y destinatario: WhatsApp solo si escribió él o dio permiso (regla del Flujo); Instagram, a mano. */
@@ -125,6 +143,12 @@ export async function tareasPorFechaLeads(opciones: { presupuestoMs: number }): 
   const res: ResumenMotorLeads = { modo, revisados: 0, creadas: 0, solos: 0, ya_abiertas: 0, errores: [] };
   if (modo !== "prueba" && modo !== "activo") return res;
   const h = hoy();
+  // Primero los pasos de las reservas de Hoja de Ruta (Mensaje 2 y 3 del guion): no dependen de que alguien escriba la próxima acción.
+  try {
+    res.creadas += await pasosReservaHojaRuta({ presupuestoMs: Math.max(0, opciones.presupuestoMs - (Date.now() - inicio)) });
+  } catch (e) {
+    res.errores.push(`Hoja de Ruta (pasos de la reserva): ${(e as Error).message}`);
+  }
   const { data: fichas } = await sb.from("crm_fichas").select("id, nombre, estado, email, telefono, canal, proxima_accion, fecha_proxima_accion, mails_enviados, datos").eq("carril", "entrenatzaile").lte("fecha_proxima_accion", h).order("fecha_proxima_accion");
   const { data: abiertas } = await sb.from("crm_tareas").select("ficha_id").eq("carril", "entrenatzaile").in("estado", ["revisar", "pendiente", "aprobada"]);
   const conTarea = new Set((abiertas ?? []).map((t) => t.ficha_id as string));
@@ -147,6 +171,107 @@ export async function tareasPorFechaLeads(opciones: { presupuestoMs: number }): 
     }
   }
   return res;
+}
+
+// ---------------------------------------------------------------------------
+// Pasos de la reserva de Hoja de Ruta (28-11-2026). Una ficha en «5 Hoja de Ruta reservada» con una
+// reserva con fecha genera sola las tarjetas del guion «Leads · Hoja de Ruta reservada»:
+//   · Mensaje 2 (preparación): desde 3 días antes de la llamada y, como tarde, la víspera.
+//   · Mensaje 3 (confirmación): desde 24 h antes de la llamada (el corte).
+// El Mensaje 1 (al reservar) lo sigue llevando el bloque «WhatsApp de confirmación» de la pestaña Hoja de Ruta.
+// Mensajes 4 y 5 (no aparece / cierre): las plantillas están en lib/leads-guion.ts, pero todavía no se generan solos.
+// Nunca se envía nada solo: la tarjeta trae el texto, Alain lo copia/abre WhatsApp y marca «enviado».
+// ---------------------------------------------------------------------------
+const ABIERTAS = ["revisar", "pendiente", "aprobada"];
+
+type FichaReserva = FichaLead & { cuerpo_despues: string | null };
+interface ReservaLead { id: string; hueco: string; creado_en: string; telefono: string | null }
+
+async function reservaDeFicha(f: FichaLead): Promise<ReservaLead | null> {
+  const sb = supabaseCharlas();
+  const correos = (f.email ?? "").split(/[\/;,\s]+/).filter((e) => e.includes("@"));
+  const tel9 = (f.telefono ?? "").replace(/\D/g, "").slice(-9);
+  const filtros: string[] = [...correos.map((e) => `email.ilike.${e}`), ...(tel9.length === 9 ? [`telefono.ilike.%${tel9}%`] : [])];
+  if (!filtros.length) return null;
+  const { data } = await sb
+    .from("hoja_ruta_reservas")
+    .select("id, hueco, creado_en, telefono, tipo")
+    .or(filtros.join(","))
+    .not("hueco", "is", null)
+    .is("cancelada_en", null)
+    .order("hueco", { ascending: true })
+    .limit(10);
+  const desde = Date.now() - 12 * 3600 * 1000;
+  const r = ((data ?? []) as (ReservaLead & { tipo: string | null })[]).find((x) => x.tipo !== "infoproductos" && new Date(x.hueco).getTime() >= desde);
+  return r ?? null;
+}
+
+/** ¿Falta el PAR-Q+ o el peso en ayunas? Ante la duda (no se encuentra) se da por faltante: la línea se puede borrar, un olvido no. */
+async function faltasDeFicha(f: FichaReserva, textos: string): Promise<Faltas> {
+  const sb = supabaseCharlas();
+  const correos = (f.email ?? "").split(/[\/;,\s]+/).filter((e) => e.includes("@"));
+  const tel9 = (f.telefono ?? "").replace(/\D/g, "").slice(-9);
+  const filtros = [...correos.map((e) => `email.ilike.${e}`), ...(tel9.length === 9 ? [`telefono.ilike.%${tel9}%`] : [])];
+  let parq = true;
+  if (filtros.length) {
+    const { data } = await sb.from("parq_respuestas").select("id").or(filtros.join(",")).limit(1);
+    if (data && data.length) parq = false;
+  }
+  const dato = f.datos?.peso_ayunas;
+  const peso = !(dato !== undefined && dato !== null && String(dato).trim() !== "") && !/peso en ayunas[^\n]{0,60}\b(recibido|\d{2,3}[.,]?\d?\s*kg)\b|\b\d{2,3}[.,]\d\s*kg\b/i.test(textos);
+  return { parq, peso };
+}
+
+async function pasosReservaHojaRuta(opciones: { presupuestoMs: number }): Promise<number> {
+  const inicio = Date.now();
+  const sb = supabaseCharlas();
+  const ahora = new Date();
+  const h = hoy();
+  const { data: fichas } = await sb.from("crm_fichas").select("id, nombre, estado, email, telefono, canal, proxima_accion, fecha_proxima_accion, mails_enviados, datos, cuerpo_despues").eq("carril", "entrenatzaile").like("estado", "5%");
+  let creadas = 0;
+  for (const f of (fichas ?? []) as FichaReserva[]) {
+    if (Date.now() - inicio > opciones.presupuestoMs) break;
+    const reserva = await reservaDeFicha(f);
+    const l = reserva ? llamadaDe(reserva.hueco) : null;
+    if (!reserva || !l) continue;
+    const { data: tareas } = await sb.from("crm_tareas").select("id, tipo, estado, creado_en").eq("ficha_id", f.id).in("tipo", ["hr_preparacion", "hr_confirmacion"]).gte("creado_en", reserva.creado_en);
+    const previas = (tareas ?? []) as { id: string; tipo: string; estado: string }[];
+    if (previas.some((t) => ABIERTAS.includes(t.estado))) continue;
+    const hecha = (tipo: PasoReserva) => previas.some((t) => t.tipo === tipo && ["enviada", "hecha", "descartada"].includes(t.estado));
+    const { data: reg } = await sb.from("crm_interacciones").select("texto, canal, fecha").eq("ficha_id", f.id).gte("fecha", reserva.creado_en.slice(0, 10)).order("fecha", { ascending: false }).limit(80);
+    const textos = [f.cuerpo_despues ?? "", ...((reg ?? []) as { texto: string | null; canal: string | null }[]).filter((r) => r.canal !== "Recibido").map((r) => r.texto ?? "")].join("\n");
+    const enviados = { m2: hecha("hr_preparacion") || pasoEnviadoEnTexto(textos, 2), m3: hecha("hr_confirmacion") || pasoEnviadoEnTexto(textos, 3) };
+    const toca = pasoQueToca(l, ahora, enviados);
+    if (!toca) continue;
+    const tel = telefonoWa(f.telefono) ?? telefonoWa(reserva.telefono);
+    const faltas = await faltasDeFicha(f, textos);
+    const texto = toca.paso === "hr_preparacion" ? mensajePreparacion(f.nombre, l, faltas) : mensajeConfirmacion(f.nombre, l, faltas, h);
+    const vencida = toca.paso === "hr_preparacion" && h >= sumar(l.dia, -1);
+    const faltaTxt = [faltas.parq ? "PAR-Q+" : "", faltas.peso ? "peso en ayunas" : ""].filter(Boolean);
+    const nota = [`${ETIQUETA_PASO[toca.paso]} · llamada ${l.cuando}`, toca.motivo, faltaTxt.length ? `He puesto la línea de lo que falta (${faltaTxt.join(" y ")}): si ya lo tienes, bórrala.` : "Ya consta PAR-Q+ y peso: sin línea de «me falta»."].join(" · ");
+    // La tarjeta genérica «Sin mensaje» de esta ficha ya no sirve: la sustituye el paso.
+    await sb.from("crm_tareas").update({ estado: "descartada", motivo: "Sustituida por el paso de la reserva de Hoja de Ruta", resuelto_en: new Date().toISOString(), resuelto_por: "sistema" }).eq("ficha_id", f.id).in("estado", ABIERTAS).eq("tipo", "recordatorio");
+    await sb.from("crm_tareas").insert({
+      ficha_id: f.id,
+      carril: "entrenatzaile",
+      tipo: toca.paso,
+      canal: tel ? "whatsapp" : "ninguno",
+      nivel: "B",
+      urgencia: vencida || toca.paso === "hr_confirmacion" ? 2 : 1,
+      urgencia_motivo: toca.paso === "hr_confirmacion" ? "Confirmación a 24 h" : vencida ? "Preparación: ya es la víspera" : "Toca preparar la llamada",
+      estado: "revisar",
+      idioma: "es",
+      destinatario: tel,
+      borrador_asunto: null,
+      borrador_texto: texto,
+      cambios_crm: siguienteTrasPaso(toca.paso, l),
+      nota_para_alain: tel ? nota : `${nota} · No hay teléfono en la ficha ni en la reserva: copia el texto y mándalo por otra vía.`,
+      editado: false,
+      contexto: { programada: true, paso_reserva: toca.paso, reserva_id: reserva.id, reserva_hueco: reserva.hueco, estado_ficha: f.estado, resumen: ETIQUETA_PASO[toca.paso], clasificacion: toca.paso, redaccion: "plantilla_guion", instagram: false, fecha_ficha: f.fecha_proxima_accion },
+    });
+    creadas++;
+  }
+  return creadas;
 }
 
 /** Paso sin mensaje (D9, ventana caducada): se aplica solo y queda en «Últimos cambios» con Deshacer. */
@@ -189,7 +314,7 @@ async function crearTareaLead(f: FichaLead, d: DecisionLead): Promise<boolean> {
     cambios_crm: d.cambios,
     nota_para_alain: [d.nota, b?.nota, notaCanal].filter(Boolean).join(" · ") || null,
     editado: false,
-    contexto: { programada: true, estado_ficha: f.estado, resumen: etiquetaLead(d.tipo), clasificacion: d.tipo, redaccion: "plantilla", instagram, fecha_ficha: f.fecha_proxima_accion },
+    contexto: { programada: true, estado_ficha: f.estado, resumen: etiquetaLead(d.tipo), clasificacion: d.tipo, redaccion: "plantilla", instagram, fecha_ficha: f.fecha_proxima_accion, ...(!conMensaje ? { motivo_sin_mensaje: d.motivoSinMensaje ?? (d.conMensaje ? "no hay canal válido (sin email y sin permiso de WhatsApp): decide desde la ficha" : motivoSinMensaje(f)) } : {}) },
   });
   return true;
 }
@@ -204,10 +329,11 @@ export async function cerrarTareasObsoletasLeads(): Promise<number> {
   const h = hoy();
   const { data } = await sb.from("crm_tareas").select("id, contexto, ficha:crm_fichas(estado, fecha_proxima_accion)").eq("carril", "entrenatzaile").eq("estado", "revisar").eq("contexto->>programada", "true");
   let n = 0;
-  for (const t of (data ?? []) as unknown as { id: string; contexto: { estado_ficha?: string; restaurada?: boolean } | null; ficha: { estado: string; fecha_proxima_accion: string | null } | null }[]) {
+  for (const t of (data ?? []) as unknown as { id: string; contexto: { estado_ficha?: string; restaurada?: boolean; paso_reserva?: string } | null; ficha: { estado: string; fecha_proxima_accion: string | null } | null }[]) {
     if (!t.ficha || t.contexto?.restaurada) continue;
     const cambioEstado = t.contexto?.estado_ficha && t.contexto.estado_ficha !== t.ficha.estado;
-    const yaNoToca = !t.ficha.fecha_proxima_accion || t.ficha.fecha_proxima_accion > h;
+    // Los pasos de la reserva (Mensaje 2/3) los marca la fecha de la llamada, no la de la ficha: solo caducan si cambia el estado.
+    const yaNoToca = !t.contexto?.paso_reserva && (!t.ficha.fecha_proxima_accion || t.ficha.fecha_proxima_accion > h);
     if (cambioEstado || yaNoToca) {
       await sb.from("crm_tareas").update({ estado: "descartada", motivo: cambioEstado ? `Cerrada sola: la ficha está en «${t.ficha.estado}»` : "Cerrada sola: la ficha ya no tiene esta acción para hoy", resuelto_en: new Date().toISOString(), resuelto_por: "sistema" }).eq("id", t.id);
       n++;

@@ -52,12 +52,26 @@ interface FichaLista extends FichaT {
 }
 
 const ESTADOS = ["0 Por escribir", "1 Escrito", "2 Seguimiento enviado", "3 En conversación", "4 Hoja de Ruta propuesta", "5 Hoja de Ruta reservada", "6 Hoja de Ruta hecha", "7 Cliente", "8 Perdido", "9 Aparcado"];
-const ETIQUETA: Record<string, string> = { check_in: "Check-in", seguimiento: "Seguimiento", recordatorio: "Recordatorio", aparcar: "Aparcar", respuesta: "✉️ Te ha escrito" };
+const ETIQUETA: Record<string, string> = { hr_preparacion: "Mensaje 2 · preparación", hr_confirmacion: "Mensaje 3 · confirmación 24 h", check_in: "Check-in", seguimiento: "Seguimiento", recordatorio: "Recordatorio", aparcar: "Aparcar", respuesta: "✉️ Te ha escrito" };
 const hoyISO = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date());
 const fmt = (iso: string | null | undefined) => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—");
 const diasEntre = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400000);
 const fase = (e: string) => Number(/^(\d)/.exec(e)?.[1] ?? -1);
 const colorEstado = (e: string) => (fase(e) === 7 ? "bg-emerald-100 text-emerald-800" : fase(e) === 8 ? "bg-gray-200 text-gray-600" : fase(e) === 9 ? "bg-amber-50 text-amber-800" : fase(e) >= 3 ? "bg-sky-50 text-sky-800" : "bg-gray-100 text-gray-700");
+/** Por qué una tarjeta no trae mensaje, en una línea. Nunca «Sin mensaje» a secas (mismo criterio que motivoSinMensaje en lib/leads-motor.ts; vale también para tarjetas creadas antes). */
+const motivoDe = (t: Tarea, f: FichaT | null): string => {
+  const guardado = (t.contexto as { motivo_sin_mensaje?: string } | null)?.motivo_sin_mensaje;
+  if (guardado) return guardado;
+  const fa = fase(f?.estado ?? "");
+  const pa = (f?.proxima_accion ?? "").trim();
+  const corto = pa.length > 90 ? `${pa.slice(0, 90)}…` : pa;
+  if (fa === 8) return "nada que enviar, cerrar o aplazar";
+  if (fa === 7) return "es cliente: nada que enviar desde aquí, cierra o aplaza";
+  if (fa === 9) return "aparcado: nada que enviar, cierra o aplaza";
+  if (fa === 5) return pa ? `Hoja de Ruta reservada, ahora no hay mensaje del guion que enviar («${corto}»)` : "Hoja de Ruta reservada, pero no encuentro la fecha de la llamada: míralo en la ficha";
+  if (/esper/i.test(pa)) return `espera su respuesta («${corto}»)`;
+  return pa ? `no hay mensaje para este paso («${corto}»): decide desde aquí` : "la ficha no dice qué toca: decide desde aquí (aplazar, cambiar estado o descartar)";
+};
 /** «Su caso» y la respuesta del formulario, sacados del cuerpo de la nota del vault. */
 const suCaso = (cuerpo: string | null | undefined) => (cuerpo ?? "").replace(/^\s*>.*$/gm, "").replace(/^#+\s*Su caso\s*$/m, "").trim();
 
@@ -247,7 +261,7 @@ function TarjetaLead({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<s
           </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[0.78rem] text-gray-500">
             {f && <span className={`rounded-full px-2 py-0.5 ${colorEstado(f.estado)}`}>{f.estado}</span>}
-            <span>{t.canal === "whatsapp" ? "WhatsApp" : t.canal === "mail" ? "Mail" : instagram ? "Instagram" : "Sin mensaje"}</span>
+            <span>{t.canal === "whatsapp" ? "WhatsApp" : t.canal === "mail" ? "Mail" : instagram ? "Instagram" : conMensaje ? "Sin canal: copia el texto" : `Sin mensaje: ${motivoDe(t, f)}`}</span>
             {f?.datos?.tirada && <span>· {String(f.datos.tirada)}</span>}
             {f?.fecha_ultimo_contacto && <span>· último contacto {fmt(f.fecha_ultimo_contacto)}</span>}
           </p>
@@ -294,11 +308,12 @@ function TarjetaLead({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<s
             )}
             {wa && (
               <>
+                <button onClick={async () => setOk((await copiarTexto(texto)) ? "Copiado." : "No se ha podido copiar")} className="rounded-full px-4 py-1.5 text-[0.85rem] text-gray-700 ring-1 ring-gray-300">Copiar</button>
                 <a href={wa} target="_blank" rel="noreferrer" onClick={() => { copiarTexto(texto); setAbrioWa(true); }} className="rounded-full bg-[#25D366] px-4 py-1.5 text-[0.85rem] text-white">
-                  Copiar + abrir WhatsApp
+                  Abrir WhatsApp (con el texto)
                 </a>
                 <button onClick={() => hacer("wa", { accion: "whatsapp_enviado", id: t.id, texto }, "Apuntado como enviado por WhatsApp.")} disabled={!!ocupado} className={`rounded-full px-4 py-1.5 text-[0.85rem] ring-1 disabled:opacity-40 ${abrioWa ? "bg-emerald-600 text-white ring-emerald-600" : "text-gray-700 ring-gray-300"}`}>
-                  {ocupado === "wa" ? "Guardando…" : "Ya lo he enviado"}
+                  {ocupado === "wa" ? "Guardando…" : "Marcado como enviado"}
                 </button>
               </>
             )}
