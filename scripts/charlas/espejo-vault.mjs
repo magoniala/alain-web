@@ -308,6 +308,18 @@ async function eventos() {
   }
 }
 
+// --- testimonios y respuestas de newsletter guardados desde el panel (Correo › Por revisar) -----
+// Solo añade al final de las notas del vault; sin cron nuevo. Si falla (SQL sin ejecutar, nota que
+// falta), el espejo continúa.
+async function correoPanel() {
+  try {
+    const { espejoCorreo, resumenEspejoCorreo } = await import("../crm/espejo-correo.mjs");
+    console.log(resumenEspejoCorreo(await espejoCorreo({ url: URL, key: KEY, vaultCharlas: VAULT, comprobar: COMPROBAR }), COMPROBAR));
+  } catch (e) {
+    console.log(`Correo → vault: no se ha podido hacer (${String(e.message).slice(0, 200)})`);
+  }
+}
+
 // --- principal -------------------------------------------------------------------
 async function main() {
   comprobarEntorno();
@@ -315,6 +327,7 @@ async function main() {
   await guiones();
   await conocimientoAyto();
   await eventos();
+  await correoPanel();
   await postEventos();
   const [centros, interacciones] = await Promise.all([
     todas("charlas_centros", "*", "nombre"),

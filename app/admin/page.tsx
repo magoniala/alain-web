@@ -20,11 +20,13 @@ import MirariakTab from "./_components/MirariakTab";
 import OpinionFamiliasTab from "./_components/OpinionFamiliasTab";
 import ArretaTab from "./_components/ArretaTab";
 import CorreoTab from "./_components/CorreoTab";
+import PorRevisarTab from "./_components/correo/PorRevisarTab";
+import TestimoniosCorreoTab from "./_components/correo/TestimoniosCorreoTab";
 import MagiaTailerrakTab from "./_components/MagiaTailerrakTab";
 import EventosTab from "./_components/EventosTab";
 import PreventaTab from "./_components/PreventaTab";
 
-const TABS = ["Charlas", "Prospectos magia", "Eventos", "Leads Entrenatzaile", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Preventa", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Opiniones familias", "Mirariak 2026", "Arreta", "Bandeja general", "Magia-tailerrak"] as const;
+const TABS = ["Charlas", "Prospectos magia", "Eventos", "Leads Entrenatzaile", "Entrenatzaile", "Valoración", "PAR-Q+", "Newsletter", "Nurture", "Hoja de Ruta", "Preventa", "Acompañamiento", "Arrogante", "Estadísticas guías", "Embudo espalda", "Magic", "Opiniones eventos", "Opiniones familias", "Mirariak 2026", "Arreta", "Bandeja general", "Por revisar", "Testimonios", "Magia-tailerrak"] as const;
 type Tab = (typeof TABS)[number];
 
 // El menú lateral, agrupado por para qué se usa cada pestaña.
@@ -32,12 +34,12 @@ const GRUPOS: { titulo: string; tabs: Tab[] }[] = [
   { titulo: "Comercial", tabs: ["Charlas", "Prospectos magia", "Leads Entrenatzaile"] },
   { titulo: "Eventos", tabs: ["Eventos"] },
   { titulo: "Clientes", tabs: ["Entrenatzaile", "Valoración", "PAR-Q+", "Acompañamiento", "Hoja de Ruta", "Preventa"] },
-  { titulo: "Correo", tabs: ["Bandeja general", "Newsletter", "Nurture"] },
+  { titulo: "Correo", tabs: ["Por revisar", "Bandeja general", "Newsletter", "Nurture"] },
   { titulo: "Métricas", tabs: ["Estadísticas guías", "Embudo espalda"] },
   { titulo: "Magia", tabs: ["Mirariak 2026", "Magia-tailerrak", "Magic"] },
   // Lo que dicen de mí: alumnos de las charlas (Arreta), quienes contratan magia
   // (Opiniones eventos, /quetal) y las familias que vinieron (Opiniones familias).
-  { titulo: "Testimonios", tabs: ["Arreta", "Opiniones eventos", "Opiniones familias"] },
+  { titulo: "Testimonios", tabs: ["Testimonios", "Arreta", "Opiniones eventos", "Opiniones familias"] },
   { titulo: "Otros", tabs: ["Arrogante"] },
 ];
 
@@ -67,6 +69,10 @@ const ICONO: Record<Tab, React.ReactNode> = {
   "Mirariak 2026": <path d="M10 3a7 7 0 1 0 7 7h-7V3Zm2 0v5h5a7 7 0 0 0-5-5Z" />,
   Arreta: <path d="M4 4h12v12H4zM7 8h6M7 11h6M7 14h3" />,
   "Bandeja general": <path d="M3 11l2.5-6h9L17 11v5H3zm0 0h4l1 2h4l1-2h4" />,
+  // Sobre con una marca: lo que llega al correo y pide acción.
+  "Por revisar": <path d="M3 5h14v10H3zM3 5l7 6 7-6m-3 8 1.5 1.5L17 12" />,
+  // Bocadillo con comillas: los testimonios que llegan por correo.
+  Testimonios: <path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 3.5v3m4-3v3" />,
   "Opiniones eventos": <path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm6 2.5.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L7.1 8.6l2-.3z" />,
   // Bocadillo con una cara: lo que cuentan las familias.
   "Opiniones familias": <path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm4 3.5v.5m4-.5v.5M7.5 10.5c.7.8 1.5 1.2 2.5 1.2s1.8-.4 2.5-1.2" />,
@@ -196,7 +202,7 @@ export default function AdminPage() {
     );
   }
 
-  const ancho = tab === "Valoración" || tab === "PAR-Q+" || tab === "Opiniones eventos" || tab === "Opiniones familias" || tab === "Charlas" || tab === "Mirariak 2026" || tab === "Arreta" || tab === "Bandeja general" ? "max-w-[1320px]" : "max-w-[1040px]";
+  const ancho = tab === "Valoración" || tab === "PAR-Q+" || tab === "Opiniones eventos" || tab === "Opiniones familias" || tab === "Charlas" || tab === "Mirariak 2026" || tab === "Arreta" || tab === "Bandeja general" || tab === "Por revisar" || tab === "Testimonios" ? "max-w-[1320px]" : "max-w-[1040px]";
 
   return (
     <main className="admin min-h-screen">
@@ -326,6 +332,8 @@ export default function AdminPage() {
               {tab === "Mirariak 2026" && <MirariakTab />}
               {tab === "Arreta" && <ArretaTab />}
               {tab === "Bandeja general" && <CorreoTab />}
+              {tab === "Por revisar" && <PorRevisarTab />}
+              {tab === "Testimonios" && <TestimoniosCorreoTab />}
               {tab === "Magia-tailerrak" && <MagiaTailerrakTab />}
             </div>
           </div>

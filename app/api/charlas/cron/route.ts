@@ -13,6 +13,8 @@ import { notificarReservasHojaRuta } from "@/lib/hoja-ruta-bandeja";
 import { aprender, tocaAprender } from "@/lib/charlas-aprendizaje";
 import { aprenderMagia, tocaAprenderMagia } from "@/lib/crm-aprendizaje";
 import { indexarHistorico, leerBuzonesExtra } from "@/lib/correo-general";
+import { procesarCorreo } from "@/lib/correo-panel";
+import { notificarPendientesCorreo } from "@/lib/correo-acciones";
 import { tomarCierre, soltarCierre } from "@/lib/cron-cierre";
 import { mail1Ayuntamientos } from "@/lib/ayuntamientos";
 import { investigarAyuntamientos } from "@/lib/ayto-investigar";
@@ -240,6 +242,12 @@ async function ejecutarSinCierre(req: Request) {
   const correoOtros =
     Date.now() - inicio < 48000 ? await leerBuzonesExtra({ presupuestoMs: Math.min(15000, 54000 - (Date.now() - inicio)) }).catch(() => null) : null;
 
+  // Correo en el panel (adelanto de F1, 28-11): cuerpos con PEEK, clasificación (reglas y Haiku con
+  // tope diario), cierre por respuesta en Enviados y avisos de los pendientes de correo. Va después
+  // del lector y de los otros buzones; si falla o no hay SQL, se salta sin afectar a nada más.
+  const correoPanel = Date.now() - inicio < 50000 ? await procesarCorreo({ presupuestoMs: Math.max(0, Math.min(14000, 56000 - (Date.now() - inicio))) }).catch((e) => ({ error: (e as Error).message })) : null;
+  const pendientesCorreo = await notificarPendientesCorreo().catch(() => ({ avisos: 0 }));
+
   // Avisar al móvil de lo nuevo (solo si hay dispositivos suscritos y claves).
   const push = await notificarTareasNuevas().catch((e) => ({ avisos: 0, tareas: 0, error: (e as Error).message }));
   const pushMagia = await notificarTareasMagia().catch(() => ({ avisos: 0, tareas: 0 }));
@@ -247,7 +255,7 @@ async function ejecutarSinCierre(req: Request) {
 
   // Al final, con lo que sobre: la IA reescribe los borradores de plantilla de leads (unos segundos cada uno).
   const leadsIA = leads && leads.modo !== "apagado" && leads.modo !== "?" ? await mejorarBorradoresLeads({ presupuestoMs: Math.max(0, 56000 - (Date.now() - inicio)), limite: 2 }).catch((e) => ({ redactadas: 0, errores: [(e as Error).message] })) : null;
-  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, leads_entrantes: leadsEntrantes, leads_ia: leadsIA, auto_leads: autoLeads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, eventos, preventa, correo_historico: correoHistorico, correo_otros: correoOtros, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
+  return NextResponse.json({ ok: !errorLectura && proceso.errores.length === 0 && !(motor?.errores.length), lectura, error_lectura: errorLectura, proceso, motor, mail1, magia, leads, leads_entrantes: leadsEntrantes, leads_ia: leadsIA, auto_leads: autoLeads, push_leads: pushLeads, ayto, ayto_auto: aytoAuto, auto_charlas: autoCharlas, auto_magia: autoMagia, ayto_investigacion: aytoInvestigacion, rastreo, repuestos, push, push_magia: pushMagia, ent, ent_alertas: entAlertas, ent_propuestas: entPropuestas, hoja_ruta: hojaRuta, eventos, preventa, correo_historico: correoHistorico, correo_otros: correoOtros, correo_panel: correoPanel, pendientes_correo: pendientesCorreo, aprendizaje, aprendizaje_magia: aprendizajeMagia, ms: Date.now() - inicio });
 }
 
 // Solo una pasada a la vez: si otra está trabajando (cron solapado, o "Leer buzón ahora" mientras
