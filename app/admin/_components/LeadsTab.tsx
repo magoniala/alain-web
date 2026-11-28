@@ -278,7 +278,7 @@ function TarjetaLead({ t, accion, alTerminar }: { t: Tarea; accion: (b: Record<s
         </details>
       )}
       <UltimosMensajes ultimos={t.ultimos} />
-      {t.nota_para_alain && <p className="mt-2 rounded-lg bg-gray-50 px-3 py-1.5 text-[0.8rem] text-gray-600">{t.nota_para_alain}</p>}
+      {t.nota_para_alain && t.nota_para_alain !== `La ficha dice: «${f?.proxima_accion ?? ""}»` && <p className="mt-2 rounded-lg bg-gray-50 px-3 py-1.5 text-[0.8rem] text-gray-600">{t.nota_para_alain}</p>}
 
       {conMensaje && (
         <div className="mt-3 space-y-2">

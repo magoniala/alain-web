@@ -294,6 +294,11 @@ async function crearTareaLead(f: FichaLead, d: DecisionLead): Promise<boolean> {
   const sb = supabaseCharlas();
   const { canal, destinatario, instagram } = canalLead(f);
   if (await tarjetaYaCreada("crm_tareas", "ficha_id", f.id, [d.tipo], null)) return false;
+  // Si Alain acaba de descartar una del mismo tipo, no vuelve a salir al pasar el cron (28-11: Cristina, 8 Perdido, volvía a salir
+  // tras cada «Descartar» porque la ficha sigue con su fecha vencida). 3 días en general; 7 en Cliente, Perdido y Aparcado.
+  const dias = fase(f.estado) >= 7 ? 7 : 3;
+  const { data: descartada } = await sb.from("crm_tareas").select("id").eq("ficha_id", f.id).eq("tipo", d.tipo).eq("estado", "descartada").eq("resuelto_por", "alain").gte("resuelto_en", new Date(Date.now() - dias * 86400000).toISOString()).limit(1);
+  if (descartada && descartada.length) return false;
   const conMensaje = d.conMensaje && (canal !== "ninguno" || instagram);
   const b = conMensaje ? borradorLead(f, d.tipo, canal) : null;
   const vencida = (f.fecha_proxima_accion ?? hoy()) < hoy();
