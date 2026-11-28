@@ -309,6 +309,8 @@ export const BUZONES_EXTRA = [
   { id: "entrenatzaile", direccion: "entrenatzaile@alainzulaika.com", clave: "ENTRENATZAILE" },
   { id: "registros_niala", direccion: "registros@niala.es", clave: "REGISTROS_NIALA" },
   { id: "newsletter_niala", direccion: "newsletter@niala.es", clave: "NEWSLETTER_NIALA" },
+  // Buzón antiguo de Outlook. Inactivo hasta que haya MAIL_PASS_MAGONIALA_OUTLOOK y MAIL_HOST_MAGONIALA_OUTLOOK (outlook.office365.com) en Vercel; pausado desde el panel.
+  { id: "magoniala_outlook", direccion: "magoniala@outlook.com", clave: "MAGONIALA_OUTLOOK" },
 ] as const;
 
 export function configBuzon(b: (typeof BUZONES_EXTRA)[number]) {
